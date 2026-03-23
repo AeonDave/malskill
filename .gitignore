@@ -1,1 +1,7 @@
 .idea
+.venv
+.import
+.learnings
+__pycache__/
+*.skill
+.tmp-*

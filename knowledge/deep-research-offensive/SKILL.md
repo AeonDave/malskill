@@ -1,139 +1,185 @@
 ---
 name: deep-research-offensive
-description: "Offensive security research: CVE analysis, exploit research, vulnerability assessment, red team reconnaissance, and threat intelligence synthesis. Use when researching CVEs, vulnerabilities, exploits, attack chains, PoC code, OSINT targets, red team planning, or security advisories. Uses MCP tools — Tavily, Firecrawl, Playwright — for live intelligence gathering."
+description: "File-backed offensive security research with recursive link-following, multi-tool fetching (Jina Reader, Tavily, Playwright), and step-by-step synthesis. Use when researching CVEs, vulnerabilities, exploits, attack chains, PoC code, OSINT targets, red team planning, or threat intelligence. Saves each useful page to intermediate files, follows linked sources recursively, and produces a comprehensive research document not limited by context size."
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.1"
-compatibility: "Requires MCP tools: Tavily, Firecrawl, Playwright. Authorized research use only."
+  version: "2.0"
 ---
 
 # Deep Research — Offensive Security
 
-Systematic offensive research workflow covering CVE analysis, exploit research, vulnerability assessment, and red team intelligence. Designed for authorized security research contexts.
+File-backed offensive research workflow. Each useful page is fetched, cleaned, and saved to an intermediate file. Linked pages (PoC repos, advisories, exploit code, threat intel articles) are recursively followed. All intermediate files are synthesized step-by-step into a comprehensive research document.
 
-> **Scope**: Use only against targets for which you have explicit written authorization.
+> **Scope**: Use only for targets with explicit written authorization.
+> **Core principle**: Use the file system as extended memory. Save every useful page, then synthesize from files — never rely on context alone.
 
 ---
 
-## MCP Tool Reference (verified)
+## Methodology
 
-| Function name | Tool | Use |
+### Step 1 — Scope & Plan
+
+1. Define the research objective (CVE analysis, target recon, technique research, threat intel)
+2. Break into 3–7 sub-questions, e.g.:
+   - Vulnerability details (CVSS, CWE, affected versions)
+   - PoC availability (GitHub, ExploitDB, PacketStorm)
+   - Active exploitation evidence (CISA KEV, APT campaigns, ITW reports)
+   - Attack chain mapping (ATT&CK techniques, chaining potential)
+   - Mitigations and detection (patches, SIEM rules, EDR telemetry)
+3. Create the working directory:
+
+```
+.research/{topic-slug}/
+├── _plan.md            # Sub-questions, priorities, URL queue, gap tracker
+├── pages/              # One .md file per fetched page
+└── output.md           # Final synthesized research document
+```
+
+4. Write `_plan.md` with sub-questions, priorities, and empty URL queue
+
+### Step 2 — Initial Search Sweep
+
+Run parallel searches across offensive sources for each sub-question:
+
+**Tavily** (if available):
+```
+# CVE-specific
+query: "CVE-YYYY-NNNNN" exploit PoC
+include_domains: ["github.com", "exploit-db.com", "sploitus.com"]
+search_depth: basic, max_results: 5
+
+# Threat intel
+query: CVE-YYYY-NNNNN exploited ransomware APT
+topic: news, time_range: year, max_results: 5
+```
+
+**Jina Search** (always available):
+```
+fetch_webpage → https://s.jina.ai/CVE-YYYY-NNNNN exploit PoC github
+```
+
+**Social media** (for real-time intel): use xcancel/Playwright and Telegram — see [references/mcp-tools.md](references/mcp-tools.md).
+
+From results: queue all promising URLs in `_plan.md` with source and relevance.
+
+### Step 3 — Deep Fetch (page by page)
+
+Process each queued URL:
+
+**3a. Fetch** — stop at first success:
+
+| Priority | Tool | When |
 |---|---|---|
-| `mcp_io_github_tav_tavily_search` | Tavily Search | Keyword search across the web — primary search tool |
-| `mcp_io_github_tav_tavily_map` | Tavily Map | Enumerate URLs of an advisory/doc site before scraping |
-| `mcp_firecrawl_fir_firecrawl_scrape` | Firecrawl Scrape | Full page content from a known URL |
-| `mcp_firecrawl_fir_firecrawl_extract` | Firecrawl Extract | Structured JSON fields from a known URL — fastest for CVSS, CPE |
-| `mcp_firecrawl_fir_firecrawl_crawl` | Firecrawl Crawl | All pages of a multi-page advisory portal |
-| `mcp_microsoft_pla_browser_run_code` | Playwright | JS-rendered pages, DataTables (ExploitDB), login-gated content |
-| xcancel.com via Playwright | X/Twitter Search | No-auth Twitter search proxy — tweets about CVEs, malware, PoCs |
-| `api.fxtwitter.com` via Firecrawl | FxTwitter API | Zero-auth JSON for full post/thread content and user info |
-| `tg.i-c-a.su/json/{channel}` via Firecrawl | Telegram (zero-auth) | Full JSON messages from any public Telegram channel |
-| `t.me/s/{channel}` via Playwright | Telegram preview | Last ~30 posts from public channels, JS-rendered |
+| 1 | **Jina Reader** | Default — cleanest markdown output |
+| 2 | **`fetch_webpage`** (direct) | APIs, NVD JSON, raw text |
+| 3 | **Tavily extract** | Structured data (CVSS, CPE, versions) |
+| 4 | **Playwright** | ExploitDB tables, JS-rendered SPAs, xcancel |
+
+**Jina Reader**: `fetch_webpage` on `https://r.jina.ai/{full-url-with-scheme}`
+**Jina Search**: `fetch_webpage` on `https://s.jina.ai/{search-query}`
+
+**3b. Evaluate**: relevant to sub-question + contains citable data? If not → mark `skipped`.
+
+**3c. Save** to `pages/{NNN}_{slug}.md`:
+
+```markdown
+# {Page Title}
+
+- **Source**: {URL}
+- **Fetched**: {date}
+- **Serves**: {sub-question}
+- **Relevance**: high/medium/low
+- **Type**: advisory / PoC / exploit / writeup / threat-intel / vendor-patch
+
+## Content
+
+{Cleaned content: CVSS data, exploit details, code snippets,
+affected versions, indicators, techniques. Remove boilerplate.
+Preserve all technical detail.}
+
+## Outbound Links
+
+- {URL1} — {PoC repo / vendor advisory / related CVE / etc.}
+- {URL2} — {description}
+```
+
+**3d. Extract and queue links**: GitHub repos, vendor advisories, linked CVEs, blog references → add to `_plan.md`.
+
+### Step 4 — Recursive Link Discovery
+
+Repeat Step 3 for newly queued links. Stop when:
+- No new relevant links
+- Depth limit reached (default: 3 levels)
+- Diminishing returns
+
+Update `_plan.md`: mark each URL as `fetched`, `skipped`, or `queued`.
+
+### Step 5 — Gap Analysis
+
+1. Review each sub-question against intermediate files
+2. Identify: missing PoC, no CVSS data, no active exploitation evidence, missing patches
+3. For critical gaps → run targeted searches (Step 2) with narrower queries
+4. Check social media for gaps (Twitter → xcancel, Telegram → see references)
+
+### Step 6 — Step-by-Step Synthesis
+
+Build `output.md` incrementally from intermediate files:
+
+1. **Process one dimension at a time** — read only relevant files per dimension
+2. For each dimension: read files → write analysis → add citations `[N]`
+3. After all dimensions: executive summary, vulnerability matrix, attack chain, sources list
+
+> Each section reads only its files. Research depth is limited by data found, not context window.
+
+### Step 7 — Final Output
+
+Use this structure (adapt for engagement type):
+
+```markdown
+## Target Summary
+[Asset, scope, engagement type]
+
+## Vulnerability Matrix
+| CVE | CVSS | PoC | CISA KEV | Priority |
+|-----|------|-----|----------|----------|
+
+## CVE Deep Dives
+
+### CVE-YYYY-NNNNN — [Short name]
+- **CVSS**: X.X (vector)
+- **CWE**: CWE-[ID]
+- **Affected**: [product] [versions]
+- **PoC**: [URL or "not public"]
+- **Patch**: [URL]
+- **CISA KEV**: Yes/No
+- **Exploited ITW**: Yes/No — [source]
+- **Red team notes**: [access conditions, chaining potential]
+
+## Attack Chain
+[Phase → Technique T[ID] → CVE → method]
+
+## Mitigations and Detection
+[Patch, config, SIEM rule per phase]
+
+## Sources
+[1] URL — source — date
+```
 
 ---
 
-## Call Optimization
+## CVE Deep Dive Workflow
 
-Follow this decision tree — **stop at first success** to avoid wasted calls:
+For single-CVE research, run steps 1–3 in parallel, then follow links:
 
-```
-1. Need broad search across multiple sites?
-   → Tavily search  (fast, 1 credit)
+**Step 1 — NVD data**: Jina Reader on `https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN` → save to `pages/001_nvd.md`
 
-2. Need specific fields from a known URL (CVSS, CPE, refs)?
-   → Firecrawl extract  with JSON schema  (structured, 1-shot)
+**Step 2 — PoC search** (3 parallel queries):
+- GitHub: `"CVE-YYYY-NNNNN" exploit PoC` (include_domains: github.com)
+- Exploit DBs: `CVE-YYYY-NNNNN exploit` (sploitus.com, packetstormsecurity.com)
+- ITW: `CVE-YYYY-NNNNN exploited ransomware APT` (topic: news)
 
-3. Need full page content from a known URL?
-   → Firecrawl scrape  with onlyMainContent:true
-
-4. Firecrawl returned "Processing..." or empty tables?
-   → Playwright  with waitUntil:'networkidle'
-
-5. Need ALL pages of a site (vendor bulletin portal)?
-   → Firecrawl crawl  (most expensive — use last, limit ≤ 10)
-```
-
-**Run independent calls in parallel** — Tavily searches and Firecrawl calls on different URLs are independent.
-
----
-
-## Tavily: Query Optimization (from official docs)
-
-### Query rules
-- **Max 400 characters** per query — treat as a concise web search, not a prompt
-- **One topic per query** — break complex research into focused sub-queries run in parallel
-- **Use `include_domains`** to restrict to trusted sources (max 300 domains; keep the list short)
-- **Use `exclude_domains`** to remove noise (max 150 domains)
-- **Never use `site:` inside the query string** — use the `include_domains` parameter instead
-
-### `search_depth` — choose by use case
-
-| Depth | Credits | Content type | When to use |
-|---|---|---|---|
-| `ultra-fast` | 1 | NLP summary | Real-time, latency-critical |
-| `fast` | 1 | Ranked chunks | Quick targeted snippets |
-| `basic` | 1 | NLP summary | General-purpose (default) |
-| `advanced` | 2 | Ranked chunks | Specific facts, highest precision |
-
-- Use `basic` for broad discovery (recon, threat intel sweep)
-- Use `advanced` + `chunks_per_source: 3` when you need the exact field (CVSS vector, affected version)
-- Avoid `auto_parameters: true` — it may silently upgrade to `advanced` (2 credits)
-
-### `topic` parameter
-- `general` — broad web (default)
-- `news` — news sources only; includes `published_date` in results — use for "exploited in the wild" intel
-- `finance` — financial sources
-
-### Time filtering
-- `time_range`: `day` / `week` / `month` / `year` — filter by recency
-- `start_date` / `end_date`: `YYYY-MM-DD` — precise date range for advisory freshness checks
-
-### `max_results`
-- Default: 5 — sufficient for most CVE queries
-- Use 10 only when you need broad coverage (recon sweep)
-- Higher values degrade average result quality and consume more context tokens
-
-### Post-processing results
-- Filter by `score > 0.7` before passing URLs to Firecrawl — discard low-relevance results
-- Use `title` field for quick keyword scan before fetching full content
-
----
-
-## Research Workflows
-
-### CVE Deep Dive
-
-Run steps 1–3 in parallel, then follow up on found URLs:
-
-**Step 1 — NVD structured data** (Firecrawl extract — fastest for structured fields)
-```
-tool: mcp_firecrawl_fir_firecrawl_extract
-urls: ["https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN"]
-schema: {
-  "cvss_score": string,
-  "cvss_vector": string,
-  "cwe": string,
-  "affected_versions": [string],
-  "references": [string]
-}
-```
-
-**Step 2 — PoC search** (3 Tavily queries in parallel)
-```
-query 1: "CVE-YYYY-NNNNN" exploit PoC
-  include_domains: ["github.com"]
-  search_depth: basic, max_results: 5
-
-query 2: CVE-YYYY-NNNNN exploit
-  include_domains: ["sploitus.com", "packetstormsecurity.com"]
-  search_depth: basic, max_results: 5
-
-query 3: CVE-YYYY-NNNNN exploited ransomware APT campaign
-  topic: news, time_range: year, max_results: 5
-```
-
-**Step 3 — ExploitDB** (Playwright — required, JS-rendered DataTable)
+**Step 3 — ExploitDB** (JS-rendered, requires Playwright):
 ```javascript
 async (page) => {
   await page.goto('https://www.exploit-db.com/search?cve=YYYY-NNNNN',
@@ -146,338 +192,64 @@ async (page) => {
 }
 ```
 
-**Step 4 — GitHub PoC repos** (Firecrawl scrape, for each repo found in step 2)
-```
-tool: mcp_firecrawl_fir_firecrawl_scrape
-formats: ["markdown"]
-onlyMainContent: true
-```
+**Step 4 — Deep fetch each found URL** → save each PoC repo, advisory, writeup to `pages/`.
 
-**Step 5 — CISA KEV check + vendor advisory** (parallel)
-```
-Firecrawl extract: https://www.cisa.gov/known-exploited-vulnerabilities-catalog?field_cve=CVE-YYYY-NNNNN
-  schema: { "in_kev": bool, "due_date": string, "required_action": string }
+**Step 5 — CISA KEV + vendor advisory** (parallel): fetch and save both.
 
-Firecrawl scrape: [vendor advisory URL from NVD references]
-  onlyMainContent: true
-```
+**Step 6 — Recursive**: follow links from saved pages (related CVEs, vendor patches, blog writeups).
+
+**Step 7 — Synthesize**: read all pages/ files → build `output.md` section by section.
 
 ---
 
-### Target Reconnaissance
+## Target Reconnaissance Workflow
 
-Run all queries in parallel (one topic per query):
-
+Run all queries in parallel:
 ```
 query 1: [product] [version] vulnerability 2025
-  search_depth: basic, max_results: 5
-
-query 2: [product] CVE critical severity
-  include_domains: ["nvd.nist.gov", "cve.mitre.org"]
-  search_depth: basic, max_results: 5
-
-query 3: [product] exploit PoC
-  include_domains: ["github.com", "exploit-db.com", "sploitus.com"]
-  search_depth: basic, max_results: 5
-
-query 4: [product] security advisory patch
-  include_domains: ["[vendor.com]"]
-  time_range: year, search_depth: basic, max_results: 5
+query 2: [product] CVE critical (include_domains: nvd.nist.gov, cve.mitre.org)
+query 3: [product] exploit PoC (include_domains: github.com, sploitus.com)
+query 4: [product] security advisory (include_domains: [vendor.com], time_range: year)
 ```
 
-Use Tavily map to enumerate a vendor portal before crawling:
-```
-tool: mcp_io_github_tav_tavily_map
-url: https://[vendor.com]/security
-max_depth: 2, max_breadth: 10
-select_paths: ["/advisory", "/security", "/cve", "/vulns"]
-```
+Save each result page → follow links → synthesize.
 
 ---
 
-### ATT&CK Technique Lookup
+## Social Media Intelligence
 
+Twitter and Telegram are real-time sources for PoC drops, 0-day disclosures, and threat actor activity.
+
+**Twitter** (xcancel — zero-auth, Playwright):
 ```
-tool: mcp_firecrawl_fir_firecrawl_scrape
-url: https://attack.mitre.org/techniques/T[ID]/
-onlyMainContent: true
-
-# Cross-check with Tavily for real-world procedure examples:
-query: T[ID] [technique name] red team procedure example
-search_depth: advanced, chunks_per_source: 3, max_results: 5
+https://xcancel.com/search?f=tweets&q=CVE-YYYY-NNNNN+PoC&e-nativeretweets=on&e-replies=on&since=2024-01-01&min_faves=2
 ```
 
----
-
-## Output Template
-
+**FxTwitter API** (zero-auth JSON for full post content):
 ```
-## Target Summary
-[Asset, scope, engagement type]
-
-## Vulnerability Matrix
-| CVE | CVSS | PoC | In CISA KEV | Priority |
-|-----|------|-----|-------------|----------|
-
-## CVE Deep Dives
-
-### CVE-YYYY-NNNNN — [Short name]
-- **CVSS**: X.X (CVSS:3.1/AV:.../AC:.../PR:.../UI:.../S:.../C:.../I:.../A:...)
-- **CWE**: CWE-[ID] — [name]
-- **Affected**: [product] [versions from CPE]
-- **PoC**: [URL or "not public"]
-- **Patch / Advisory**: [URL]
-- **CISA KEV**: Yes/No — due date if applicable
-- **Exploited ITW**: Yes/No — [source + date]
-- **Red team notes**: [access conditions, auth required, mitigations to bypass, chaining potential]
-
-## Attack Chain
-[Phase → Technique T[ID] → CVE → method]
-
-## Mitigations and Detection
-[Patch, config, log source / SIEM rule per phase]
-
-## Sources
-[1] URL — source — date — score
+fetch_webpage → https://api.fxtwitter.com/status/{POST_ID}
 ```
 
----
-
-## X/Twitter Intelligence
-
-X/Twitter is a primary real-time source for:
-- CVE PoC drops and 0day disclosures
-- Malware samples, C2 IOCs, ransomware variants
-- Red team tooling releases (new BOFs, evasion techniques)
-- Threat actor activity and campaign announcements
-- Security researcher commentary and advisories
-
-### xcancel — zero-auth Twitter search proxy
-
-xcancel.com proxies Twitter's advanced search without any authentication. Use Playwright (page is JS-rendered).
-
-**Basic search:**
+**Telegram** (zero-auth JSON):
 ```
-https://xcancel.com/search?f=tweets&q=CVE-2024-NNNNN+exploit
+fetch_webpage → https://tg.i-c-a.su/json/{channel}
 ```
 
-**Full options — all parameters:**
-```
-https://xcancel.com/search?f=tweets
-  &q=windows+exploit          # URL-encoded search query
-  &since=2025-01-01           # date range start (YYYY-MM-DD)
-  &until=2026-02-18           # date range end (YYYY-MM-DD)
-  &min_faves=5                # minimum likes — filters noise
-  # --- include filters (f-) ---
-  &f-nativeretweets=on        # include native retweets
-  &f-media=on                 # include posts with media
-  &f-videos=on                # include posts with video
-  &f-news=on                  # include news links
-  &f-native_video=on          # include native (uploaded) video
-  &f-replies=on               # include replies
-  &f-links=on                 # include external links
-  &f-images=on                # include image posts
-  &f-quote=on                 # include quote tweets
-  &f-spaces=on                # include Spaces
-  # --- exclude filters (e-) ---
-  &e-nativeretweets=on        # exclude retweets
-  &e-replies=on               # exclude replies (thread noise)
-```
+Curated channels: @cveNotify, @learnexploit, @news4hack, @vxunderground — full list in [references/sources.md](references/sources.md).
 
-**Typical offensive research query (no retweets, no replies, date-filtered):**
-```
-https://xcancel.com/search?f=tweets&q=CVE-2024-NNNNN+PoC&e-nativeretweets=on&e-replies=on&since=2024-01-01&until=2026-02-18&min_faves=2
-```
-
-**Playwright recipe for xcancel:**
-```javascript
-async (page) => {
-  const query = encodeURIComponent('CVE-2024-NNNNN exploit PoC');
-  await page.goto(
-    `https://xcancel.com/search?f=tweets&q=${query}&e-nativeretweets=on&e-replies=on&since=2024-01-01&min_faves=2`,
-    { waitUntil: 'networkidle', timeout: 30000 }
-  );
-  await page.waitForSelector('.timeline-item', { timeout: 15000 }).catch(() => null);
-  const tweets = await page.locator('.timeline-item').allInnerTexts();
-  return tweets.slice(0, 20); // cap at 20 results
-}
-```
-
-### FxTwitter API — zero-auth JSON for post/thread content
-
-FxTwitter exposes a public read-only API with no authentication, no rate-limit registration, and clean JSON output. Use Firecrawl scrape to fetch.
-
-**Fetch a post or thread (includes full text, media, metrics, replies):**
-```
-https://api.fxtwitter.com/status/{POST_ID}
-```
-
-**Fetch user info:**
-```
-https://api.fxtwitter.com/{username}
-```
-
-**Example — fetch post and extract structured fields:**
-```
-tool: mcp_firecrawl_fir_firecrawl_extract
-urls: ["https://api.fxtwitter.com/status/1890765432198765432"]
-prompt: "Extract tweet text, author, date, media URLs, and reply tweets if present."
-schema: {
-  "text": "string",
-  "author": "string",
-  "date": "string",
-  "media": ["string"],
-  "replies": [{ "author": "string", "text": "string" }]
-}
-```
-
-**Usage pattern — when to use FxTwitter API:**
-1. Tavily or xcancel surfaces an interesting post URL
-2. Extract the post ID from the URL: `twitter.com/user/status/{ID}` or `x.com/user/status/{ID}`
-3. Fetch `https://api.fxtwitter.com/status/{ID}` to get the full thread with metadata
-
-### Python option — twitter_search.py (scripts/twitter_search.py)
-
-Batch/scripted search using `twikit 2.x`.
-
-> **⚠ Requires a real X account.** Guest/anonymous mode is blocked by Cloudflare since 2023.
-> Tavily (`site:twitter.com OR site:x.com`) is the **zero-auth alternative** and works without any account.
-
-```bash
-pip install twikit
-
-# First run: login and save session cookies (cookies_file auto-handled by twikit)
-python scripts/twitter_search.py "CVE-2024-12345 PoC exploit" \
-    --auth-info-1 your_username --auth-info-2 you@example.com \
-    --password yourpassword --cookies-file cookies.json
-
-# Subsequent runs: cookies exist → no re-login needed
-python scripts/twitter_search.py "windows 0day" --cookies-file cookies.json \
-    --since 2025-01-01 --until 2026-02-18 \
-    --min-likes 5 --count 20 --pages 3 --json -o results.json
-
-# Latest tweets from a specific researcher
-python scripts/twitter_search.py "nmap red team" --cookies-file cookies.json \
-    --mode Latest --from-user taviso
-
-# User profile
-python scripts/twitter_search.py --user malwareunicorn --cookies-file cookies.json
-```
-
-Key flags: `--auth-info-1`, `--auth-info-2`, `--password`, `--totp-secret`, `--cookies-file`, `--mode Latest|Top|Media`, `--count N` (max 20), `--pages N` (pagination), `--since/--until YYYY-MM-DD`, `--min-likes N`, `--from-user`, `--lang CODE`, `--json`, `-o FILE`.
-
-Output includes `fxtwitter_url` for each result — fetch it with Firecrawl extract to get the full thread.
-
-**When to use twikit vs Tavily:**
-- **No account** → use Tavily with `site:twitter.com OR site:x.com`
-- **Account available + need volume/pagination/filters** → use `twitter_search.py`
-
----
-
-## Telegram Intelligence
-
-Telegram is a primary distribution channel for:
-- CVE PoC drops (often before any public advisory)
-- Malware samples, stealer logs, ransomware source leaks
-- Red team tool releases (C2s, BOFs, loaders, evasion)
-- Threat actor chatter, initial access broker ads, data breach announcements
-- Content removed from GitHub or X within hours of publication
-
-### Zero-auth access methods (no account needed)
-
-**Method 1 — tg.i-c-a.su (best):** Returns full JSON with messages, media URLs, views, reactions.
-```
-tool: mcp_firecrawl_fir_firecrawl_scrape
-url: https://tg.i-c-a.su/json/{channel}
-onlyMainContent: false
-
-# Paginate backwards with ?before={message_id}
-https://tg.i-c-a.su/json/news4hack?before=500
-
-# RSS feed for feed-reader-style polling
-https://tg.i-c-a.su/rss/{channel}
-```
-
-**Method 2 — t.me/s/ preview:** Last ~30 posts. Use Playwright (JS-rendered).
-```javascript
-async (page) => {
-  await page.goto('https://t.me/s/news4hack', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('.tgme_widget_message', { timeout: 15000 }).catch(() => null);
-  const posts = await page.locator('.tgme_widget_message').allInnerTexts();
-  return posts.slice(0, 20);
-}
-```
-
-**Method 3 — Tavily search** (indexed snippets, no scraping):
-```
-query: CVE-2025 PoC exploit site:t.me
-search_depth: fast, max_results: 10
-```
-
-### Curated offensive security channels
-
-**Tier S — use first**
-
-| Channel | Link | Members | Focus |
-|---|---|---|---|
-| @news4hack (Pentester) | `t.me/news4hack` | ~2.8K | CVE + PoC GitHub links daily, red team, AD attacks, web RCE/LPE |
-| @cveNotify | `t.me/cveNotify` | ~17.7K | Real-time CVE notifications — fastest CVE feed |
-| @learnexploit (0Day.Today) | `t.me/learnexploit` | ~21K | Public exploits, 0-day, PoC web/server, hacking tools — richest PoC source |
-
-**Tier A — strong signal**
-
-| Channel | Link | Focus |
-|---|---|---|
-| @PentestingNews | `t.me/PentestingNews` | Pentesting, red team, OSINT, malware analysis, RE (~20K) |
-| @BlueRedTeam | `t.me/BlueRedTeam` | Red team tools, CVE PoC, intranet attacks (~5.2K) |
-| @androidMalware | `t.me/androidMalware` | Android/iOS exploits, mobile CVEs, spyware analysis (~43K) |
-| @bugbountyresources | `t.me/bugbountyresources` | Writeups, new vulns, bug bounty tips (~10K) |
-| @githubredteam | `t.me/githubredteam` | Chinese red team GitHub repos monitor — fresh PoCs, often before English coverage |
-| @sochub_ar | `t.me/sochub_ar` | SOCHUB CVE channel — advisory-level CVE feed, structured |
-
-**Tier B — niche / underground signal**
-
-| Channel | Link | Focus | Notes |
-|---|---|---|---|
-| @vxunderground | `t.me/vxunderground` | Malware samples, papers, ransomware source leaks, APT intel | Legitimate research; primary malware archive |
-| @ckearsenal (御魂军火库) | `t.me/ckearsenal` | Chinese underground: PoC, exploits, C2 templates, malware analysis | High noise, high signal — filter carefully |
-| @cybersecurityresources | `t.me/cybersecurityresources` | Web security, pentest notes, bug hunting (~7K) | Broad but active |
-
-### Telegram channel research workflow
-
-```
-# 1. Check a channel's recent content (zero-auth, instant JSON)
-tool: mcp_firecrawl_fir_firecrawl_scrape
-url: https://tg.i-c-a.su/json/cveNotify
-onlyMainContent: false
-
-# 2. Found a relevant post? Get its full content via t.me/s/ permalink
-tool: mcp_firecrawl_fir_firecrawl_scrape
-url: https://t.me/s/cveNotify/{message_id}
-onlyMainContent: true
-
-# 3. Post links to GitHub PoC? → Firecrawl scrape the repo
-tool: mcp_firecrawl_fir_firecrawl_scrape
-url: https://github.com/{user}/{repo}
-onlyMainContent: true
-
-# 4. Broad keyword search across all indexed Telegram content
-tool: mcp_io_github_tav_tavily_search
-query: CVE-2025-NNNNN PoC exploit site:t.me
-search_depth: fast, max_results: 10
-```
+For detailed recipes, parameters, and Playwright scripts → [references/mcp-tools.md](references/mcp-tools.md).
 
 ---
 
 ## Operational Notes
 
-- **Traffic**: Firecrawl and Playwright generate real HTTP traffic. On live engagements, use only Tavily (indexed/cached results) to avoid direct target contact.
-- **Rate limits**: Firecrawl crawl: `limit ≤ 10`, `maxDiscoveryDepth ≤ 2`.
-- **Recency**: Tavily results may be weeks old for fresh CVEs — always verify CVSS/KEV directly from NVD and CISA via Firecrawl extract.
-- **Score filtering**: Discard Tavily results with `score < 0.5` before fetching full content with Firecrawl.
+- **Traffic**: Jina Reader and Playwright generate real HTTP traffic. On live engagements, use only Tavily (cached results) to avoid direct target contact.
+- **Score filtering**: discard Tavily results with `score < 0.5` before deep-fetching.
+- **Recency**: Tavily may lag for fresh CVEs — verify CVSS/KEV directly from NVD and CISA.
+- **Jina Reader** handles most pages but may fail on heavy JS SPAs → escalate to Playwright.
 
 ## References
 
-- [references/mcp-tools.md](references/mcp-tools.md) — full parameter reference for Tavily, Firecrawl, Playwright with verified recipes
-- [references/sources.md](references/sources.md) — curated security intelligence sources with domain lists ready for `include_domains`
+- [references/mcp-tools.md](references/mcp-tools.md) — full parameter reference for Jina, Tavily, Playwright, xcancel, FxTwitter, Telegram with verified recipes
+- [references/sources.md](references/sources.md) — curated offensive security sources with domain lists
 - [references/attack-chain-templates.md](references/attack-chain-templates.md) — ATT&CK-aligned attack chain templates

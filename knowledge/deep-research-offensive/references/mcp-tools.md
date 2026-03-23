@@ -1,7 +1,48 @@
 # MCP Web Tools — Precise Usage Reference
 
-Full parameter reference and call patterns for the web research MCP tools available in this environment.
+Full parameter reference and call patterns for the web research tools available in this environment.
 Verified against official documentation and live-tested.
+
+---
+
+## Jina Reader (primary — always available)
+
+Converts any web page to clean markdown. No authentication, no MCP dependency. Accessed via `fetch_webpage`.
+
+### Read a page
+
+```
+fetch_webpage → https://r.jina.ai/{target-url-with-scheme}
+```
+
+Example: `fetch_webpage` on `https://r.jina.ai/https://nvd.nist.gov/vuln/detail/CVE-2024-XXXXX`
+
+**What it does:**
+- Strips ads, navigation, popups, cookie banners
+- Returns main content as clean markdown with headings, lists, links, code blocks
+- Handles complex layouts, documentation sites, news articles, blog posts
+- Preserves outbound links (critical for recursive research)
+
+**When to use:** Default for all pages. Try Jina Reader first, escalate only if it fails.
+
+**Limitations:**
+- Heavy JS-rendered SPAs may return incomplete content → escalate to Playwright
+- Some paywalled sites may return only preview content
+
+### Search the web
+
+```
+fetch_webpage → https://s.jina.ai/{search-query}
+```
+
+Example: `fetch_webpage` on `https://s.jina.ai/CVE-2024-XXXXX exploit PoC github`
+
+**What it does:**
+- Searches the web and returns results as structured markdown
+- Includes titles, URLs, and snippets for each result
+- Always available — no MCP dependency, no API key
+
+**When to use:** When Tavily is unavailable, or as a complementary search engine.
 
 ---
 
@@ -23,7 +64,7 @@ Verified against official documentation and live-tested.
 | `exclude_domains` | string[] | — | Block domains (max 150) |
 | `country` | string | — | Boost results from specific country (general topic only) |
 | `include_answer` | bool/string | false | `basic` / `advanced` / `true` — LLM-generated answer (costs tokens) |
-| `include_raw_content` | bool/string | false | Full page content inline; prefer 2-step search→scrape instead |
+| `include_raw_content` | bool/string | false | Full page content inline; prefer 2-step search→Jina Reader instead |
 | `include_images` | bool | false | Add image URLs to results |
 | `auto_parameters` | bool | false | Tavily auto-tunes params; may silently upgrade to `advanced` (2 credits) |
 
@@ -70,10 +111,18 @@ max_results: 5
 2. One topic per query — break complex research into parallel sub-queries
 3. Use `include_domains` instead of `site:` in the query string
 4. For broad recon: run multiple focused queries in parallel instead of one long query
-5. Post-filter: discard results with `score < 0.7` before fetching full content
-6. Do NOT use `include_raw_content: true` for bulk queries — use Firecrawl scrape on promising URLs instead (cleaner, cheaper)
+5. Post-filter: discard results with `score < 0.5` before fetching full content
+6. Do NOT use `include_raw_content: true` for bulk queries — use Jina Reader on promising URLs instead (cleaner, more reliable)
 
 ### Other Tavily tools
+
+#### `mcp_io_github_tav_tavily_extract`
+
+Extract content from one or more URLs. Use when Jina Reader is unavailable or for structured extraction.
+
+#### `mcp_io_github_tav_tavily_crawl`
+
+Multi-page crawl of a site. Most expensive — use only for vendor advisory portals. Keep limit low.
 
 #### `mcp_io_github_tav_tavily_map`
 
@@ -88,75 +137,14 @@ select_paths: ["/advisory", "/security", "/cve", "/bulletins"]
 
 ---
 
-## Firecrawl Scrape — `mcp_firecrawl_fir_firecrawl_scrape`
-
-Single-page content extraction. Best for advisory pages, NVD details, GitHub READMEs.
-
-### Key parameters
-
-| Parameter | Use |
-|---|---|
-| `url` | Target URL |
-| `formats: ["markdown"]` | Clean readable content |
-| `onlyMainContent: true` | Strip navigation/ads/footer |
-| `waitFor: 5000` | MS to wait for JS rendering (try before Playwright) |
-
-### Example
-
-```
-url: "https://nvd.nist.gov/vuln/detail/CVE-2024-XXXXX"
-formats: ["markdown"]
-onlyMainContent: true
-```
-
----
-
-## Firecrawl Extract — `mcp_firecrawl_fir_firecrawl_extract`
-
-LLM-powered structured field extraction from one or more URLs. Returns typed JSON.
-
-Best for: CVSS score, vector, CWE, affected versions, references — from NVD or advisory pages.
-
-### Example
-
-```
-urls: ["https://nvd.nist.gov/vuln/detail/CVE-2024-XXXXX"]
-prompt: "Extract CVE details including CVSS score, CVSS vector, CWE, affected products and versions, and all reference URLs."
-schema: {
-  "cvss_score": "string",
-  "cvss_vector": "string",
-  "cwe": "string",
-  "affected_versions": ["string"],
-  "references": ["string"]
-}
-```
-
-**Note**: Uses more credits than scrape. Use when you need structured data; use scrape when you need full readable content.
-
----
-
-## Firecrawl Crawl — `mcp_firecrawl_fir_firecrawl_crawl`
-
-Multi-page recursive crawl of a site. Most expensive — use only for vendor advisory portals.
-
-### Conservative parameters (always set these)
-
-```
-url: "https://vendor.com/security/advisories"
-limit: 10               # hard cap on pages
-maxDiscoveryDepth: 2    # depth from root URL
-allowExternalLinks: false
-```
-
----
-
 ## Playwright — `mcp_microsoft_pla_browser_run_code`
 
-Required for: JavaScript-rendered tables (ExploitDB search), SPAs, login-gated content.
+Required for: JavaScript-rendered tables (ExploitDB search), SPAs, login-gated content, xcancel Twitter search.
 
 ### Use only when
-- Firecrawl scrape returns "Processing..." or empty tables
-- Content requires browser-level JS execution
+- Jina Reader returns empty or incomplete content
+- Content requires browser-level JS execution (DataTables, React SPAs)
+- Social media proxies (xcancel) that are JS-rendered
 
 ### Verified recipes
 
@@ -183,21 +171,33 @@ async (page) => {
 }
 ```
 
-#### NVD CVE detail page (Firecrawl works fine here — Playwright fallback)
-```javascript
-async (page) => {
-  await page.goto('https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN',
-    { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('#vulnDetailTableView', { timeout: 10000 });
-  return await page.locator('#vulnDetailTableView').innerText();
-}
+---
+
+## Fetch Escalation Decision Tree
+
 ```
+Page URL identified
+  │
+  ├─ Try Jina Reader (fetch_webpage → https://r.jina.ai/{url})
+  │   → Content OK? → Save to intermediate file
+  │
+  ├─ Jina returned empty/broken?
+  │   → Try fetch_webpage on the URL directly
+  │
+  ├─ Still insufficient?
+  │   → Try Tavily extract (if available)
+  │
+  └─ Still empty / JS-rendered content?
+      → Use Playwright with waitUntil:'networkidle'
+```
+
+**Run independent fetches in parallel** — different URLs have no dependency.
 
 ---
 
 ## X/Twitter — xcancel + FxTwitter API
 
-### xcancel — zero-auth Twitter search proxy (`mcp_microsoft_pla_browser_run_code`)
+### xcancel — zero-auth Twitter search proxy (Playwright)
 
 xcancel.com mirrors Twitter's advanced search with no authentication. Page is JS-rendered — use Playwright.
 
@@ -255,7 +255,7 @@ async (page) => {
 
 ---
 
-### FxTwitter API — zero-auth JSON (`mcp_firecrawl_fir_firecrawl_scrape` or `extract`)
+### FxTwitter API — zero-auth JSON
 
 No API key, no registration. Returns clean JSON with full post text, media, author metrics, and thread replies.
 
@@ -268,26 +268,21 @@ https://api.fxtwitter.com/status/{POST_ID}
 https://api.fxtwitter.com/{username}
 ```
 
-**Firecrawl extract — structured post data:**
+**Fetch with Jina Reader** (preferred — always available):
 ```
-tool: mcp_firecrawl_fir_firecrawl_extract
-urls: ["https://api.fxtwitter.com/status/{POST_ID}"]
-prompt: "Extract tweet text, author username, date, media URLs, like/retweet counts, and any reply tweets."
-schema: {
-  "text": "string",
-  "author": "string",
-  "date": "string",
-  "likes": "number",
-  "retweets": "number",
-  "media": ["string"],
-  "replies": [{ "author": "string", "text": "string" }]
-}
+fetch_webpage → https://r.jina.ai/https://api.fxtwitter.com/status/{POST_ID}
+```
+
+**Fetch with Tavily extract** (if available, for structured data):
+```
+tool: tavily_extract
+url: https://api.fxtwitter.com/status/{POST_ID}
 ```
 
 **Typical workflow:**
 1. xcancel Playwright search → get post URLs from results
 2. Extract post ID from URL: `x.com/user/status/{ID}` or `twitter.com/user/status/{ID}`
-3. Firecrawl extract `https://api.fxtwitter.com/status/{ID}` → full context, media, thread
+3. Jina Reader on `https://api.fxtwitter.com/status/{ID}` → full context, media, thread
 
 ---
 
@@ -331,24 +326,41 @@ Use `scripts/twitter_search.py` for a full CLI wrapper with auth, pagination, fi
 
 ---
 
-## Escalation Decision Tree
+## Telegram — zero-auth access methods
+
+### Method 1 — tg.i-c-a.su (best, full JSON)
+
+Returns full JSON with messages, media URLs, views, reactions.
 
 ```
-Need to research a topic?
-  → Tavily search (basic, max_results:5) — always start here
+# Fetch with Jina Reader
+fetch_webpage → https://r.jina.ai/https://tg.i-c-a.su/json/{channel}
 
-Found a promising URL, need full content?
-  → Firecrawl scrape (onlyMainContent:true)
-  → If empty/broken: add waitFor:5000
-  → If still JS-blocked: Playwright with networkidle
+# Or direct fetch
+fetch_webpage → https://tg.i-c-a.su/json/{channel}
 
-Need specific structured fields from a known URL?
-  → Firecrawl extract with JSON schema (skips reading noise)
+# Paginate backwards
+https://tg.i-c-a.su/json/{channel}?before={message_id}
 
-Need to discover all pages of a vendor site?
-  → Tavily map (max_depth:2, select_paths:[...])
-  → Then Firecrawl scrape or crawl (limit:10) on relevant pages
+# RSS feed
+https://tg.i-c-a.su/rss/{channel}
+```
 
-Multiple independent searches?
-  → Run ALL in parallel (different URLs or queries = no dependency)
+### Method 2 — t.me/s/ preview (Playwright)
+
+Last ~30 posts from public channels. JS-rendered.
+
+```javascript
+async (page) => {
+  await page.goto('https://t.me/s/news4hack', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.waitForSelector('.tgme_widget_message', { timeout: 15000 }).catch(() => null);
+  return (await page.locator('.tgme_widget_message').allInnerTexts()).slice(0, 20);
+}
+```
+
+### Method 3 — Tavily search (indexed snippets)
+
+```
+query: CVE-2025 PoC exploit site:t.me
+search_depth: fast, max_results: 10
 ```

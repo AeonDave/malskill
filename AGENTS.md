@@ -30,7 +30,7 @@
 
 - `bof/` — BOF-focused skills; each skill root typically contains `SKILL.md` plus optional `assets/`, `references/`, and `scripts/`.
 - `offensive-tools/` — category folders such as `recon/`, `web-app/`, or `windows/`; each category contains one folder per tool skill.
-- `programming/` — language and pattern skills such as C/C++, Go, Python, and assembly patterns/testing/performance guidance.
+- `programming/` — language and pattern skills such as C/C++, Go, Python, Rust, and assembly patterns/testing/performance guidance.
 - `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, and deep-research skills.
 - `AGENTS.md` — root operational guidance for the whole repository.
 
@@ -41,6 +41,8 @@
 - Use `scripts/` for deterministic helpers the agent can run and `assets/` for templates or static supporting files.
 - Each skill folder is independent; read the local `SKILL.md` before editing resources under that skill.
 - Prefer qualitative comments over verbose narration; document intent, constraints, and non-obvious tradeoffs.
+- Do not commit workstation-specific absolute paths, usernames, home directories, or other local private data in `SKILL.md`, `references/`, `assets/`, examples, or scripts.
+- Use portable placeholders in examples, such as `<workspace-root>`, `C:\path\to\file`, `/path/to/file`, or environment variables, instead of real local machine paths.
 
 ## Boundaries
 
