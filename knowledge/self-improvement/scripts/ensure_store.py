@@ -22,6 +22,7 @@ def main() -> int:
     args = build_parser().parse_args()
     target_dir = ensure_store(args.store_dir)
     print(f"Ensured learning store at {target_dir}")
+    print("Next: add or verify a Self-improvement section in AGENTS.md (or the project's instruction file) so future agents review .learnings/ and use this skill.")
     return 0
 
 

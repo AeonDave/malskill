@@ -1,6 +1,6 @@
 # Examples
 
-These examples use malskill-flavored scenarios, but the structure is portable.
+Each entry is a **prevention rule**, not an incident report. Aim for 10–20 lines total.
 
 ## Learning: correction
 
@@ -13,20 +13,18 @@ These examples use malskill-flavored scenarios, but the structure is portable.
 **Area**: workflow
 
 ### Summary
-Skill changes must be validated with quick_validate.py before finishing
+Validate changed skills with quick_validate.py before finishing the task
 
 ### Details
-While updating a skill, the work was reviewed before the validator was run.
-The repository workflow expects quick validation after skill edits, and the
-missed step increases the chance of shipping bad frontmatter or lingering TODOs.
+Skipping validation after skill edits causes preventable review churn and bad frontmatter.
 
 ### Suggested Action
-After changing any skill, run the repository validator before closing the task.
+Run `quick_validate.py <skill-dir>` after every skill edit.
 
 ### Metadata
 - Source: user_feedback
-- Related Files: AGENTS.md, knowledge/skill-creator/scripts/quick_validate.py
-- Tags: skills, validation, workflow
+- Related Files: knowledge/skill-creator/scripts/quick_validate.py
+- Tags: skills, validation
 
 ---
 ```
@@ -42,25 +40,45 @@ After changing any skill, run the repository validator before closing the task.
 **Area**: bof
 
 ### Summary
-C BOF and C++ BOF guidance live in different skill roots and should not be merged casually
+C BOF and C++ BOF skills have different build patterns and must not be mixed
 
 ### Details
-A BOF-related task initially assumed the same guidance applied equally to the
-C and C++ skill folders. The repository keeps them separate because build,
-patterns, and examples differ in important ways.
+The repository keeps them separate because compiler flags, DFR patterns, and examples differ.
 
 ### Suggested Action
-Check the specific BOF skill folder before reusing patterns across languages.
+Check the specific BOF skill folder before reusing patterns across C and C++.
 
 ### Metadata
 - Source: review
 - Related Files: bof/c-bof/SKILL.md, bof/cpp-bof/SKILL.md
-- Tags: bof, c, cpp, skill-boundaries
+- Tags: bof, c, cpp
 
-### Resolution
-- **Resolved**: 2026-03-23T10:20:00Z
-- **Commit/PR**: N/A
-- **Notes**: Knowledge aligned; no code change required
+---
+```
+
+## Learning: best practice (protocol-specific)
+
+```md
+## [LRN-20260323-003] best_practice
+
+**Logged**: 2026-03-23T11:00:00Z
+**Priority**: high
+**Status**: pending
+**Area**: offensive-tools
+
+### Summary
+DOWNLOAD and RUN responses must use type 2 (Job) messages, not type 1 (Command)
+
+### Details
+The server routes type 1 and type 2 differently; type 1 DOWNLOAD frames are silently dropped.
+
+### Suggested Action
+Check `pl_main.go` to verify expected message type before implementing any multi-frame command.
+
+### Metadata
+- Source: error
+- Related Files: pl_main.go, Commander.cpp
+- Tags: spectre, wire-format, download
 
 ---
 ```
@@ -68,7 +86,7 @@ Check the specific BOF skill folder before reusing patterns across languages.
 ## Error entry
 
 ```md
-## [ERR-20260323-001] skill_validator
+## [ERR-20260323-001] packaging_blocked
 
 **Logged**: 2026-03-23T11:10:00Z
 **Priority**: high
@@ -76,7 +94,7 @@ Check the specific BOF skill folder before reusing patterns across languages.
 **Area**: tooling
 
 ### Summary
-Skill packaging blocked because unresolved TODO markers remained in reference files
+Skill packaging fails when unresolved TODO markers remain in reference files
 
 ### Error
 ```text
@@ -84,17 +102,15 @@ Skill packaging blocked because unresolved TODO markers remained in reference fi
 ```
 
 ### Context
-- Command: `python knowledge/skill-creator/scripts/package_skill.py knowledge/self-improvement`
-- The validator runs before packaging
-- A copied template still contained placeholder content
+Ran `package_skill.py` before clearing template placeholders.
 
 ### Suggested Fix
-Resolve placeholder text first, then rerun validation before packaging.
+Resolve all TODO markers before running the packager.
 
 ### Metadata
 - Reproducible: yes
 - Related Files: knowledge/self-improvement/references/examples.md
-- Tags: validator, packaging, skills
+- Tags: validator, packaging
 
 ---
 ```
@@ -110,82 +126,93 @@ Resolve placeholder text first, then rerun validation before packaging.
 **Area**: workflow
 
 ### Requested Capability
-Validate `.learnings/` entries for required fields and enum values
+Validate `.learnings/` entries for required fields and allowed enum values
 
 ### User Context
-Long-running sessions accumulate a lot of notes. A lightweight validator would
-keep the log consistent and easier to review across sessions.
+Long sessions accumulate inconsistent entries; a lightweight validator would catch drift early.
 
 ### Complexity Estimate
 medium
 
 ### Suggested Implementation
-Add a Python helper that scans the three markdown files and checks headings,
-status values, priority values, and required sections.
+Add a Python script that scans the three markdown files and checks headings, statuses, and required sections.
 
 ### Metadata
 - Frequency: recurring
-- Related Features: self-improvement scripts
-- Tags: validation, learnings, automation
+- Tags: validation, learnings
 
 ---
 ```
 
-## Promoted learning
+## STATUS.md: session handoff
 
 ```md
-## [LRN-20260323-003] best_practice
+# Project Status
 
-**Logged**: 2026-03-23T12:30:00Z
-**Priority**: high
-**Status**: promoted
-**Promoted**: AGENTS.md
-**Area**: workflow
+Session handoff file. Update at the end of each work session so the next session starts informed.
 
-### Summary
-Validate changed skills before finishing the task
+**Last updated**: 2026-03-24T18:30:00Z
+**Area**: offensive-tools
 
-### Details
-This repository treats skill validation as a required closeout step.
-Skipping it causes preventable review churn.
+## Done
 
-### Suggested Action
-Run the validator after every skill edit and fix any warnings before packaging.
+- Implemented Tier 1 commands (SHELL, RUN, PS) in C++ agent
+- Fixed type 2 message framing for DOWNLOAD handler
 
-### Metadata
-- Source: review
-- Related Files: AGENTS.md, knowledge/skill-creator/scripts/quick_validate.py
-- Tags: workflow, skills, validation
+## In Progress
 
----
+- Rust agent Tier 1 stubs — SHELL and RUN done, PS pending
+
+## Next
+
+- Finish Rust PS handler
+- Integration-test both agents against staging listener
+
+## Decisions
+
+- Use type 2 (Job) framing for all multi-frame responses; type 1 is command-only
+
+## Blockers
+
+- Staging listener cert expires 2026-03-28; renewal ticket filed
 ```
 
-## Promoted to skill
+## Anti-pattern: what NOT to write
+
+The following is **too verbose** for `.learnings/`. It reads like a postmortem, not a prevention rule:
 
 ```md
-## [LRN-20260323-004] best_practice
-
-**Logged**: 2026-03-23T13:05:00Z
-**Priority**: high
-**Status**: promoted_to_skill
-**Skill-Path**: knowledge/self-improvement
-**Area**: workflow
+## BAD — do not write entries like this
 
 ### Summary
-Long multi-session coding work benefits from structured learning capture and review
+After generating C++ and Rust agents with the spectre protocol, the scaffold
+compiles clean but ~40–65% of command handlers are stubs...
 
 ### Details
-Repeated sessions were spending time rediscovering earlier fixes, conventions,
-and workarounds. A dedicated skill provides a repeatable workflow for logging,
-reviewing, promoting, and extracting durable knowledge.
+| Feature | C++ file | C++ status | Rust file | Rust status | Win32 API |
+|---------|----------|------------|-----------|-------------|-----------|
+| COMMAND_SHELL | Commander.cpp | resolved | commander.rs | stub | CreatePipe... |
+| COMMAND_RUN | Commander.cpp | resolved | commander.rs | stub | CreateProcess... |
+(... 20 more rows ...)
+
+### What to do next time
+After generating any new C++ or Rust spectre agent:
+1. Read this entry immediately.
+2. Work through Tier 1 top-to-bottom...
+3. Use the reference beacon at D:\Sources\...
+```
+
+Problems: feature-status table (belongs in issues/docs), implementation details (belongs in code/references), local paths, reads like a project tracker instead of a reusable rule.
+
+**Better version of the same knowledge:**
+
+```md
+### Summary
+Generated spectre agents have stub-only command handlers; treat scaffold as non-functional until Tier 1 is implemented
+
+### Details
+Every generation leaves SHELL, RUN, PS, DOWNLOAD, and PROFILE as stubs. This is by design but easy to forget.
 
 ### Suggested Action
-Use a shared self-improvement workflow whenever long tasks span multiple sessions.
-
-### Metadata
-- Source: conversation
-- Related Files: knowledge/self-improvement/SKILL.md
-- Tags: workflow, memory, sessions, skills
-
----
+After generating a new agent, implement Tier 1 commands before any testing or deployment.
 ```

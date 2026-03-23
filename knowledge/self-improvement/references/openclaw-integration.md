@@ -17,7 +17,8 @@ Typical workspace shape:
 │   └── .learnings/
 │       ├── LEARNINGS.md
 │       ├── ERRORS.md
-│       └── FEATURE_REQUESTS.md
+│       ├── FEATURE_REQUESTS.md
+│       └── STATUS.md
 ├── skills/
 └── hooks/
 ```
@@ -26,8 +27,9 @@ Typical workspace shape:
 
 1. install the skill into the OpenClaw skills directory
 2. create or copy the `.learnings/` files under the workspace
-3. copy the optional hook from `hooks/openclaw/`
-4. enable the hook in your OpenClaw environment
+3. add a short `Self-improvement` section to the workspace `AGENTS.md` so agents review `.learnings/STATUS.md` and use the `self-improvement` skill
+4. copy the optional hook from `hooks/openclaw/`
+5. enable the hook in your OpenClaw environment
 
 ## Promotion targets in OpenClaw
 

@@ -19,7 +19,9 @@ copy_if_missing() {
 }
 
 copy_if_missing "$ASSETS_DIR/LEARNINGS.md" "$STORE_DIR/LEARNINGS.md"
-copy_if_missing "$ASSETS_DIR/ERRORS-template.md" "$STORE_DIR/ERRORS.md"
-copy_if_missing "$ASSETS_DIR/FEATURE-REQUESTS-template.md" "$STORE_DIR/FEATURE_REQUESTS.md"
+copy_if_missing "$ASSETS_DIR/ERRORS.md" "$STORE_DIR/ERRORS.md"
+copy_if_missing "$ASSETS_DIR/FEATURE_REQUESTS.md" "$STORE_DIR/FEATURE_REQUESTS.md"
+copy_if_missing "$ASSETS_DIR/STATUS.md" "$STORE_DIR/STATUS.md"
 
 echo "Ensured learning store at $STORE_DIR"
+echo "Next: add or verify a Self-improvement section in AGENTS.md (or the project's instruction file) so future agents review .learnings/ and use this skill."

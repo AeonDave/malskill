@@ -29,8 +29,9 @@ SECTION_NAMES: Final[tuple[str, ...]] = (
 )
 ASSET_FILE_MAP: Final[dict[str, str]] = {
     "LEARNINGS.md": "LEARNINGS.md",
-    "ERRORS.md": "ERRORS-template.md",
-    "FEATURE_REQUESTS.md": "FEATURE-REQUESTS-template.md",
+    "ERRORS.md": "ERRORS.md",
+    "FEATURE_REQUESTS.md": "FEATURE_REQUESTS.md",
+    "STATUS.md": "STATUS.md",
 }
 PREFIX_MAP: Final[dict[str, str]] = {
     "learning": "LRN",

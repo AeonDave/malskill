@@ -2,7 +2,7 @@
 
 Set up a lightweight learning store so useful discoveries survive beyond the current session.
 
-## 1. Create the directory
+## 1. Create the directory and register it in project instructions
 
 Create a local `.learnings/` folder in the project or workspace root:
 
@@ -10,17 +10,34 @@ Create a local `.learnings/` folder in the project or workspace root:
 .learnings/
 ├── LEARNINGS.md
 ├── ERRORS.md
-└── FEATURE_REQUESTS.md
+├── FEATURE_REQUESTS.md
+└── STATUS.md
 ```
 
 If you want starter content, copy from these assets:
 - `assets/LEARNINGS.md`
-- `assets/ERRORS-template.md`
-- `assets/FEATURE-REQUESTS-template.md`
+- `assets/ERRORS.md`
+- `assets/FEATURE_REQUESTS.md`
+- `assets/STATUS.md`
 
 Or let the helper scripts do it:
 - `scripts/ensure_store.py --store-dir .learnings`
 - `scripts/ensure_store.sh .learnings`
+
+Then add a short section to the project's instruction file (`AGENTS.md`, `CLAUDE.md`, or `.github/copilot-instructions.md`) so future agent sessions know the store exists and which skill to use.
+
+Minimum example:
+
+```md
+## Self-improvement
+
+This project uses a `.learnings/` folder to track errors, corrections, discoveries, and session status.
+
+- Before starting deep work, review `.learnings/STATUS.md` and scan relevant entries in `LEARNINGS.md` and `ERRORS.md`.
+- After corrections, non-obvious failures, or session-end, log entries using the `self-improvement` skill.
+```
+
+If the project already contains equivalent guidance, verify it is still accurate instead of duplicating it.
 
 ## 2. Decide how learnings are stored
 
@@ -52,10 +69,11 @@ Use when you want the structure tracked but not the working entries.
 ## 3. Review before long tasks
 
 Before starting a substantial task:
-1. identify the area, tools, or file types involved
-2. search `.learnings/` for matching keywords, tags, or related files
-3. read only the entries that are still relevant
-4. carry the resulting rules into the task plan
+1. read `.learnings/STATUS.md` first to see where the last session stopped
+2. identify the area, tools, or file types involved
+3. search `.learnings/` for matching keywords, tags, or related files
+4. read only the entries that are still relevant
+5. carry the resulting rules into the task plan
 
 This is especially valuable for:
 - multi-session refactors

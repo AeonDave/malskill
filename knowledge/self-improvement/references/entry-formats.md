@@ -1,6 +1,20 @@
 # Entry Formats
 
-Use these formats to keep learnings searchable and consistent.
+Use these formats to keep learnings searchable, consistent, and **concise**.
+
+Every entry is a **prevention rule**, not an incident report. If reading an entry takes more than 30 seconds, it is too long.
+
+## Size constraints
+
+| Section | Max length |
+|---|---|
+| Summary | 1 sentence, ≤120 characters |
+| Details | 1–3 sentences — root cause or convention, not narrative |
+| Suggested Action / Suggested Fix | 1 imperative sentence |
+| Error (error entries) | 1–5 most relevant lines only |
+| Full entry | 10–20 lines; never exceed 30 lines |
+
+Do not include tables, architecture explanations, or implementation plans in entries. Code blocks are allowed only for the short `Error` section in error entries. Everything else belongs in project docs, references, or code comments.
 
 ## ID format
 
@@ -65,29 +79,27 @@ Append to `.learnings/LEARNINGS.md`:
 **Logged**: ISO-8601 timestamp
 **Priority**: low | medium | high | critical
 **Status**: pending
-**Area**: workflow | repo-config | docs | tooling | programming | testing | knowledge | research | offensive-tools | bof
+**Area**: area
 
 ### Summary
-One-line description of the learning
+One sentence: the rule or convention learned (max 120 chars)
 
 ### Details
-What happened, what was incorrect or missing, and what is now known
+1–3 sentences: why this matters — root cause, not chronological narrative
 
 ### Suggested Action
-What to do differently next time
+One imperative sentence: what to do or avoid next time
 
 ### Metadata
 - Source: conversation | user_feedback | error | review | research | simplify-and-harden
 - Related Files: relative/path.ext
 - Tags: tag1, tag2
-- See Also: LRN-YYYYMMDD-XXX
-- Pattern-Key: stable.pattern.name
-- Recurrence-Count: 1
-- First-Seen: YYYY-MM-DD
-- Last-Seen: YYYY-MM-DD
 
 ---
 ```
+
+Optional metadata fields (add only when genuinely useful for future search):
+- See Also, Pattern-Key, Recurrence-Count, First-Seen, Last-Seen
 
 ### Categories
 
@@ -107,28 +119,25 @@ Append to `.learnings/ERRORS.md`:
 **Logged**: ISO-8601 timestamp
 **Priority**: high
 **Status**: pending
-**Area**: workflow | repo-config | docs | tooling | programming | testing | knowledge | research | offensive-tools | bof
+**Area**: area
 
 ### Summary
-Brief description of the failure
+One sentence: what failed
 
 ### Error
 ```text
-Actual error output or the most relevant lines
+1–5 most relevant lines of error output only
 ```
 
 ### Context
-- Command or operation attempted
-- Inputs or assumptions
-- Environment notes when relevant
+One sentence: command attempted and key assumption that was wrong
 
 ### Suggested Fix
-Practical next step or best known workaround
+One imperative sentence: practical next step or workaround
 
 ### Metadata
 - Reproducible: yes | no | unknown
 - Related Files: relative/path.ext
-- See Also: ERR-YYYYMMDD-XXX
 - Tags: tag1, tag2
 
 ---
@@ -144,19 +153,19 @@ Append to `.learnings/FEATURE_REQUESTS.md`:
 **Logged**: ISO-8601 timestamp
 **Priority**: medium
 **Status**: pending
-**Area**: workflow | repo-config | docs | tooling | programming | testing | knowledge | research | offensive-tools | bof
+**Area**: area
 
 ### Requested Capability
-What is missing
+One sentence: what is missing
 
 ### User Context
-Why it matters and who would benefit
+One sentence: why it matters
 
 ### Complexity Estimate
 simple | medium | complex
 
 ### Suggested Implementation
-How the capability could be added
+One sentence: practical idea for adding it
 
 ### Metadata
 - Frequency: first_time | recurring
@@ -165,6 +174,47 @@ How the capability could be added
 
 ---
 ```
+
+## STATUS.md — session handoff
+
+`STATUS.md` is **not** a structured-entry file. It is a single document overwritten (not appended) at the end of each work session so the next session starts informed.
+
+Keep each item to **one line**. This is a handoff note, not documentation.
+
+```md
+# Project Status
+
+Session handoff file. Update at the end of each work session so the next session starts informed.
+
+**Last updated**: ISO-8601 timestamp
+**Area**: primary work area
+
+## Done
+
+- (completed items, one line each)
+
+## In Progress
+
+- (items started but not finished — note blocker if any)
+
+## Next
+
+- (priority items the next session should tackle first)
+
+## Decisions
+
+- (key decisions made during this session that affect future work)
+
+## Blockers
+
+- (anything that prevents progress — missing deps, unanswered questions, external factors)
+```
+
+Rules:
+- One line per item; no sub-lists, tables, or code blocks.
+- `Done` items may be pruned after two sessions to keep the file short.
+- `Decisions` captures *what* was chosen and *why* in one sentence — not design docs.
+- Delete a section's placeholder line when it has real entries; leave the heading.
 
 ## Resolution block
 

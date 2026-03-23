@@ -1,6 +1,8 @@
 # Learnings
 
-Corrections, insights, knowledge gaps, and best practices captured during real work.
+Prevention rules captured during real work. Each entry must be a concise rule, not an incident report.
+
+**Brevity**: Summary ≤1 sentence. Details ≤3 sentences. Suggested Action = 1 imperative sentence. Total ≤30 lines.
 
 **Categories**: correction | insight | knowledge_gap | best_practice
 **Areas**: workflow | repo-config | docs | tooling | programming | testing | knowledge | research | offensive-tools | bof
