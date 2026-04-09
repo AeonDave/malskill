@@ -244,3 +244,99 @@ vec_add:
 - [Apple Silicon — Using Assembly in iOS/macOS](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms)
 - [ARM SVE Programming Guide](https://developer.arm.com/documentation/dai0548/latest)
 - [ARM LSE Atomics Overview](https://developer.arm.com/documentation/102336/latest)
+- [AWS Graviton Assembly Optimization](https://github.com/aws/aws-graviton-getting-started/blob/main/arm64-assembly-optimization.md)
+
+---
+
+## Constant Generation (ARM64)
+
+ARM64 cannot load arbitrary 64-bit immediates in a single instruction. Use `movz` + `movk` chains:
+
+```asm
+// Load 0xDEADBEEFCAFEBABE into x0
+movz    x0, #0xBABE                     // x0 = 0x000000000000BABE
+movk    x0, #0xCAFE, lsl #16            // x0 = 0x00000000CAFEBABE
+movk    x0, #0xBEEF, lsl #32            // x0 = 0x0000BEEFCAFEBABE
+movk    x0, #0xDEAD, lsl #48            // x0 = 0xDEADBEEFCAFEBABE
+
+// Small constants: single instruction
+mov     x0, #42                          // movz x0, #42
+mov     x0, #-1                          // movn x0, #0 (all bits set)
+
+// Page-relative address (PC-relative, within ±4GB)
+adrp    x0, my_data                      // x0 = page of my_data
+add     x0, x0, :lo12:my_data            // x0 = exact address
+```
+
+---
+
+## Dependency Chain Splitting (ARM64)
+
+ARM64 out-of-order cores (Cortex-A76+, Apple M-series, Graviton) benefit from independent dependency chains.
+
+```asm
+// Bad: serial chain — each add depends on previous result
+add     x0, x0, x1
+add     x0, x0, x2
+add     x0, x0, x3
+add     x0, x0, x4             // latency: 4 * add_latency
+
+// Good: two independent chains merged at end
+add     x5, x0, x1             // chain A
+add     x6, x2, x3             // chain B (independent)
+add     x0, x5, x6
+add     x0, x0, x4             // latency: 2 * add_latency + 2
+```
+
+### NEON Multi-Accumulator Reduction
+
+```asm
+// Sum array of uint32: two accumulators hide latency
+    movi    v2.4s, #0            // accumulator A
+    movi    v3.4s, #0            // accumulator B
+.loop:
+    ld1     {v0.4s, v1.4s}, [x0], #32   // load 8 elements
+    add     v2.4s, v2.4s, v0.4s          // accumulate into A
+    add     v3.4s, v3.4s, v1.4s          // accumulate into B (independent)
+    subs    x1, x1, #8
+    b.gt    .loop
+    add     v2.4s, v2.4s, v3.4s  // merge
+    addv    s0, v2.4s             // horizontal reduce
+    fmov    w0, s0
+```
+
+---
+
+## Advanced Branchless Patterns (ARM64)
+
+### Conditional negate
+
+```asm
+// result = condition ? -x : x
+cmp     x1, #0
+cneg    x0, x0, ne              // negate x0 if x1 != 0
+```
+
+### Conditional increment with carry
+
+```asm
+// x0 = x0 + (x1 > x2)
+cmp     x1, x2
+cinc    x0, x0, hi              // x0++ if unsigned-above
+```
+
+### Bit test and branch
+
+```asm
+// Test single bit without cmp
+tbz     x0, #31, .positive      // branch if bit 31 is zero (positive signed)
+tbnz    x0, #0, .odd            // branch if bit 0 is set (odd number)
+```
+
+### Fused compare-and-branch (zero check)
+
+```asm
+// Cheaper than cmp + b.eq: single instruction, no flags written
+cbz     x0, .is_null            // branch if x0 == 0
+cbnz    x1, .not_done           // branch if x1 != 0
+```

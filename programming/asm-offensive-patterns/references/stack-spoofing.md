@@ -175,3 +175,81 @@ and overwrite the real call frames on the thread's existing stack.
 - VEH is visible in the vectored handler list (IOC)
 - Dr7 modification visible via `GetThreadContext`
 - Single-threaded; concurrent syscalls on same thread need careful Dr7 management
+
+---
+
+## 5. Call-Gadget Stack Insertion (2024–2025)
+
+### Concept
+
+Instead of building fully synthetic frames, insert a single legitimate module into the
+call stack by exploiting a controllable `CALL [reg]` gadget inside a system DLL.
+This breaks EDR signature rules that match specific module sequences.
+
+### How It Works
+
+```
+1. Identify a CALL [reg] gadget inside a rarely-monitored DLL
+   (e.g. dsdmo.dll, dbghelp.dll, mshtml.dll)
+   Gadget: CALL [RBX] or CALL [RDI] followed by code that returns normally
+
+2. Trigger module loading (LoadLibrary/LdrLoadDll) that internally
+   routes through the gadget DLL during initialization
+   
+3. The gadget's module appears in the resulting call stack between
+   the network module (ws2_32/winhttp/wininet) and the caller
+
+4. EDR sees: gadget_module -> wininet -> kernelbase -> ...
+   instead of: unbacked_memory -> wininet -> kernelbase -> ...
+   Signature mismatch -> no alert
+```
+
+### Defeating Elastic EDR Specifically
+
+Elastic's call-stack detection rules look for:
+```
+process.thread.Ext.call_stack_summary:"unbacked|ntdll.dll|..."
+```
+
+By inserting a signed module (via call gadget), the pattern changes to:
+```
+process.thread.Ext.call_stack_summary:"dsdmo.dll|ntdll.dll|..."
+```
+
+The rule no longer matches because `dsdmo.dll` is a legitimate Microsoft-signed module.
+
+### Advantages
+- No heap buffer, no frame-size calculation, no RSP switching
+- Works alongside indirect syscalls and existing call chains
+- Minimal code change: trigger one extra LoadLibrary before the sensitive operation
+
+### Limitations
+- Gadget DLL must be present on the target system (Windows version dependent)
+- EDR vendor may add the gadget DLL to their signature pattern
+- Only helps with call-stack signature rules; does not help with content-based detection
+
+---
+
+## 6. CET-Aware Stack Spoofing Considerations
+
+Intel CET shadow stack validates return addresses at every `RET`.
+Implications for stack spoofing techniques:
+
+### What breaks under CET
+- Draugr/DESYNC: Synthetic frames on heap buffer contain return addresses that were never
+  pushed by a matching `CALL` → shadow stack mismatch → `STATUS_STACK_BUFFER_OVERRUN`
+- Return-address overwrites: `RET` compares main stack vs shadow stack → fault
+
+### What survives CET
+- **LayeredSyscall (VEH+HWBP)**: Exception dispatch resets the CET context;
+  `NtContinue` properly updates the shadow stack
+- **NtContinue-based chains** (Ekko/Cronos sleep): `NtContinue` is CET-aware —
+  it restores shadow stack state from the saved CONTEXT
+- **Call-gadget insertion**: No return address modification; legitimate `CALL` pushes
+  to both stacks normally
+- **JMP-based indirect syscalls**: `JMP [gadget]` does not push to shadow stack;
+  the subsequent `SYSCALL;RET` in ntdll matches ntdll's own `CALL` pair
+
+### Practical recommendation
+On CET-enabled targets, prefer VEH+HWBP (LayeredSyscall) or call-gadget insertion
+over Draugr/DESYNC. For sleep obfuscation, use `NtContinue`-based techniques (Ekko).

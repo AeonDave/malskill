@@ -1,6 +1,6 @@
 # C Harness Patterns for Assembly Testing
 
-Templates for building test drivers that call hand-written assembly functions.
+Templates for building test drivers that call hand-written assembly functions, PIC shellcode, and syscall stubs.
 
 ---
 
@@ -18,7 +18,7 @@ project/
 
 ---
 
-## Makefile — NASM + GCC
+## Makefile — NASM + GCC (Linux)
 
 ```makefile
 CC      = gcc
@@ -26,7 +26,6 @@ CFLAGS  = -g -Wall -Wextra -O0 -std=c11
 NASM    = nasm
 NASMFLAGS = -f elf64 -g -F dwarf
 
-# Object files
 ASM_OBJ  = hot_fn.o
 TEST_OBJ = test_hot_fn.o
 
@@ -52,6 +51,29 @@ clean:
 
 ---
 
+## Makefile — MASM + MSVC (Windows)
+
+```makefile
+ML      = ml64
+MLFLAGS = /c /Zi
+CL      = cl
+CLFLAGS = /Zi /Od /W4
+
+test_hot_fn.exe: test_hot_fn.obj hot_fn.obj
+	$(CL) $(CLFLAGS) /Fe:$@ $**
+
+hot_fn.obj: src\hot_fn.asm
+	$(ML) $(MLFLAGS) /Fo$@ $<
+
+test_hot_fn.obj: test\test_hot_fn.c
+	$(CL) $(CLFLAGS) /c /Fo$@ $<
+
+clean:
+	del /q *.obj *.exe *.pdb 2>nul
+```
+
+---
+
 ## Makefile — GAS + GCC
 
 ```makefile
@@ -62,6 +84,168 @@ ASFLAGS = -g --gstabs+
 
 hot_fn.o: src/hot_fn.s
 	$(AS) $(ASFLAGS) $< -o $@
+```
+
+---
+
+## PIC Shellcode Test Template
+
+Test position-independent shellcode by loading raw bytes into executable memory and calling through a function pointer. Works on both Linux and Windows.
+
+### Linux (mmap)
+
+```c
+/* test_shellcode_linux.c */
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <stdint.h>
+
+/* Read raw shellcode from file */
+static size_t load_shellcode(const char *path, void *dst, size_t max) {
+    FILE *f = fopen(path, "rb");
+    if (!f) { perror("fopen"); return 0; }
+    size_t n = fread(dst, 1, max, f);
+    fclose(f);
+    return n;
+}
+
+int main(int argc, char **argv) {
+    const char *sc_path = argc > 1 ? argv[1] : "shellcode.bin";
+    void *mem = mmap(NULL, 0x10000, PROT_READ|PROT_WRITE|PROT_EXEC,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) { perror("mmap"); return 1; }
+
+    size_t len = load_shellcode(sc_path, mem, 0x10000);
+    if (!len) { fprintf(stderr, "empty shellcode\n"); return 1; }
+    printf("loaded %zu bytes at %p\n", len, mem);
+
+    /* Cast to function pointer and call */
+    /* Adjust signature to match your shellcode's expected ABI */
+    typedef int64_t (*sc_fn)(int64_t arg);
+    int64_t result = ((sc_fn)mem)(42);
+    printf("result = 0x%lx\n", result);
+
+    munmap(mem, 0x10000);
+    return 0;
+}
+```
+
+### Windows (VirtualAlloc)
+
+```c
+/* test_shellcode_win.c */
+#include <windows.h>
+#include <stdio.h>
+#include <stdint.h>
+
+static size_t load_shellcode(const char *path, void *dst, size_t max) {
+    FILE *f = fopen(path, "rb");
+    if (!f) { perror("fopen"); return 0; }
+    size_t n = fread(dst, 1, max, f);
+    fclose(f);
+    return n;
+}
+
+int main(int argc, char **argv) {
+    const char *sc_path = argc > 1 ? argv[1] : "shellcode.bin";
+    void *mem = VirtualAlloc(NULL, 0x10000, MEM_COMMIT|MEM_RESERVE,
+                             PAGE_EXECUTE_READWRITE);
+    if (!mem) { fprintf(stderr, "VirtualAlloc failed: %lu\n", GetLastError()); return 1; }
+
+    size_t len = load_shellcode(sc_path, mem, 0x10000);
+    if (!len) { fprintf(stderr, "empty shellcode\n"); return 1; }
+    printf("loaded %zu bytes at %p\n", len, mem);
+
+    typedef int64_t (*sc_fn)(int64_t arg);
+    int64_t result = ((sc_fn)mem)(42);
+    printf("result = 0x%llx\n", result);
+
+    VirtualFree(mem, 0, MEM_RELEASE);
+    return 0;
+}
+```
+
+**Tip**: Insert `0xCC` (int3) as the first byte to force a debugger break before execution starts. Replace with `0x90` (nop) for normal runs.
+
+---
+
+## Syscall Stub Test Template (Windows)
+
+Test indirect syscall stubs by verifying they correctly invoke the target Nt function and return NTSTATUS.
+
+```c
+/* test_syscall_stub.c — MSVC */
+#include <windows.h>
+#include <stdio.h>
+#include <stdint.h>
+
+/* ASM stub: NTSTATUS my_NtAllocateVirtualMemory(
+     HANDLE ProcessHandle, PVOID *BaseAddress, ULONG_PTR ZeroBits,
+     PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect) */
+extern NTSTATUS my_NtAllocateVirtualMemory(
+    HANDLE, PVOID*, ULONG_PTR, PSIZE_T, ULONG, ULONG);
+
+int main(void) {
+    PVOID base = NULL;
+    SIZE_T size = 0x1000;
+    NTSTATUS status = my_NtAllocateVirtualMemory(
+        GetCurrentProcess(), &base, 0, &size,
+        MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+    printf("status = 0x%08lx, base = %p, size = 0x%llx\n",
+           status, base, (unsigned long long)size);
+
+    if (status == 0 && base != NULL) {
+        /* Write + read back to verify memory is usable */
+        memset(base, 0x41, size);
+        if (((uint8_t*)base)[0] == 0x41) printf("PASS: memory writeable\n");
+        else printf("FAIL: memory not writeable\n");
+    } else {
+        printf("FAIL: NtAllocateVirtualMemory returned 0x%08lx\n", status);
+    }
+    return status != 0;
+}
+```
+
+### Build with MASM stub
+
+```bat
+ml64 /c /Fo syscall_stub.obj syscall_stub.asm
+cl /Zi /Fe:test_syscall_stub.exe test_syscall_stub.c syscall_stub.obj ntdll.lib
+```
+
+---
+
+## Trampoline / Callgate Test Pattern
+
+Test code that builds synthetic stack frames and routes through gadgets.
+
+```c
+/* Pseudocode — adapt to your trampoline's context struct */
+typedef struct {
+    uintptr_t gadget_addr;       /* e.g., syscall;ret in ntdll */
+    uintptr_t fixup_addr;        /* label to return to after syscall */
+    uintptr_t frame1_size;       /* from UNWIND_INFO */
+    uintptr_t frame2_size;
+    /* ... args ... */
+} TrampolineCtx;
+
+/* Validate context before calling trampoline */
+static int validate_ctx(const TrampolineCtx *ctx) {
+    int ok = 1;
+    /* Gadget must point to syscall;ret (0F 05 C3) */
+    uint8_t *g = (uint8_t*)ctx->gadget_addr;
+    if (g[0] != 0x0F || g[1] != 0x05 || g[2] != 0xC3) {
+        fprintf(stderr, "FAIL: gadget at %p is not syscall;ret\n", g);
+        ok = 0;
+    }
+    /* Frame sizes must be reasonable */
+    if (ctx->frame1_size < 0x28 || ctx->frame1_size > 0x1000) {
+        fprintf(stderr, "WARN: frame1_size 0x%lx looks suspicious\n", ctx->frame1_size);
+    }
+    return ok;
+}
 ```
 
 ---
@@ -262,3 +446,5 @@ Usage: `BENCH("hot_fn", 100000, hot_fn(i, i+1));`
 - Always compile test drivers with `-O0` unless you explicitly want to test optimization interactions
 - Use `-fsanitize=address` to catch out-of-bounds from the C side (not applicable to hand-written asm itself)
 - Link order matters: `$(CC) -o test_hot_fn test_hot_fn.o hot_fn.o` — the object defining `hot_fn` must follow the object referencing it on most linkers
+- For Windows syscall stubs: link with `ntdll.lib` if the stub does a direct `jmp` rather than inline `syscall`
+- For PIC shellcode tests: always `int3` the first byte during development so you can attach a debugger before execution starts

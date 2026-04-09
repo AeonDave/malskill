@@ -4,7 +4,7 @@ description: "Offensive x86-64 (and ARM64/x86) assembly patterns for red team, m
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 compatibility: "NASM >= 2.15 / GAS / Go Plan9 ASM. x86-64 Windows/Linux/macOS, ARM64 macOS/Linux, x86 WoW64."
 ---
 
@@ -74,6 +74,7 @@ for each Zw* export -> scan forward from entry until [0F 05 C3] -> record addr +
 | FreshyCalls | 2022 | Very high | Sort all `Zw*` exports by VA; SSN = sorted index |
 | DWhisper / RecycleGate | ADE | Maximum | Sort-by-VA + seeded hash at rest + random gadget scan |
 | SysWhispers3 | 2022 | Very high | Sort + random indirect jmp gadget per call |
+| HookChain | 2024 | Maximum | IAT rewrite → all calls route through clean ntdll addrs + indirect syscall |
 | FromDisk | — | Maximum | Map clean ntdll from `\KnownDlls\ntdll.dll`; parse on-disk |
 
 **DWhisper (ADE RecycleGate) — implementation notes:**
@@ -185,6 +186,20 @@ No pre-built fake frames; captures real call context live:
 3. Call NtXxx normally through any call site
 4. VEH fires: save RSP, overwrite top-of-stack frames, restore RSP, NtContinue
 ```
+
+### 2.4 Call-Gadget Insertion (2024–2025)
+
+Insert a legitimate signed module into the observed call stack by triggering a controllable `CALL` gadget inside a system DLL during module loading (e.g. `wininet.dll` load).
+Breaks EDR signatures that look for specific module sequences in the stack.
+
+```
+1. Locate a CALL [reg] gadget in a rarely-monitored DLL (dsdmo.dll, dbghelp.dll, etc.)
+2. Trigger module load (LoadLibrary or LdrLoadDll) that internally calls through the gadget
+3. The gadget inserts its parent module into the call stack
+4. EDR sees an unexpected but legitimate module → signature mismatch → no alert
+```
+
+Defeat Elastic-style rules that match `unbacked_memory → ws2_32/winhttp/wininet` patterns.
 
 ---
 
@@ -379,24 +394,44 @@ Register VEH: on EXCEPTION_SINGLE_STEP at Dr0:
 
 ---
 
-## 8. Sleep Obfuscation — Gargoyle
+## 8. Sleep Obfuscation
 
-Mark payload pages NX during sleep; re-arm execution via timer + ROP gadget:
+Goal: encrypt/NX payload in memory during idle periods so in-memory scanners find nothing.
+
+### 8.1 Gargoyle (2016) — Timer NX Sleep
+
+Mark payload pages NX during sleep; re-arm via `SetWaitableTimer` APC + ROP gadget:
 
 ```
-x86 StackTrampoline (as APC arg to SetWaitableTimer):
-  [esp+0]  -> VirtualProtectEx   (gadget: POP ECX; POP ESP; RET pivots stack here)
-  [esp+4]  -> gargoyle_entry
-  [esp+8..] VirtualProtectEx args (hProcess, addr, size, PAGE_EXECUTE_READ, &old)
-
 Flow:
-  1. VirtualProtect(shellcode_base, size, PAGE_READWRITE, &old)  <- make NX
-  2. SetWaitableTimer(hTimer, interval, APC_gadget, &StackTrampoline)
-  3. SleepEx(INFINITE, TRUE) or WaitForSingleObjectEx -> alertable wait
-  4. APC fires -> gadget -> trampoline -> VirtualProtect (RX) -> shellcode
+  1. VirtualProtect(shellcode, PAGE_READWRITE)       <- mark NX
+  2. SetWaitableTimer(interval, APC -> ROP gadget)
+  3. SleepEx(INFINITE, TRUE)                          <- alertable wait
+  4. APC fires -> gadget -> VirtualProtect(RX) -> resume
 ```
 
-x64 variant: use `ADD RSP, X; RET` (skip over ROP zone) + `JMP [RBX]` gadgets (DESYNC-style).
+### 8.2 Ekko (2022) — RC4 + Timer Queue ROP
+
+Chain 6 `NtContinue` CONTEXT structs via `CreateTimerQueueTimer`:
+```
+1. VirtualProtect(RW) → 2. SystemFunction032(RC4 encrypt)
+3. WaitForSingleObject(sleep_ms) → 4. SystemFunction032(decrypt)
+5. VirtualProtect(RX) → 6. SetEvent(resume)
+```
+Advantage: payload encrypted with RC4, not just NX. Stack return addresses zeroed during sleep.
+
+### 8.3 Cronos / Foliage — Variants
+
+- **Cronos**: RC4 full-process encryption via waitable timers (like Ekko, different timer mechanism)
+- **Foliage**: APC-based ROP dispatch; first to combine encryption + ROP chain for post-sleep resume
+- **DeathSleep**: removes all RX memory and restores from encrypted backup on timer callback
+
+### 8.4 Detection: CFG Bitmap Artifact
+
+CFG bitmap records pages that were *ever* marked executable. `VirtualProtect(RW)` does not clear the bit.
+Memory scanners can detect "was-RX-now-RW" regions. Mitigation: double-map (§6.2 in `advanced-evasion.md`).
+
+See [references/advanced-evasion.md](references/advanced-evasion.md) §2 for full sleep obfuscation evolution.
 
 ---
 
@@ -437,7 +472,7 @@ svc  #0
 
 ---
 
-## 10. Fiber & Threadless Injection
+## 10. Code Injection Techniques
 
 ### 10.1 Fiber-Based Shellcode Runner
 
@@ -449,12 +484,41 @@ SwitchToFiber(hPayloadFiber)        -> jumps directly to shellcode
 
 No `CreateThread` / `CreateRemoteThread` — avoids thread-creation monitoring hooks.
 
-### 10.2 Waiting Thread Hijack (overwrite return address)
+### 10.2 Threadless Callback Injection
 
-Write shellcode address over the saved RIP of a sleeping thread (in `Sleep` / `WaitFor*` stack frame).
-Thread resumes and executes the shellcode. No `SetThreadContext` needed.
+Overwrite a function pointer in the target process (e.g. `NtWaitForSingleObject` trampoline) so the next natural call executes shellcode. No thread creation, no APC, no `SetThreadContext`.
 
-### 10.3 APC Early-Bird Injection
+```
+1. Find a rarely-called function pointer in the target (e.g. callback in TLS, vectored handler list)
+2. VirtualAllocEx + WriteProcessMemory (write shellcode to target)
+3. Overwrite function pointer → shellcode address
+4. Target process calls the function normally → shellcode runs
+5. Shellcode restores original pointer, chains to next stage
+```
+
+### 10.3 Module Stomping / DLL Hollowing
+
+Load a legitimate signed DLL, overwrite its `.text` with shellcode:
+```
+1. LoadLibraryEx("amsi.dll", DONT_RESOLVE_DLL_REFERENCES)
+2. VirtualProtect(entrypoint, RW) → memcpy(shellcode) → VirtualProtect(RX)
+3. CreateThread(entrypoint) → thread starts at "legitimate" DLL address
+```
+Benefits: backed memory, signed module origin, no unbacked RWX regions.
+
+### 10.4 Phantom DLL Hollowing (TxF)
+
+Use NTFS Transacted File operations to create a section from a modified-in-transaction DLL:
+```
+1. CreateFileTransacted("legitimate.dll")
+2. WriteFile(shellcode into .text section)   ← file modified only in transaction
+3. NtCreateSection(SEC_IMAGE) from transacted handle
+4. NtRollbackTransaction()                   ← disk file unchanged
+5. NtMapViewOfSection() → view contains shellcode but backing file is clean
+```
+File-backed mapping points to the original signed DLL. Signature checks pass.
+
+### 10.5 APC Early-Bird Injection
 
 ```
 CreateProcess(... CREATE_SUSPENDED)
@@ -463,6 +527,11 @@ QueueUserAPC(shellcode_ptr, main_thread, 0)
 ResumeThread   -> APC dispatched before any user code runs (pre-TLS)
 ```
 
+### 10.6 Waiting Thread Hijack
+
+Overwrite saved RIP of a sleeping thread (in `Sleep`/`WaitFor*` frame).
+Thread resumes → executes shellcode. No `SetThreadContext` needed.
+
 ---
 
 ## 11. Anti-Detection Checklist
@@ -470,16 +539,42 @@ ResumeThread   -> APC dispatched before any user code runs (pre-TLS)
 | Concern | Technique |
 |---|---|
 | Syscall RIP outside ntdll | Indirect syscall (§1.2) or vDSO dispatch (§1.4) |
-| Stack trace exposes RX region | Draugr or SilentMoonwalk spoof (§2) |
-| SSN read from patched ntdll bytes | Export-sort DWhisper (§1.3) |
-| IAT reveals suspicious APIs | PEB walk + hash resolution (§4) |
+| Stack trace exposes RX region | Draugr / SilentMoonwalk (§2) or call-gadget insertion (§2.4) |
+| EDR call-stack signature match | Call-gadget insertion breaks pattern (§2.4) |
+| SSN read from patched ntdll bytes | Export-sort DWhisper (§1.3) or HookChain IAT rewrite |
+| IAT reveals suspicious APIs | PEB walk + hash resolution (§4); HookChain IAT rewrite |
 | String literals in binary | Compile-time hash, stack strings (§6.3) |
 | XOR-loop signature | MBA-XOR, ADFL, rolling-key XorMeta (§5) |
-| RX memory scanned while idle | Gargoyle sleep obfuscation (§8) |
+| RX memory scanned while idle | Ekko/Cronos RC4 sleep (§8.2) or Gargoyle NX (§8.1) |
+| CFG bitmap artifact (was-RX pages) | Double-mapping via CreateFileMapping (§8.4) |
 | ETW event logging | HWBP + VEH patchless bypass (§7.3) |
-| Thread creation hooks | Fiber / thread hijack / APC (§10) |
+| ETWTI stack tracing | Callback evasion during LoadLibrary (§10.2) |
+| Thread creation hooks | Threadless callback injection (§10.2) / fiber (§10.1) |
+| Unbacked RWX memory | Module stomping (§10.3) / Phantom DLL (§10.4) |
 | pclntab Go function name leakage | Opaque short identifiers (Xr, S23, etc.) |
 | 32-bit hook layers in WoW64 | Heaven's Gate (§3) |
+| CET shadow stack (blocks ROP) | JOP/COP chains, COOP via CFG-valid targets (NtContinue) |
+
+---
+
+## 12. Common ASM Pitfalls
+
+Bugs that silently break shellcode or trigger EDR:
+
+| Pitfall | Impact | Fix |
+|---|---|---|
+| Null bytes in opcodes | String-based injection truncated | `XOR reg,reg` not `MOV reg,0`; verify with `objdump -d \| grep ' 00 '` |
+| Missing `MOV R10, RCX` | Arg1 lost — SYSCALL clobbers RCX | Always move before every NT syscall on Windows |
+| RSP misalignment | SIGSEGV on CALL to Win64 API | `AND RSP, -16; SUB RSP, 0x20` (AlignRSP stub §6.4) |
+| No shadow space | Callee overwrites args on stack | Reserve 0x20 bytes before every Win64 CALL |
+| SYSCALL clobbers RCX/R11 | Register state lost after syscall | Save RCX/R11 before; on Linux also clobbers R11 |
+| EFLAGS clobber after INC/DEC | CF unchanged by INC but changed by ADD | Don't swap INC↔ADD when CF is live (see Morph §5.3) |
+| Hardcoded SSN | Breaks on different Windows build | Always resolve at runtime (§1.3) |
+| ROR13 hash as immediate | YARA-detectable constant | Runtime-compute hash or salt per-build (§4 + advanced-evasion §3.6) |
+| CALL-POP gap | Morpher inserts junk between CALL and POP | Anchor zone: CALL+POP must be adjacent (§6.1) |
+| W^X page lifecycle | RWX alloc is immediate IOC | RW → write → RX (single transition); or double-map (§6.2 adv-evasion) |
+| Forgetting `LFENCE` before RDTSC | Non-serialized read → inaccurate timing | `LFENCE; RDTSC; LFENCE` for anti-debug checks |
+| ARM64: wrong syscall class | macOS BSD class = `0x2000000`, not 0 | `x16 = (class << 24) \| number` — verify per OS |
 
 ---
 

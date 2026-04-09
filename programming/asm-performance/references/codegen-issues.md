@@ -64,7 +64,7 @@ Values being written to the stack inside the loop because the compiler runs out 
 
 - Reduce live variables in the loop body — move invariants outside
 - Break the function into smaller callees so each has fewer live values
-- In C: `register` keyword (hint only) or reduce struct member references
+- In C: reduce struct member references by hoisting to locals
 
 ```c
 // Before: many fields accessed inside loop
@@ -157,6 +157,20 @@ void add_scalar(float * restrict a, const float * restrict b, int n) {
     jl      .simd_loop
 ```
 
+### SIMD width selection
+
+| Width | Registers | Elements (float) | Tradeoff |
+|---|---|---|---|
+| SSE (128-bit) | `xmm0-15` | 4 | Universal, no AVX transition penalty |
+| AVX (256-bit) | `ymm0-15` | 8 | 2× throughput, vzeroupper needed at SSE boundary |
+| AVX-512 (512-bit) | `zmm0-31` | 16 | 4× throughput; frequency throttling on some Intel; 32 regs |
+
+Rules:
+- Default to AVX2 for modern x86-64 code — widest without frequency penalty
+- Use AVX-512 only if the hot loop is large enough to amortize clock-speed drop
+- Always emit `vzeroupper` before returning from AVX code to SSE callers
+- Compile separate versions for SSE/AVX/AVX-512 and dispatch at runtime via CPUID
+
 **After ASM**: `movaps`/`addps` or `vmovaps`/`vaddps` in loop body.
 
 ---
@@ -230,6 +244,120 @@ for (int i = 0; i < n; i++) out[i] = in[i] * stride;
 
 ---
 
+## 7. Store-Forwarding Stalls
+
+### Symptom
+
+A store followed by a load at overlapping but mismatched size or offset. The CPU store buffer cannot forward the data, forcing a pipeline stall (~10–15 cycles).
+
+```asm
+; BAD: store 64-bit, load 32-bit from same address
+    mov     [rsp], rax         ; store 8 bytes
+    mov     ecx, [rsp]         ; load 4 bytes — store-forwarding stall
+
+; BAD: store at offset, load spanning two stores
+    mov     [rsp],   eax       ; store 4 bytes at +0
+    mov     [rsp+4], edx       ; store 4 bytes at +4
+    mov     rcx, [rsp]         ; load 8 bytes — spans two stores, stall
+```
+
+### Fix
+
+Ensure store and load widths match and addresses are identical:
+
+```asm
+; GOOD: consistent access width
+    mov     [rsp], rax         ; store 8 bytes
+    mov     rcx, [rsp]         ; load 8 bytes — forwards cleanly
+
+; GOOD: use the register directly instead of store+load
+    mov     rcx, rax           ; avoid memory round-trip entirely
+```
+
+Common source-level causes:
+- Union type punning (writing as `int`, reading as `short`)
+- Bitfield packing with mixed-width access
+- Compiler-generated spill/reload with different widths (rare)
+
+---
+
+## 8. Frontend Pressure
+
+### Symptom
+
+Instructions are decoded/fetched too slowly to keep the backend busy. TMA shows Frontend Bound > 15%.
+
+Signs in ASM:
+- Loop body exceeds ~32 µops (doesn't fit in µop cache / DSB on Intel)
+- Many `nop` padding bytes between instructions (excessive alignment)
+- Function calls inside loop body (call pushes return address on i-cache, pollutes BTB)
+- Very long instructions (REX+VEX prefixed, 10+ byte encodings)
+
+### Fix
+
+```c
+// Reduce code size: split cold paths out of hot loops
+if (unlikely(error)) handle_error();  // __builtin_expect(x, 0)
+
+// Enable LTO — eliminates duplicate code and enables cross-module inlining
+// gcc/clang: -flto
+// Rust: lto = "fat" in Cargo.toml [profile.release]
+
+// PGO — compiler reorders basic blocks to keep hot path linear
+// Run: -fprofile-generate → execute → -fprofile-use
+```
+
+Alignment rules:
+- Align loop entry to 32 bytes (Intel DSB optimal) or 16 bytes (minimum)
+- Do NOT over-align inner loops — wasted i-cache from nop padding
+- Use `.p2align 4,,10` (GNU as) — align to 16 only if padding ≤ 10 bytes
+
+---
+
+## 9. Data Layout Inefficiency
+
+### Symptom
+
+AoS (Array of Structs) access reads only one field but loads entire structs into cache:
+
+```asm
+; Accessing .mass field at stride 16 in Particle[N]
+.loop:
+    movss   xmm0, [rdi + rax]     ; load 4 bytes (mass)
+    addss   xmm1, xmm0
+    add     rax, 16                ; stride = sizeof(Particle) = 16
+    dec     rcx                    ;   → only 4/64 bytes per cache line used
+    jnz     .loop
+```
+
+### Fix — SoA (Struct of Arrays)
+
+```c
+// SoA: contiguous layout per field
+struct Particles { float x[N]; float y[N]; float z[N]; float mass[N]; };
+
+// Access: stride 4, full cache line utilization, auto-vectorizes
+for (int i = 0; i < N; i++) sum += particles.mass[i];
+```
+
+```asm
+; SoA: compiler auto-vectorizes with packed loads
+.loop:
+    vaddps  ymm0, ymm0, [rdi + rax]   ; 8 floats per iteration
+    add     rax, 32
+    cmp     rax, rdx
+    jl      .loop
+```
+
+Performance difference: **3–4× faster** for single-field scans due to full cache line utilization and SIMD auto-vectorization.
+
+Also watch for:
+- **False sharing**: two threads writing to different fields in the same cache line. Pad with `alignas(64)` or separate hot/cold fields.
+- **Page-crossing access**: structures spanning 4K page boundaries trigger TLB double-misses.
+
+---
+
 ## See Also
 
 - `references/microarch.md` — execution port pressure and latency tables
+- `references/advanced-strategies.md` — TMA methodology, NT stores, prefetching, modulo scheduling

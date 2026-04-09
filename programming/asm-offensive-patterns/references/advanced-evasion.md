@@ -759,3 +759,149 @@ Real-world implants layer multiple techniques. Recommended combinations:
 4. AlignRSP entry (§6.4 SKILL.md)
 5. CALL-POP base address (§6.1 SKILL.md) — PIC
 ```
+
+---
+
+## 10. Phantom DLL Hollowing (TxF Transacted Sections)
+
+Uses NTFS Transacted File operations to create a file-backed section from a modified DLL
+without ever changing the on-disk file:
+
+```
+1. CreateFileTransacted("C:\Windows\System32\legitimate.dll")
+   -> transacted handle (changes visible only within this transaction)
+2. WriteFile(handle, shellcode, offset_to_text_section)
+   -> .text section overwritten IN TRANSACTION ONLY
+3. NtCreateSection(SEC_IMAGE, handle)
+   -> section created from transacted (modified) image
+4. NtRollbackTransaction()
+   -> on-disk file reverts to original Microsoft-signed bytes
+5. NtMapViewOfSection(section, target_process)
+   -> mapped view contains shellcode but FILE_OBJECT points to clean DLL
+```
+
+**Key evasion properties**:
+- `NtQueryVirtualMemory(MemoryMappedFilenameInformation)` returns the legitimate DLL path
+- Signature validation of the on-disk file passes (file was never changed on disk)
+- Memory region appears as a standard image-backed mapping (not unbacked/private)
+- CFG bitmap shows a legitimate module mapping
+- No `VirtualAlloc` with `PAGE_EXECUTE_READWRITE` — section is mapped RX from the start
+
+**Detection vectors**:
+- Section hash mismatch: compare in-memory hash of `.text` vs on-disk `.text`
+- TxF API usage is rare in benign software — `CreateFileTransacted` IOC
+- `NtCreateSection` called with a transacted handle is unusual
+
+---
+
+## 11. ETWTI Callback Evasion & Stack Trace Bypass
+
+ETW Threat Intelligence (ETWTI) generates kernel-mode telemetry when certain APIs are called.
+The EDR receives a stack trace from the kernel — different from userland ETW.
+
+### 11.1 How ETWTI Catches Injection
+
+```
+1. Malware calls LoadLibraryA("wininet.dll")
+2. Kernel fires ETWTI event with full kernel-captured stack trace
+3. EDR inspects stack: if top frames are from unbacked/private memory -> IOC
+4. Even if userland ETW is patched, ETWTI still reports from kernel side
+```
+
+### 11.2 Callback Evasion Technique
+
+Avoid direct calls to sensitive APIs. Instead, trigger the same operation via a system callback:
+
+```
+1. Register a callback (TLS, DLL notification, TP_WORK, etc.)
+2. Trigger the callback indirectly (e.g. via thread pool)
+3. Callback runs the sensitive API -> stack trace shows system callback chain
+4. EDR sees: ntdll!TppWorkerThread -> ntdll!TpAllocWork -> ... -> LoadLibrary
+   Not: unbacked_memory -> LoadLibrary
+```
+
+Practical approaches:
+- **TP_WORK** (`TpAllocWork`/`TpPostWork`/`TpReleaseWork`): queue work item that calls LoadLibrary;
+  stack trace rooted in ntdll thread pool, not in malware code
+- **PTP_TIMER**: `CreateThreadpoolTimer` with callback that loads module
+- **LdrRegisterDllNotification**: register callback for DLL loads — fire from system context
+
+### 11.3 Module Loading Without LoadLibrary IOC
+
+Use `LdrLoadDll` directly (lower-level), or map the DLL manually:
+
+```
+NtOpenFile -> NtCreateSection(SEC_IMAGE) -> NtMapViewOfSection -> manual import resolution
+```
+
+No LoadLibrary in the call stack at all. Manual import table walk required.
+
+---
+
+## 12. CET Shadow Stack & COOP Bypass
+
+### 12.1 CET Shadow Stack Overview
+
+Intel CET maintains a hardware shadow stack: every `CALL` pushes the return address
+to both the regular stack and the shadow stack. `RET` compares both — mismatch = fault.
+
+**Impact on offensive ASM**:
+- ROP chains are **dead** on CET-enabled processes (every `RET` validated)
+- Stack spoofing techniques that modify return addresses are detected
+- Exception: `NtContinue`, `NtSetContextThread`, `longjmp` are CET-aware and update shadow stack
+
+### 12.2 What Still Works Under CET
+
+| Technique | CET status | Reason |
+|---|---|---|
+| JOP (JMP-oriented) | Works | No `RET` — shadow stack not involved |
+| COP (CALL-oriented) | Works | CALL pushes to shadow stack; no mismatched RET |
+| COOP (Counterfeit Object-Oriented) | Works | Uses virtual method dispatch (indirect CALL to valid vtable) |
+| Indirect syscall (JMP gadget) | Works | `JMP` to ntdll, not `RET`; SYSCALL;RET is from ntdll (matches) |
+| `NtContinue`-based sleep obfuscation | Works | `NtContinue` updates shadow stack context |
+| Direct/indirect via VEH+HWBP | Works | Exception dispatch resets CET context |
+
+### 12.3 COOP — Counterfeit Object-Oriented Programming
+
+Abuse C++ virtual method dispatch: craft fake objects whose vtable points to victim functions.
+
+```
+1. Allocate heap objects with controlled vtable pointers
+2. vtable entries point to CFG-valid functions (WinExec, NtContinue, etc.)
+3. Virtual call dispatch: CALL [rax + vtable_offset]
+   -> CPU validates via IBT (ENDBR64 at target) ✓
+   -> Shadow stack: CALL pushes return addr correctly ✓
+   -> CFG bitmap: target is exported function ✓
+4. Chain multiple fake objects to build an execution chain
+```
+
+Shadow stack is not violated because every function is called via legitimate `CALL`.
+OffsecBlog (2024) demonstrated calc.exe pop via COOP with CET + CFG enabled.
+
+---
+
+## 13. HookChain — IAT Rewriting + Indirect Syscall (2024)
+
+### Concept
+
+Instead of patching ntdll or remapping it, HookChain overwrites the process's own IAT so
+that all calls to `kernel32.dll`, `kernelbase.dll`, etc. route through clean ntdll addresses.
+
+### How It Works
+
+```
+1. Map a fresh copy of ntdll from \\KnownDlls\\ntdll.dll or disk
+2. For each hooked NT function: resolve SSN via Halo's Gate on the fresh copy
+3. Build a trampoline stub per function: MOV R10,RCX; MOV EAX,SSN; JMP [gadget]
+4. Overwrite the process's IAT entries for kernel32/kernelbase/user32
+   -> point them to the trampoline stubs
+5. All subsequent API calls from the application bypass ntdll hooks transparently
+```
+
+### Key Properties
+
+- **No source code changes needed** for the target application
+- All Win32 subsystem calls (kernel32, kernelbase, user32) are transparently redirected
+- EDR hooks in ntdll are never reached — calls go directly to clean trampoline → syscall
+- Combines IAT hooking + SSN resolution + indirect syscall in one unified approach
+- Works against EDRs that only hook ntdll (does NOT bypass kernel callbacks)
