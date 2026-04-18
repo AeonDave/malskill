@@ -58,3 +58,9 @@ for _, tt := range tests {
 ```
 
 Tip: any shared global (env vars, temp dirs, time, net ports) can break parallelism.
+
+## Determinism checklist
+
+- No implicit dependency on wall-clock timing.
+- No hidden environment/process-global mutation across test cases.
+- Explicit got/want messages with enough input context to reproduce quickly.

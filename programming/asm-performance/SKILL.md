@@ -2,10 +2,10 @@
 name: asm-performance
 description: "Assembly performance optimization workflow: collect compiler-emitted ASM, classify bottlenecks with TMA, audit for codegen issues (bounds checks, register spills, dependency chains, missed vectorization, memory traffic, bad instruction selection, store-forwarding stalls, frontend pressure, data layout), apply one change at a time, measure, and report. Use after profiling confirms ASM is the bottleneck."
 license: MIT
+compatibility: "x86-64 and ARM64 Linux/macOS/Windows. Tools: objdump, cargo-show-asm, perf stat, toplev, llvm-mca, uiCA."
 metadata:
   author: AeonDave
   version: "1.1"
-compatibility: "x86-64 and ARM64 Linux/macOS/Windows. Tools: objdump, cargo-show-asm, perf stat, toplev, llvm-mca, uiCA."
 ---
 
 # asm-performance

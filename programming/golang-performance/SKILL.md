@@ -3,10 +3,9 @@ name: golang-performance
 description: "Go performance workflow: benchmark and profile (pprof/trace), identify hotspots, reduce allocations/GC and contention, and verify improvements with repeatable measurement. Use only after you have evidence the Go code is the bottleneck."
 license: MIT
 compatibility: "Go 1.22+ (guidance baseline). Tools: go test, go tool pprof, go tool trace. Optional: benchstat (golang.org/x/perf/cmd/benchstat), perf (Linux)."
-
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Go Performance
@@ -36,6 +35,14 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
 
 ---
 
+## Outcome expectations
+
+- Performance claims are backed by reproducible before/after measurements.
+- Profile type selection matches the observed symptom.
+- Optimizations are incremental, attributable, and regression-resistant.
+
+---
+
 ## Workflow
 
 1. **Make it measurable**
@@ -62,6 +69,17 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
    - Re-run the benchmark/profile
    - Ensure correctness isn’t traded away
    - Record the change and its measured impact
+
+---
+
+## Symptom to first profile mapping
+
+- High CPU -> CPU profile
+- Memory growth -> heap profile (compare snapshots)
+- High allocation churn / GC pressure -> allocs profile
+- Latency spikes without CPU spike -> block profile
+- Lock contention suspicion -> mutex profile
+- Scheduler/pathological latency behavior -> runtime trace
 
 ---
 

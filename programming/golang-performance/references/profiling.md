@@ -54,6 +54,15 @@ go tool pprof http://127.0.0.1:6060/debug/pprof/mutex
 go tool pprof http://127.0.0.1:6060/debug/pprof/block
 ```
 
+For accurate mutex/block data, set sampling rates in code where appropriate:
+
+```go
+runtime.SetMutexProfileFraction(1)
+runtime.SetBlockProfileRate(1)
+```
+
+Use lower sampling rates in production if overhead is a concern.
+
 ## go tool trace
 
 Trace is useful when the scheduler and GC behavior are part of the problem.
@@ -68,6 +77,7 @@ go tool trace trace.out
 1. Confirm the hotspot appears consistently across runs
 2. Confirm whether it is CPU, allocs/GC, syscalls, or contention
 3. Make one change and re-measure
+4. Keep profile type, load shape, and duration consistent when comparing runs
 
 ## References
 

@@ -77,6 +77,13 @@ go build -gcflags="-m" ./...
 Use this output to understand why values move to heap.
 Don’t cargo-cult “avoid pointers”: correctness first, measure impact.
 
+## Retention diagnostics
+
+If heap stays high after load drops, investigate retained references:
+- long-lived caches/maps holding large values
+- slices or strings referencing oversized backing arrays
+- goroutines capturing large objects in closures
+
 ## References
 
 - https://go.dev/doc/diagnostics

@@ -51,6 +51,20 @@ if err := g.Wait(); err != nil { return err }
 - Cap concurrency.
 - The sender closes the jobs channel.
 
+## Shutdown contract
+
+For long-running workers, make shutdown order explicit:
+1. stop accepting new work
+2. signal cancellation (`cancel()` / close control channel)
+3. drain/join workers (`WaitGroup`)
+4. close result channels once producers are done
+
+## Fast leak triage
+
+- Check goroutine profile (`/debug/pprof/goroutine?debug=2`) when counts grow.
+- Look for blocked send/receive without `select { case <-ctx.Done(): ... }`.
+- Audit any background goroutine started in constructors/init paths.
+
 ## References
 
 - https://go.dev/blog/pipelines

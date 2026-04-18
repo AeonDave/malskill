@@ -21,3 +21,9 @@ Use this reference when the task touches formatting, linting, rustdoc, features,
 - Minimize optional complexity in public APIs
 - Be explicit about supported Rust baseline / edition if the project defines one
 - Favor small modules with a clean re-exported public surface over deep public trees
+
+## Practical quality gates
+
+- `cargo fmt --check`
+- `cargo clippy --all-targets --all-features -- -D warnings` (or repo-approved strictness)
+- `cargo test` (plus doctests when public API changed)

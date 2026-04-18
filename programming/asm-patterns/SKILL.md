@@ -2,10 +2,10 @@
 name: asm-patterns
 description: "Assembly language patterns, calling conventions, and code structure for x86-64 and ARM64. Use when writing, reviewing, or generating .asm/.s/.S files; when implementing functions that interoperate with C/system code; or when establishing correct prologues, epilogues, stack management, SIMD loops, syscall stubs, or PIC data access."
 license: MIT
+compatibility: "NASM >= 2.15 or GAS (binutils). Targets: x86-64 Linux/macOS (System V) and Windows (Win64), ARM64 Linux/macOS (AAPCS)."
 metadata:
   author: AeonDave
   version: "1.1"
-compatibility: "NASM >= 2.15 or GAS (binutils). Targets: x86-64 Linux/macOS (System V) and Windows (Win64), ARM64 Linux/macOS (AAPCS)."
 ---
 
 # Assembly Patterns
@@ -312,86 +312,6 @@ mov  rdi, rsp                ; rdi -> "Hello\0"
 
 ---
 
-## Bit Manipulation & Branchless Patterns
-
-### BMI1/BMI2 Idioms (x86-64, Haswell+)
-
-```nasm
-; Population count
-popcnt  rax, rdi             ; rax = number of set bits in rdi
-
-; Trailing/leading zeros (replacing bsf/bsr)
-tzcnt   rax, rdi             ; count trailing zeros (BMI1); sets CF if rdi==0
-lzcnt   rax, rdi             ; count leading zeros (ABM/LZCNT)
-
-; Isolate / reset lowest set bit
-blsi    rax, rdi             ; rax = rdi & (-rdi)  — isolate lowest set bit
-blsr    rax, rdi             ; rax = rdi & (rdi-1) — reset lowest set bit
-
-; Bit field extract/deposit (BMI2)
-pext    rax, rdi, rsi        ; extract bits from rdi selected by mask rsi
-pdep    rax, rdi, rsi        ; deposit contiguous bits into positions set in rsi
-bzhi    rax, rdi, rsi        ; zero bits in rdi from bit position rsi upward
-```
-
-**Feature check**: `CPUID.(EAX=07h,ECX=0):EBX` — bit 3 = BMI1, bit 8 = BMI2.
-
-### Branchless Patterns (x86-64)
-
-```nasm
-; abs(x) — branchless
-mov     rax, rdi
-mov     rdx, rdi
-sar     rdx, 63              ; all-1s if negative, all-0s if positive
-xor     rax, rdx
-sub     rax, rdx             ; rax = abs(rdi)
-
-; min(a, b) — unsigned
-cmp     rdi, rsi
-cmovb   rdi, rsi             ; rdi = min
-mov     rax, rdi
-
-; clamp(x, lo, hi)
-cmp     edi, esi
-cmovl   edi, esi             ; x = max(x, lo)
-cmp     edi, edx
-cmovg   edi, edx             ; x = min(x, hi)
-mov     eax, edi
-
-; bool: count += (x == val) — avoid branch in hot loop
-cmp     rdi, rsi
-sete    al                   ; al = 1 if equal
-movzx   eax, al
-add     [counter], eax
-```
-
-### Branchless Patterns (ARM64)
-
-```asm
-// abs(x)
-cmp     x0, #0
-cneg    x0, x0, mi           // negate if negative
-
-// min(a, b)
-cmp     x0, x1
-csel    x0, x0, x1, lt       // x0 = (x0 < x1) ? x0 : x1
-
-// clamp(x, lo, hi)
-cmp     w0, w1
-csel    w0, w1, w0, lt       // max(x, lo)
-cmp     w0, w2
-csel    w0, w2, w0, gt       // min(x, hi)
-
-// conditional increment — no branch
-cmp     x0, x1
-cset    x2, eq               // x2 = (x0 == x1) ? 1 : 0
-add     x3, x3, x2
-```
-
-**When NOT to go branchless**: highly predictable branches (>95% one way) are faster than `cmov`/`csel` because the CPU speculates correctly and avoids the data dependency.
-
----
-
 ## Atomics & Memory Ordering (x86-64)
 
 x86-64 TSO guarantees acquire-release on regular `MOV`; explicit fences only for sequential consistency or NT stores.
@@ -473,74 +393,6 @@ Plan register usage before writing code. Document the mapping in a comment block
 
 ---
 
-## Macro Patterns
-
-### NASM — Reusable macros
-
-```nasm
-; Save/restore multiple registers
-%macro multipush 1-*
-  %rep %0
-    push %1
-    %rotate 1
-  %endrep
-%endmacro
-
-%macro multipop 1-*
-  %rep %0
-    %rotate -1
-    pop %1
-  %endrep
-%endmacro
-
-; Usage: multipush rbx, r12, r13 / multipop rbx, r12, r13
-```
-
-### GAS — Parameterized macro
-
-```asm
-// ARM64: save/restore callee-saved pair
-.macro save_pair reg1, reg2, offset
-    stp     \reg1, \reg2, [sp, #\offset]
-.endm
-.macro restore_pair reg1, reg2, offset
-    ldp     \reg1, \reg2, [sp, #\offset]
-.endm
-```
-
-### Constant Tables with Macros
-
-```nasm
-; NASM: Syscall number table
-%define SYS_READ   0
-%define SYS_WRITE  1
-%define SYS_OPEN   2
-%define SYS_CLOSE  3
-%define SYS_EXIT   60
-```
-
----
-
-## Toolchain Quick Reference
-
-```bash
-# NASM → ELF64 (Linux, debug)
-nasm -f elf64 -g -F dwarf file.asm -o file.o
-# NASM → Mach-O 64 (macOS)
-nasm -f macho64 file.asm -o file.o
-# GAS → object
-as --64 -g file.s -o file.o
-# Link (no libc / with libc)
-ld -o prog file.o
-gcc -o prog file.o
-# Disassemble (Intel syntax)
-objdump -d -M intel prog
-# Verify stack alignment (GDB)
-gdb prog -ex 'set disassembly-flavor intel' -ex 'layout asm'
-```
-
----
-
 ## Performance Guidelines
 
 | Rule | Rationale |
@@ -591,7 +443,7 @@ Load on demand during development:
 
 | File | When to load |
 |---|---|
-| [references/x86-64.md](references/x86-64.md) | Register table, instruction selection, SSE/AVX/AVX-512 patterns, Win64 details, atomics, ABI edge cases |
-| [references/arm64.md](references/arm64.md) | Register table, NEON/SVE patterns, atomics, AAPCS edge cases, Apple Silicon specifics |
+| [references/x86-64.md](references/x86-64.md) | Register table, instruction selection, SSE/AVX/AVX-512 patterns, Win64 details, atomics, ABI edge cases, BMI1/BMI2, branchless patterns, NASM macros, toolchain commands |
+| [references/arm64.md](references/arm64.md) | Register table, NEON/SVE patterns, atomics, AAPCS edge cases, Apple Silicon specifics, branchless patterns, GAS macros |
 | [assets/function-template-x64.asm](assets/function-template-x64.asm) | NASM function template with System V + Win64 conditional assembly |
 | [assets/function-template-arm64.s](assets/function-template-arm64.s) | GAS ARM64 function template with prologue/epilogue |

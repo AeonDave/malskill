@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Go 1.22+ (guidance baseline). Tools: go test, go tool cover. Optional: race detector (-race), fuzzing (built-in), benchmark stats (benchstat)."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Go Testing
@@ -28,6 +28,25 @@ This skill is about writing tests that are **reliable**, **readable**, and **use
 - Tests should be deterministic: avoid `time.Sleep()` unless unavoidable.
 - Prefer **fakes** (in-memory implementations) over heavy mocks.
 - Use `t.Parallel()` only when the test is truly isolated.
+- Keep test data local and explicit; avoid hidden cross-test coupling.
+
+---
+
+## Outcome expectations
+
+- Unit tests are fast, deterministic, and easy to debug.
+- Flaky tests are triaged with a repeatable reproduction loop.
+- Bench/fuzz/coverage are used as correctness signals, not vanity metrics.
+
+---
+
+## Recommended workflow
+
+1. Write/adjust focused unit tests first (table + subtests).
+2. Run targeted test selection to confirm behavior quickly.
+3. Add race detector and coverage checks.
+4. For instability, reproduce with repeated runs (`-count`) and isolate state/time dependencies.
+5. Add benchmarks/fuzz tests when behavior or performance risk justifies them.
 
 ---
 

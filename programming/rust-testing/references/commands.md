@@ -9,6 +9,7 @@ Use these commands as a starting point; select the smallest command that proves 
 - `cargo test -- --nocapture` — show test output
 - `cargo test --doc` — run doctests only
 - `cargo test -- --test-threads=1` — force serial execution when shared state is unavoidable
+- `cargo test package::module::test_name -- --exact` — run one exact test path when triaging
 
 ## Optional tooling
 

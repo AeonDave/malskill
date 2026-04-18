@@ -5,7 +5,7 @@ license: MIT
 compatibility: "C++20 baseline. Tools: CMake 3.20+, CTest. Recommended: GoogleTest. Debugging: gdb/lldb/Valgrind (Linux/macOS), MinGW gdb + objdump (Windows), MSVC dumpbin + WinDbg (Windows). Optional: sanitizers (Clang/GCC/MSVC), coverage (llvm-cov or lcov)."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # C++ Testing
@@ -21,12 +21,42 @@ High-signal workflow for writing and maintaining reliable C++ tests.
 
 ---
 
+## Outcome expectations
+
+- Fast deterministic unit tests with clear failure messages.
+- Integration tests separated and labeled by cost/risk.
+- Flake triage follows reproducible, root-cause-first workflow.
+- Sanitizers/coverage are integrated as recurring quality signal.
+
+---
+
 ## Core rules
 
 - Tests must be deterministic: no sleeping for synchronization.
 - Prefer fakes for state, mocks for interactions.
 - Use `ASSERT_*` for preconditions, `EXPECT_*` for additional checks.
 - Keep unit tests fast; label integration tests separately.
+- Keep one source of truth for test configuration in CMake targets.
+
+---
+
+## Recommended workflow
+
+1. Define the behavior and test scope (unit vs integration) first.
+2. Add/adjust tests with clear Arrange-Act-Assert structure.
+3. Run focused test selection (`ctest -R` / gtest filter).
+4. Run sanitizers for memory/UB/races where applicable.
+5. If flaky/failing, minimize reproducer and fix root cause before broad reruns.
+
+---
+
+## Triage loop for failing tests
+
+1. Reproduce deterministically on one test binary.
+2. Capture failure class: assertion mismatch, crash, timeout, data race, UB.
+3. Narrow input/state until minimal failing case is obtained.
+4. Fix production code first (or fixture isolation), then harden test.
+5. Re-run focused + full suite + sanitizer build.
 
 ---
 

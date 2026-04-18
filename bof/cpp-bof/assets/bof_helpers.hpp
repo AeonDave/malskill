@@ -16,8 +16,12 @@
 
 #include <windows.h>
 
-/* DFR declaration required by helpers */
-DECLSPEC_IMPORT BOOL WINAPI KERNEL32$CloseHandle(HANDLE);
+/* DFR declarations required by helpers */
+DECLSPEC_IMPORT BOOL   WINAPI KERNEL32$CloseHandle(HANDLE);
+DECLSPEC_IMPORT HANDLE WINAPI KERNEL32$GetProcessHeap(void);
+DECLSPEC_IMPORT LPVOID WINAPI KERNEL32$HeapAlloc(HANDLE, DWORD, SIZE_T);
+DECLSPEC_IMPORT BOOL   WINAPI KERNEL32$HeapFree(HANDLE, DWORD, LPVOID);
+DECLSPEC_IMPORT LONG   WINAPI ADVAPI32$RegCloseKey(HKEY);
 
 namespace bof {
 
@@ -80,6 +84,49 @@ public:
 
     Format(const Format&) = delete;
     Format& operator=(const Format&) = delete;
+};
+
+/* ---- Heap buffer RAII wrapper ---- */
+class HeapBuf {
+    void*  buf_;
+    SIZE_T size_;
+public:
+    explicit HeapBuf(SIZE_T size) : buf_(nullptr), size_(0) {
+        buf_ = KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, size);
+        if (buf_) size_ = size;
+    }
+
+    ~HeapBuf() {
+        if (buf_) KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, buf_);
+    }
+
+    void* get() const { return buf_; }
+    SIZE_T size() const { return size_; }
+    bool valid() const { return buf_ != nullptr; }
+
+    template<typename T = void>
+    T* as() const { return static_cast<T*>(buf_); }
+
+    HeapBuf(const HeapBuf&) = delete;
+    HeapBuf& operator=(const HeapBuf&) = delete;
+};
+
+/* ---- Registry key RAII wrapper ---- */
+class RegKey {
+    HKEY key_;
+public:
+    explicit RegKey(HKEY k = NULL) : key_(k) {}
+
+    ~RegKey() {
+        if (key_) ADVAPI32$RegCloseKey(key_);
+    }
+
+    operator HKEY() const { return key_; }
+    HKEY* operator&() { return &key_; }
+    bool valid() const { return key_ != NULL; }
+
+    RegKey(const RegKey&) = delete;
+    RegKey& operator=(const RegKey&) = delete;
 };
 
 /* ---- Logging helpers ---- */

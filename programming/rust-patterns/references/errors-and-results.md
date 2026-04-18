@@ -14,6 +14,8 @@ Use this reference when deciding how Rust code should fail, recover, and carry c
 - Applications / binaries: an aggregator like `anyhow` can be fine at the top level
 - Preserve domain information instead of erasing everything into strings too early
 
+Rule of thumb: typed errors in library boundaries, aggregated errors at executable boundaries.
+
 ## Panic hygiene
 
 - `panic!`, `unwrap`, and `expect` belong in tests, prototypes, or justified invariants

@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Go 1.22+ (guidance baseline). Optional tools: gofmt, goimports, staticcheck, golangci-lint."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Go Patterns
@@ -34,6 +34,25 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 
 ---
 
+## Outcome expectations
+
+- Public APIs are small, explicit, and boring to maintain.
+- Error handling is consistent and machine-checkable with `errors.Is/As`.
+- Concurrency flows always have cancellation and backpressure.
+- Tooling baseline (`gofmt`, tests, vet/race) is easy to run in CI.
+
+---
+
+## Recommended workflow
+
+1. Define package boundary + API contracts (inputs, outputs, errors) first.
+2. Implement with small functions and explicit control flow.
+3. Add context propagation and cancellation checks on blocking operations.
+4. Run formatting/tests/vet/race before review.
+5. Review for leaks, hidden globals, and interface over-abstraction.
+
+---
+
 ## Quick review checklist
 
 - Naming: MixedCaps for exported, no underscores, packages short and lower-case
@@ -42,6 +61,16 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 - Interfaces: accept interfaces, return concrete types; no “kitchen-sink” interfaces
 - Concurrency: goroutines have a stop condition; channels are closed by senders; backpressure exists
 - Tooling: `go test ./...`, `go test -race ./...`, `go vet ./...`
+
+---
+
+## Common anti-patterns to reject
+
+- Storing `context.Context` in structs
+- Unbounded goroutine fan-out in request paths
+- Catch-all interfaces like `Doer`, `Manager`, `Service` without clear boundary
+- Returning wrapped errors without enough domain context
+- Package-level mutable state hidden behind helper functions
 
 ---
 

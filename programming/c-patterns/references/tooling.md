@@ -11,6 +11,11 @@ cl /W4 /WX /analyze ...
 x86_64-w64-mingw32-gcc -Wall -Wextra -Wpedantic -Werror ...
 ```
 
+Recommended baseline for library code:
+
+- GCC/Clang: `-Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wundef -Wformat=2 -Werror`
+- MSVC: `/W4 /WX /permissive- /analyze`
+
 ## Sanitizers (Clang/GCC/MinGW)
 
 Sanitizers work natively on Linux/macOS. On Windows, Clang-cl or MinGW-based ASan builds are limited — prefer Linux for full sanitizer coverage.
@@ -23,6 +28,17 @@ clang  -fsanitize=undefined -fno-omit-frame-pointer -g foo.c -o foo
 # MinGW GCC (partial ASan support)
 x86_64-w64-mingw32-gcc -fsanitize=address -g foo.c -o foo.exe
 ```
+
+Practical sanitizer presets:
+
+- ASan + UBSan (common): `-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1`
+- TSan (races): `-fsanitize=thread -g -O1` (separate build)
+- LSan standalone: `-fsanitize=leak -g`
+
+Runtime options often useful in triage:
+
+- `ASAN_OPTIONS=detect_leaks=1:symbolize=1`
+- `UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1`
 
 References:
 - ASan: https://clang.llvm.org/docs/AddressSanitizer.html
@@ -37,6 +53,16 @@ clang-tidy foo.c -- -std=c11 -Wall
 cppcheck --enable=all --std=c11 src/
 # MSVC built-in (/analyze)
 cl /analyze foo.c
+```
+
+## CMake integration pattern
+
+```cmake
+option(ENABLE_SANITIZERS "Enable sanitizer build" OFF)
+if(ENABLE_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+	add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1)
+	add_link_options(-fsanitize=address,undefined)
+endif()
 ```
 
 ## Binary inspection
@@ -112,3 +138,10 @@ UBSAN_OPTIONS=print_stacktrace=1 ./foo
 _Static_assert(sizeof(uint32_t) == 4, "unexpected uint32_t size");
 _Static_assert(offsetof(struct Foo, x) == 0, "unexpected layout");
 ```
+
+## Quick checklist
+
+- [ ] Strict warnings enabled and treated as errors in CI.
+- [ ] At least one sanitizer-enabled CI lane.
+- [ ] Static analysis lane (clang-tidy/cppcheck or MSVC /analyze).
+- [ ] Release and debug binaries both inspectable with platform tools.

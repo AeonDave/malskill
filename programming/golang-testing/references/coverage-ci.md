@@ -30,3 +30,5 @@ Run at least:
 - `go test ./...`
 - `go test -race ./...` (where feasible)
 - coverage profile generation
+
+Prefer incremental coverage gates on critical packages instead of a single global threshold that encourages low-signal tests.

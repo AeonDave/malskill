@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Python 3.11+ (guidance baseline). asyncio (stdlib). Optional: anyio, httpx, aiohttp, pytest-asyncio."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Async Python Patterns
@@ -26,12 +26,47 @@ This skill focuses on **practical asyncio patterns** for I/O-bound concurrency.
 - Make cancellation and timeouts explicit.
 - Bound concurrency; unbounded `gather()` can turn memory into a queue.
 
+---
+
+## Outcome expectations
+
+- Concurrent I/O tasks are orchestrated with clear boundaries and failure semantics.
+- Cancellation and timeouts are explicit and tested.
+- Event loop is never blocked by sync calls; backpressure prevents unbounded growth.
+
+---
+
+## Recommended workflow
+
+1. Define scope and concurrency bounds before writing async code.
+2. Use TaskGroup for orchestration; avoid fire-and-forget patterns.
+3. Apply timeouts at I/O boundaries, not broad scopes.
+4. Test cancellation paths; use pytest-asyncio with care for shared state.
+5. Profile event loop blocking; offload sync work via `to_thread()` when necessary.
+
+---
+
 ## Quick patterns
 
-### Concurrent fan-out with bounds
+### Concurrent fan-out with bounds (TaskGroup preferred)
 
-- Use `asyncio.TaskGroup` (Python 3.11+) for structured concurrency.
-- Use a semaphore for concurrency limits.
+Prefer `asyncio.TaskGroup` (Python 3.11+) for structured concurrency with clear failure propagation.
+
+```python
+async with asyncio.TaskGroup() as tg:
+    tg.create_task(fetch_url(url1))
+    tg.create_task(fetch_url(url2))
+# All tasks joined; exceptions aggregated
+```
+
+For concurrency limits, add a semaphore:
+
+```python
+sem = asyncio.Semaphore(10)
+async def bounded():
+    async with sem:
+        return await fetch_url(url)
+```
 
 ### Timeouts
 

@@ -21,4 +21,21 @@ pytest --lf
 
 # Drop into debugger on failure
 pytest --pdb
+
+# Coverage report
+pytest --cov=mypkg --cov-report=html
+
+# Run with strict markers (fail on typos)
+pytest --strict-markers
 ```
+
+## Tips
+
+- Use `-v` in CI to debug test failures quickly.
+- Use `-x` locally to fail fast while developing.
+- Use `--lf` to re-run only tests that failed last run.
+- Use `pytest --co` to list all tests without running them (useful for validation).
+
+## References
+
+- https://docs.pytest.org/en/stable/reference.html

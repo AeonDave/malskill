@@ -21,6 +21,30 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 
 ---
 
+## Outcome expectations
+
+- Tests are deterministic and pass reliably in CI.
+- Coverage is meaningful; assertions test behavior, not implementation details.
+- Flaky tests are rare and quickly diagnosed (fixtures, mocking, timing).
+- New developers can understand test intent within 30 seconds of reading.
+
+---
+
+## Recommended triage workflow
+
+**For new code**:
+1. Write a failing test (red).
+2. Implement minimal code to pass (green).
+3. Refactor with tests staying green.
+
+**For flaky/failing tests**:
+1. Check for shared state (mocks, fixtures, filesystem).
+2. Check for timing assumptions (avoid `sleep`, use synchronization).
+3. Check mock patch targets (patch as used, not where defined).
+4. Isolate to minimal reproduction in separate test.
+
+---
+
 ## Core rules
 
 - Prefer **small unit tests** for logic; use integration tests for boundaries.

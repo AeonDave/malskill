@@ -3,7 +3,7 @@ name: sensors
 description: "Select, compare, and integrate sensors for Arduino, ESP32, robotics, model-making, and home automation with focus on signal quality, false positives, debounce, and practical wiring. Use when asked which sensor to choose, how to detect an event reliably, how to map signals into code, or how to design sensor-driven systems such as break-beams, PIR, vibration, IMU, climate, occupancy, or binary-sensor style automations."
 license: MIT
 metadata:
-  author: Astrid
+  author: AeonDave
   version: "1.0"
 ---
 

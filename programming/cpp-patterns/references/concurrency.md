@@ -10,6 +10,8 @@ Order of preference:
 3. `std::thread` with explicit join/detach
 4. Raw platform APIs only when necessary
 
+Prefer message passing / immutable data exchange before shared mutable state.
+
 ## std::jthread (C++20)
 
 ```cpp
@@ -56,6 +58,8 @@ counter.fetch_add(1, std::memory_order_relaxed); // fast counter
 int v = counter.load(std::memory_order_acquire);
 ```
 
+Use `memory_order_relaxed` only when no inter-thread ordering is required.
+
 ## std::condition_variable
 
 ```cpp
@@ -92,6 +96,8 @@ std::jthread t([tok]() {
 src.request_stop(); // signal cancellation
 ```
 
+Model cancellation cooperatively and make stop checks visible in long loops and blocking waits.
+
 ## std::async / std::future
 
 ```cpp
@@ -113,6 +119,8 @@ int result = fut.get(); // blocks until done
 | `condition_variable::wait` without predicate | Always pass a predicate lambda |
 | Returning `std::future` from `std::async` and ignoring it | Futures block on destruction — handle the return value |
 | Data race on `std::string`/`std::vector` across threads | Protect with mutex or use lock-free structures |
+| Long critical sections causing convoying | Move work outside lock, keep lock scope minimal |
+| Missing shutdown order for worker threads | Request stop, unblock waiters, then join deterministically |
 
 ## Tooling for races
 

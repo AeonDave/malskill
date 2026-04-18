@@ -2,10 +2,10 @@
 name: asm-testing
 description: "Assembly code testing, debugging, and bug-hunting workflow for hand-written and injected assembly: C/Go harness testing, GDB/LLDB/WinDbg/x64dbg verification, objdump structural analysis, Python helpers (Capstone/Unicorn/Keystone), Frida dynamic instrumentation, offensive ASM debugging (trampolines, callgates, syscall stubs, stack spoofing, PIC shellcode), reverse engineering own binaries, and common bug pattern diagnosis. Use when verifying correctness of .asm/.s/.S files, debugging crashes in injected code, hunting silent corruption in offensive tooling, or building ad-hoc Python analysis scripts."
 license: MIT
+compatibility: "x86-64 and ARM64. Windows: WinDbg, x64dbg, MSVC/MASM. Linux: GDB >= 10, LLDB >= 12, gcc/clang, nasm. Python: capstone, unicorn, keystone-engine, frida-tools."
 metadata:
   author: AeonDave
   version: "1.1"
-compatibility: "x86-64 and ARM64. Windows: WinDbg, x64dbg, MSVC/MASM. Linux: GDB >= 10, LLDB >= 12, gcc/clang, nasm. Python: capstone, unicorn, keystone-engine, frida-tools."
 ---
 
 # asm-testing

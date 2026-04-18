@@ -17,6 +17,14 @@ go vet ./...
 go mod tidy
 ```
 
+Recommended CI baseline:
+
+```bash
+go test ./...
+go test -race ./...
+go vet ./...
+```
+
 ## Recommended extras
 
 - `goimports` — gofmt + import management
@@ -27,6 +35,7 @@ go mod tidy
 
 - Prefer a small, curated linter set.
 - Make linting fast enough to run pre-push / in CI.
+- Keep one canonical lint/test command set in repository docs to reduce drift.
 
 ## References
 

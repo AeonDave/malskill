@@ -14,6 +14,8 @@ target_include_directories(test_module PRIVATE include)
 add_test(NAME test_module COMMAND test_module)
 ```
 
+Use `include(CTest)` in top-level `CMakeLists.txt` to get `BUILD_TESTING` option and `enable_testing()` behavior.
+
 ## Sanitizer build preset
 
 ```cmake
@@ -42,6 +44,8 @@ add_test(NAME integration_db  COMMAND test_db_integration)
 set_tests_properties(integration_db PROPERTIES LABELS "integration")
 ```
 
+Useful extra labels: `slow`, `flaky`, `sanitizer`, `fuzz-regression`.
+
 Run only unit tests:
 
 ```sh
@@ -57,7 +61,43 @@ ctest -L unit                      # run by label
 ctest --rerun-failed               # only re-run failures
 ctest -j4                          # parallel test execution
 ctest --output-on-failure          # print stdout on failure only
+ctest --rerun-failed               # rerun only previously failed tests
+ctest --repeat until-fail:50       # detect flaky tests
+ctest --schedule-random            # discover hidden test interdependencies
 ```
+
+## Test properties that matter
+
+```cmake
+set_tests_properties(test_parse PROPERTIES
+  LABELS "unit"
+  TIMEOUT 10
+)
+
+set_tests_properties(test_expected_fail PROPERTIES
+  WILL_FAIL TRUE
+)
+```
+
+Notes:
+
+- `TIMEOUT` takes precedence over default `CTEST_TEST_TIMEOUT`.
+- Prefer per-test timeout over global timeout.
+
+## Fixtures (setup/cleanup orchestration)
+
+```cmake
+add_test(NAME setup_env COMMAND test_setup_env)
+set_tests_properties(setup_env PROPERTIES FIXTURES_SETUP env)
+
+add_test(NAME test_parser COMMAND test_parser)
+set_tests_properties(test_parser PROPERTIES FIXTURES_REQUIRED env)
+
+add_test(NAME cleanup_env COMMAND test_cleanup_env)
+set_tests_properties(cleanup_env PROPERTIES FIXTURES_CLEANUP env)
+```
+
+Use fixtures when tests share expensive setup, but keep normal unit tests independent.
 
 ## MinGW cross-compile example
 

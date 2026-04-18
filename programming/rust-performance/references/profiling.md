@@ -22,3 +22,5 @@ Use this reference when benchmarking says “slow” but not yet “why”.
 2. Confirm the hottest call paths and call counts
 3. Inspect whether time is spent in your code, dependencies, syscalls, allocation, or synchronization
 4. Apply one targeted fix, then profile again
+
+Favor fixing the top few dominant hotspots first; lower-ranked frames rarely move the end-to-end metric.

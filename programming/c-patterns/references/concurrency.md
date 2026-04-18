@@ -4,6 +4,12 @@
 
 C11 introduced `<threads.h>` (`thrd_t`, `mtx_t`, `cnd_t`). POSIX pthreads remain more widely used in practice.
 
+## Design-first rules
+
+- Start with shared-state minimization.
+- Document "which lock protects which field".
+- Define a strict global lock order when >1 lock exists.
+
 ## pthreads basics
 
 ```c
@@ -53,6 +59,12 @@ atomic_fetch_add(&counter, 1);
 int val = atomic_load_explicit(&counter, memory_order_acquire);
 ```
 
+### Memory order quick guidance
+
+- Use `memory_order_relaxed` for independent counters/statistics.
+- Use `release` on writer + `acquire` on reader for publish/consume style data.
+- Use `seq_cst` when unsure and correctness is priority over max perf.
+
 ## Windows threads (Win32)
 
 ```c
@@ -84,11 +96,32 @@ DeleteCriticalSection(&cs);
 - Prefer `atomic_*` for single counters; use mutexes for compound state.
 - Never lock one mutex while holding another (potential deadlock) without a documented lock order.
 
+## Lock-order pattern
+
+```text
+Order: cache_lock -> session_lock -> io_lock
+Never acquire a lock left of one you already hold.
+```
+
+## Common anti-patterns
+
+- Checking a shared flag without atomic/lock and assuming visibility.
+- Splitting invariant updates across multiple unlocked statements.
+- Mixing atomics and mutexes for the same variable without clear contract.
+- Holding locks during blocking I/O.
+
 ## Tools for race detection
 
 - **Linux**: `clang -fsanitize=thread` (TSan)
 - **Linux**: `helgrind` (Valgrind tool): `valgrind --tool=helgrind ./foo`
 - **Windows (MSVC)**: Thread Sanitizer via `/fsanitize=address` is incomplete for races; use WinDbg or VS Concurrency Visualizer.
+
+## Quick checklist
+
+- [ ] Shared mutable state inventory exists.
+- [ ] Each shared field has exactly one synchronization strategy.
+- [ ] Lock order documented and enforced.
+- [ ] Race tooling (TSan/Helgrind or platform equivalent) run on stress path.
 
 ## References
 

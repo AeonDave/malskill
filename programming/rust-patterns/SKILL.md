@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Rust stable baseline (2024 edition-friendly). Tools: cargo, rustfmt, clippy, rustdoc. Optional: rust-analyzer."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Rust Patterns
@@ -34,6 +34,25 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 
 ---
 
+## Outcome expectations
+
+- Public APIs make ownership and failure behavior obvious at call sites.
+- Domain modeling uses enums/newtypes/builders instead of ad-hoc primitives.
+- Borrowing is preferred where practical; cloning is intentional and justified.
+- Tooling (`fmt`, `clippy`, `test`, docs) is part of the definition of done.
+
+---
+
+## Recommended workflow
+
+1. Define API boundaries and ownership semantics in function signatures.
+2. Model states/errors with enums and typed results before implementing details.
+3. Implement with small focused functions and explicit visibility boundaries.
+4. Run `cargo fmt`, `cargo clippy`, and `cargo test` before review.
+5. Review for accidental clones, over-broad traits, and panic-prone paths.
+
+---
+
 ## Quick review checklist
 
 - No `clone()` used only to silence the borrow checker unless the clone is cheap and intentional
@@ -42,6 +61,16 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 - Enums beat boolean parameters; newtypes beat domain-significant bare integers/strings
 - Traits are small and consumer-oriented; generic signatures are useful, not ornamental
 - Module visibility is tidy (`pub`, `pub(crate)`, private helpers, selective `pub use`)
+
+---
+
+## Common anti-patterns to reject
+
+- `clone()` used only to “make borrow checker errors go away”
+- Public APIs that force ownership when a borrow would do
+- Boolean/flag parameter combinations that should be enums
+- Library code depending on routine `unwrap`/`expect` in operational paths
+- Large traits that couple unrelated behavior and block evolution
 
 ## Resources
 

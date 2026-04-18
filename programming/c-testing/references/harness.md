@@ -13,6 +13,13 @@ testdata/
 
 Each test file targets one module; no shared mutable state between files.
 
+## Determinism rules
+
+- No wall-clock dependence in assertions.
+- No random behavior without fixed seed.
+- No dependence on execution order across tests.
+- Reset globals between tests (or avoid globals entirely).
+
 ## Minimal assertion helpers
 
 ```c
@@ -67,6 +74,49 @@ int main(void) {
   return fail > 0 ? 1 : 0;
 }
 ```
+
+## Setup/teardown pattern
+
+```c
+static int setup_tmpdir(char *buf, size_t cap);
+static void cleanup_tmpdir(const char *path);
+
+int test_parse_file(void) {
+  char tmp[256] = {0};
+  if (setup_tmpdir(tmp, sizeof(tmp)) != 0) return 1;
+
+  int rc = 0;
+  /* test body */
+  if (/* assertion failed */ 0) rc = 1;
+
+  cleanup_tmpdir(tmp);
+  return rc;
+}
+```
+
+## Table-driven pattern
+
+```c
+struct parse_case {
+  const char *name;
+  const char *input;
+  int want_rc;
+};
+
+static struct parse_case k_cases[] = {
+  {"empty", "", -1},
+  {"simple", "a=1", 0},
+  {"invalid", "@@", -1},
+};
+```
+
+## Boundary checklist
+
+- [ ] Empty input
+- [ ] Single-byte input
+- [ ] Max supported size
+- [ ] Invalid encoding/format markers
+- [ ] Repeated calls for idempotence/state bleed
 
 ## Alternative: Unity (C unit test framework)
 

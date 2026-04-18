@@ -50,6 +50,11 @@ benchstat before.txt after.txt
 - Use `b.StopTimer()` / `b.StartTimer()` for expensive setup between iterations
 - Use sub-benchmarks (`b.Run`) for comparisons
 
+Additional stability tips:
+- Avoid running heavyweight background processes while benchmarking.
+- Prefer fixed input datasets so before/after runs are comparable.
+- Capture multiple runs and compare with `benchstat` instead of single-run conclusions.
+
 ## References
 
 - https://pkg.go.dev/testing

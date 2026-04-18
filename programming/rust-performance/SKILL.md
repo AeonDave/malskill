@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Rust stable baseline. Tools: cargo, Criterion, cargo bench. Optional: cargo flamegraph, perf, heaptrack, dhat, samply, valgrind, rayon."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Rust Performance
@@ -33,6 +33,15 @@ If the task is primarily code style, ownership, or API design, use `rust-pattern
 
 ---
 
+## Outcome expectations
+
+- Performance claims are backed by reproducible measurements.
+- Profile data points clearly to one or few prioritized hotspots.
+- Fixes are incremental and attributable (one change, one measurement delta).
+- Correctness and behavior remain unchanged after optimization.
+
+---
+
 ## Workflow
 
 1. **Make the problem measurable**
@@ -55,6 +64,15 @@ If the task is primarily code style, ownership, or API design, use `rust-pattern
 5. **Verify the result**
 	- Re-run the same benchmark/profile
 	- Record the measurable improvement and ensure behavior is unchanged
+
+---
+
+## Symptom to first tool mapping
+
+- High CPU or low throughput -> Criterion + CPU profiler / flamegraph
+- Memory growth or heap churn -> allocation/heap profiler (`dhat`, `heaptrack`)
+- Latency spikes with shared state -> contention and lock analysis
+- Async scheduling inefficiency -> runtime-aware tracing and task instrumentation
 
 ## Resources
 

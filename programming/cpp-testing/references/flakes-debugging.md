@@ -15,6 +15,8 @@
 3. Reduce to a minimal reproducer.
 4. Fix root cause, then run the full suite.
 
+Classify the failure before deep debugging: timing/race, lifetime, order dependence, environment leak, or undefined behavior.
+
 ---
 
 ## Linux / macOS
@@ -128,3 +130,10 @@ UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 ./test_foo
 # TSan: verbose race reports
 TSAN_OPTIONS=verbosity=1 ./test_foo
 ```
+
+## Fast minimization tactics
+
+- Disable unrelated suites and run one binary repeatedly.
+- Freeze randomness and wall-clock dependencies.
+- Remove non-essential fixture setup until failure disappears.
+- Bisect recent test/production changes when reproduction is unstable.

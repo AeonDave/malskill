@@ -45,3 +45,5 @@ Guidelines:
 - encode properties, not exact outputs
 - keep fuzz target deterministic
 - minimize allocations in the fuzz function
+
+Keep fuzz targets side-effect free (no network/filesystem by default) to preserve reproducibility and shrinking quality.

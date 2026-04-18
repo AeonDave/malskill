@@ -46,6 +46,17 @@ def first(xs: list[T]) -> T | None:
 - Don’t over-annotate locals; focus on public APIs and tricky parts.
 - Keep runtime and typing concerns separate.
 
+## Anti-patterns
+
+- **Bare `Any` or `object` for public APIs**: Hide the actual contract, making callers guess.
+- **Over-annotating local variables**: Adds noise without value (`items: list[dict[str, Any]] = [...]`).
+- **Mixing `Optional[T]` and `T | None`**: Choose one style per codebase.
+
+## CI discipline
+
+- Run `mypy --strict` on public API files; relax for internal modules if needed.
+- Enable `warn_unused_ignores` in mypy config to catch stale `# type: ignore` comments.
+
 ## References
 
 - https://docs.python.org/3/library/typing.html

@@ -19,4 +19,14 @@ Common layout:
 - `tests/integration/` for DB/network boundaries
 - `tests/e2e/` only when needed
 
-Keep tests near the public behavior; don’t couple tests to private implementation details.
+## Anti-patterns
+
+- **Test names that are too generic**: `test_works` or `test_function` hide intent.
+- **Testing private methods directly**: Tests should verify public behavior, not implementation.
+- **Monolithic test functions**: One test per behavior; avoid testing five things in one function.
+- **Tight coupling to internal state**: Mock boundaries, not internals.
+
+## References
+
+- https://docs.pytest.org/
+- https://en.wikipedia.org/wiki/Test-driven_development

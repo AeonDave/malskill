@@ -3,7 +3,7 @@ name: arduino
 description: "Build, review, debug, and scaffold professional Arduino projects across classic AVR boards (`Uno`, `Nano`, `Mega`), Renesas-based R4 boards (`Uno R4 Minima`, `Uno R4 WiFi`, `Nano R4`), ESP32-based Arduino boards, and other common Arduino-family targets. Use when asked for sketches, `.ino` files, Arduino IDE 2, Arduino CLI, PlatformIO, or Arduino Cloud workflows, board-specific pin maps, wiring/BOM notes, unit tests, debug plans, upload/serial monitor troubleshooting, or refactors that must stay practical on real hardware."
 license: MIT
 metadata:
-  author: Astrid
+  author: AeonDave
   version: "2.0"
 ---
 

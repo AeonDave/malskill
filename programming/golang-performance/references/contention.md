@@ -44,6 +44,14 @@ for _, item := range items {
 
 Prefer bounded queues. If producers can outpace consumers forever, memory becomes the buffer.
 
+## Mitigation order (practical)
+
+1. confirm contention with mutex/block profiles
+2. shrink critical sections
+3. reduce shared state / shard locks
+4. bound producer rate (queue + workers)
+5. re-profile before considering lock-free redesign
+
 ## References
 
 - https://go.dev/blog/pipelines

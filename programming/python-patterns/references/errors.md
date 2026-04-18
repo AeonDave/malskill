@@ -35,3 +35,10 @@ class ValidationError(AppError):
 
 - Inner functions: raise domain-specific errors.
 - Outer boundary (CLI/HTTP handler): translate to exit codes / responses and log context.
+
+## Anti-patterns
+
+- **Silent exception swallowing**: `try: ... except: pass` hides bugs.
+- **Generic `except Exception`** in library code: Let exceptions propagate unless you're at a boundary.
+- **Bare `raise`** without `from e`: Loses the original cause, making debugging harder.
+- **Exception class with no hierarchy**: Makes caller-side filtering impossible.

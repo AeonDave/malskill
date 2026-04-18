@@ -13,6 +13,8 @@ Use this reference when example-based unit tests are not enough.
 - Review snapshot changes intentionally; do not auto-accept without understanding the diff
 - Prefer snapshots for stable output formats, not for highly volatile data
 
+Treat snapshot updates as behavior changes requiring human review, not mechanical golden refreshes.
+
 ## Mocks and fakes
 
 - Prefer lightweight fakes or in-memory implementations when possible

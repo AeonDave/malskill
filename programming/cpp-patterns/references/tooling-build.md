@@ -11,6 +11,8 @@ cl /W4 /WX /std:c++20 /analyze ...
 x86_64-w64-mingw32-g++ -Wall -Wextra -Wpedantic -std=c++20 -Werror ...
 ```
 
+Treat warnings as errors in CI for changed targets, not necessarily for all legacy code at once.
+
 ## Sanitizers (Clang/GCC/MinGW)
 
 Full sanitizer support is best on Linux/macOS. Clang-cl on Windows supports ASan since VS 2022.
@@ -45,6 +47,8 @@ cl /analyze foo.cpp
 # Include-What-You-Use (IWYU)
 iwyu foo.cpp 2>&1 | fix_include -- src/
 ```
+
+Run static analysis on modified files first, then expand scope when fixing baseline debt.
 
 ## Binary inspection
 
@@ -120,6 +124,15 @@ target_compile_features(mylib PUBLIC cxx_std_20)
 # Expose compile commands for clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ```
+
+Prefer `target_compile_options`, `target_link_options`, and `target_include_directories` over global variables.
+
+## Suggested CI quality gates
+
+- Debug + warnings-as-errors build
+- Sanitizer build (ASan/UBSan)
+- Unit test run via CTest
+- Optional static analysis job (`clang-tidy` / `cppcheck`)
 
 ## Compile-time assertions
 

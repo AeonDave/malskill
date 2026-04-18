@@ -37,3 +37,5 @@ Cautions:
 - normalize line endings where needed
 - keep golden outputs small and meaningful
 - prefer structured assertions for JSON where possible
+
+When using `-update`, gate it intentionally in CI/review workflows so accidental golden rewrites are visible.

@@ -66,6 +66,10 @@ Skills that support the workflow itself rather than a specific tool.
 # Clone
 git clone <repo-url> && cd malskill
 
+# Interactive install (choose skills, destination, and output format)
+./install.sh
+.\install.ps1
+
 # Install a skill (copy its folder into your agent's skill directory)
 cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
 
@@ -74,6 +78,16 @@ cp -r offensive-tools/*/* ~/.agents/skills/
 ```
 
 Skills are plain folders — no build step, no runtime dependency. Copy a skill folder into wherever your agent reads skills from and it activates automatically.
+
+The repository also includes interactive installers at the repo root:
+
+- `install.sh` — Bash installer for selecting skills, destination root, and output format
+- `install.ps1` — PowerShell installer with the same workflow on Windows
+
+Supported output formats:
+
+- `folder` — copies the skill directory into the destination root
+- `.skill` — creates a distributable `.skill` archive; in this repo it is a standard zip archive that preserves the skill folder name
 
 ## Validation
 

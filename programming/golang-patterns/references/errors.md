@@ -53,6 +53,16 @@ Model this explicitly. A common approach:
 - return a typed error (e.g., `*TemporaryError`) or
 - wrap with `fmt.Errorf("...: %w", err)` and expose a helper `IsRetryable(err)`.
 
+## Error classification at boundaries
+
+At transport/API boundaries (HTTP/RPC/CLI), map internal errors to stable categories
+(`invalid_input`, `not_found`, `conflict`, `internal`) and keep internal details in logs.
+
+## Practical wrapping rule
+
+Wrap once per boundary transition (storage -> service -> transport), not on every line.
+Over-wrapping can make root-cause chains noisy.
+
 ## References
 
 - https://go.dev/blog/errors-are-values

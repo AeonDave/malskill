@@ -32,3 +32,20 @@ from unittest.mock import AsyncMock
 
 mock = AsyncMock(return_value=123)
 ```
+
+## Mocking discipline
+
+- **Mock at entry points**: Don't mock internal function calls; refactor if you need to mock everything.
+- **Use fakes for complex objects**: If mocking gets complex, implement a minimal fake instead.
+- **Verify call count sparingly**: Only for critical workflows; over-verification couples tests to implementation.
+
+## Anti-patterns
+
+- **Mocking everything**: If every line needs a mock, the code is too tightly coupled.
+- **Patching wrong location**: Always patch where the object is **used**, not where it's defined.
+- **Returning side_effect as exception**: Use `side_effect=ValueError(...)` only when testing exception handling.
+
+## References
+
+- https://docs.python.org/3/library/unittest.mock.html
+- https://docs.python.org/3/library/unittest.mock.html#asyncio-support

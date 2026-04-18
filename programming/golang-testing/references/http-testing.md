@@ -32,3 +32,5 @@ if got["id"] != "123" {
 ```
 
 Tip: for stable output, ensure you control key ordering only when encoding (but decode+compare avoids the issue).
+
+For timeout/cancellation behavior, pass request contexts explicitly and assert status/error mapping instead of relying on sleeps.

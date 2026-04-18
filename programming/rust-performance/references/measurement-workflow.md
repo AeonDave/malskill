@@ -20,3 +20,5 @@ Use this reference when a Rust performance claim needs a real baseline.
 - Measure optimized code with `cargo bench` or `cargo run --release`
 - Tune release settings only after confirming they matter for the workload
 - Record what changed so future regressions have a baseline to compare against
+
+Practical note: keep benchmark environment (CPU governor, workload shape, feature flags) stable across before/after runs.

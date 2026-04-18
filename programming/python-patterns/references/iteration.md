@@ -24,3 +24,12 @@ def lines(path: Path):
 ## itertools
 
 Use `itertools` for composable iteration (groupby, chain, islice), but don’t sacrifice clarity.
+## Anti-patterns
+
+- **Comprehensions over 2-3 lines**: Refactor to explicit loop with clear variable names.
+- **Nested comprehensions**: Hard to debug and test; use explicit loops instead.
+- **Generator expressions without reason**: If you materialize it immediately, use a list comprehension.
+
+## References
+
+- https://docs.python.org/3/library/itertools.html

@@ -15,6 +15,8 @@ Use this reference when tests touch async code, time, filesystem, network, or ot
 - Abstract time, randomness, and environment access when deterministic behavior matters
 - Keep external dependency setup explicit and localized
 
+Use explicit timeout bounds for awaits that depend on external progress to avoid hangs in CI.
+
 ## Common footguns
 
 - sharing mutable global state across async tests

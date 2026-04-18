@@ -3,9 +3,20 @@
 ## General workflow
 
 1. Re-run the single failing test in isolation.
-2. If a crash, run under ASan/UBSan first — they give the most context.
+2. If a crash or odd behavior, run under ASan/UBSan first — they give the most context.
 3. Reduce to a minimal reproducer.
 4. Fix root cause, then run the full suite.
+
+## Sanitizer-first triage
+
+```sh
+# Linux/macOS example
+cmake -B build-asan -DSANITIZE=ON
+cmake --build build-asan
+ctest --test-dir build-asan -R test_foo --output-on-failure
+```
+
+If sanitizer output points to corruption site, debug there before stepping through unrelated code paths.
 
 ---
 
@@ -21,6 +32,7 @@ gdb ./test_foo
 (gdb) print val    # inspect variable
 (gdb) watch *ptr   # watchpoint for corruption
 (gdb) rwatch *ptr  # break on read
+(gdb) bt full      # backtrace with local variables
 ```
 
 ### lldb
@@ -32,6 +44,7 @@ lldb ./test_foo
 (lldb) frame select 2
 (lldb) p val
 (lldb) watchpoint set variable ptr
+(lldb) thread backtrace all
 ```
 
 ### Valgrind (Linux)
@@ -108,6 +121,13 @@ Useful WinDbg commands for memory corruption:
 - `!analyze -v` — automated crash analysis
 - `dd esp` — dump stack
 - `dt <type> <addr>` — dump struct at address
+
+## Symptom-to-tool mapping
+
+- **Use-after-free / OOB / heap smash** → ASan first, then gdb/lldb/WinDbg.
+- **Signed overflow / invalid shift / misalignment** → UBSan first.
+- **Race/deadlock suspicion** → TSan/Helgrind (Linux), then debugger.
+- **Intermittent timeout** → CTest `--repeat` + timeout properties + random scheduling.
 
 ---
 

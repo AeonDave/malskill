@@ -1,5 +1,7 @@
 .idea
 .venv
+.claude
+.vscode
 .import
 .learnings
 __pycache__/

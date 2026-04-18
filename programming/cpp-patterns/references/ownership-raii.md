@@ -26,6 +26,8 @@ struct Config {
 
 Avoid returning owning raw pointers.
 
+Prefer `std::make_unique` / `std::make_shared` for exception-safe allocation and cleaner call sites.
+
 ## Non-owning references
 
 - `T&`: required reference
@@ -42,8 +44,17 @@ Examples:
 - `std::unique_ptr` with custom deleter
 - file handles wrapped in a small class
 
+Follow Rule of Zero by default; only define special members when ownership semantics require it.
+
+## Async lifetime safety
+
+- Do not capture raw `this` in asynchronous callbacks unless lifetime is externally guaranteed.
+- For shared async ownership, prefer `std::enable_shared_from_this` + weak capture pattern.
+- Ensure thread shutdown order is explicit (request stop -> join -> destroy shared state).
+
 ## Common footguns
 
 - Returning `std::string_view` to a temporary
 - Storing pointer/reference to a vector element across reallocation
 - Capturing `this` in async work without a lifetime strategy
+- Double ownership transfer through mixed raw + smart pointer APIs

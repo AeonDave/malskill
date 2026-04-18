@@ -15,6 +15,8 @@ Use this reference when turning Rust tests into reliable automation.
 - Use `cargo nextest` when faster parallel execution and better CI ergonomics help
 - Prefer `--locked` in CI when reproducibility matters
 
+Practical caution: coverage collection can significantly slow execution; keep dedicated coverage jobs separate from fast PR gating.
+
 ## Flake reduction
 
 - isolate shared state

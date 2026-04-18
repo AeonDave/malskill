@@ -44,6 +44,8 @@ Use a mock when you need to assert:
 
 Even then, keep the mock tiny; prefer hand-written stubs over complex frameworks.
 
+Prefer defining dependency interfaces in the consumer package to avoid test doubles that mirror provider internals.
+
 ## Avoid hidden external dependencies
 
 If an example requires a DB driver or cgo, call it out explicitly in the test docs (and keep unit tests independent from it).

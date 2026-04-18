@@ -5,14 +5,14 @@ license: MIT
 compatibility: "C++20 baseline. Toolchains: MSVC, Clang, GCC, MinGW-w64. Build: CMake recommended. Binary inspection: objdump/nm (MinGW/Linux), dumpbin (MSVC), readelf/ldd (Linux)."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # C++ Patterns
 
-This skill is for **day-to-day modern C++**: safety, clarity, and maintainable APIs.
+Use this skill for **day-to-day modern C++ (C++20+)** with a bias for safety, clarity, and maintainable APIs.
 
-If you’re focused on test writing/tooling, use `cpp-testing`.
+If your primary task is test architecture/debugging, activate `cpp-testing` alongside this skill.
 
 ## When to activate
 
@@ -20,6 +20,15 @@ If you’re focused on test writing/tooling, use `cpp-testing`.
 - Reviewing PRs for ownership, lifetime, and exception safety
 - Refactoring for cleaner interfaces and fewer footguns
 - Introducing RAII, smart pointers, and standard library algorithms
+
+---
+
+## Outcome expectations
+
+- APIs encode ownership and lifetime intent directly in types.
+- Resource cleanup is deterministic (RAII) and exception-safe.
+- Error behavior is consistent per layer (no mixed ad-hoc strategy).
+- Concurrency code has explicit stop/cancellation and race-checking plan.
 
 ---
 
@@ -34,6 +43,16 @@ If you’re focused on test writing/tooling, use `cpp-testing`.
 
 ---
 
+## Recommended workflow
+
+1. Clarify ownership and lifetime boundaries first (handles, buffers, views, async captures).
+2. Design the public API around value semantics and explicit contracts.
+3. Implement with RAII wrappers and Rule-of-Zero defaults.
+4. Add warnings/sanitizers/static analysis early in the build.
+5. Review for footguns (dangling views, iterator invalidation, detached threads).
+
+---
+
 ## Quick review checklist
 
 - Ownership is explicit (who allocates, who frees)
@@ -42,6 +61,17 @@ If you’re focused on test writing/tooling, use `cpp-testing`.
 - `const` correctness is consistent
 - No surprising implicit conversions; use `explicit`
 - Concurrency code has a cancellation/stop strategy
+- Error semantics and exception guarantees are documented
+
+---
+
+## Common anti-patterns to reject
+
+- Owning raw pointers in public APIs
+- Returning/storing `std::string_view` tied to temporary storage
+- Detached threads that capture `this` without a lifetime model
+- Broad `catch (...)` blocks that hide failure context
+- Exposing mutable shared state without synchronization policy
 
 ---
 

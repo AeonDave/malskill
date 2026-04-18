@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Rust stable baseline. Tools: cargo test. Optional: cargo nextest, proptest, insta, mockall, tokio, cargo llvm-cov."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Rust Testing
@@ -30,6 +30,24 @@ Use this skill when tests are part of the change, when flakiness needs to die qu
 - Use mocks sparingly; prefer fakes, temp dirs, test servers, and controlled inputs.
 - Treat doctests as part of the public contract, not decorative comments.
 - Coverage is a signal, not the goal; strong assertions beat inflated percentages.
+
+---
+
+## Outcome expectations
+
+- Tests are deterministic, debuggable, and fast enough to run frequently.
+- Boundaries (time/fs/network/randomness) are explicit and controllable.
+- CI separates fast confidence checks from heavier coverage/property/snapshot stages.
+
+---
+
+## Recommended workflow
+
+1. Start with focused unit/integration tests for the behavior change.
+2. Run targeted commands before full-suite reruns.
+3. Stabilize async/boundary tests via explicit timeouts and local fixtures.
+4. Add property/snapshot tests when they increase signal, not just volume.
+5. Verify CI command mix remains fast and reproducible.
 
 ---
 

@@ -32,3 +32,24 @@ class Point(NamedTuple):
     x: float
     y: float
 ```
+
+## Validation patterns
+
+Use `__post_init__` sparingly; prefer validation at parsing boundaries:
+
+```python
+def parse_user(data: dict) -> User:
+    if not isinstance(data.get("id"), str):
+        raise ValueError("id must be string")
+    return User(id=data["id"], email=data["email"])
+```
+
+## Anti-patterns
+
+- **Mutable default field values** (lists, dicts): Use `field(default_factory=list)`.
+- **Mixing validation logic inside dataclass constructor**: Separate parsing from object construction.
+
+## CI discipline
+
+- Ensure all public dataclasses are frozen or explicitly mark as mutable.
+- Use `slots=True` for dataclasses with many instances to reduce memory overhead.

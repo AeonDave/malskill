@@ -29,3 +29,9 @@ Use this reference when shaping public Rust types, traits, modules, or construct
 - Prefer `pub(crate)` or private helpers over oversized public modules
 - Add `#[must_use]` to results that should not be ignored
 - Put runnable examples on public APIs when the usage is non-obvious
+
+## Contract hygiene
+
+- Keep constructor invariants explicit and validated at the boundary.
+- Prefer typed IDs/newtypes over raw `String`/`u64` in public APIs.
+- If API evolution is expected, avoid exposing internal representation details too early.

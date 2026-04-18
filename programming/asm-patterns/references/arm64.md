@@ -340,3 +340,42 @@ tbnz    x0, #0, .odd            // branch if bit 0 is set (odd number)
 cbz     x0, .is_null            // branch if x0 == 0
 cbnz    x1, .not_done           // branch if x1 != 0
 ```
+
+---
+
+## Branchless Patterns (ARM64)
+
+```asm
+// abs(x)
+cmp     x0, #0
+cneg    x0, x0, mi           // negate if negative
+
+// min(a, b)
+cmp     x0, x1
+csel    x0, x0, x1, lt       // x0 = (x0 < x1) ? x0 : x1
+
+// clamp(x, lo, hi)
+cmp     w0, w1
+csel    w0, w1, w0, lt       // max(x, lo)
+cmp     w0, w2
+csel    w0, w2, w0, gt       // min(x, hi)
+
+// conditional increment — no branch
+cmp     x0, x1
+cset    x2, eq               // x2 = (x0 == x1) ? 1 : 0
+add     x3, x3, x2
+```
+
+**When NOT to go branchless**: highly predictable branches (>95% one way) are faster than `csel` because the CPU speculates correctly and avoids the data dependency.
+
+## Macro Patterns — GAS
+
+```asm
+// ARM64: save/restore callee-saved pair
+.macro save_pair reg1, reg2, offset
+    stp     \reg1, \reg2, [sp, #\offset]
+.endm
+.macro restore_pair reg1, reg2, offset
+    ldp     \reg1, \reg2, [sp, #\offset]
+.endm
+```

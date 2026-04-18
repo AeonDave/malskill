@@ -21,3 +21,10 @@ Use this reference when Rust performance work touches threads, Rayon, async task
 - reduce lock scope and move work out of critical sections
 - batch small messages or updates
 - measure whether sequential code beats parallel overhead for small inputs
+
+## Throughput triage order
+
+1. verify queue/backpressure behavior under representative load
+2. identify contention points (locks/channels/atomics)
+3. reduce coordination overhead before adding more worker parallelism
+4. re-check p95/p99 latency, not only average throughput

