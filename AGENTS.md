@@ -7,6 +7,7 @@
 - Package one skill: `python knowledge/skill-creator/scripts/package_skill.py <skill-dir>`
 - Install skills interactively (PowerShell): `.\install.ps1` (supports `folder|skill|zip` with `flat|group` layouts)
 - Install skills interactively (Bash): `./install.sh` (supports `folder|skill|zip` with `flat|group` layouts)
+- Validate a whole section (Bash): `find <section> -type f -name SKILL.md -exec dirname {} \; | sort -u | while IFS= read -r dir; do python knowledge/skill-creator/scripts/quick_validate.py "$dir"; done`
 - Validate a whole section: `Get-ChildItem <section> -Recurse -Directory | ForEach-Object { python knowledge/skill-creator/scripts/quick_validate.py $_.FullName }`
 
 ## Active user decisions
@@ -30,10 +31,13 @@
 
 ## Project structure
 
-- `bof/` — BOF-focused skills; each skill root typically contains `SKILL.md` plus optional `assets/`, `references/`, and `scripts/`.
 - `offensive-tools/` — category folders such as `recon/`, `web-app/`, or `windows/`; each category contains one folder per tool skill.
-- `programming/` — language and pattern skills such as C/C++, Go, Python, Rust, and assembly patterns/testing/performance guidance.
+- `offensive-coding/` — offensive development skills, including `bof/` plus workflow-focused skills like `edr-evasion/` and `windows-internals/`.
+- `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, and assembly patterns/testing/performance guidance.
 - `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, and deep-research skills.
+- `ai/` — AI framework skills (for example `langchain-py/`).
+- `hardware/` — hardware-oriented skills and subdomains (for example `arduino/`).
+- `offensive-hardware/` — reserved for offensive hardware-focused skills.
 - `AGENTS.md` — root operational guidance for the whole repository.
 
 ## Conventions

@@ -1,6 +1,6 @@
 ---
 name: stack-spoofing
-description: "Design, implement, and harden x86-64 Windows call-stack spoofing primitives (Draugr, SilentMoonwalk DESYNC with/without Eclipse, CHRYSALIS, NtContinue-based synthetic contexts, thread-pool stack spoof). Use when writing or reviewing implants/loaders/BOFs that must hide syscall origins from EDR stack walkers, porting spoofers between C/Rust/Go, choosing between strategies on a specific Windows build (10, 11 22H2/24H2, Server 2022+), tuning frame thresholds against .pdata-parsed gadget inventories, debugging JMP [RBX] / ADD RSP,X gadget failures, or integrating stack spoofing with indirect syscall dispatch or sleep obfuscation. Covers frame math, UNWIND_INFO parsing gotchas, SAVE_NONVOL safety, Eclipse validation, per-strategy ASM trampoline layouts, and strategy selection on modern Windows where classical thresholds no longer hold."
+description: "Design, implement, and harden x86-64 Windows call-stack spoofing primitives (Draugr, SilentMoonwalk DESYNC with/without Eclipse, NtContinue-based synthetic contexts, thread-pool stack spoof) and reference implementations (YouMayPasser, VulcanRaven, Unwinder, HulkOps). Use when writing or reviewing implants/loaders/BOFs that must hide syscall origins from EDR stack walkers, porting spoofers between C/Rust/Go, choosing between strategies on a specific Windows build (10, 11 22H2/24H2, Server 2022+), tuning frame thresholds against .pdata-parsed gadget inventories, debugging JMP [RBX] / ADD RSP,X gadget failures, or integrating stack spoofing with indirect syscall dispatch or sleep obfuscation. Covers frame math, UNWIND_INFO parsing gotchas, SAVE_NONVOL safety, Eclipse validation, per-strategy ASM trampoline layouts, and strategy selection on modern Windows where classical thresholds no longer hold."
 license: MIT
 compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+. Classical thresholds assume Win10; Win11 22H2+ requires empirical re-tuning (see frame-math reference). ARM64 not covered — unwinder model differs."
 metadata:
@@ -18,7 +18,7 @@ This skill assumes you already understand `.pdata` / `UNWIND_INFO` at the level 
 
 ## When to activate
 
-- Implementing or reviewing Draugr / SilentMoonwalk / CHRYSALIS / NtContinue spoofers in C, C++, Rust, Go, or Plan9 ASM
+- Implementing or reviewing Draugr / SilentMoonwalk / NtContinue / YouMayPasser / VulcanRaven / Unwinder spoofers in C, C++, Rust, Go, or Plan9 ASM
 - Choosing between spoof strategies for a specific Windows build or thread context (main, TP worker, alertable, console-attached)
 - Debugging `spoof_init: FAIL jmp_rbx` or unwinder-reported frame-size mismatches
 - Adjusting `MinJmpRbxFrameSize` / `MinAddRspX` thresholds after `.pdata` inventory changes across Windows builds
@@ -48,6 +48,43 @@ If the question is "what does UNWIND_INFO look like" → wrong skill, read `wind
 
 ---
 
+## Notable implementations and variants
+
+The strategies above are conceptual; below are the public PoCs/implementations you will encounter in the wild. Each is a concrete realization (or precursor) of one of the three strategies, with its own quirks.
+
+### YouMayPasser (Waldo-irc) — return-address-only minimalist baseline
+
+64-bit weaponization of Gargoyle that extends Namaszo's original Return Address Spoofing PoC. Targets Cobalt Strike beacons. Spoofs only the **immediate** return address of the calling function — not a full multi-frame chain — so it is the cheapest stack-masquerading primitive.
+
+- **Strategy mapping**: precursor / strict subset of Draugr (1 frame, 1 gadget).
+- **When to pick**: BOF or short-lived primitive where one syscall's caller-frame must be hidden and a full Draugr chain is overkill.
+- **Caveat**: hardcoded gadget offsets per Windows build — you must re-tune per build, exactly as Win11 22H2+ measurements above warn for any `JMP [RBX]` consumer. Walks the same gadget cliffs as Draugr.
+
+### VulcanRaven — template-based stack mimicry with VEH cleanup
+
+Spoofs the call stack by **mirroring** a real captured stack from telemetry (SysMon ProcessAccess on lsass), shipping with three example profiles selected via `--wmi`, `--rpc`, `--svchost`. Each profile is a captured frame chain of a legitimate Windows service path; the spoofer reproduces it byte-for-byte before issuing `NtOpenProcess`.
+
+- **Strategy mapping**: orthogonal to Draugr/SilentMoonwalk — instead of computing a generic plausible chain, it copies a specific real one. Fewer correlation surface marks because the chain came from real telemetry.
+- **VEH twist**: registers a vectored exception handler before resuming the spoofed thread; on access violation it redirects to `RtlExitUserThread` so the thread terminates cleanly rather than crashing the host. Adopt this pattern any time you mutate `CONTEXT.Rsp` and cannot guarantee the planted chain unwinds correctly.
+- **When to pick**: targeted credential-access flows where you want the call chain to *match* a known-good svchost/RPC/WMI invocation rather than merely *look generic*.
+- **Limit**: the captured chain ages — re-collect SysMon templates after major Windows feature updates or you start mimicking a chain that no longer exists in production.
+
+### Unwinder (Kudaes) — Rust weaponization of SilentMoonwalk
+
+Rust crate (`unwinder` on crates.io) implementing full SilentMoonwalk DESYNC with stable, idiomatic Rust ergonomics. Supports calling arbitrary functions or indirect syscalls with **up to 11 parameters**, retrieves return values, and the spoof can be **chained any number of times without growing the call stack** (frames are recycled per call).
+
+- **Strategy mapping**: SilentMoonwalk DESYNC (4 frames, JMP[RBX] + ADD RSP,X), Rust-native.
+- **When to pick**: Rust implants where you want SilentMoonwalk without rolling your own `global_asm!` trampoline. Treat it as the canonical Rust answer to the lang-c-rust-go reference's SilentMoonwalk slot.
+- **Caveat**: still subject to all the Win11 22H2+ gadget-population limits. Cascade module ordering is internal to the crate — read its source before assuming `wininet → user32 → kernelbase` is wired the way you want.
+
+### HulkOps — tutorial reference, not a tool
+
+GitBook write-up walking through both **return address spoofing** and **x64 call stack spoofing** at code level: synthetic stack frames with proper unwinding, locating `RUNTIME_FUNCTION` in `.pdata`, parsing `UNWIND_CODE` to compute frame sizes, and the assembly `Spoof` function that pushes a sentinel `0` to terminate unwinding.
+
+- **Use as**: pedagogical reference for engineers new to the technique. Especially good for understanding **why** the math in `references/frame-math.md` looks the way it does. Not a drop-in implementation.
+
+---
+
 ## Decision tree
 
 ```
@@ -67,8 +104,8 @@ Implant runs on...
 ├── Single one-shot syscall with console attached?
 │   └── Indirect syscall only (skip spoofing) — NtContinue races console
 │
-└── Sleep obfuscation + per-call spoof?
-    └── CHRYSALIS (SilentMoonwalk + MemoryBouncing + per-sleep key rotation)
+└── Need template-based mimicry of a real process's stack (e.g. svchost/RPC/WMI)?
+    └── VulcanRaven — synthetic stack mirroring a captured SysMon profile, VEH-based cleanup
 ```
 
 ---
@@ -273,7 +310,11 @@ Full diagnostic script + instrumentation pattern in `references/frame-math.md` �
 
 - Eden / Draugr — original C++ implementation, `NtDallas` author
 - SilentMoonwalk — Klezvirus et al., public repo (github.com/klezVirus/SilentMoonwalk)
-- CHRYSALIS — research on MemoryBouncing + per-sleep key rotation (internal; inspired by Foliage / Fritter)
+- YouMayPasser — Waldo-irc, 64-bit Gargoyle / Return-Address-Spoofing extension (precursor of Draugr; built on Namaszo's PoC)
+- VulcanRaven — synthetic stack mimicry with SysMon-captured wmi/rpc/svchost profiles + VEH cleanup; targets `NtOpenProcess` on lsass
+- Unwinder — Kudaes, Rust port/weaponization of SilentMoonwalk (github.com/Kudaes/Unwinder; `unwinder` on crates.io)
+- HulkOps — GitBook tutorial: x64 Return Address Spoofing and x64 Call Stack Spoofing (hulkops.gitbook.io/blog/red-team)
 - Eclipse bypass — Arash Parsa (waldo-irc), Call Stack Masquerading research
+- WithSecure Labs — "Spoofing Call Stacks To Confuse EDRs" (CallStackSpoofer PoC)
 - Microsoft x64 unwind docs — `learn.microsoft.com/en-us/cpp/build/exception-handling-x64`
 - Geoff Chappell — CALL-site reverse on `RtlUserThreadStart` / `BaseThreadInitThunk`
