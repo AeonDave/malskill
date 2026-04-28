@@ -1,8 +1,10 @@
 param(
     [string]$SourceRoot = "",
     [string]$Destination = "",
-    [ValidateSet("folder", "skill", "")]
+    [ValidateSet("folder", "skill", "zip", "")]
     [string]$Format = "",
+    [ValidateSet("flat", "group", "")]
+    [string]$Layout = "",
     [string[]]$SkillRefs = @(),
     [switch]$All
 )
@@ -46,6 +48,14 @@ function Normalize-SkillPath([string]$PathValue) {
 
 function Get-RelativePathNormalized([string]$BasePath, [string]$TargetPath) {
     return Normalize-SkillPath ([System.IO.Path]::GetRelativePath($BasePath, $TargetPath))
+}
+
+function Convert-NormalizedPathToSystemPath([string]$PathValue) {
+    if ([string]::IsNullOrWhiteSpace($PathValue) -or $PathValue -eq '.') {
+        return ""
+    }
+
+    return $PathValue.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
 }
 
 function Test-SkillDiscoveryExcluded([string]$RootPath, [string]$CandidatePath) {
@@ -292,15 +302,37 @@ function Select-Format {
     Write-Step "Choose output format"
     Write-Host "[1] folder  - copy each skill directory into the destination root" -ForegroundColor Cyan
     Write-Host "[2] .skill  - create a standard zip-based .skill archive per selected skill" -ForegroundColor Cyan
+    Write-Host "[3] .zip    - create a standard .zip archive per selected skill" -ForegroundColor Cyan
     $choice = Read-Host "Select format"
     switch ($choice.Trim()) {
         '1' { return 'folder' }
         '2' { return 'skill' }
+        '3' { return 'zip' }
         default { throw "Invalid format selection: $choice" }
     }
 }
 
-function Assert-UniqueArtifactNames([object[]]$SelectedSkills) {
+function Select-Layout {
+    if (-not [string]::IsNullOrWhiteSpace($Layout)) {
+        return $Layout
+    }
+
+    Write-Step "Choose install layout"
+    Write-Host "[1] flat   - install every selected skill at the destination root" -ForegroundColor Cyan
+    Write-Host "[2] group  - preserve the source-root-relative category structure" -ForegroundColor Cyan
+    $choice = Read-Host "Select layout"
+    switch ($choice.Trim()) {
+        '1' { return 'flat' }
+        '2' { return 'group' }
+        default { throw "Invalid layout selection: $choice" }
+    }
+}
+
+function Assert-UniqueArtifactNames([object[]]$SelectedSkills, [string]$LayoutChoice) {
+    if ($LayoutChoice -eq 'group') {
+        return
+    }
+
     $duplicates = $SelectedSkills | Group-Object Name | Where-Object { $_.Count -gt 1 }
     if ($duplicates) {
         $details = foreach ($duplicate in $duplicates) {
@@ -309,6 +341,28 @@ function Assert-UniqueArtifactNames([object[]]$SelectedSkills) {
         }
         throw "Selected skills would collide at install time:`n$($details -join "`n")"
     }
+}
+
+function Get-InstallFolderTarget([string]$DestinationRoot, [object]$Skill, [string]$LayoutChoice) {
+    if ($LayoutChoice -eq 'group' -and $Skill.RelativePath -ne '.') {
+        $relativePath = Convert-NormalizedPathToSystemPath $Skill.RelativePath
+        return [System.IO.Path]::Combine($DestinationRoot, $relativePath)
+    }
+
+    return [System.IO.Path]::Combine($DestinationRoot, $Skill.Name)
+}
+
+function Get-InstallArchiveTarget([string]$DestinationRoot, [object]$Skill, [string]$LayoutChoice, [string]$Extension) {
+    $fileName = "{0}.{1}" -f $Skill.Name, $Extension
+    if ($LayoutChoice -eq 'group' -and $Skill.RelativePath -ne '.') {
+        $relativePath = Convert-NormalizedPathToSystemPath $Skill.RelativePath
+        $relativeDir = Split-Path -Path $relativePath -Parent
+        if (-not [string]::IsNullOrWhiteSpace($relativeDir)) {
+            return [System.IO.Path]::Combine($DestinationRoot, $relativeDir, $fileName)
+        }
+    }
+
+    return [System.IO.Path]::Combine($DestinationRoot, $fileName)
 }
 
 function Validate-SelectedSkills([object[]]$SelectedSkills) {
@@ -341,37 +395,67 @@ function Remove-ExistingSkillDirectory([string]$TargetPath) {
     throw "Refusing to remove existing directory not recognized as a skill folder: $TargetPath"
 }
 
-function Install-AsFolders([object[]]$SelectedSkills, [string]$DestinationRoot) {
+function Install-AsFolders([object[]]$SelectedSkills, [string]$DestinationRoot, [string]$LayoutChoice) {
     New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
 
     foreach ($skill in $SelectedSkills) {
-        $targetDir = Join-Path $DestinationRoot $skill.Name
+        $targetDir = Get-InstallFolderTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice
+        $targetParent = Split-Path -Path $targetDir -Parent
         if (Test-Path -LiteralPath $targetDir) {
             Write-Warn "Removing existing installed skill directory: $targetDir"
             Remove-ExistingSkillDirectory -TargetPath $targetDir
         }
 
+        if (-not [string]::IsNullOrWhiteSpace($targetParent)) {
+            New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+        }
+
         Write-Step "Installing folder $($skill.RelativePath) -> $targetDir"
-        Copy-Item -LiteralPath $skill.FullPath -Destination $DestinationRoot -Recurse -Force
+        Copy-Item -LiteralPath $skill.FullPath -Destination $targetDir -Recurse -Force
     }
 }
 
-function Install-AsPackages([object[]]$SelectedSkills, [string]$DestinationRoot) {
+function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot, [string]$LayoutChoice, [string]$Extension) {
     New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
 
     foreach ($skill in $SelectedSkills) {
-        $targetFile = Join-Path $DestinationRoot ("{0}.skill" -f $skill.Name)
+        $targetFile = Get-InstallArchiveTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice -Extension $Extension
+        $targetParent = Split-Path -Path $targetFile -Parent
+        if (-not [string]::IsNullOrWhiteSpace($targetParent)) {
+            New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+        }
+
         if (Test-Path -LiteralPath $targetFile) {
             $item = Get-Item -LiteralPath $targetFile
             if ($item.PSIsContainer) {
-                throw "Refusing to overwrite directory with .skill archive: $targetFile"
+                throw "Refusing to overwrite directory with .$Extension archive: $targetFile"
             }
             Write-Warn "Removing existing archive: $targetFile"
             Remove-Item -LiteralPath $targetFile -Force
         }
 
         Write-Step "Packaging $($skill.RelativePath) -> $targetFile"
-        Invoke-PythonScript -ScriptPath $PackagerScript -ScriptArgs @($skill.FullPath, $DestinationRoot)
+        if ($Extension -eq 'skill') {
+            Invoke-PythonScript -ScriptPath $PackagerScript -ScriptArgs @($skill.FullPath, $targetParent)
+            continue
+        }
+
+        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        try {
+            Invoke-PythonScript -ScriptPath $PackagerScript -ScriptArgs @($skill.FullPath, $tempDir)
+            $generatedArchive = Join-Path $tempDir ("{0}.skill" -f $skill.Name)
+            if (-not (Test-Path -LiteralPath $generatedArchive)) {
+                throw "Packager did not create expected archive: $generatedArchive"
+            }
+
+            Move-Item -LiteralPath $generatedArchive -Destination $targetFile -Force
+        }
+        finally {
+            if (Test-Path -LiteralPath $tempDir) {
+                Remove-Item -LiteralPath $tempDir -Recurse -Force
+            }
+        }
     }
 }
 
@@ -386,21 +470,24 @@ if ($selectedSkills.Count -eq 0) {
     throw "No skills selected."
 }
 
-Assert-UniqueArtifactNames -SelectedSkills $selectedSkills
-$destinationRoot = Select-Destination
 $resolvedFormat = Select-Format
+$resolvedLayout = Select-Layout
+Assert-UniqueArtifactNames -SelectedSkills $selectedSkills -LayoutChoice $resolvedLayout
+$destinationRoot = Select-Destination
 
 Write-Host ""
 Write-Info "Selected $($selectedSkills.Count) skill(s)"
 Write-Info "Destination root: $destinationRoot"
 Write-Info "Format: $resolvedFormat"
+Write-Info "Layout: $resolvedLayout"
 Write-Host ""
 
 Validate-SelectedSkills -SelectedSkills $selectedSkills
 
 switch ($resolvedFormat) {
-    'folder' { Install-AsFolders -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot }
-    'skill'  { Install-AsPackages -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot }
+    'folder' { Install-AsFolders -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout }
+    'skill'  { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'skill' }
+    'zip'    { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'zip' }
     default  { throw "Unsupported format: $resolvedFormat" }
 }
 
@@ -408,8 +495,10 @@ Write-Host ""
 Write-Info "Install complete."
 foreach ($skill in $selectedSkills) {
     if ($resolvedFormat -eq 'folder') {
-        Write-Host ("    {0}" -f (Join-Path $destinationRoot $skill.Name)) -ForegroundColor DarkGray
+        Write-Host ("    {0}" -f (Get-InstallFolderTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout)) -ForegroundColor DarkGray
+    } elseif ($resolvedFormat -eq 'zip') {
+        Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'zip')) -ForegroundColor DarkGray
     } else {
-        Write-Host ("    {0}" -f (Join-Path $destinationRoot ("{0}.skill" -f $skill.Name))) -ForegroundColor DarkGray
+        Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'skill')) -ForegroundColor DarkGray
     }
 }

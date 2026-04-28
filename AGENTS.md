@@ -5,8 +5,8 @@
 - Scaffold a new skill: `python knowledge/skill-creator/scripts/init_skill.py <skill-name> --path <target-dir> --resources references`
 - Validate one skill: `python knowledge/skill-creator/scripts/quick_validate.py <skill-dir>`
 - Package one skill: `python knowledge/skill-creator/scripts/package_skill.py <skill-dir>`
-- Install skills interactively (PowerShell): `.\install.ps1`
-- Install skills interactively (Bash): `./install.sh`
+- Install skills interactively (PowerShell): `.\install.ps1` (supports `folder|skill|zip` with `flat|group` layouts)
+- Install skills interactively (Bash): `./install.sh` (supports `folder|skill|zip` with `flat|group` layouts)
 - Validate a whole section: `Get-ChildItem <section> -Recurse -Directory | ForEach-Object { python knowledge/skill-creator/scripts/quick_validate.py $_.FullName }`
 
 ## Active user decisions

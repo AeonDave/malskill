@@ -10,27 +10,27 @@ Each skill is a self-contained folder with a `SKILL.md` that gives any AI coding
 
 One skill per offensive tool, organized by attack phase. Each skill teaches the agent how the tool works, its common flags, target scenarios, and operational caveats.
 
-| Subcategory | Examples |
-|---|---|
-| `recon/` | amass, subfinder, ffuf, feroxbuster, httpx, shodan |
-| `windows/` | mimikatz, bloodhound, rubeus, crackmapexec, certify, nanodump |
-| `network/` | nmap, responder, masscan, wireshark, ligolo-ng, bettercap |
-| `c2/` | cobalt-strike, sliver, poshc2, merlin, covenant |
-| `web-app/` | sqlmap, xsstrike, commix, tplmap, corsy |
-| `vuln-scanners/` | burpsuite, nuclei, nikto, openvas, wpscan |
-| `evasion/` | donut, shellter, veil, shellcode-fluctuation |
-| `social-engineering/` | gophish, evilginx2, set, modlishka, cupp |
-| `cracking/` | hashcat, john, hydra, cain-and-abel |
-| `privilege-escalation/` | linpeas, winpeas, privesccheck |
-| `re/` | ghidra, radare2, x64dbg, binwalk |
-| `shells/` | revshells, weevely3, reverse-ssh, shellerator |
-| `osint/` | maltego, sherlock, holehe, phoneinfoga |
-| `cloud/` | pacu, scoutsuite, gitleaks, trufflehog |
-| `data-exfiltration/` | dnsexfiltrator, cloakify, pyexfil |
-| `linux/` | linux-exploit-suggester, mimipenguin |
-| `exploits/` | searchsploit, beef |
-| `api/` | kiterunner, arjun |
-| `wireless/` | (3 tools) |
+| Subcategory             | Examples                                                      |
+|-------------------------|---------------------------------------------------------------|
+| `recon/`                | amass, subfinder, ffuf, feroxbuster, httpx, shodan            |
+| `windows/`              | mimikatz, bloodhound, rubeus, crackmapexec, certify, nanodump |
+| `network/`              | nmap, responder, masscan, wireshark, ligolo-ng, bettercap     |
+| `c2/`                   | cobalt-strike, sliver, poshc2, merlin, covenant               |
+| `web-app/`              | sqlmap, xsstrike, commix, tplmap, corsy                       |
+| `vuln-scanners/`        | burpsuite, nuclei, nikto, openvas, wpscan                     |
+| `evasion/`              | donut, shellter, veil, shellcode-fluctuation                  |
+| `social-engineering/`   | gophish, evilginx2, set, modlishka, cupp                      |
+| `cracking/`             | hashcat, john, hydra, cain-and-abel                           |
+| `privilege-escalation/` | linpeas, winpeas, privesccheck                                |
+| `re/`                   | ghidra, radare2, x64dbg, binwalk                              |
+| `shells/`               | revshells, weevely3, reverse-ssh, shellerator                 |
+| `osint/`                | maltego, sherlock, holehe, phoneinfoga                        |
+| `cloud/`                | pacu, scoutsuite, gitleaks, trufflehog                        |
+| `data-exfiltration/`    | dnsexfiltrator, cloakify, pyexfil                             |
+| `linux/`                | linux-exploit-suggester, mimipenguin                          |
+| `exploits/`             | searchsploit, beef                                            |
+| `api/`                  | kiterunner, arjun                                             |
+| `wireless/`             | (3 tools)                                                     |
 
 ### `bof/` — Beacon Object Files (2 skills)
 
@@ -66,9 +66,15 @@ Skills that support the workflow itself rather than a specific tool.
 # Clone
 git clone <repo-url> && cd malskill
 
-# Interactive install (choose skills, destination, and output format)
+# Interactive install (choose skills, destination, output format, and layout)
 ./install.sh
 .\install.ps1
+
+# Install grouped folders while preserving repo categories
+./install.sh --skills offensive-tools/windows/mimikatz --format folder --layout group --destination ~/.agents/skills
+
+# Export grouped .zip archives
+./install.sh --skills offensive-tools/windows/mimikatz --format zip --layout group --destination ./dist/skills
 
 # Install a skill (copy its folder into your agent's skill directory)
 cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
@@ -81,13 +87,19 @@ Skills are plain folders — no build step, no runtime dependency. Copy a skill 
 
 The repository also includes interactive installers at the repo root:
 
-- `install.sh` — Bash installer for selecting skills, destination root, and output format
+- `install.sh` — Bash installer for selecting skills, destination root, output format, and layout
 - `install.ps1` — PowerShell installer with the same workflow on Windows
 
 Supported output formats:
 
 - `folder` — copies the skill directory into the destination root
 - `.skill` — creates a distributable `.skill` archive; in this repo it is a standard zip archive that preserves the skill folder name
+- `zip` — creates a standard `.zip` archive with the same packaged contents as `.skill`
+
+Supported install layouts:
+
+- `flat` — installs every selected skill directly under the destination root
+- `group` — preserves the source-root-relative category structure under the destination root
 
 ## Validation
 

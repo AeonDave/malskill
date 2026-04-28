@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT=""
 DESTINATION=""
 FORMAT=""
+LAYOUT=""
 ALL=false
 SKILL_REFS_RAW=""
 
@@ -32,24 +33,27 @@ warn() {
 }
 
 usage() {
-    cat <<EOF
-Usage: ./install.sh [options]
-
-Options:
-  -s, --source <dir>        Root to scan for SKILL.md folders (default: repo root)
-  -d, --destination <dir>   Destination root for installed folders or .skill files
-  -f, --format <folder|skill>
-                            folder = copy skill directories
-                            skill  = create .skill zip archives
-  -k, --skills <refs>       Comma-separated skill refs (relative paths or unique names)
-  -a, --all                 Select all discovered skills
-  -h, --help                Show this help
-
-Examples:
-  ./install.sh
-  ./install.sh --all --format folder --destination ~/.agents/skills
-  ./install.sh --skills offensive-tools/windows/mimikatz,programming/python-patterns --format skill --destination ./dist/skills
-EOF
+    printf '%s\n' \
+        'Usage: ./install.sh [options]' \
+        '' \
+        'Options:' \
+        '  -s, --source <dir>        Root to scan for SKILL.md folders (default: repo root)' \
+        '  -d, --destination <dir>   Destination root for installed folders or .skill files' \
+        '  -f, --format <folder|skill|zip>' \
+        '                            folder = copy skill directories' \
+        '                            skill  = create .skill zip archives' \
+        '                            zip    = create standard .zip archives' \
+        '  -l, --layout <flat|group>' \
+        '                            flat   = install every selected skill at the destination root' \
+        '                            group  = preserve the source-root-relative category structure' \
+        '  -k, --skills <refs>       Comma-separated skill refs (relative paths or unique names)' \
+        '  -a, --all                 Select all discovered skills' \
+        '  -h, --help                Show this help' \
+        '' \
+        'Examples:' \
+        '  ./install.sh' \
+        '  ./install.sh --all --format folder --layout flat --destination ~/.agents/skills' \
+        '  ./install.sh --skills offensive-tools/windows/mimikatz,programming/python-patterns --format zip --layout group --destination ./dist/skills'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -64,6 +68,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--format)
             FORMAT="$2"
+            shift 2
+            ;;
+        -l|--layout)
+            LAYOUT="$2"
             shift 2
             ;;
         -k|--skills)
@@ -321,6 +329,9 @@ fi
 
 assert_unique_artifact_names() {
     local i j
+    if [[ "$LAYOUT" == 'group' ]]; then
+        return
+    fi
     for ((i = 0; i < ${#SELECTED_NAMES[@]}; i++)); do
         for ((j = i + 1; j < ${#SELECTED_NAMES[@]}; j++)); do
             if [[ "${SELECTED_NAMES[$i]}" == "${SELECTED_NAMES[$j]}" ]]; then
@@ -333,7 +344,34 @@ assert_unique_artifact_names() {
     done
 }
 
-assert_unique_artifact_names
+skill_dir_target_path() {
+    local rel="$1"
+    local name="$2"
+
+    if [[ "$LAYOUT" == 'group' && "$rel" != '.' ]]; then
+        printf '%s/%s\n' "$DESTINATION" "$rel"
+        return
+    fi
+
+    printf '%s/%s\n' "$DESTINATION" "$name"
+}
+
+archive_target_path() {
+    local rel="$1"
+    local name="$2"
+    local extension="$3"
+    local parent_dir
+
+    if [[ "$LAYOUT" == 'group' && "$rel" != '.' ]]; then
+        parent_dir="$(dirname "$rel")"
+        if [[ "$parent_dir" != '.' ]]; then
+            printf '%s/%s/%s.%s\n' "$DESTINATION" "$parent_dir" "$name" "$extension"
+            return
+        fi
+    fi
+
+    printf '%s/%s.%s\n' "$DESTINATION" "$name" "$extension"
+}
 
 choose_destination() {
     local home_dir choice manual index custom_index option
@@ -393,7 +431,7 @@ choose_format() {
     local choice
     if [[ -n "$FORMAT" ]]; then
         case "$FORMAT" in
-            folder|skill) return ;;
+            folder|skill|zip) return ;;
             *)
                 printf '[ERROR] Unsupported format: %s\n' "$FORMAT" >&2
                 exit 1
@@ -404,10 +442,12 @@ choose_format() {
     step 'Choose output format'
     printf '[1] folder  - copy each skill directory into the destination root\n'
     printf '[2] .skill  - create a standard zip-based .skill archive per selected skill\n'
+    printf '[3] .zip    - create a standard .zip archive per selected skill\n'
     read -r -p 'Select format: ' choice
     case "${choice// /}" in
         1) FORMAT='folder' ;;
         2) FORMAT='skill' ;;
+        3) FORMAT='zip' ;;
         *)
             printf '[ERROR] Invalid format selection: %s\n' "$choice" >&2
             exit 1
@@ -417,10 +457,41 @@ choose_format() {
 
 choose_format
 
+choose_layout() {
+    local choice
+    if [[ -n "$LAYOUT" ]]; then
+        case "$LAYOUT" in
+            flat|group) return ;;
+            *)
+                printf '[ERROR] Unsupported layout: %s\n' "$LAYOUT" >&2
+                exit 1
+                ;;
+        esac
+    fi
+
+    step 'Choose install layout'
+    printf '[1] flat   - install every selected skill at the destination root\n'
+    printf '[2] group  - preserve the source-root-relative category structure\n'
+    read -r -p 'Select layout: ' choice
+    case "${choice// /}" in
+        1) LAYOUT='flat' ;;
+        2) LAYOUT='group' ;;
+        *)
+            printf '[ERROR] Invalid layout selection: %s\n' "$choice" >&2
+            exit 1
+            ;;
+    esac
+}
+
+choose_layout
+
+assert_unique_artifact_names
+
 printf '\n'
 info "Selected ${#SELECTED_FULLS[@]} skill(s)"
 info "Destination root: $DESTINATION"
 info "Format: $FORMAT"
+info "Layout: $LAYOUT"
 printf '\n'
 
 validate_selected_skills() {
@@ -449,34 +520,58 @@ remove_existing_skill_directory() {
 }
 
 install_as_folders() {
-    local i target
+    local i target target_parent
     mkdir -p "$DESTINATION"
     for ((i = 0; i < ${#SELECTED_FULLS[@]}; i++)); do
-        target="$DESTINATION/${SELECTED_NAMES[$i]}"
+        target="$(skill_dir_target_path "${SELECTED_RELS[$i]}" "${SELECTED_NAMES[$i]}")"
+        target_parent="$(dirname "$target")"
         if [[ -e "$target" ]]; then
             warn "Removing existing installed skill directory: $target"
             remove_existing_skill_directory "$target"
         fi
+        mkdir -p "$target_parent"
         step "Installing folder ${SELECTED_RELS[$i]} -> $target"
-        cp -R "${SELECTED_FULLS[$i]}" "$DESTINATION/"
+        cp -R "${SELECTED_FULLS[$i]}" "$target"
     done
 }
 
-install_as_packages() {
-    local i target
+install_as_archives() {
+    local extension="$1"
+    local i target target_dir temp_dir packaged
     mkdir -p "$DESTINATION"
     for ((i = 0; i < ${#SELECTED_FULLS[@]}; i++)); do
-        target="$DESTINATION/${SELECTED_NAMES[$i]}.skill"
+        target="$(archive_target_path "${SELECTED_RELS[$i]}" "${SELECTED_NAMES[$i]}" "$extension")"
+        target_dir="$(dirname "$target")"
+        mkdir -p "$target_dir"
         if [[ -e "$target" ]]; then
             if [[ -d "$target" ]]; then
-                printf '[ERROR] Refusing to overwrite directory with .skill archive: %s\n' "$target" >&2
+                printf '[ERROR] Refusing to overwrite directory with .%s archive: %s\n' "$extension" "$target" >&2
                 exit 1
             fi
             warn "Removing existing archive: $target"
             rm -f "$target"
         fi
         step "Packaging ${SELECTED_RELS[$i]} -> $target"
-        run_python "$PACKAGER_SCRIPT" "${SELECTED_FULLS[$i]}" "$DESTINATION"
+        if [[ "$extension" == 'skill' ]]; then
+            run_python "$PACKAGER_SCRIPT" "${SELECTED_FULLS[$i]}" "$target_dir"
+            continue
+        fi
+
+        temp_dir="$(mktemp -d)"
+        if ! run_python "$PACKAGER_SCRIPT" "${SELECTED_FULLS[$i]}" "$temp_dir"; then
+            rm -rf "$temp_dir"
+            exit 1
+        fi
+
+        packaged="$temp_dir/${SELECTED_NAMES[$i]}.skill"
+        if [[ ! -f "$packaged" ]]; then
+            rm -rf "$temp_dir"
+            printf '[ERROR] Packager did not create expected archive: %s\n' "$packaged" >&2
+            exit 1
+        fi
+
+        mv "$packaged" "$target"
+        rm -rf "$temp_dir"
     done
 }
 
@@ -487,7 +582,10 @@ case "$FORMAT" in
         install_as_folders
         ;;
     skill)
-        install_as_packages
+        install_as_archives 'skill'
+        ;;
+    zip)
+        install_as_archives 'zip'
         ;;
     *)
         printf '[ERROR] Unsupported format: %s\n' "$FORMAT" >&2
@@ -499,8 +597,10 @@ printf '\n'
 info 'Install complete.'
 for ((i = 0; i < ${#SELECTED_FULLS[@]}; i++)); do
     if [[ "$FORMAT" == 'folder' ]]; then
-        printf '    %s\n' "$DESTINATION/${SELECTED_NAMES[$i]}"
+        printf '    %s\n' "$(skill_dir_target_path "${SELECTED_RELS[$i]}" "${SELECTED_NAMES[$i]}")"
+    elif [[ "$FORMAT" == 'zip' ]]; then
+        printf '    %s\n' "$(archive_target_path "${SELECTED_RELS[$i]}" "${SELECTED_NAMES[$i]}" 'zip')"
     else
-        printf '    %s\n' "$DESTINATION/${SELECTED_NAMES[$i]}.skill"
+        printf '    %s\n' "$(archive_target_path "${SELECTED_RELS[$i]}" "${SELECTED_NAMES[$i]}" 'skill')"
     fi
 done

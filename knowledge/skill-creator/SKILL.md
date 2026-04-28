@@ -45,7 +45,7 @@ The context window is shared. Every token in a skill competes with the user's re
 Design for staged loading:
 
 - **Discovery**: `name` + `description` only
-- **Activation**: full `SKILL.md` body (keep under **500 lines**)
+- **Activation**: full `SKILL.md` body (keep under **600 lines**)
 - **On demand**: files in `scripts/`, `references/`, `assets/`
 
 Move detail to `references/` so the agent loads only what it needs.
@@ -234,7 +234,7 @@ After real usage, revisit:
 
 1. Did the agent trigger the skill when it should have? → Improve `description`
 2. Did the agent struggle with any step? → Add clarity or a script
-3. Did `SKILL.md` exceed 500 lines? → Move content to `references/`
+3. Did `SKILL.md` exceed 600 lines? → Move content to `references/`
 4. Are there new usage patterns? → Add examples or a new reference file
 5. Did every test run recreate the same helper script? → Bundle it in `scripts/`
 6. Did a section not improve any output? → Remove it

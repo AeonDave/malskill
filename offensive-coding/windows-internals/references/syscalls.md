@@ -80,6 +80,8 @@ No `mov r10, rcx`-equivalent trick is needed — ARM64 calling convention alread
 
 The SSN is not stable across Windows builds. Patch Tuesday routinely shuffles them. Every modern implant resolves at runtime.
 
+> **See also**: the dedicated [`indirect-syscall`](../../indirect-syscall/SKILL.md) skill covers the **implementation** side of each strategy (complete C/Rust/Go trampolines, SSN-table init with obfuscated hashes, gadget caching, 6+ arg variants). This section is the **reference** for how each strategy works; go to `indirect-syscall` when actually writing dispatcher code.
+
 ### Strategy 1 — Hell's Gate
 
 **Assumption**: the stub you find in ntdll is **not hooked**.
@@ -137,7 +139,7 @@ Zw exports sorted by RVA:
  ...
 ```
 
-This works because the kernel service table is populated in the same order the exports are laid out, which reflects the alphabetical ordering of the internal function definition names.
+This works because the kernel's SSDT (`nt!KiServiceTable`) is populated in the same order the `Zw*` exports are laid out at ntdll link time. The ordering is a link-layout artifact, **not** a guaranteed alphabetical sort — it happens to correlate with alphabetical order of internal names on most builds, but the invariant you rely on is *sorted-by-RVA matches SSN*, not *alphabetical-by-name matches SSN*.
 
 **Advantage**: completely immune to stub hooks. Never reads stub bytes. The name→SSN table can be built once at process init.
 
@@ -187,20 +189,20 @@ RIP           → your_module.text+YYY (the `syscall` instruction)
 Find a `syscall; ret` byte sequence (`0F 05 C3`) inside ntdll and `call` it, passing the SSN in `rax`.
 
 ```asm
-; SSN in eax, args properly marshalled
+; SSN in eax, r11 = address of `0F 05 C3` gadget inside ntdll
 MyIndirectSyscall:
     mov     r10, rcx
     mov     eax, <SSN>
-    call    qword ptr [r11]    ; r11 = address of 0F 05 C3 inside ntdll
+    call    r11                ; call the gadget directly (do NOT deref)
     ret
 ```
 
-Where is `0F 05 C3`? Inside every `Nt*` stub, at offset `12` from the start (after the test/jne wow64 gate). In a non-hooked ntdll, every Nt stub ends with these three bytes; pick any one.
+Where is `0F 05 C3`? Inside every unhooked `Nt*` stub, at **offset `0x12` (18 decimal)** from the stub start — after `mov r10, rcx` (3) + `mov eax, imm32` (5) + `test byte [0x7FFE0308], 1` (8) + `jne short` (2) = 18 bytes of prologue. In a non-hooked ntdll every Nt stub ends with these three bytes; pick any one that validates (stub may be hooked → pattern at +0x12 no longer matches, try next export).
 
-Call stack at the moment of the syscall:
+Call stack at the moment of the syscall (stub-relative offsets):
 ```
-Return address → ntdll!Nt*Stub + 0x0E  (the ret instruction after syscall)
-RIP           → ntdll!Nt*Stub + 0x0C  (the syscall instruction)
+Return address in RCX (clobbered by syscall) → ntdll!Nt*Stub + 0x14  (the ret after syscall)
+RIP at trap                                  → ntdll!Nt*Stub + 0x12  (the syscall instruction)
 ```
 
 **Detection signal reduced**: stack now looks like a legitimate ntdll syscall — but a careful examiner sees the return address below that points into your module's code. ETW-TI kernel-side call stack still captures this.

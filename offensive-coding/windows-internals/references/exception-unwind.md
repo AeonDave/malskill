@@ -2,6 +2,8 @@
 
 Complete coverage of x64 Windows exception mechanics: SEH / VEH / CEH, UNWIND_INFO format, `RtlLookupFunctionEntry`, `RtlVirtualUnwind`, `KiUserExceptionDispatcher` flow, and how all of this gets reused for offensive call-stack spoofing (SilentMoonwalk / Draugr / CHRYSALIS).
 
+> **See also**: the dedicated [`stack-spoofing`](../../stack-spoofing/SKILL.md) skill covers the **implementation** side of call-stack spoofing (frame-size math with `SAVE_NONVOL` safety filter, `FF 23` gadget scanners with debug instrumentation, per-build empirical gadget inventories, C/Rust/Go trampoline skeletons). This file is the **reference** for the underlying mechanisms; go to `stack-spoofing` when actually building a spoofer.
+
 ---
 
 ## Why x64 exception handling matters offensively
@@ -419,3 +421,37 @@ CET enforcement is per-process, triggered by `SET_PROCESS_MITIGATION_POLICY`. Mo
 | `RtlAddGrowableFunctionTable` | Modern version; allows function table to grow |
 
 Offensive use of `RtlAddFunctionTable`: register fake UNWIND_INFO for attacker-allocated RX memory so that stack walks through shellcode unwind cleanly → "backed" frames even though memory is unbacked.
+
+---
+
+## Appendix — Win11 22H2+ empirical gadget inventory
+
+Measured on Windows 11 Build 22631.3880, retail un-patched. Gadget counts (`FF 23` = `JMP [RBX]` byte sequence inside a function body, preceded by an `E8` CALL within the same .pdata entry for Eclipse-style chaining) for the modules commonly used as stack-spoof sources:
+
+| Module | Total `FF 23` | Max frame size passing `SAVE_NONVOL` safety | Eclipse candidates (CALL-preceded) |
+|---|---|---|---|
+| ntdll.dll | 6 | `0x40` | 0 |
+| kernelbase.dll | 14 | `0x70` | 0 |
+| kernel32.dll | 2 | 0 | 0 |
+| user32.dll | 12 | `0x58` | 4 |
+| wininet.dll | 34 | `0x98` | 18 |
+
+**Implication for the classical `min_frame == 0xD8` threshold** used by older Draugr/SM references: on Win11 22H2+ kernelbase alone, **no gadget satisfies it**. Common failure mode when porting an older PoC: init returns "no gadget found", zero syscalls dispatched, silent fallthrough.
+
+**Practical minimums** (shadow `0x20` + N stack args × 8 + alignment `0x08`):
+
+| Syscall arg count | Minimum frame size needed |
+|---|---|
+| 4 (register-only) | `0x28` |
+| 6 | `0x38` |
+| 8 | `0x48` |
+| 11 (`NtCreateThreadEx`) | `0x60` |
+| 18 | `0x98` |
+
+For most dispatcher needs, lowering the threshold to `0x60` unlocks the 14 kernelbase gadgets. For Eclipse cascade (CALL-preceded gadgets), wininet is the only module with meaningful supply on recent builds; plan for a one-time `LoadLibraryW` at init if your host process does not already import it.
+
+### The `SAVE_NONVOL` safety filter
+
+A gadget whose parent function has `UWOP_SAVE_NONVOL` at offset ≥ frame size will clobber the caller's shadow/arg region when its prologue executes. Symptom: 5th syscall arg overwritten → `STATUS_PARTIAL_COPY` from `NtReadVirtualMemory`, `STATUS_INVALID_PARAMETER` from larger APIs. On Win11 22H2+ kernelbase, ~8 of 14 `FF 23` sites fail this filter and must be rejected at discovery time.
+
+Full treatment of the filter, the scanner with debug instrumentation, and per-build inventories: see [`stack-spoofing/references/frame-math.md`](../../stack-spoofing/references/frame-math.md).
