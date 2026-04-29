@@ -72,6 +72,13 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 - Library code depending on routine `unwrap`/`expect` in operational paths
 - Large traits that couple unrelated behavior and block evolution
 
+## Platform and FFI boundaries
+
+- Keep platform-specific modules small and make them return the same public types as the shared path.
+- Prefer adapting one unstable primitive over forking a full protocol or workflow. Example shape: `connect_with_timeout(...) -> io::Result<TcpStream>` can use `std::net` normally and a Windows FFI helper only in a constrained build mode.
+- Use feature gates to remove incompatible definitions, not just unreachable call sites, when signatures or imports differ by build mode.
+- After adding Windows FFI bindings or `windows-sys` features, run a real target build; `cargo check` can pass before the linker sees missing imports or feature flags.
+
 ## Resources
 
 Load on demand:

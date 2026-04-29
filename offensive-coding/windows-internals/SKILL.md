@@ -235,6 +235,12 @@ When you apply any technique, the following signals are potentially visible. Thi
 - On 64-bit PE, `OptionalHeader.Magic == 0x20B`; export directory RVA at `OptionalHeader + 0x70` (DataDirectory[0].VirtualAddress lives at offset 0x88 of OptionalHeader on x64, or offset 0x78 of IMAGE_NT_HEADERS64 if counting from NT base)
 - Forwarded exports: if an export RVA is **within** `DataDirectory[0]` range, it is a forwarder string `"dll.function"` — recursively resolve
 
+**Manual mapping / reflective DLL invariants**
+- The OS loader normally runs TLS callbacks and calls the PE `AddressOfEntryPoint`, which is usually CRT startup before user `DllMain`.
+- A custom reflective loader may define a different contract: exported `DllMain` can be a minimal shellcode attach gate, followed by an explicit reflective start export. Do not replace that with `AddressOfEntryPoint` just because it resembles the OS loader; verify the payload's `reserved` semantics and runtime markers first.
+- For Rust cdylibs, distinguish loader lifecycle bugs from runtime-library boundary bugs. If profile decode, session encode, and DNS resolve already work, a crash in `TcpStream::connect_timeout` is more likely a socket/runtime primitive issue than an earlier PE entrypoint issue.
+- Generated shellcode arrays are build artifacts. After changing a reflective loader, regenerate and rebuild the final wrapper before testing; source edits alone do not change the payload under test.
+
 **Syscall invariants**
 - On x64, before `syscall`: `r10 = rcx`. Kernel clobbers `rcx` with return address
 - Wow64 processes have a 32→64 transition through `wow64cpu!CpupReturnFromSimulatedCode`; direct `syscall` from 32-bit code does **not** work — must go through the transition

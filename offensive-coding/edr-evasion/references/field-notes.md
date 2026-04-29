@@ -34,6 +34,10 @@ Backed .text IS a legitimate return address. SMW adds complexity + requires indi
 
 1,472 lines (zero VEH/HWBP/unhooking) evades fully. 6,126 lines (all features) is detected. Every feature added to address theoretical weaknesses introduced 1-3 new real indicators. Fix: §0 minimalism — start minimal, add only when confirmed.
 
+### 8. "A more OS-correct reflective entrypoint will fix Rust shellcode"
+
+For a Rust cdylib manually mapped by a custom shellcode loader, switching from an exported-`DllMain` first contract to `AddressOfEntryPoint` / `_DllMainCRTStartup` can make behavior worse. In one Win11 24H2 + S1 case, the exported `DllMain(reserved != 0)` path reached the beacon and HTTP resolve, while entrypoint-first stopped server contact. Fix: preserve the loader/payload lifecycle that already reaches the beacon, add breadcrumbs around the failing runtime primitive, and isolate the narrow primitive instead of rewriting loader entry order.
+
 ---
 
 ## S1 Indicator Reduction Audit
@@ -46,6 +50,7 @@ Backed .text IS a legitimate return address. SMW adds complexity + requires indi
 | F6 (selective ETW) | **No** — S1 still detected CLR gap |
 | F2 (4→11 targets) | **No** — more DRs = more signals |
 | F9 ph1-2 (gate call sites only) | **No** — dead code retained signatures |
+| Entrypoint-first Rust reflective load | **No** — regressed live shellcode contact |
 
 Remaining irreducible: "Malicious shellcode execution" (private RWX + PEB walk + dynamic API).
 

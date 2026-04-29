@@ -301,6 +301,17 @@ Select-String -Path output\<dir>\*.go -Pattern '__[A-Z_]+__'
 # Zero matches expected
 ```
 
+### Rust shellcode / wrapper validation
+
+Use this when a Rust agent is wrapped into shellcode by a service such as Ashura:
+
+- Keep transport, crypto, profile decode, and task protocol shared across EXE/DLL/shellcode builds. If shellcode needs a platform primitive, hide it behind the same public return type (for example a Winsock connect helper that returns `TcpStream`) instead of forking the whole HTTP path.
+- Treat reflective-loader entry policy as part of the payload contract. Some Rust shellcode builds intentionally call exported `DllMain` first with `reserved != 0`, then call a reflective start export; switching to PE `AddressOfEntryPoint` / CRT startup can regress even when it looks more loader-correct.
+- Add short runtime breadcrumbs around the suspected boundary before changing architecture: profile decode, session encode, DNS/resolve, connect, write, status, headers, decrypt.
+- After loader changes, regenerate generated shellcode artifacts (`make srdi` or the repo's equivalent). Source edits to the loader are not enough.
+- Validate both `cargo check` and a real `cargo build --target x86_64-pc-windows-gnu --lib`; `cargo check` can miss final import/link problems such as new `windows-sys` feature bindings.
+- Validate shellcode and non-shellcode feature sets separately, then build the Go plugin with `-buildmode=plugin`.
+
 ### Parity checks
 
 - Every `create_command()` in `ax_config.axs` → matching `CreateCommand` case in `pl_main.go`
@@ -334,6 +345,8 @@ Select-String -Path output\<dir>\*.go -Pattern '__[A-Z_]+__'
 - **PE hardening**: Never inflate VirtualSize when diluting entropy — only extend RawSize.
 - **Section names**: Don't use `.rsrc` as import padding — conflicts with resource injection.
 - **COFF string encryption**: GCC statement expressions with static guards don't work in PIC blobs.
+- **Shellcode regression debugging**: Keep a known-good runtime path alive before introducing a shellcode-only fork. Prefer one small boundary adapter plus markers over replacing shared protocol code.
+- **Reflective Rust entrypoints**: Do not assume `AddressOfEntryPoint` is safer than exported `DllMain`; test the specific loader/payload contract and preserve the path that reaches `WraithReflectiveStart`.
 
 ---
 
