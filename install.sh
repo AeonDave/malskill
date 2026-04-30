@@ -3,6 +3,8 @@
 
 set -euo pipefail
 
+trap 'printf "[ERROR] Unexpected failure at line %s.\n" "$LINENO" >&2' ERR
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT=""
 DESTINATION=""
@@ -511,12 +513,7 @@ remove_existing_skill_directory() {
         printf '[ERROR] Target exists and is not a directory: %s\n' "$target" >&2
         exit 1
     fi
-    if [[ -f "$target/SKILL.md" || -f "$target/skill.md" ]]; then
-        rm -rf "$target"
-        return
-    fi
-    printf '[ERROR] Refusing to remove existing directory not recognized as a skill folder: %s\n' "$target" >&2
-    exit 1
+    rm -rf "$target"
 }
 
 install_as_folders() {

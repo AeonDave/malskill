@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Go; go install github.com/hakluke/hakrawler@latest; Linux/macOS/Windows"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Hakrawler
@@ -43,6 +43,11 @@ cat domains.txt | hakrawler -d 2
 | `-H "K:V"` | Custom header |
 | `-json` | JSON output |
 | `-scope REGEX` | Limit to URL pattern |
+| `-plain` | Print plain text (no color) |
+| `-proxy <url>` | HTTP/SOCKS5 proxy |
+| `-cookie <str>` | Cookie string |
+| `-dr` | Disable following redirects |
+| `-w N` | Wait N ms between requests |
 
 ## Common Workflows
 
@@ -63,8 +68,32 @@ echo https://target.com | hakrawler -d 2 | grep "\.js$"
 cat domains.txt | hakrawler | httpx -silent -mc 200
 ```
 
+**Scope-limited crawl (stay in scope):**
+```bash
+echo https://target.com | hakrawler -d 3 -scope ".*\.target\.com.*" -u
+```
+
+**Extract API endpoints:**
+```bash
+echo https://target.com | hakrawler -d 3 -u | \
+  grep -E "(/api/|/v[0-9]+/|\.json|\.xml)" | sort -u
+```
+
+**Form action discovery:**
+```bash
+echo https://target.com | hakrawler -json | \
+  jq -r 'select(.type=="form") | .source'
+```
+
+**Multi-target via live hosts:**
+```bash
+subfinder -d target.com -silent | \
+  httpx -silent | \
+  hakrawler -d 2 -u | sort -u > all_urls.txt
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Scope filtering and JS analysis tips |
+| `references/crawl-tips.md` | Scope filtering, JS analysis, pipeline patterns, JS secret extraction |

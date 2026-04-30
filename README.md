@@ -2,41 +2,37 @@
 
 Agent Skills collection for offensive security, red teaming, and malware development — built on the open [AgentSkills](https://agentskills.io) specification.
 
-Each skill is a self-contained folder with a `SKILL.md` that gives any AI coding agent domain-specific knowledge, workflows, and automation for a particular tool or technique. **128 skills** across four categories.
+Each skill is a self-contained folder with a `SKILL.md` that gives any AI coding agent domain-specific knowledge, workflows, and automation for a particular tool or technique. **152 skills** across six top-level categories.
 
 ## Categories
 
-### `offensive-tools/` — Tool skills (101 skills)
+### `offensive-tools/` — Tool skills (115 skills)
 
 One skill per offensive tool, organized by attack phase. Each skill teaches the agent how the tool works, its common flags, target scenarios, and operational caveats.
 
-| Subcategory             | Examples                                                      |
-|-------------------------|---------------------------------------------------------------|
-| `recon/`                | amass, subfinder, ffuf, feroxbuster, httpx, shodan            |
-| `windows/`              | mimikatz, bloodhound, rubeus, crackmapexec, certify, nanodump |
-| `network/`              | nmap, responder, masscan, wireshark, ligolo-ng, bettercap     |
-| `c2/`                   | cobalt-strike, sliver, poshc2, merlin, covenant               |
-| `web-app/`              | sqlmap, xsstrike, commix, tplmap, corsy                       |
-| `vuln-scanners/`        | burpsuite, nuclei, nikto, openvas, wpscan                     |
-| `evasion/`              | donut, shellter, veil, shellcode-fluctuation                  |
-| `social-engineering/`   | gophish, evilginx2, set, modlishka, cupp                      |
-| `cracking/`             | hashcat, john, hydra, cain-and-abel                           |
-| `privilege-escalation/` | linpeas, winpeas, privesccheck                                |
-| `re/`                   | ghidra, radare2, x64dbg, binwalk                              |
-| `shells/`               | revshells, weevely3, reverse-ssh, shellerator                 |
-| `osint/`                | maltego, sherlock, holehe, phoneinfoga                        |
-| `cloud/`                | pacu, scoutsuite, gitleaks, trufflehog                        |
-| `data-exfiltration/`    | dnsexfiltrator, cloakify, pyexfil                             |
-| `linux/`                | linux-exploit-suggester, mimipenguin                          |
-| `exploits/`             | searchsploit, beef                                            |
-| `api/`                  | kiterunner, arjun                                             |
-| `wireless/`             | (3 tools)                                                     |
+| Subcategory       | Examples |
+|------------------|----------|
+| `recon/`         | dnsx, ffuf, feroxbuster, gau, waybackurls |
+| `windows/`       | bloodhound, certify, crackmapexec, rubeus, seatbelt |
+| `network/`       | bettercap, ligolo-ng, masscan, mitmproxy, nmap |
+| `web/`           | arjun, commix, corsy, xsstrike, zap |
+| `vuln-scanners/` | burpsuite, dalfox, nuclei, nikto, wpscan |
+| `forensic/`      | autopsy, ftk-imager, sleuth-kit, volatility3, yara |
+| `rev/`           | binaryninja, binwalk, dnspy, frida, ghidra |
+| `wireless/`      | aircrack-ng, kismet, lswifi, sparrow-wifi, wifite2 |
+| `osint/`         | amass, ghunt, holehe, maigret, phoneinfoga |
+| `shells/`        | reverse-ssh, revshells, shellerator, weevely3 |
+| `cracking/`      | hashcat, hydra, john |
+| `linux/`         | linpeas, linux-exploit-suggester, mimipenguin |
+| `exploits/`      | beef, metasploit, searchsploit |
 
-### `bof/` — Beacon Object Files (2 skills)
+### `offensive-coding/` — Offensive development skills (7 skills)
 
-Skills for writing, compiling, and debugging BOFs in C and C++ for Cobalt Strike and compatible C2 frameworks. Cover DFR, heap management, injection patterns, and dual-build (BOF+EXE) workflows.
+Skills for malware and red-team development workflows, including BOF development, syscall/evasion patterns, and Windows internals-focused tradecraft.
 
-### `programming/` — Language patterns and testing (19 skills)
+- **Examples**: `c-bof`, `cpp-bof`, `adaptixc2-dev`, `edr-evasion`, `indirect-syscall`, `stack-spoofing`, `windows-internals`
+
+### `coding/` — Language patterns and testing (19 skills)
 
 Idiomatic code patterns, testing strategies, and performance profiling for the languages most used in offensive tooling.
 
@@ -47,7 +43,7 @@ Idiomatic code patterns, testing strategies, and performance profiling for the l
 - **Python** — patterns, async patterns, testing with pytest
 - **Arduino / Sensors** — embedded development for hardware-based projects
 
-### `knowledge/` — Meta-skills and research (6 skills)
+### `knowledge/` — Meta-skills and research (8 skills)
 
 Skills that support the workflow itself rather than a specific tool.
 
@@ -55,10 +51,20 @@ Skills that support the workflow itself rather than a specific tool.
 |---|---|
 | `skill-creator` | Create, validate, and package new skills |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
+| `readme-md-creator` | Create and maintain concise, high-signal README files |
 | `self-improvement` | Capture errors, corrections, and patterns across sessions |
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `cve-search` | Enumerate CVEs and collect public PoC references |
+| `malware-analysis` | Static/dynamic malware analysis workflows and IOC extraction |
+
+### `ai/` — AI framework skills (1 skill)
+
+- **`langchain-py`** — production-oriented LangChain Python workflows.
+
+### `hardware/` — Embedded and sensor skills (2 skills)
+
+- **`arduino`**, **`sensors`**
 
 ## Quick start
 
@@ -120,14 +126,17 @@ python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/
 
 ```
 malskill/
-├── offensive-tools/    # 101 tool skills by attack phase
+├── offensive-tools/    # 115 tool skills by attack phase
 │   ├── recon/
 │   ├── windows/
-│   ├── c2/
+│   ├── web/
+│   ├── forensic/
 │   └── ...
-├── bof/                # BOF development (C, C++)
-├── programming/        # Language patterns, testing, performance
-├── knowledge/          # Meta-skills, research, CVE search
+├── offensive-coding/   # Offensive development workflows (7)
+├── coding/             # Language patterns, testing, performance (19)
+├── knowledge/          # Meta-skills and research (8)
+├── ai/                 # AI framework skills (1)
+├── hardware/           # Embedded/sensor skills (2)
 └── AGENTS.md           # Repo-level operational guidance
 ```
 

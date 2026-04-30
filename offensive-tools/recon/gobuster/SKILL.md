@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: "Linux, Windows, macOS. Install: go install github.com/OJ/gobuster/v3@latest or download binary from GitHub releases. Pre-installed on Kali."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Gobuster
@@ -54,6 +54,10 @@ gobuster vhost -u http://example.com -w /usr/share/wordlists/subdomains.txt
 | `-o <file>` | Output file |
 | `-q` | Quiet (no banner) |
 | `--no-error` | Suppress errors |
+| `--add-slash` | Append `/` to each request |
+| `-e` | Expanded mode (print full URLs) |
+| `--exclude-length <n>` | Exclude responses of this length |
+| `-n` | No status codes in output |
 
 ## DNS Mode Flags
 
@@ -63,6 +67,18 @@ gobuster vhost -u http://example.com -w /usr/share/wordlists/subdomains.txt
 | `-w <wordlist>` | Wordlist |
 | `-r <resolver>` | Custom DNS resolver |
 | `--wildcard` | Force continue on wildcard DNS |
+| `--show-ips` | Show IPs with results |
+| `--show-cname` | Show CNAME records |
+
+## Vhost Mode Flags
+
+| Flag | Description |
+|------|-------------|
+| `-u <url>` | Base URL |
+| `-w <wordlist>` | Wordlist of subdomains |
+| `--append-domain` | Append base domain to wordlist entries |
+| `--domain <domain>` | Domain to append (if different from -u) |
+| `--exclude-length <n>` | Exclude specific response size (filter default response) |
 
 ## Common Workflows
 
@@ -81,6 +97,15 @@ gobuster dns -d target.com -w subdomains-top1m.txt -r 8.8.8.8 -t 50
 
 # Vhost discovery (append domain for non-matching)
 gobuster vhost -u http://target.com -w subdomains.txt --append-domain
+
+# Vhost — filter out default response size
+gobuster vhost -u http://target.com -w subdomains.txt --append-domain --exclude-length 12345
+
+# S3 bucket enumeration
+gobuster s3 -w bucket-names.txt
+
+# Fuzz mode (generic, FUZZ in URL)
+gobuster fuzz -u https://target.com/FUZZ -w wordlist.txt -b 404
 ```
 
 ## Useful Wordlists

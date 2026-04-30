@@ -98,7 +98,12 @@ function Get-PythonInvocation {
     throw "Python not found. Install Python or activate the repo virtual environment first."
 }
 
-$PythonInvocation = Get-PythonInvocation
+try {
+    $PythonInvocation = Get-PythonInvocation
+} catch {
+    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 function Invoke-PythonScript([string]$ScriptPath, [string[]]$ScriptArgs) {
     & $PythonInvocation.Exe @($PythonInvocation.PrefixArgs + @($ScriptPath) + $ScriptArgs)
@@ -382,17 +387,7 @@ function Remove-ExistingSkillDirectory([string]$TargetPath) {
         throw "Target exists and is not a directory: $TargetPath"
     }
 
-    $skillMarkers = @(
-        (Join-Path $TargetPath 'SKILL.md'),
-        (Join-Path $TargetPath 'skill.md')
-    )
-
-    if ($skillMarkers | Where-Object { Test-Path -LiteralPath $_ }) {
-        Remove-Item -LiteralPath $TargetPath -Recurse -Force
-        return
-    }
-
-    throw "Refusing to remove existing directory not recognized as a skill folder: $TargetPath"
+    Remove-Item -LiteralPath $TargetPath -Recurse -Force
 }
 
 function Install-AsFolders([object[]]$SelectedSkills, [string]$DestinationRoot, [string]$LayoutChoice) {
@@ -459,46 +454,51 @@ function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot,
     }
 }
 
-Write-Host ""
-Write-Host "Agent Skills installer" -ForegroundColor Green
-Write-Host "Source root: $SourceRoot" -ForegroundColor DarkGray
-Write-Host ""
+try {
+    Write-Host ""
+    Write-Host "Agent Skills installer" -ForegroundColor Green
+    Write-Host "Source root: $SourceRoot" -ForegroundColor DarkGray
+    Write-Host ""
 
-$skills = Get-SkillDirectories -RootPath $SourceRoot
-$selectedSkills = @(Select-Skills -Skills $skills)
-if ($selectedSkills.Count -eq 0) {
-    throw "No skills selected."
-}
-
-$resolvedFormat = Select-Format
-$resolvedLayout = Select-Layout
-Assert-UniqueArtifactNames -SelectedSkills $selectedSkills -LayoutChoice $resolvedLayout
-$destinationRoot = Select-Destination
-
-Write-Host ""
-Write-Info "Selected $($selectedSkills.Count) skill(s)"
-Write-Info "Destination root: $destinationRoot"
-Write-Info "Format: $resolvedFormat"
-Write-Info "Layout: $resolvedLayout"
-Write-Host ""
-
-Validate-SelectedSkills -SelectedSkills $selectedSkills
-
-switch ($resolvedFormat) {
-    'folder' { Install-AsFolders -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout }
-    'skill'  { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'skill' }
-    'zip'    { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'zip' }
-    default  { throw "Unsupported format: $resolvedFormat" }
-}
-
-Write-Host ""
-Write-Info "Install complete."
-foreach ($skill in $selectedSkills) {
-    if ($resolvedFormat -eq 'folder') {
-        Write-Host ("    {0}" -f (Get-InstallFolderTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout)) -ForegroundColor DarkGray
-    } elseif ($resolvedFormat -eq 'zip') {
-        Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'zip')) -ForegroundColor DarkGray
-    } else {
-        Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'skill')) -ForegroundColor DarkGray
+    $skills = Get-SkillDirectories -RootPath $SourceRoot
+    $selectedSkills = @(Select-Skills -Skills $skills)
+    if ($selectedSkills.Count -eq 0) {
+        throw "No skills selected."
     }
+
+    $resolvedFormat = Select-Format
+    $resolvedLayout = Select-Layout
+    Assert-UniqueArtifactNames -SelectedSkills $selectedSkills -LayoutChoice $resolvedLayout
+    $destinationRoot = Select-Destination
+
+    Write-Host ""
+    Write-Info "Selected $($selectedSkills.Count) skill(s)"
+    Write-Info "Destination root: $destinationRoot"
+    Write-Info "Format: $resolvedFormat"
+    Write-Info "Layout: $resolvedLayout"
+    Write-Host ""
+
+    Validate-SelectedSkills -SelectedSkills $selectedSkills
+
+    switch ($resolvedFormat) {
+        'folder' { Install-AsFolders -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout }
+        'skill'  { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'skill' }
+        'zip'    { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'zip' }
+        default  { throw "Unsupported format: $resolvedFormat" }
+    }
+
+    Write-Host ""
+    Write-Info "Install complete."
+    foreach ($skill in $selectedSkills) {
+        if ($resolvedFormat -eq 'folder') {
+            Write-Host ("    {0}" -f (Get-InstallFolderTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout)) -ForegroundColor DarkGray
+        } elseif ($resolvedFormat -eq 'zip') {
+            Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'zip')) -ForegroundColor DarkGray
+        } else {
+            Write-Host ("    {0}" -f (Get-InstallArchiveTarget -DestinationRoot $destinationRoot -Skill $skill -LayoutChoice $resolvedLayout -Extension 'skill')) -ForegroundColor DarkGray
+        }
+    }
+} catch {
+    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }

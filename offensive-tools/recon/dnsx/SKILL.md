@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest or download binary."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # dnsx
@@ -50,6 +50,11 @@ cat subs.txt | dnsx -a -resp
 | `-o <file>` | Output file |
 | `-json` | JSON output |
 | `-wildcard` | Filter wildcard subdomains |
+| `-cdn` | Show CDN name for resolved IPs |
+| `-asn` | Show ASN info for resolved IPs |
+| `-recon` | Query all record types at once |
+| `-wt <n>` | Wildcard threshold (default 5) |
+| `-retry <n>` | Retry failed queries |
 
 ## Common Workflows
 
@@ -71,10 +76,27 @@ cat subs.txt | dnsx -wildcard -d target.com -silent
 
 # Reverse DNS (PTR) on IPs
 cat ips.txt | dnsx -ptr -resp-only
+
+# Full recon pipeline: subfinder -> dnsx -> httpx
+subfinder -d target.com -silent -all | \
+  dnsx -silent -a -resp-only | \
+  httpx -silent -status-code -title -tech-detect
+
+# Extract MX/TXT for email security audit
+dnsx -d target.com -mx -txt -resp -silent
+
+# Brute-force with custom resolvers (bypass rate limits)
+dnsx -d target.com -w subdomains.txt -r resolvers.txt -rl 500
+
+# Wildcard detection + filter
+dnsx -d target.com -w wordlist.txt -wildcard -wt 3 -silent
+
+# Extract CNAMEs (find dangling/takeovers)
+cat subs.txt | dnsx -cname -resp -silent | grep -v "target.com"
 ```
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/dns-records.md` | DNS record types, brute-force wordlists, wildcard detection |
+| `references/dns-records.md` | DNS record types, brute-force wordlists, wildcard detection, subdomain takeover |

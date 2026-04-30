@@ -1,6 +1,6 @@
 ---
 name: kismet
-description: "Wireless network detector and sniffer supporting Wi-Fi, Bluetooth, Zigbee, and SDR. Use when performing passive wireless reconnaissance, device tracking, or capturing traffic without active injection."
+description: "Passive wireless sniffer, WIDS, and wardriving platform for Wi‑Fi, Bluetooth, Zigbee, and other RF sources. Use when performing passive wireless reconnaissance, multi-sensor collection, distributed capture, long-running logging, or API-driven RF monitoring without active injection."
 license: MIT
 compatibility: "Linux/macOS; apt install kismet; requires compatible wireless adapter"
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # Kismet
 
-Wireless detector and sniffer — passive Wi-Fi, Bluetooth, Zigbee, SDR.
+Passive RF collection, WIDS, and wardriving platform for Wi‑Fi, Bluetooth, Zigbee, and more.
 
 ## Quick Start
 
@@ -27,6 +27,15 @@ open http://localhost:2501
 # Capture to pcap
 kismet -c wlan0 --log-types pcapppi
 ```
+
+## Why Use It
+
+Choose `kismet` when you need:
+- passive discovery with minimal RF disturbance
+- hidden SSID / client / rogue-device visibility
+- long-running sensor logging
+- multi-protocol visibility beyond Wi‑Fi
+- distributed capture and automation via API
 
 ## Key Features
 
@@ -63,8 +72,29 @@ kismet -c wlan0 --log-types pcapppi --log-prefix /tmp/capture
 # Analyze with wireshark
 ```
 
+**Long-running passive logging with unified metadata:**
+```bash
+kismet -c wlan0 --log-prefix /tmp/kismet
+```
+
+## What Makes It Strong
+
+- unified `kismetdb` logging for devices, packets, runtime data, and location
+- distributed remote capture over network links
+- comprehensive REST API for scripting and integrations
+- better fit than cracking tools when the objective is awareness, baselining, or passive detection
+
+## Best Fit
+
+| Need | Better fit |
+|------|------------|
+| Passive WIDS / sensor platform | `kismet` |
+| Handshake capture and cracking | `aircrack-ng` |
+| Automated WPA/PMKID attacks | `wifite` |
+| Combined Wi‑Fi/Bluetooth/HackRF GUI workflows | `sparrow-wifi` |
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | GPS setup, Bluetooth adapter config |
+| `references/distributed-capture-and-logging.md` | For kismetdb logging, remote capture, API usage, and passive multi-RF positioning |

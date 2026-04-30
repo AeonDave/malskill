@@ -1,6 +1,6 @@
 ---
 name: edr-evasion
-description: >
+description: |
   Universal patterns, constraints, and trade-offs for Windows EDR evasion in
   offensive tooling (verified against S1, Defender, CrowdStrike — 2026). Covers
   syscall dispatch (indirect, SSN, NtContinue), stack spoofing (SilentMoonwalk),
@@ -15,12 +15,60 @@ description: >
 license: MIT
 metadata:
   author: kRustyLoader
-  version: "2.1"
+  version: "2.2"
 ---
 
 # EDR Evasion — Universal Patterns & Constraints
 
 Field-tested principles for Windows EDR/AV evasion. Verified against S1, Defender, and CrowdStrike (2026). Project-agnostic — applies to any loader, implant, or tool runner targeting Windows 10/11.
+
+---
+
+## 0a. Loader as Primary EDR Signal Source
+
+EDRs do not evaluate a process at a single point in time. They accumulate a weighted signal score across the **entire execution timeline**: syscalls, memory allocation patterns, page permission transitions, ETW events, call stack shapes, IAT content, and in-memory byte patterns. Final verdict is a sum.
+
+The loader runs first. Every decision the loader makes — how memory is allocated, whether VirtualProtect is called, whether ETW is emitting events during decryption, whether known loader bytes are present in any page — contributes to the score **before the payload executes a single instruction**. The payload inherits that accumulated score and works from it, upward.
+
+### Why Donut made every executable malicious
+
+Donut's loader stub is a well-known shellcode with documented byte signatures. Its default allocation pattern is `VirtualAlloc(RWX)`. Its PE-loader code path matches ML models trained on Donut specifically. The result: by the time the beacon's first instruction ran, the process already had 3–4 strong independent signals. The payload behavior was irrelevant — the verdict was reached at loader stage.
+
+### What the loader must guarantee at handoff
+
+The goal of the loader layer is to reach payload execution with the process's accumulated signal score **at or near zero**. Concrete requirements derived from a minimal loader execution order:
+
+| Loader decision | Wrong (signal-generating) | Right (zero-signal) |
+|---|---|---|
+| Anti-debug/sandbox checks | `NtQueryInformationProcess`, `NtSetInformationThread` | PEB byte reads + KUSER_SHARED_DATA reads only — no kernel events |
+| ETW patch method | `VirtualProtect` on ntdll page (permission change event) | `NtWriteVirtualMemory` — kernel COW on SEC_IMAGE, no permission change event |
+| ETW patch timing | After startup delay (delay emits ETW events) | **Before** startup delay so no ETW events during sleep masking or decrypt |
+| Payload memory | `VirtualAlloc(RWX)` or `VirtualAlloc` then `VirtualProtect(RX)` | Module stomp (`SEC_IMAGE` backing), Ghostly Hollow (dual-view), or Mockingjay (existing RWX section) |
+| Loader bytes in memory | Donut stub, reflective loader shellcode with known signatures | PIC Rust `no_std` loader — no recognizable signature; wiped post-decrypt |
+| Plaintext payload lifetime | Survives in heap post-exec (EDR periodic scanner finds it) | `write_volatile` zero after decrypt; stage scrub thread cleans post-handoff |
+| Key/nonce material | Static bytes in `.rdata` | MBA-obfuscated per-build derivation — no raw key bytes in any section |
+
+### Execution order constraint
+
+The execution order in a minimal loader entry point is not arbitrary — it is a signal ordering constraint:
+
+```
+syscall::init()          ← indirect/RecycledGate layer live before ANY NT call
+spoof::init()            ← call stack spoofed from first dispatch
+anti_debug (passive)     ← PEB read only, zero kernel events
+anti_sandbox (passive)   ← GetLastInputInfo + GetTickCount64 + GetForegroundWindow
+etw::patch()             ← ETW silenced BEFORE startup delay and decrypt
+startup delay            ← NtDelayExecution now runs without ETW-TI telemetry
+reassemble + decrypt     ← RW allocation only; no RWX at any point
+wipe encrypted buffer    ← plaintext lifetime minimized
+etw::restore()           ← ETW restored before handoff
+loader::execute()        ← payload placed in backed memory via stomp/hollow/mockingjay
+stage_scrub              ← decode workspace zeroed after payload leaves it
+```
+
+Each step is positioned so that the EDR-observable event it generates either (a) produces zero telemetry, (b) produces telemetry indistinguishable from a benign process, or (c) is masked by the layer initialized above it in the stack.
+
+**Implication for payload design**: do not open signal surfaces the loader closed. No `VirtualProtect` on ntdll in the beacon if the loader already patched ETW via `NtWriteVirtualMemory`. No `NtQueryInformationProcess` in the payload's anti-debug if the loader's passive checks already covered it. The payload's job is to keep the accumulated score near zero from the handoff point onward — not to rebuild defenses the loader already established.
 
 ---
 
@@ -67,6 +115,17 @@ Build a CONTEXT with synthetic RSP (fake `BaseThreadInitThunk` → `RtlUserThrea
 | Main thread, console attached | `masked_syscall`, `indirect_syscall` | `spoofed_syscall` (crash) |
 | TP worker thread | `tp_spoofed_syscall` (SMW), `indirect_syscall` | `masked_syscall` (RSP corruption), `spoofed_syscall` (crash) |
 | Backed EXE (any thread) | PEB-resolved real ntdll stubs | indirect_syscall (generates MORE detection than hooked stubs) |
+
+### Mode-based dispatch profile
+
+Use runtime profile selection instead of one global syscall strategy:
+
+| Profile mode | Primary path | Fallback | Best fit |
+|-------------|--------------|----------|----------|
+| 1 | `indirect_syscall*` wrappers | direct/clean stub if wrapper unavailable | unbacked beacon/tooling where stack legitimacy is weak |
+| 2 | clean `Nt*` function pointers from fresh ntdll mapping | `indirect_syscall*` only for blocked calls | backed EXE where direct stub calls look normal |
+
+Rule: if the binary is disk-backed and has legitimate `.text`, prefer clean/direct `Nt*` calls first. Save indirect spoof-heavy paths for unbacked execution contexts.
 
 ### Ghost Hunting (Emerging Kernel Detection)
 
@@ -237,6 +296,16 @@ If any detected: **skip trampoline**, use `NtDelayExecution` directly. Trampolin
 - Thread safety: sleep obfuscation must run only on main thread (XOR key + protection changes are not thread-safe)
 - `spoofed_syscall` for NtProtect calls (beacon) — `indirect_syscall6` exposes loader .text
 
+### BOF-safe sleep masking policy
+
+Sleep masking is not universally safe in embedded BOF host contexts. Apply this gate:
+
+1. If running in BOF/hosted thread context with unknown scheduler semantics, skip trampoline-based sleep hooks.
+2. If `Sleep` prologue is already detoured/hooked, skip custom trampoline and use `NtDelayExecution` path.
+3. Keep masking lifecycle wrapper-owned (startup/loader window), not payload-owned long runtime.
+
+This avoids recursive hook loops, host thread corruption, and unstable callback timing in BOF containers.
+
 ---
 
 ## 5. ETW/AMSI Bypass
@@ -340,6 +409,16 @@ Avoids `CreateThread(RWX_addr)` — EDR flags thread start addresses in RWX/priv
 3. Zero entire RWX buffer — write_bytes(base, 0, size)
 4. NtFreeVirtualMemory(base)
 ```
+
+### Stage scrub lifecycle (pre-handoff + post-decrypt)
+
+Treat staging buffers as disposable evidence:
+
+1. After payload materialization, wipe source encoded blob/buffer immediately.
+2. After handoff is confirmed, wipe temporary decode/decompress workspace.
+3. Keep only the minimal live execution region; scrub and free all setup artifacts.
+
+This reduces post-exec memory forensics recovery of original encrypted/plaintext stages.
 
 ### Beacon mode (dual-view section)
 
@@ -448,9 +527,13 @@ Full detail: [`references/anti-analysis.md`](references/anti-analysis.md).
 
 **Ordering rule**: run ALL anti-analysis checks before any evasion setup. Generating ETW events (NtOpenSection, NtProtect) in a sandbox increases detection even without EDR.
 
-**Anti-debug**: `PEB.BeingDebugged`, `NtQueryInformationProcess(ProcessDebugPort)`, heap flags (`0x40`), `NtSetInformationThread(ThreadHideFromDebugger)` (non-CLR threads only), RDTSC timing delta (sandbox fast-forwards sleep), DR0–DR7 check (EDRs also set DRs → false positive risk), parent process check.
+**Design principle — near-zero IOC**: passive checks are not a stylistic preference; they are a deliberate zero-IOC constraint. Every read-only check adds zero telemetry. Every invasive call (NtQueryInformationProcess, DR mutation, ThreadHideFromDebugger, CPUID ring-trip) generates at least one observable event. The target is a check layer that produces no indicators that distinguish the implant from a normal process.
 
-**Anti-VM**: CPUID ECX bit 31 (hypervisor), VMware/VirtualBox registry keys, suspicious process list, MAC OUI, disk size < 60 GB, mouse movement absent, `GetForegroundWindow` null, sleep acceleration via RDTSC (most reliable).
+**Passive anti-debug baseline**: `PEB.BeingDebugged` (PEB read, no syscall), parent-process sanity (PPID from PEB), sleep/timing drift (RDTSC), debugger process/window heuristics. No `NtQueryInformationProcess`, no `NtSetInformationThread`, no DR read/write in default mode.
+
+**Passive anti-sandbox baseline**: sleep acceleration (RDTSC — most reliable, zero syscall), low-core/low-RAM heuristic, hostname/username patterns, common analysis process names. CPUID, registry probes, and MAC OUI checks are optional secondary tier — avoid by default.
+
+**Decision rule**: score multiple weak passive signals; never hard-fail on a single artefact; prefer silent degraded execution over self-termination.
 
 **IAT hygiene**: PEB walk (§8) removes suspicious IAT entries; fake dead-code imports add benign noise; delay-load via `LoadLibrary`/`GetProcAddress`. Combined with §9 string obfuscation → zero readable API strings.
 

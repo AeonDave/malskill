@@ -5,7 +5,7 @@ license: GPL-3.0
 compatibility: "Linux. Install: git clone https://github.com/lgandx/Responder (apt install responder on Kali). Must be on same network segment as targets. Requires root."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Responder
@@ -90,4 +90,3 @@ Crack with hashcat mode `5600` (Net-NTLMv2) or pass via relay.
 |------|--------------|
 | `references/ntlm-relay.md` | Full relay chain: ntlmrelayx setup, LDAP relay, SMB signing bypass, RBCD |
 
-## Structuring This Skill

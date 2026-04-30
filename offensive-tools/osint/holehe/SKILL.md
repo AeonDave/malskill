@@ -1,11 +1,11 @@
 ---
 name: holehe
-description: "Check if an email address is registered on 120+ websites (Google, Twitter, GitHub, etc.). Use during OSINT to enumerate target digital presence and identify accounts across platforms."
+description: "Check if an email address is registered on 120+ websites using account-recovery probes (not login attempts). Use during OSINT to enumerate a target's active accounts from a known email, confirm email validity, or map digital footprint before phishing/social engineering."
 license: MIT
 compatibility: "Python 3; pip install holehe; Linux/macOS/Windows; github.com/megadose/holehe"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Holehe
@@ -52,8 +52,33 @@ holehe ceo@targetcompany.com --only-used --json | tee email_presence.json
 cat emails.txt | xargs -I {} holehe {} --only-used
 ```
 
+**Combine with username pivot:**
+```bash
+# If target email is johndoe@gmail.com, extract username
+holehe johndoe@gmail.com --only-used --json | jq '.[] | .name' | \
+  xargs -I {} echo "sherlock johndoe --site {}"
+```
+
+## How It Works
+
+Holehe uses account-recovery flows (password reset) — not login attempts. Most sites respond differently to "email not found" vs "reset link sent", so holehe detects registration without credentials. Low noise, does not lock accounts.
+
+## Email Sources for OSINT
+
+```bash
+# From company domain — harvest emails with theHarvester first
+theHarvester -d target.com -b google,bing,linkedin -l 200
+
+# From breach databases
+# dehashed.com, haveibeenpwned.com, intelx.io
+
+# From GitHub commits
+curl "https://api.github.com/repos/<owner>/<repo>/commits" | \
+  jq '.[].commit.author.email' | sort -u
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Interpreting results and account takeover paths |
+| `references/email-osint.md` | Email harvesting sources, breach lookup APIs, pivot from email to full profile |

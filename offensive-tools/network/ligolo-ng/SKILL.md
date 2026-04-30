@@ -5,7 +5,7 @@ license: GPL-3.0
 compatibility: "Linux (proxy), Linux/Windows/macOS (agent). Download prebuilt binaries from GitHub releases. Requires TUN interface support (root on Linux)."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # ligolo-ng
@@ -100,4 +100,3 @@ For nested networks (attacker → pivot1 → pivot2 → internal):
 |------|--------------|
 | `references/pivot-setup.md` | Double pivot, TLS certificate setup, agent persistence, Windows service install |
 
-## Structuring This Skill

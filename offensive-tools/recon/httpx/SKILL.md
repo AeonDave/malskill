@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest or download binary. Pre-installed on Kali."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # httpx
@@ -80,8 +80,24 @@ httpx -u https://target.com -favicon
 httpx -l hosts.txt -screenshot -output screenshots/
 ```
 
+## Filter Results
+
+```bash
+# Only 200s
+httpx -l hosts.txt -silent -mc 200
+
+# Exclude CDN/redirect noise
+httpx -l hosts.txt -silent -fc 301,302 -filter-string "cloudflare"
+
+# Match by response body content
+httpx -l hosts.txt -match-string "password" -silent
+
+# Match by response size
+httpx -l hosts.txt -ms 1024 -silent
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/output-fields.md` | All output field flags, JSON schema, and filter options |
+| `references/output-fields.md` | All output field flags, JSON schema, match/filter options, pipeline patterns |

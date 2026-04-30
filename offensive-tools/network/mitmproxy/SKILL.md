@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux / macOS / Windows. pip install mitmproxy. Python 3.8+."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # mitmproxy
@@ -53,8 +53,63 @@ def request(flow: http.HTTPFlow):
 mitmproxy -s addon.py
 ```
 
+## Useful Addons
+
+```python
+# Dump all POST bodies
+from mitmproxy import http
+
+def request(flow: http.HTTPFlow):
+    if flow.request.method == "POST":
+        with open("posts.txt", "a") as f:
+            f.write(f"{flow.request.pretty_url}\n{flow.request.get_text()}\n---\n")
+```
+
+```python
+# Modify response (e.g. replace token)
+def response(flow: http.HTTPFlow):
+    if "api/auth" in flow.request.pretty_url:
+        flow.response.text = flow.response.text.replace(
+            '"role":"user"', '"role":"admin"'
+        )
+```
+
+```python
+# Add header to all requests (e.g. auth bypass)
+def request(flow: http.HTTPFlow):
+    flow.request.headers["X-Admin"] = "true"
+    flow.request.headers["X-Forwarded-For"] = "127.0.0.1"
+```
+
+## Transparent Proxy Setup (Linux)
+
+```bash
+# Enable IP forwarding
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+# Redirect traffic to mitmproxy (iptables)
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 443 -j REDIRECT --to-port 8080
+
+# Start in transparent mode
+mitmproxy --mode transparent --showhost -p 8080
+```
+
+## CLI Filtering (mitmdump)
+
+```bash
+# Capture only POST requests
+mitmdump -p 8080 -w traffic.dump "~m POST"
+
+# Capture by domain
+mitmdump -p 8080 -w traffic.dump "~d example.com"
+
+# Show only responses with 2xx status
+mitmdump -p 8080 "~s ~c 2"
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Addon API reference, transparent proxy setup |
+| `references/addons.md` | Full addon API reference, filter syntax, transparent proxy iptables, upstream proxy chaining |

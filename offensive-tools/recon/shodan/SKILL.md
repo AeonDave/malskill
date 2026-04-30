@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: pip install shodan. Requires a Shodan API key (free tier available; paid for full access)."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Shodan CLI
@@ -88,8 +88,32 @@ shodan count org:"Target Corp"
 shodan host 8.8.8.8
 ```
 
+## Favicon Hash Search
+
+```bash
+# Get favicon mmh3 hash via httpx
+httpx -u https://target.com -favicon
+# Outputs: [mmh3:<HASH>]
+
+# Search Shodan for all hosts with same favicon (same product/brand)
+shodan search "http.favicon.hash:<HASH>"
+```
+
+## Monitor Target (Alerts)
+
+```bash
+# Create alert for new hosts in an org
+shodan alert create "Target Corp Monitor" org:"Target Corp"
+
+# List alerts
+shodan alert list
+
+# Download results when triggered
+shodan alert download <alert_id>
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/search-filters.md` | Full filter reference, dork recipes, API integration examples |
+| `references/search-filters.md` | Full filter reference, dork recipes, favicon hash lookup, API Python integration |

@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: "Linux, macOS (limited). Install: git clone + pip install -r requirements.txt. Docker image available. Pre-installed on Kali."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # EyeWitness
@@ -70,12 +70,31 @@ eyewitness -f hosts.txt --rdp -d rdp_report/
 ## Output
 
 EyeWitness produces:
-- `report.html` — categorized screenshots with HTTP headers
-- `Matches/` — interesting categories (login pages, Cisco, Citrix, etc.)
-- `Screenshots/` — raw screenshot images
+- `report.html` — categorized screenshots with HTTP headers, page titles, response codes
+- `Matches/` — signature-based categories (login pages, Cisco, Citrix, VMware, etc.)
+- `Screenshots/` — raw screenshot images (PNG)
+- `Eyewitness.db` — SQLite database with all results
+
+## Pipeline Integration
+
+```bash
+# From subfinder → httpx → eyewitness
+subfinder -d target.com -silent | \
+  httpx -silent | \
+  tee live_hosts.txt | \
+  eyewitness --web -f /dev/stdin -d eyewitness_out/ --no-prompt
+
+# From masscan/nmap port scan
+masscan -p 80,443,8080,8443,8000,8888 192.168.1.0/24 -oX masscan.xml
+eyewitness -x masscan.xml --web -d report/ --no-prompt
+
+# Include non-standard ports (use httpx first)
+cat hosts.txt | httpx -ports 80,443,8080,8443,3000,5000,8888 -silent | \
+  eyewitness --web -f /dev/stdin -d report/ --no-prompt
+```
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/report-structure.md` | HTML report layout, category descriptions, integration with other tools |
+| `references/report-tips.md` | HTML report layout, signature categories, pipeline integration, DB queries |

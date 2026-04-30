@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Go binary; Linux/macOS/Windows; github.com/sundowndev/phoneinfoga"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PhoneInfoga
@@ -61,8 +61,39 @@ open http://localhost:5000
 phoneinfoga scan -n +14151234567 --output json > phone.json
 ```
 
+**Multiple numbers from file:**
+```bash
+while read num; do
+  phoneinfoga scan -n "$num" --output json >> all_results.json
+done < numbers.txt
+```
+
+## API Keys (Optional, Extend Results)
+
+Configured in `~/.phoneinfoga/config.yaml`:
+
+```yaml
+numverify_api_key: "YOUR_KEY"    # numverify.com — validation + carrier
+googlecse_api_key: "YOUR_KEY"    # Google Custom Search Engine
+googlecse_cx: "YOUR_CX_ID"
+```
+
+Without keys: basic OSINT via Google dorks only.
+With NumVerify: carrier, line type, country validation.
+
+## Google Dork Expansion
+
+PhoneInfoga auto-generates dorks. Run manually for deeper coverage:
+
+```
+"+14151234567" site:linkedin.com
+"+14151234567" site:facebook.com
+"+14151234567" -site:yellowpages.com -site:whitepages.com
+"+14151234567" "resume" OR "contact" OR "WhatsApp"
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | API key setup and dork expansion |
+| `references/api-setup.md` | NumVerify setup, Google CSE config, alternative phone lookup sources |

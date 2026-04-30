@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: apt install hashcat (Kali) or download from hashcat.net. Requires GPU (NVIDIA CUDA or AMD OpenCL) for performance; CPU mode available."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Hashcat
@@ -107,10 +107,37 @@ hashcat -a 6 -m 1000 hashes.txt rockyou.txt ?d?d?d
 hashcat -m 1000 hashes.txt --show
 ```
 
+## Session Management
+
+```bash
+# Named session (survives interruption)
+hashcat -a 0 -m 1000 hashes.txt rockyou.txt --session mysession
+
+# Resume session
+hashcat --session mysession --restore
+```
+
+## PRINCE Attack (`-a 9`)
+
+```bash
+# Requires princeprocessor (pp64.bin)
+pp64.bin wordlist.txt | hashcat -a 0 -m 1000 hashes.txt
+# Or native (hashcat 6.2+)
+hashcat -a 9 -m 1000 hashes.txt wordlist.txt
+```
+
+## Combinator Attack (`-a 1`)
+
+```bash
+# Concatenate every word from list1 with every word from list2
+hashcat -a 1 -m 1000 hashes.txt words1.txt words2.txt
+
+# Add rules to left/right side
+hashcat -a 1 -m 1000 hashes.txt words1.txt words2.txt -j '$-' -k 'l'
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
 | `references/rules-and-masks.md` | Rule file reference, mask cookbook, wordlist recommendations, hash extraction commands |
-
-## Structuring This Skill

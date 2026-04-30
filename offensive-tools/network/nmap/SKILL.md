@@ -5,7 +5,7 @@ license: GPL-2.0
 compatibility: "Linux, Windows, macOS. Pre-installed on Kali/Parrot. Windows: download installer from nmap.org. Requires raw socket access (root/admin for SYN scans)."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Nmap
@@ -115,8 +115,39 @@ nmap -sV -p 80,443,8080,8443 --script http-headers,http-title <target>
 nmap -sU --top-ports 20 -T4 <target>
 ```
 
+## Firewall / IDS Evasion
+
+```bash
+# Fragment packets (bypass stateless packet filters)
+nmap -f <target>
+
+# Decoy scan (blend with fake source IPs)
+nmap -D RND:10 <target>
+nmap -D 192.168.1.5,192.168.1.10,ME <target>
+
+# Idle scan (use zombie host — completely spoofed source)
+nmap -sI <zombie_ip> <target>
+
+# Custom source port (bypass firewall rules allowing DNS/HTTP back-traffic)
+nmap --source-port 53 <target>
+nmap --source-port 80 <target>
+
+# Slow timing (T1/T2 to avoid threshold-based IDS)
+nmap -T1 -p 22,80,443 <target>
+
+# Randomize host order + append random data
+nmap --randomize-hosts --data-length 25 <target>
+```
+
+## IPv6
+
+```bash
+nmap -6 -sV fe80::1%eth0
+nmap -6 -sS -p 22,80,443 2001:db8::/32
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/nse-scripts.md` | Need NSE script list by category, syntax, or vuln scripts |
+| `references/nse-scripts.md` | NSE script list by category, syntax, vuln scripts, auth brute, discovery |

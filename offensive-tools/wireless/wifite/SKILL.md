@@ -1,6 +1,6 @@
 ---
 name: wifite
-description: "Automated wireless auditing tool that attacks WEP/WPA/WPA2/PMKID with minimal configuration. Use when automating Wi-Fi attacks against multiple targets without manually orchestrating aircrack-ng commands."
+description: "Automated Wi‑Fi auditing wrapper for WEP/WPA/WPA2/PMKID workflows with minimal operator input. Use when rapidly triaging or attacking multiple Wi‑Fi targets from Linux without manually orchestrating each aircrack-ng step."
 license: MIT
 compatibility: "Python 3; Linux; pip install wifite; requires aircrack-ng suite + monitor mode adapter"
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # Wifite
 
-Automated Wi-Fi cracker — attacks WEP/WPA/WPA2/PMKID with one command.
+Automated Wi‑Fi attack wrapper for rapid WPA/WEP/PMKID triage and capture workflows.
 
 ## Quick Start
 
@@ -29,6 +29,14 @@ sudo wifite --wpa --dict /usr/share/wordlists/rockyou.txt
 # PMKID attack
 sudo wifite --pmkid
 ```
+
+## Why Use It
+
+Choose `wifite` when you need:
+- rapid all-in-one Wi‑Fi attack orchestration
+- quick triage of multiple nearby APs
+- less manual command sequencing than `aircrack-ng`
+- fast PMKID / WPA capture attempts during early assessment
 
 ## Core Flags
 
@@ -59,8 +67,22 @@ sudo wifite --wpa --no-crack
 # Crack later: aircrack-ng ~/hs/*.cap -w rockyou.txt
 ```
 
+## Practical Notes
+
+- `wifite` is only as good as the adapter and dependencies underneath it.
+- When automation hides too much detail, fall back to `aircrack-ng`.
+- For passive discovery and RF awareness, start with `kismet` instead.
+
+## Best Fit
+
+| Need | Better fit |
+|------|------------|
+| Fast automated WPA/PMKID flow | `wifite` |
+| Manual control of capture/injection | `aircrack-ng` |
+| Passive Wi‑Fi / Bluetooth / RF recon | `kismet` |
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Dependency checklist and troubleshooting |
+| `references/dependency-troubleshooting.md` | For dependency expectations, common failures, and when to switch back to manual tooling |

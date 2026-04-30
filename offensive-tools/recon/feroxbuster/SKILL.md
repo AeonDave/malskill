@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: cargo install feroxbuster or download binary from GitHub releases. Pre-installed on Kali."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Feroxbuster
@@ -50,6 +50,15 @@ feroxbuster -u http://example.com -w common.txt --no-recursion
 | `--json` | JSON output |
 | `--auto-tune` | Automatically slow down on errors |
 | `--smart-auto-tune` | Only slow on 429/503 |
+| `--collect-words` | Collect words from responses for wordlist mutation |
+| `--collect-backups` | Also request common backup file extensions |
+| `--collect-extensions` | Collect extensions from responses |
+| `--resume-from <state>` | Resume from a previous scan state file |
+| `--extract-links` | Extract links from HTML and add to queue |
+| `--scan-limit <n>` | Max concurrent scans (for recursion) |
+| `--time-limit <dur>` | Max time limit (e.g., `10m`) |
+| `-A` | Random User-Agent per request |
+| `--dont-filter` | Disable auto-filter of wildcard responses |
 
 ## Filtering Examples
 
@@ -84,6 +93,33 @@ feroxbuster -u http://target.com -w big.txt -t 100 --no-recursion -d 1
 
 # Scan multiple URLs from file
 feroxbuster --stdin -w common.txt < urls.txt
+
+# Link extraction (spider + brute)
+feroxbuster -u https://target.com -w common.txt --extract-links
+
+# Smart collect mode (mutate wordlist from response)
+feroxbuster -u https://target.com -w common.txt --collect-words --collect-extensions
+
+# Time-boxed scan
+feroxbuster -u https://target.com -w big.txt --time-limit 5m
+
+# Resume interrupted scan
+feroxbuster --resume-from ferox-target-state.json
+```
+
+## Config File (~/.config/feroxbuster/ferox-config.toml)
+
+```toml
+# Set defaults to avoid repeating flags
+wordlist = "/usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt"
+threads = 50
+timeout = 10
+status_codes = [200, 204, 301, 302, 307, 401, 403]
+filter_status = [404]
+auto_tune = true
+collect_words = true
+extract_links = true
+user_agent = "Mozilla/5.0 (compatible; feroxbuster)"
 ```
 
 ## Interactive Controls

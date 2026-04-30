@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: go install github.com/ffuf/ffuf/v2@latest or download binary from GitHub releases. Pre-installed on Kali."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # ffuf
@@ -46,6 +46,14 @@ ffuf -u http://FUZZ.example.com -w subdomains.txt -H "Host: FUZZ.example.com"
 | `-v` | Verbose (show redirects) |
 | `-s` | Silent mode |
 | `-p <delay>` | Delay between requests (e.g., `0.1` or `0.1-0.5`) |
+| `-recursion` | Enable recursive fuzzing |
+| `-recursion-depth <n>` | Max recursion depth |
+| `-recursion-strategy default\|greedy` | Strategy for recursion |
+| `-ac` | Auto-calibrate filter (detect and filter noise) |
+| `-ach` | Auto-calibrate per host |
+| `-maxtime <n>` | Max run time in seconds |
+| `-ic` | Ignore wordlist comments |
+| `-c` | Colorize output |
 
 ## Filtering & Matching
 
@@ -78,8 +86,8 @@ ffuf -u http://target.com/W1?user=W2 -w paths.txt:W1 -w users.txt:W2 -mode pitch
 ## Common Workflows
 
 ```bash
-# Standard dir fuzz with noise filtering
-ffuf -u https://target.com/FUZZ -w raft-medium.txt -fc 404 -o dirs.json -of json
+# Standard dir fuzz with auto-calibration (best noise filter)
+ffuf -u https://target.com/FUZZ -w raft-medium.txt -ac -o dirs.json -of json
 
 # POST login brute-force
 ffuf -u https://target.com/login -X POST -d "user=admin&pass=FUZZ" -w passwords.txt -fc 401
@@ -92,6 +100,18 @@ ffuf -u http://target.com -H "Host: FUZZ.target.com" -w vhosts.txt -fw 42
 
 # API endpoint fuzzing with auth
 ffuf -u https://api.target.com/v1/FUZZ -w api-words.txt -H "Authorization: Bearer TOKEN" -mc 200,201,204
+
+# Recursive dir fuzz
+ffuf -u https://target.com/FUZZ -w common.txt -recursion -recursion-depth 3 -ac
+
+# Header fuzzing (find supported methods/auth headers)
+ffuf -u https://target.com/api/resource -w methods.txt -X FUZZ -mc 200,201,405
+
+# JSON POST body fuzzing
+ffuf -u https://api.target.com/v1/users -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"username":"FUZZ","password":"test"}' \
+  -w usernames.txt -mc 200
 ```
 
 ## Resources

@@ -16,6 +16,9 @@
 - Treat `AGENTS.md` as a living operational file; update it after important repo changes or when workflows/tool availability materially change.
 - Put developer-facing detail in `README.md` first; use `references/` only when the detail is too deep or too specialized for the README.
 - Code comments must be in English, technical, precise, and brief; explain intent or non-obvious behavior, not obvious syntax.
+- When improving or curating tool skills, use external research (`fetch_webpage` plus Tavily/web search) for important, missing, disputed, or potentially outdated tools instead of relying only on local repo context.
+- Tool skills clearly covered by stronger existing tools, duplicated elsewhere in the repo, or materially worse than modern alternatives may be removed unless the user explicitly asks to keep them.
+- For every new skill, replacement skill, or major skill refactor, follow `knowledge/skill-creator/` guidance first and keep the resulting skill aligned with AgentSkills conventions.
 
 ## Testing
 

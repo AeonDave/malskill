@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest or download binary from projectdiscovery releases."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Subfinder
@@ -77,8 +77,22 @@ subfinder -d example.com -all -silent
 subfinder -d example.com -oJ -o subs.json
 ```
 
+## Full Recon Pipeline
+
+```bash
+# Subdomain → live hosts → web fingerprint → screenshot
+subfinder -d target.com -silent -all | \
+  dnsx -silent -a -resp | \
+  awk '{print $1}' | \
+  httpx -silent -status-code -title -tech-detect | \
+  tee web_services.txt
+
+# Find admin/login panels in results
+grep -iE "admin|login|portal|dashboard|manage" web_services.txt
+```
+
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/providers.md` | Full list of supported passive sources and API key setup |
+| `references/providers.md` | Full passive source list, API key setup for all 40+ providers |
