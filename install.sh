@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Agent Skills from this repository as folders or .skill archives.
+# Install Agent Skills from this repository as folders, .skill archives, or agent slash commands.
 
 set -euo pipefail
 
@@ -12,6 +12,9 @@ FORMAT=""
 LAYOUT=""
 ALL=false
 SKILL_REFS_RAW=""
+ACTION=""
+AGENT=""
+SCOPE=""
 
 VALIDATOR_SCRIPT="$SCRIPT_DIR/knowledge/skill-creator/scripts/quick_validate.py"
 PACKAGER_SCRIPT="$SCRIPT_DIR/knowledge/skill-creator/scripts/package_skill.py"
@@ -50,12 +53,16 @@ usage() {
         '                            group  = preserve the source-root-relative category structure' \
         '  -k, --skills <refs>       Comma-separated skill refs (relative paths or unique names)' \
         '  -a, --all                 Select all discovered skills' \
+        '  --action <skills|commands> Skip action menu' \
+        '  --agent <name>            Target agent for commands (claude-code|codex|cursor|windsurf|copilot|gemini)' \
+        '  --scope <global|project>  Install scope for commands' \
         '  -h, --help                Show this help' \
         '' \
         'Examples:' \
         '  ./install.sh' \
         '  ./install.sh --all --format folder --layout flat --destination ~/.agents/skills' \
-        '  ./install.sh --skills offensive-tools/windows/mimikatz,programming/python-patterns --format zip --layout group --destination ./dist/skills'
+        '  ./install.sh --action commands --agent claude-code --scope global' \
+        '  ./install.sh --skills offensive-tools/windows/mimikatz --format zip --layout group --destination ./dist/skills'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -83,6 +90,18 @@ while [[ $# -gt 0 ]]; do
         -a|--all)
             ALL=true
             shift
+            ;;
+        --action)
+            ACTION="$2"
+            shift 2
+            ;;
+        --agent)
+            AGENT="$2"
+            shift 2
+            ;;
+        --scope)
+            SCOPE="$2"
+            shift 2
             ;;
         -h|--help)
             usage
@@ -138,6 +157,8 @@ run_python() {
 
 find_python
 
+# ─── Skill discovery ──────────────────────────────────────────────────────────
+
 declare -a SKILL_NAMES=()
 declare -a SKILL_RELS=()
 declare -a SKILL_FULLS=()
@@ -186,8 +207,6 @@ discover_skills() {
         exit 1
     fi
 }
-
-discover_skills
 
 parse_selection_indices() {
     local raw="$1"
@@ -322,13 +341,6 @@ select_skills() {
     done < <(parse_selection_indices "$raw_selection" "${#SKILL_FULLS[@]}")
 }
 
-select_skills
-
-if [[ ${#SELECTED_FULLS[@]} -eq 0 ]]; then
-    printf '[ERROR] No skills selected.\n' >&2
-    exit 1
-fi
-
 assert_unique_artifact_names() {
     local i j
     if [[ "$LAYOUT" == 'group' ]]; then
@@ -427,8 +439,6 @@ choose_destination() {
     DESTINATION="$(cd "$DESTINATION" && pwd)"
 }
 
-choose_destination
-
 choose_format() {
     local choice
     if [[ -n "$FORMAT" ]]; then
@@ -457,8 +467,6 @@ choose_format() {
     esac
 }
 
-choose_format
-
 choose_layout() {
     local choice
     if [[ -n "$LAYOUT" ]]; then
@@ -484,17 +492,6 @@ choose_layout() {
             ;;
     esac
 }
-
-choose_layout
-
-assert_unique_artifact_names
-
-printf '\n'
-info "Selected ${#SELECTED_FULLS[@]} skill(s)"
-info "Destination root: $DESTINATION"
-info "Format: $FORMAT"
-info "Layout: $LAYOUT"
-printf '\n'
 
 validate_selected_skills() {
     local i
@@ -571,6 +568,351 @@ install_as_archives() {
         rm -rf "$temp_dir"
     done
 }
+
+# ─── Commands flow ────────────────────────────────────────────────────────────
+
+AGENT_SOURCE_FILES=(claude-code codex cursor windsurf copilot gemini)
+AGENT_PROJECT_ONLY=(windsurf copilot)
+
+extract_skill_description() {
+    local skill_dir="$1"
+    local skill_file="$skill_dir/SKILL.md"
+    [[ -f "$skill_file" ]] || return 0
+    awk '
+        /^---$/ { if (in_fm) exit; in_fm=1; next }
+        in_fm && /^description:[ \t]*\|/ { in_block=1; next }
+        in_fm && in_block && /^[ \t]+/ { sub(/^[ \t]+/, ""); print; exit }
+        in_fm && /^description:[ \t]+[^|]/ {
+            sub(/^description:[ \t]*/, ""); print; exit
+        }
+    ' "$skill_file" | head -1
+}
+
+# Arrays for discovered commands
+declare -a CMD_NAMES=()
+declare -a CMD_RELS=()
+declare -a CMD_DIRS=()
+declare -a CMD_DESCS=()
+declare -a CMD_AGENTS=()  # space-separated list per entry
+
+discover_commands() {
+    local cmd_dir parent_dir name rel desc agents agent_file agent_name valid_agents
+
+    while IFS= read -r -d '' cmd_dir; do
+        parent_dir="$(dirname "$cmd_dir")"
+        [[ -f "$parent_dir/SKILL.md" ]] || continue
+
+        name="$(basename "$parent_dir")"
+        rel="${parent_dir#"$SOURCE_ROOT"/}"
+        [[ "$parent_dir" == "$SOURCE_ROOT" ]] && rel="."
+
+        desc="$(extract_skill_description "$parent_dir")"
+        agents=""
+        for agent_name in "${AGENT_SOURCE_FILES[@]}"; do
+            agent_file="$cmd_dir/$agent_name.md"
+            if [[ -f "$agent_file" ]]; then
+                agents="$agents $agent_name"
+            fi
+        done
+        agents="${agents# }"
+        [[ -z "$agents" ]] && continue
+
+        CMD_NAMES+=("$name")
+        CMD_RELS+=("$rel")
+        CMD_DIRS+=("$cmd_dir")
+        CMD_DESCS+=("$desc")
+        CMD_AGENTS+=("$agents")
+    done < <(find "$SOURCE_ROOT" -type d -name '.commands' -print0 | sort -z)
+
+    if [[ ${#CMD_DIRS[@]} -eq 0 ]]; then
+        printf '[ERROR] No .commands/ folders found under %s\n' "$SOURCE_ROOT" >&2
+        exit 1
+    fi
+}
+
+declare -a SEL_CMD_NAMES=()
+declare -a SEL_CMD_DIRS=()
+declare -a SEL_CMD_AGENTS=()
+
+select_commands() {
+    local raw_selection i idx
+    step "Found ${#CMD_DIRS[@]} command(s)"
+    for ((i = 0; i < ${#CMD_DIRS[@]}; i++)); do
+        local desc="${CMD_DESCS[$i]}"
+        local agents="${CMD_AGENTS[$i]}"
+        local label
+        if [[ -n "$desc" ]]; then
+            label="${CMD_NAMES[$i]} — $desc"
+        else
+            label="${CMD_NAMES[$i]}"
+        fi
+        printf '[%3d] %s  [%s]\n' "$((i + 1))" "$label" "$agents"
+    done
+    printf '\n'
+    read -r -p 'Select commands by index (e.g. 1,3-5 or all): ' raw_selection
+
+    while IFS= read -r idx; do
+        [[ -z "$idx" ]] && continue
+        local real_idx=$(( idx - 1 ))
+        SEL_CMD_NAMES+=("${CMD_NAMES[$real_idx]}")
+        SEL_CMD_DIRS+=("${CMD_DIRS[$real_idx]}")
+        SEL_CMD_AGENTS+=("${CMD_AGENTS[$real_idx]}")
+    done < <(parse_selection_indices "$raw_selection" "${#CMD_DIRS[@]}")
+
+    if [[ ${#SEL_CMD_DIRS[@]} -eq 0 ]]; then
+        printf '[ERROR] No commands selected.\n' >&2
+        exit 1
+    fi
+}
+
+get_agent_command_path() {
+    local agent="$1"
+    local name="$2"
+    local scope="$3"
+    local home_dir="${HOME:-$SCRIPT_DIR}"
+    local cwd
+    cwd="$(pwd)"
+
+    case "$agent" in
+        claude-code)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.claude/commands/%s.md\n' "$base" "$name"
+            ;;
+        codex)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.codex/skills/%s.md\n' "$base" "$name"
+            ;;
+        cursor)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.cursor/rules/%s.mdc\n' "$base" "$name"
+            ;;
+        windsurf)
+            printf '%s/.windsurf/rules/%s.md\n' "$cwd" "$name"
+            ;;
+        copilot)
+            printf '%s/.github/instructions/%s.instructions.md\n' "$cwd" "$name"
+            ;;
+        gemini)
+            if [[ "$scope" == "global" ]]; then
+                printf '%s/.gemini/skills/%s.md\n' "$home_dir" "$name"
+            else
+                printf '%s/.gemini/%s.md\n' "$cwd" "$name"
+            fi
+            ;;
+        *)
+            printf '[ERROR] Unknown agent: %s\n' "$agent" >&2
+            exit 1
+            ;;
+    esac
+}
+
+is_project_only_agent() {
+    local agent="$1"
+    local a
+    for a in "${AGENT_PROJECT_ONLY[@]}"; do
+        [[ "$a" == "$agent" ]] && return 0
+    done
+    return 1
+}
+
+choose_agent() {
+    local available_str="$1"  # space-separated
+    local -a available
+    read -r -a available <<< "$available_str"
+
+    if [[ -n "$AGENT" ]]; then
+        local found=false
+        local a
+        for a in "${available[@]}"; do
+            [[ "$a" == "$AGENT" ]] && found=true && break
+        done
+        if ! $found; then
+            printf '[ERROR] Agent "%s" has no command file in selected commands.\n' "$AGENT" >&2
+            exit 1
+        fi
+        printf '%s\n' "$AGENT"
+        return
+    fi
+
+    local ordered=()
+    local ref
+    for ref in "${AGENT_SOURCE_FILES[@]}"; do
+        local a
+        for a in "${available[@]}"; do
+            [[ "$a" == "$ref" ]] && ordered+=("$ref") && break
+        done
+    done
+
+    step "Select target agent"
+    local i
+    for ((i = 0; i < ${#ordered[@]}; i++)); do
+        printf '[%d] %s\n' "$((i + 1))" "${ordered[$i]}"
+    done
+    local choice
+    read -r -p 'Select agent: ' choice
+    choice="${choice// /}"
+    if [[ ! "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#ordered[@]} )); then
+        printf '[ERROR] Invalid agent selection: %s\n' "$choice" >&2
+        exit 1
+    fi
+    printf '%s\n' "${ordered[$((choice - 1))]}"
+}
+
+choose_command_scope() {
+    local agent="$1"
+    local name="$2"
+
+    if [[ -n "$SCOPE" ]]; then
+        printf '%s\n' "$SCOPE"
+        return
+    fi
+
+    if is_project_only_agent "$agent"; then
+        printf 'project\n'
+        return
+    fi
+
+    local global_path project_path
+    global_path="$(get_agent_command_path "$agent" "$name" "global")"
+    project_path="$(get_agent_command_path "$agent" "$name" "project")"
+
+    step "Select install scope"
+    printf '[1] global  — %s\n' "$global_path"
+    printf '[2] project — %s\n' "$project_path"
+    local choice
+    read -r -p 'Select scope: ' choice
+    case "${choice// /}" in
+        1) printf 'global\n' ;;
+        2) printf 'project\n' ;;
+        *)
+            printf '[ERROR] Invalid scope selection: %s\n' "$choice" >&2
+            exit 1
+            ;;
+    esac
+}
+
+install_command_files() {
+    local agent="$1"
+    local scope="$2"
+    local i src dest dest_dir
+
+    for ((i = 0; i < ${#SEL_CMD_DIRS[@]}; i++)); do
+        local name="${SEL_CMD_NAMES[$i]}"
+        local cmd_dir="${SEL_CMD_DIRS[$i]}"
+        src="$cmd_dir/$agent.md"
+
+        if [[ ! -f "$src" ]]; then
+            warn "No $agent command file found for '$name' — skipping"
+            continue
+        fi
+
+        dest="$(get_agent_command_path "$agent" "$name" "$scope")"
+        dest_dir="$(dirname "$dest")"
+        mkdir -p "$dest_dir"
+
+        if [[ -e "$dest" ]]; then
+            warn "Overwriting existing: $dest"
+        fi
+
+        step "Installing $name → $dest"
+        cp "$src" "$dest"
+        info "$name installed for $agent"
+    done
+}
+
+run_commands_flow() {
+    discover_commands
+    select_commands
+
+    # Collect union of available agents across selected commands
+    local all_agents_str=""
+    local i a
+    for ((i = 0; i < ${#SEL_CMD_AGENTS[@]}; i++)); do
+        for a in ${SEL_CMD_AGENTS[$i]}; do
+            [[ "$all_agents_str" == *" $a "* || "$all_agents_str" == "$a "* || "$all_agents_str" == *" $a" || "$all_agents_str" == "$a" ]] || all_agents_str="$all_agents_str $a"
+        done
+    done
+    all_agents_str="${all_agents_str# }"
+
+    local chosen_agent chosen_scope
+    chosen_agent="$(choose_agent "$all_agents_str")"
+    chosen_scope="$(choose_command_scope "$chosen_agent" "${SEL_CMD_NAMES[0]}")"
+
+    printf '\n'
+    info "Selected ${#SEL_CMD_DIRS[@]} command(s)"
+    info "Agent: $chosen_agent"
+    info "Scope: $chosen_scope"
+    printf '\n'
+
+    install_command_files "$chosen_agent" "$chosen_scope"
+
+    printf '\n'
+    info 'Command install complete.'
+}
+
+# ─── Action selection ─────────────────────────────────────────────────────────
+
+choose_action() {
+    if [[ -n "$ACTION" ]]; then
+        case "$ACTION" in
+            skills|commands) return ;;
+            *)
+                printf '[ERROR] Invalid action: %s\n' "$ACTION" >&2
+                exit 1
+                ;;
+        esac
+    fi
+
+    step "Select action"
+    printf '[1] Install skills   — copy skill directories or packages to a destination\n'
+    printf '[2] Install commands — register slash commands for AI agents (claude-code, cursor, etc.)\n'
+    local choice
+    read -r -p 'Select action: ' choice
+    case "${choice// /}" in
+        1) ACTION='skills' ;;
+        2) ACTION='commands' ;;
+        *)
+            printf '[ERROR] Invalid action: %s\n' "$choice" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
+printf '\n'
+info "Agent Skills installer"
+printf '[*] Source root: %s\n' "$SOURCE_ROOT"
+printf '\n'
+
+choose_action
+printf '\n'
+
+if [[ "$ACTION" == 'commands' ]]; then
+    run_commands_flow
+    exit 0
+fi
+
+# ── Skills flow ──
+discover_skills
+select_skills
+
+if [[ ${#SELECTED_FULLS[@]} -eq 0 ]]; then
+    printf '[ERROR] No skills selected.\n' >&2
+    exit 1
+fi
+
+assert_unique_artifact_names
+choose_destination
+choose_format
+choose_layout
+
+printf '\n'
+info "Selected ${#SELECTED_FULLS[@]} skill(s)"
+info "Destination root: $DESTINATION"
+info "Format: $FORMAT"
+info "Layout: $LAYOUT"
+printf '\n'
 
 validate_selected_skills
 

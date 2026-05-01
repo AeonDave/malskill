@@ -1,120 +1,150 @@
 # malskill
 
-Agent Skills collection for offensive security, red teaming, and malware development — built on the open [AgentSkills](https://agentskills.io) specification.
+Full-spectrum security skill collection for AI agents - built on the open [AgentSkills](https://agentskills.io) specification.
 
-Each skill is a self-contained folder with a `SKILL.md` that gives any AI coding agent domain-specific knowledge, workflows, and automation for a particular tool or technique. **152 skills** across six top-level categories.
+Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent deep domain knowledge: command syntax, real workflows, decision logic, edge cases, and operational caveats.
+
+The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, and developer perspectives within a single task.
+
+---
 
 ## Categories
 
-### `offensive-tools/` — Tool skills (115 skills)
+### `offensive-tools/` - Attack tool skills
 
-One skill per offensive tool, organized by attack phase. Each skill teaches the agent how the tool works, its common flags, target scenarios, and operational caveats.
+One skill per tool, organized by attack phase. Each skill covers how the tool works, key flags, target scenarios, output parsing, and OPSEC notes.
 
-| Subcategory       | Examples |
-|------------------|----------|
-| `recon/`         | dnsx, ffuf, feroxbuster, gau, waybackurls |
-| `windows/`       | bloodhound, certify, crackmapexec, rubeus, seatbelt |
-| `network/`       | bettercap, ligolo-ng, masscan, mitmproxy, nmap |
-| `web/`           | arjun, commix, corsy, xsstrike, zap |
-| `vuln-scanners/` | burpsuite, dalfox, nuclei, nikto, wpscan |
-| `forensic/`      | autopsy, ftk-imager, sleuth-kit, volatility3, yara |
-| `rev/`           | binaryninja, binwalk, dnspy, frida, ghidra |
-| `wireless/`      | aircrack-ng, kismet, lswifi, sparrow-wifi, wifite2 |
-| `osint/`         | amass, ghunt, holehe, maigret, phoneinfoga |
-| `shells/`        | reverse-ssh, revshells, shellerator, weevely3 |
-| `cracking/`      | hashcat, hydra, john |
-| `linux/`         | linpeas, linux-exploit-suggester, mimipenguin |
-| `exploits/`      | beef, metasploit, searchsploit |
+This area is explicitly about **how to use a specific tool** to reach an objective.
 
-### `offensive-coding/` — Offensive development skills (7 skills)
+| Subcategory | Examples |
+|------------|---------|
+| `windows/` | bloodhound, certipy, crackmapexec, impacket, mimikatz, rubeus |
+| `vuln-scanners/` | burpsuite, dalfox, nuclei, sqlmap, testssl, trivy |
+| `recon/` | dnsx, feroxbuster, gobuster, httpx, massdns, shodan |
+| `network/` | chisel, ligolo-ng, masscan, mitmproxy, nmap, responder |
+| `cryptography/` | rsactftool, sagemath, cyberchef |
+| `web/` | commix, corsy, jwt-tool, smuggler, xsstrike, zap |
+| `fuzzing/` | aflplusplus, arjun, boofuzz, dotdotpwn, ffuf, restler |
+| `osint/` | amass, ghunt, maigret, phoneinfoga, spiderfoot, theharvester |
+| `forensic/` | capa, tcpdump, volatility3, wireshark, yara, zeek |
+| `rev/` | binaryninja, frida, gdb, ghidra, radare2, windbg |
+| `wireless/` | aircrack-ng, kismet, lswifi, sparrow-wifi, wifite |
+| `linux/` | linpeas, linux-persistence, mimipenguin, pwncat, ssh-key-scanner |
+| `shells/` | reverse-ssh, revshells, shellerator, weevely3 |
+| `cracking/` | hashcat, hydra, john |
+| `exploits/` | beef, metasploit, searchsploit, vuln-research |
 
-Skills for malware and red-team development workflows, including BOF development, syscall/evasion patterns, and Windows internals-focused tradecraft.
+**Note on `forensic/`**: These skills exist because security work often requires analyzing artifacts produced by attacks - understanding what defenders see, recovering post-compromise evidence, assessing detection surface, and validating OPSEC. Tools like `volatility3`, `capa`, and `yara` are as useful for a red team operator understanding EDR behavior as they are for a blue team analyst.
 
-- **Examples**: `c-bof`, `cpp-bof`, `adaptixc2-dev`, `edr-evasion`, `indirect-syscall`, `stack-spoofing`, `windows-internals`
+### `offensive-coding/` - Offensive development skills (10 skills)
 
-### `coding/` — Language patterns and testing (19 skills)
+Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, syscall stubs, evasion primitives, and Windows internals. Targeted at agents doing tool development, not just tool execution.
 
-Idiomatic code patterns, testing strategies, and performance profiling for the languages most used in offensive tooling.
+- **BOF**: `c-bof`, `cpp-bof` - Beacon Object File development workflows
+- **Evasion**: `edr-evasion`, `indirect-syscall`, `stack-spoofing` - technique-level development patterns
+- **Internals**: `windows-internals` - API, structures, and memory layout knowledge
+- **C2**: `adaptixc2-dev` - framework-specific development
+- **Techniques**: `evasion-techniques`, `loader-techniques`, `persistence-techniques`
 
-- **Assembly** — x86-64/ARM64 patterns, offensive asm (syscalls, shellcode, evasion primitives), performance, testing
-- **C / C++** — safe patterns, modern idioms, testing with sanitizers and fuzzing
-- **Rust** — ownership, API design, testing, performance
-- **Go** — idiomatic patterns, testing, performance
-- **Python** — patterns, async patterns, testing with pytest
-- **Arduino / Sensors** — embedded development for hardware-based projects
+### `offensive-techniques/` - Methodology and tradecraft skills
 
-### `knowledge/` — Meta-skills and research (8 skills)
+This area is explicitly about **how to perform a technique in general**, independent of one specific tool.
 
-Skills that support the workflow itself rather than a specific tool.
+- Includes strategy, process, decision flow, and workflow patterns.
+- May mention which tools are suitable, but does **not** become a tool manual.
 
-| Skill | Purpose |
-|---|---|
+Example:
+
+- `offensive-tools/fuzzing/` = *tool-level guides* (flags, command patterns, tool-specific tricks)
+- `offensive-techniques/fuzzing-technique/` = *fuzzing methodology* (harnessing mindset, corpus strategy, campaign design, validation logic)
+
+These two layers are complementary and intentionally separate.
+
+### `coding/` - Language patterns and tooling (19 skills)
+
+Idiomatic code patterns, testing strategies, and performance guidance for the languages most used in security tooling. These skills give an agent the ability to write, review, and improve code - not just run existing tools.
+
+- **Assembly** - x86-64/ARM64 patterns, syscall stubs, shellcode, evasion primitives, testing
+- **C / C++** - safe patterns, modern idioms, fuzzing, sanitizers
+- **Rust** - ownership, API design, performance, unsafe patterns
+- **Go** - idiomatic patterns, concurrency, performance
+- **Python** - patterns, async, pytest workflows
+- **Arduino / Sensors** - embedded and hardware development
+
+### `knowledge/` - Research and meta-skills (8 skills)
+
+Skills that support the workflow itself: research, analysis, and documentation automation.
+
+| Skill | Role |
+|-------|------|
 | `skill-creator` | Create, validate, and package new skills |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
-| `readme-md-creator` | Create and maintain concise, high-signal README files |
-| `self-improvement` | Capture errors, corrections, and patterns across sessions |
+| `readme-md-creator` | Create and maintain high-signal README files |
+| `self-improvement` | Capture errors, corrections, and cross-session patterns |
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
-| `cve-search` | Enumerate CVEs and collect public PoC references |
-| `malware-analysis` | Static/dynamic malware analysis workflows and IOC extraction |
+| `cve-search` | CVE enumeration and public PoC collection |
+| `malware-analysis` | Static/dynamic malware analysis and IOC extraction |
 
-### `ai/` — AI framework skills (1 skill)
+### `ai/` - AI framework skills (1 skill)
 
-- **`langchain-py`** — production-oriented LangChain Python workflows.
+- **`langchain-py`** - Production-oriented LangChain Python workflows
 
-### `hardware/` — Embedded and sensor skills (2 skills)
+### `hardware/` - Embedded and sensor skills (2 skills)
 
 - **`arduino`**, **`sensors`**
 
+### `commands/` - Agent behavior and command modes (1 skill)
+
+- **`1337`** - Ultra-compressed offensive operator mode for maximum signal/token efficiency
+
+---
+
 ## Quick start
 
-```
+```bash
 # Clone
 git clone <repo-url> && cd malskill
 
-# Interactive install (choose skills, destination, output format, and layout)
-./install.sh
-.\install.ps1
+# Interactive install (choose skills, destination, format, layout)
+./install.sh        # Bash
+.\install.ps1       # PowerShell
 
-# Install grouped folders while preserving repo categories
-./install.sh --skills offensive-tools/windows/mimikatz --format folder --layout group --destination ~/.agents/skills
-
-# Export grouped .zip archives
-./install.sh --skills offensive-tools/windows/mimikatz --format zip --layout group --destination ./dist/skills
-
-# Install a skill (copy its folder into your agent's skill directory)
+# Install a single skill (copy folder into agent skill directory)
 cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
 
-# Or install all offensive-tools skills at once
+# Install all offensive-tools skills
 cp -r offensive-tools/*/* ~/.agents/skills/
+
+# Install with layout preservation (group by category)
+./install.sh --skills offensive-tools/windows/mimikatz --format folder --layout group --destination ~/.agents/skills
 ```
 
-Skills are plain folders — no build step, no runtime dependency. Copy a skill folder into wherever your agent reads skills from and it activates automatically.
+Skills are plain folders - no build step, no runtime dependency. Copy a skill folder into wherever your agent reads skills from and it activates automatically.
 
-The repository also includes interactive installers at the repo root:
+**Supported output formats:**
+- `folder` - copies the skill directory directly
+- `.skill` - distributable archive (standard zip, preserves skill folder name)
+- `zip` - standard zip with same contents
 
-- `install.sh` — Bash installer for selecting skills, destination root, output format, and layout
-- `install.ps1` — PowerShell installer with the same workflow on Windows
+**Supported install layouts:**
+- `flat` - all selected skills directly under destination root
+- `group` - preserves category structure under destination root
 
-Supported output formats:
-
-- `folder` — copies the skill directory into the destination root
-- `.skill` — creates a distributable `.skill` archive; in this repo it is a standard zip archive that preserves the skill folder name
-- `zip` — creates a standard `.zip` archive with the same packaged contents as `.skill`
-
-Supported install layouts:
-
-- `flat` — installs every selected skill directly under the destination root
-- `group` — preserves the source-root-relative category structure under the destination root
+---
 
 ## Validation
 
 ```bash
 # Validate a single skill
-python knowledge/skill-creator/scripts/quick_validate.py offensive-tools/recon/nmap
+python knowledge/skill-creator/scripts/quick_validate.py offensive-tools/windows/mimikatz
 
-# Validate an entire section
-Get-ChildItem offensive-tools/recon -Directory | ForEach-Object {
+# Validate an entire section (Bash)
+find offensive-tools/windows -type f -name SKILL.md -exec dirname {} \; | sort -u | \
+  while IFS= read -r dir; do python knowledge/skill-creator/scripts/quick_validate.py "$dir"; done
+
+# Validate an entire section (PowerShell)
+Get-ChildItem offensive-tools/windows -Directory | ForEach-Object {
   python knowledge/skill-creator/scripts/quick_validate.py $_.FullName
 }
 
@@ -122,29 +152,13 @@ Get-ChildItem offensive-tools/recon -Directory | ForEach-Object {
 python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/mimikatz
 ```
 
-## Structure
+---
 
-```
-malskill/
-├── offensive-tools/    # 115 tool skills by attack phase
-│   ├── recon/
-│   ├── windows/
-│   ├── web/
-│   ├── forensic/
-│   └── ...
-├── offensive-coding/   # Offensive development workflows (7)
-├── coding/             # Language patterns, testing, performance (19)
-├── knowledge/          # Meta-skills and research (8)
-├── ai/                 # AI framework skills (1)
-├── hardware/           # Embedded/sensor skills (2)
-└── AGENTS.md           # Repo-level operational guidance
-```
+## Scope boundary (important)
 
-Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some include `scripts/`, `references/`, or `assets/` for automation, detailed docs, and templates.
+- Put a skill in `offensive-tools/` when the core question is: **"How do I use this specific tool well?"**
+- Put a skill in `offensive-techniques/` when the core question is: **"How do I perform this technique well, regardless of tool?"**
 
-## Conventions
+Do not mix these two purposes in the same skill.
 
-- Skill names use lowercase hyphens (`sql-injection`, not `SQLInjection`)
-- `SKILL.md` stays under 500 lines — deep content goes to `references/`
-- One skill per PR; include validation output
-- See [AGENTS.md](AGENTS.md) for full contribution and operational guidelines
+Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some include `scripts/` for automation helpers, `references/` for deep dives, and `assets/` for templates.

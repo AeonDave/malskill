@@ -6,7 +6,13 @@ param(
     [ValidateSet("flat", "group", "")]
     [string]$Layout = "",
     [string[]]$SkillRefs = @(),
-    [switch]$All
+    [switch]$All,
+    [ValidateSet("skills", "commands", "")]
+    [string]$Action = "",
+    [ValidateSet("claude-code", "codex", "cursor", "windsurf", "copilot", "gemini", "")]
+    [string]$Agent = "",
+    [ValidateSet("global", "project", "")]
+    [string]$Scope = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,7 +48,6 @@ function Normalize-SkillPath([string]$PathValue) {
     if ([string]::IsNullOrWhiteSpace($PathValue)) {
         return ""
     }
-
     return ($PathValue -replace '[\\/]+', '/').TrimEnd('/')
 }
 
@@ -54,7 +59,6 @@ function Convert-NormalizedPathToSystemPath([string]$PathValue) {
     if ([string]::IsNullOrWhiteSpace($PathValue) -or $PathValue -eq '.') {
         return ""
     }
-
     return $PathValue.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
 }
 
@@ -111,6 +115,8 @@ function Invoke-PythonScript([string]$ScriptPath, [string[]]$ScriptArgs) {
         throw "Python script failed: $ScriptPath"
     }
 }
+
+# ─── Skills discovery ────────────────────────────────────────────────────────
 
 function Get-SkillDirectories([string]$RootPath) {
     $skillFiles = Get-ChildItem -Path $RootPath -Recurse -File | Where-Object {
@@ -180,7 +186,7 @@ function Resolve-SkillReferences([object[]]$Skills, [string[]]$References) {
             continue
         }
 
-        $matches = @(
+        $matchedSkills = @(
             $Skills | Where-Object {
                 (Normalize-SkillPath $_.RelativePath) -ieq $needle -or
                 (Normalize-SkillPath $_.FullPath) -ieq $needle -or
@@ -188,20 +194,20 @@ function Resolve-SkillReferences([object[]]$Skills, [string[]]$References) {
             }
         )
 
-        if ($matches.Count -eq 0) {
+        if ($matchedSkills.Count -eq 0) {
             throw "Skill reference not found: $reference"
         }
 
-        if ($matches.Count -gt 1 -and -not ($matches | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle })) {
-            $choices = ($matches | ForEach-Object { $_.RelativePath }) -join ', '
+        if ($matchedSkills.Count -gt 1 -and -not ($matchedSkills | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle })) {
+            $choices = ($matchedSkills | ForEach-Object { $_.RelativePath }) -join ', '
             throw "Ambiguous skill reference '$reference'. Use one of: $choices"
         }
 
-        if (($matches | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle }).Count -gt 0) {
-            $matches = @($matches | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle })
+        if (($matchedSkills | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle }).Count -gt 0) {
+            $matchedSkills = @($matchedSkills | Where-Object { (Normalize-SkillPath $_.RelativePath) -ieq $needle -or (Normalize-SkillPath $_.FullPath) -ieq $needle })
         }
 
-        foreach ($match in $matches) {
+        foreach ($match in $matchedSkills) {
             if (-not ($resolved | Where-Object { $_.FullPath -eq $match.FullPath })) {
                 $resolved.Add($match)
             }
@@ -289,11 +295,11 @@ function Select-Destination {
     }
 
     if ($selectedIndex -eq ($options.Count + 1)) {
-            $manual = Read-Host "Enter destination path"
-            if ([string]::IsNullOrWhiteSpace($manual)) {
-                throw "Destination path cannot be empty."
-            }
-            return [System.IO.Path]::GetFullPath($manual)
+        $manual = Read-Host "Enter destination path"
+        if ([string]::IsNullOrWhiteSpace($manual)) {
+            throw "Destination path cannot be empty."
+        }
+        return [System.IO.Path]::GetFullPath($manual)
     }
 
     throw "Invalid destination selection: $choice"
@@ -454,12 +460,245 @@ function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot,
     }
 }
 
+# ─── Commands flow ────────────────────────────────────────────────────────────
+
+$AgentSourceFile = @{
+    'claude-code' = 'claude-code.md'
+    'codex'       = 'codex.md'
+    'cursor'      = 'cursor.md'
+    'windsurf'    = 'windsurf.md'
+    'copilot'     = 'copilot.md'
+    'gemini'      = 'gemini.md'
+}
+
+$AgentProjectOnly = @('windsurf', 'copilot')
+
+function Get-SkillDescription([string]$SkillDir) {
+    $skillFile = Join-Path $SkillDir "SKILL.md"
+    try {
+        $content = Get-Content -LiteralPath $skillFile -Raw -ErrorAction Stop
+        if ($content -match '(?s)^---\r?\n(.*?)\r?\n---') {
+            $frontmatter = $Matches[1]
+            # Block scalar (description: |)
+            if ($frontmatter -match '(?s)description:\s*\|\r?\n[ \t]+([^\r\n]+)') {
+                return $Matches[1].Trim()
+            }
+            # Single line
+            if ($frontmatter -match 'description:\s*(.+)') {
+                return $Matches[1].Trim(' ', '"', "'")
+            }
+        }
+    } catch {}
+    return ""
+}
+
+function Get-CommandDefinitions([string]$RootPath) {
+    $commandDirs = Get-ChildItem -Path $RootPath -Recurse -Directory -Force |
+        Where-Object { $_.Name -eq '.commands' }
+
+    $commands = foreach ($dir in $commandDirs) {
+        $parentDir = $dir.Parent.FullName
+        $skillFile = Join-Path $parentDir "SKILL.md"
+        if (-not (Test-Path -LiteralPath $skillFile)) { continue }
+
+        $name = $dir.Parent.Name
+        $description = Get-SkillDescription -SkillDir $parentDir
+        $relPath = Get-RelativePathNormalized -BasePath $RootPath -TargetPath $parentDir
+
+        $availableAgents = @(
+            Get-ChildItem -Path $dir.FullName -File -Filter "*.md" -Force |
+            ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) } |
+            Where-Object { $AgentSourceFile.ContainsKey($_) }
+        )
+
+        if ($availableAgents.Count -eq 0) { continue }
+
+        [pscustomobject]@{
+            Name            = $name
+            Description     = $description
+            RelativePath    = $relPath
+            CommandDir      = $dir.FullName
+            AvailableAgents = $availableAgents
+        }
+    }
+
+    return @($commands | Sort-Object RelativePath, Name)
+}
+
+function Get-AgentCommandPath([string]$AgentName, [string]$CommandName, [string]$ScopeChoice) {
+    $homeDir = [Environment]::GetFolderPath('UserProfile')
+    $cwd = (Get-Location).Path
+
+    switch ($AgentName) {
+        'claude-code' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.claude', 'commands', "$CommandName.md")
+        }
+        'codex' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.codex', 'skills', "$CommandName.md")
+        }
+        'cursor' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.cursor', 'rules', "$CommandName.mdc")
+        }
+        'windsurf' {
+            return [System.IO.Path]::Combine($cwd, '.windsurf', 'rules', "$CommandName.md")
+        }
+        'copilot' {
+            return [System.IO.Path]::Combine($cwd, '.github', 'instructions', "$CommandName.instructions.md")
+        }
+        'gemini' {
+            if ($ScopeChoice -eq 'global') {
+                return [System.IO.Path]::Combine($homeDir, '.gemini', 'skills', "$CommandName.md")
+            }
+            return [System.IO.Path]::Combine($cwd, '.gemini', "$CommandName.md")
+        }
+        default { throw "Unknown agent: $AgentName" }
+    }
+}
+
+function Choose-Agent([string[]]$AvailableAgents) {
+    if (-not [string]::IsNullOrWhiteSpace($Agent)) {
+        if ($AvailableAgents -notcontains $Agent) {
+            throw "Agent '$Agent' has no command file in selected commands."
+        }
+        return $Agent
+    }
+
+    $ordered = @('claude-code', 'codex', 'cursor', 'windsurf', 'copilot', 'gemini') |
+        Where-Object { $AvailableAgents -contains $_ }
+
+    Write-Step "Select target agent"
+    for ($i = 0; $i -lt $ordered.Count; $i++) {
+        Write-Host ("[{0}] {1}" -f ($i + 1), $ordered[$i]) -ForegroundColor Cyan
+    }
+    $choice = Read-Host "Select agent"
+    $idx = 0
+    if (-not [int]::TryParse($choice.Trim(), [ref]$idx) -or $idx -lt 1 -or $idx -gt $ordered.Count) {
+        throw "Invalid agent selection: $choice"
+    }
+    return $ordered[$idx - 1]
+}
+
+function Choose-CommandScope([string]$AgentName, [string]$CommandName) {
+    if (-not [string]::IsNullOrWhiteSpace($Scope)) {
+        return $Scope
+    }
+    if ($AgentProjectOnly -contains $AgentName) {
+        return 'project'
+    }
+
+    $globalPath = Get-AgentCommandPath -AgentName $AgentName -CommandName $CommandName -ScopeChoice 'global'
+    $projectPath = Get-AgentCommandPath -AgentName $AgentName -CommandName $CommandName -ScopeChoice 'project'
+
+    Write-Step "Select install scope"
+    Write-Host ("[1] global  — {0}" -f $globalPath) -ForegroundColor Cyan
+    Write-Host ("[2] project — {0}" -f $projectPath) -ForegroundColor Cyan
+    $choice = Read-Host "Select scope"
+    switch ($choice.Trim()) {
+        '1' { return 'global' }
+        '2' { return 'project' }
+        default { throw "Invalid scope selection: $choice" }
+    }
+}
+
+function Install-CommandFiles([object[]]$SelectedCommands, [string]$AgentName, [string]$ScopeChoice) {
+    $sourceFile = $AgentSourceFile[$AgentName]
+
+    foreach ($cmd in $SelectedCommands) {
+        $src = Join-Path $cmd.CommandDir $sourceFile
+        if (-not (Test-Path -LiteralPath $src)) {
+            Write-Warn "No $AgentName command file found for '$($cmd.Name)' — skipping"
+            continue
+        }
+
+        $dest = Get-AgentCommandPath -AgentName $AgentName -CommandName $cmd.Name -ScopeChoice $ScopeChoice
+        $destDir = Split-Path -Parent $dest
+        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+
+        if (Test-Path -LiteralPath $dest) {
+            Write-Warn "Overwriting existing: $dest"
+        }
+
+        Write-Step "Installing $($cmd.Name) → $dest"
+        Copy-Item -LiteralPath $src -Destination $dest -Force
+        Write-Info "$($cmd.Name) installed for $AgentName"
+    }
+}
+
+function Invoke-CommandsFlow {
+    $commands = Get-CommandDefinitions -RootPath $SourceRoot
+    if ($commands.Count -eq 0) {
+        throw "No .commands/ folders found under $SourceRoot"
+    }
+
+    Write-Step "Found $($commands.Count) command(s)"
+    for ($i = 0; $i -lt $commands.Count; $i++) {
+        $agents = $commands[$i].AvailableAgents -join ', '
+        $desc = if ($commands[$i].Description) { " — $($commands[$i].Description)" } else { "" }
+        Write-Host ("[{0,3}] {1}{2}  [{3}]" -f ($i + 1), $commands[$i].Name, $desc, $agents) -ForegroundColor Cyan
+    }
+    Write-Host ""
+    $rawSelection = Read-Host "Select commands by index (e.g. 1,3-5 or all)"
+    $indexes = Parse-IndexSelection -RawSelection $rawSelection -MaxIndex $commands.Count
+    $selectedCommands = @(foreach ($index in $indexes) { $commands[$index - 1] })
+
+    if ($selectedCommands.Count -eq 0) {
+        throw "No commands selected."
+    }
+
+    $allAvailable = @($selectedCommands | ForEach-Object { $_.AvailableAgents } | Sort-Object -Unique)
+    $chosenAgent = Choose-Agent -AvailableAgents $allAvailable
+    $chosenScope = Choose-CommandScope -AgentName $chosenAgent -CommandName $selectedCommands[0].Name
+
+    Write-Host ""
+    Write-Info "Selected $($selectedCommands.Count) command(s)"
+    Write-Info "Agent: $chosenAgent"
+    Write-Info "Scope: $chosenScope"
+    Write-Host ""
+
+    Install-CommandFiles -SelectedCommands $selectedCommands -AgentName $chosenAgent -ScopeChoice $chosenScope
+
+    Write-Host ""
+    Write-Info "Command install complete."
+}
+
+# ─── Action selection ─────────────────────────────────────────────────────────
+
+function Choose-Action {
+    if (-not [string]::IsNullOrWhiteSpace($Action)) {
+        return $Action
+    }
+
+    Write-Step "Select action"
+    Write-Host "[1] Install skills   — copy skill directories or packages to a destination" -ForegroundColor Cyan
+    Write-Host "[2] Install commands — register slash commands for AI agents (claude-code, cursor, etc.)" -ForegroundColor Cyan
+    $choice = Read-Host "Select action"
+    switch ($choice.Trim()) {
+        '1' { return 'skills' }
+        '2' { return 'commands' }
+        default { throw "Invalid action: $choice" }
+    }
+}
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
 try {
     Write-Host ""
     Write-Host "Agent Skills installer" -ForegroundColor Green
     Write-Host "Source root: $SourceRoot" -ForegroundColor DarkGray
     Write-Host ""
 
+    $resolvedAction = Choose-Action
+    Write-Host ""
+
+    if ($resolvedAction -eq 'commands') {
+        Invoke-CommandsFlow
+        exit 0
+    }
+
+    # ── Skills flow ──
     $skills = Get-SkillDirectories -RootPath $SourceRoot
     $selectedSkills = @(Select-Skills -Skills $skills)
     if ($selectedSkills.Count -eq 0) {

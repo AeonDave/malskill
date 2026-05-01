@@ -1,49 +1,404 @@
 ---
 name: volatility3
-description: "Volatility 3: open-source memory forensics framework. Use when investigating live-memory artifacts such as running processes, injected code, credentials residue, persistence, and malware behavior from RAM images."
+description: |
+  Memory forensics framework for analyzing RAM dumps. Extracts running processes, injected code,
+  network connections, registry hives, credentials, files, and malware artifacts from memory images.
+  Use on any .raw/.dmp/.mem/.vmem file to investigate what was running at capture time:
+  processes, DLLs, network state, user activity, credentials in memory, and hidden/injected code.
 license: VSL-1.0
-compatibility: "Python-based; Linux/macOS/Windows analysis host. github.com/volatilityfoundation/volatility3"
+compatibility: "Python 3.6+; Linux/macOS/Windows. pip install volatility3. github.com/volatilityfoundation/volatility3"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "2.1"
 ---
 
 # Volatility 3
 
-Memory-forensics framework for deep volatile artifact analysis.
+Memory forensics — extract processes, network state, credentials, files, and malware artifacts from RAM images.
 
-## Quick Start
+## Installation
 
 ```bash
-# list plugin families
+pip install volatility3
+# or
+git clone https://github.com/volatilityfoundation/volatility3 && cd volatility3 && pip install -e .
+
+# Verify
 python3 vol.py --help
 
-# basic process listing
-python3 vol.py -f memdump.raw windows.pslist
-
-# process tree
-python3 vol.py -f memdump.raw windows.pstree
-
-# account hash extraction (when applicable)
-python3 vol.py -f memdump.raw windows.hashdump
+# Alias (convenience)
+alias vol='python3 /path/to/volatility3/vol.py'
 ```
 
-## Investigation Flow
+## Symbol Tables (Windows)
 
-1. Confirm image provenance (acquisition tool/time/source).
-2. Run baseline process plugins (`pslist`, `pstree`).
-3. Pivot into suspicious processes/modules/handles/network artifacts.
-4. Correlate memory findings with disk/network timelines.
-5. Export structured findings with plugin outputs preserved.
+Volatility 3 auto-downloads symbol tables for most Windows versions. If offline:
 
-## Practical Tips
+```bash
+# Download ISF symbol packs from:
+# https://github.com/volatilityfoundation/volatility3/releases (windows.zip, mac.zip, linux.zip)
+# Extract to: volatility3/volatility3/symbols/
 
-- Run broad baseline plugins first; avoid tunnel vision on one IOC.
-- Keep raw command outputs as evidence attachments.
-- Treat plugin output as leads; corroborate before conclusions.
+# Verify symbols available
+python3 vol.py -f memory.raw isfinfo
+```
+
+---
+
+## Base Syntax
+
+```bash
+python3 vol.py -f <memory_image> <plugin>
+python3 vol.py -f memory.raw windows.pslist   # Windows plugin
+python3 vol.py -f memory.raw linux.pslist     # Linux plugin
+```
+
+Output to file:
+```bash
+python3 vol.py -f memory.raw windows.pslist > pslist.txt 2>/dev/null
+```
+
+---
+
+## Windows Plugins — Full Reference
+
+### Process Analysis
+
+```bash
+# List processes (flat, fast)
+python3 vol.py -f memory.raw windows.pslist
+
+# Process tree (shows parent/child relationships)
+python3 vol.py -f memory.raw windows.pstree
+
+# Process scan (finds hidden/unlinked processes)
+python3 vol.py -f memory.raw windows.psscan
+
+# Compare pslist vs psscan — differences = hidden processes
+diff <(python3 vol.py -f memory.raw windows.pslist 2>/dev/null | awk '{print $2}' | sort) \
+     <(python3 vol.py -f memory.raw windows.psscan 2>/dev/null | awk '{print $2}' | sort)
+
+# Detailed process info (PID, PPID, handles, threads, path)
+python3 vol.py -f memory.raw windows.cmdline     # command line of each process
+python3 vol.py -f memory.raw windows.dlllist     # DLLs loaded per process
+python3 vol.py -f memory.raw windows.handles     # open handles (files, registry, mutexes)
+
+# Filter by PID
+python3 vol.py -f memory.raw windows.dlllist --pid 1234
+python3 vol.py -f memory.raw windows.handles --pid 1234
+```
+
+**Key fields in pslist:**
+- `PID` / `PPID` — process and parent ID
+- `ImageFileName` — process name (max 15 chars — truncated!)
+- `CreateTime` — when process started
+- `Offset(V)` — virtual memory address
+
+**Suspicious indicators:**
+- `svchost.exe` with no parent `services.exe`
+- `explorer.exe` with parent other than `userinit.exe`
+- Duplicate `lsass.exe`, `csrss.exe`, `smss.exe`
+- Process name with extra space or unicode lookalike
+
+### Network Analysis
+
+```bash
+# Active and recently closed connections
+python3 vol.py -f memory.raw windows.netstat
+
+# All network artifacts (broader)
+python3 vol.py -f memory.raw windows.netscan
+
+# Sort by PID for process correlation
+python3 vol.py -f memory.raw windows.netscan 2>/dev/null | sort -k5 -n
+```
+
+**Fields:** LocalAddr, LocalPort, ForeignAddr, ForeignPort, State, PID, Owner, Created
+
+### Memory Region Analysis
+
+```bash
+# Virtual address descriptors (mapped memory regions per process)
+python3 vol.py -f memory.raw windows.vadinfo --pid 1234
+
+# Find VAD regions with executable + write (RWX) — injection indicator
+python3 vol.py -f memory.raw windows.vadinfo 2>/dev/null | grep -E "RWX|PAGE_EXECUTE_READWRITE"
+
+# Memory map for a process
+python3 vol.py -f memory.raw windows.memmap --pid 1234
+
+# Dump all memory pages of a process
+python3 vol.py -f memory.raw windows.memmap --pid 1234 --dump
+```
+
+### Code Injection Detection
+
+```bash
+# Scan for injected code / process hollowing
+python3 vol.py -f memory.raw windows.malfind
+
+# Malfind with dump (extract suspicious regions)
+python3 vol.py -f memory.raw windows.malfind --dump --pid 1234
+
+# Output: PID, process name, start address, VAD flags, MZ header bytes
+# MZ header in rwx region = classic injected PE
+```
+
+**Malfind output pattern — injection:**
+```
+4608    explorer.exe    0x400000  PAGE_EXECUTE_READWRITE  MZ....
+```
+
+### DLL and Module Analysis
+
+```bash
+# Loaded DLLs per process
+python3 vol.py -f memory.raw windows.dlllist
+
+# Hidden/unlinked DLLs (rootkit indicator)
+python3 vol.py -f memory.raw windows.ldrmodules
+
+# Compare ldrmodules vs dlllist — discrepancies = hidden DLL
+python3 vol.py -f memory.raw windows.ldrmodules 2>/dev/null | grep "False"
+
+# Kernel modules (drivers)
+python3 vol.py -f memory.raw windows.modules
+python3 vol.py -f memory.raw windows.modscan   # includes unlinked
+```
+
+### Credential Extraction
+
+```bash
+# NTLM hashes from SAM (requires SYSTEM privileges at capture time)
+python3 vol.py -f memory.raw windows.hashdump
+
+# Cached credentials (domain user hashes)
+python3 vol.py -f memory.raw windows.cachedump
+
+# LSA secrets
+python3 vol.py -f memory.raw windows.lsadump
+```
+
+### Registry
+
+```bash
+# List registry hives in memory
+python3 vol.py -f memory.raw windows.registry.hivelist
+
+# Print registry key value
+python3 vol.py -f memory.raw windows.registry.printkey --key "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+
+# Dump full hive (offline parsing with regedit/regripper)
+python3 vol.py -f memory.raw windows.registry.hivelist --dump
+```
+
+### File Extraction
+
+```bash
+# Scan for file objects in memory
+python3 vol.py -f memory.raw windows.filescan
+
+# Find specific file
+python3 vol.py -f memory.raw windows.filescan 2>/dev/null | grep -i ".exe"
+python3 vol.py -f memory.raw windows.filescan 2>/dev/null | grep -i "flag"
+
+# Dump file by virtual address (from filescan output)
+python3 vol.py -f memory.raw windows.dumpfiles --virtaddr 0xXXXXXXXXXXXX
+
+# Dump all files (slow on large dumps)
+python3 vol.py -f memory.raw windows.dumpfiles
+
+# Dump process executable
+python3 vol.py -f memory.raw windows.procdump --pid 1234
+```
+
+### Process and Memory Dump
+
+```bash
+# Dump full process memory
+python3 vol.py -f memory.raw windows.memmap --pid 1234 --dump
+
+# Dump process executable (pe header reconstruction)
+python3 vol.py -f memory.raw windows.procdump --pid 1234
+
+# Dump specific DLL from process
+python3 vol.py -f memory.raw windows.dlllist --pid 1234 --dump
+
+# Extract strings from dumped memory
+strings -n 8 pid.1234.0x400000.dmp | grep -i flag
+```
+
+### User and Session
+
+```bash
+# Logged-on users / session info
+python3 vol.py -f memory.raw windows.sessions
+python3 vol.py -f memory.raw windows.getservicesids
+
+# Environment variables per process
+python3 vol.py -f memory.raw windows.envars --pid 1234
+
+# Clipboard content
+python3 vol.py -f memory.raw windows.clipboard
+```
+
+### Other Useful Plugins
+
+```bash
+# Scheduled tasks
+python3 vol.py -f memory.raw windows.scheduled_tasks
+
+# Services (name, state, binary path)
+python3 vol.py -f memory.raw windows.svcscan
+
+# Mutexes (malware often creates unique mutex)
+python3 vol.py -f memory.raw windows.handles --pid 1234 2>/dev/null | grep Mutant
+
+# Atoms (message hooks, global vars)
+python3 vol.py -f memory.raw windows.atoms
+
+# Detect process hooks
+python3 vol.py -f memory.raw windows.ssdt
+```
+
+---
+
+## Linux Plugins
+
+```bash
+# Processes
+python3 vol.py -f memory.raw linux.pslist
+python3 vol.py -f memory.raw linux.pstree
+python3 vol.py -f memory.raw linux.psscan
+
+# Network
+python3 vol.py -f memory.raw linux.netstat
+python3 vol.py -f memory.raw linux.iomem
+
+# Files
+python3 vol.py -f memory.raw linux.proc.maps
+python3 vol.py -f memory.raw linux.find_file --path /etc/passwd
+python3 vol.py -f memory.raw linux.find_file --path /path/to/interesting/file
+
+# Bash history from memory
+python3 vol.py -f memory.raw linux.bash
+python3 vol.py -f memory.raw linux.bashrc
+
+# Environment variables
+python3 vol.py -f memory.raw linux.envars
+
+# Kernel modules
+python3 vol.py -f memory.raw linux.lsmod
+
+# Dump ELF from memory
+python3 vol.py -f memory.raw linux.proc.maps --pid 1234 --dump
+```
+
+---
+
+## Investigation Workflows
+
+### Workflow 1: Full Windows triage
+
+```bash
+MEM="memory.raw"
+vol() { python3 vol.py -f "$MEM" "$@" 2>/dev/null; }
+
+# Phase 1 — baseline
+vol windows.pslist > pslist.txt
+vol windows.psscan > psscan.txt
+vol windows.pstree
+vol windows.netscan > netscan.txt
+vol windows.cmdline > cmdline.txt
+
+# Phase 2 — anomaly hunt
+diff <(awk '{print $2}' pslist.txt | sort) <(awk '{print $2}' psscan.txt | sort)
+grep -E "443|8080|4444|1337" netscan.txt        # suspicious ports
+grep -E "Temp|AppData|ProgramData" cmdline.txt  # suspicious paths
+
+# Phase 3 — injection check
+vol windows.malfind > malfind.txt
+grep -E "MZ|PAGE_EXECUTE_READWRITE" malfind.txt
+
+# Phase 4 — credentials
+vol windows.hashdump
+vol windows.cachedump
+vol windows.lsadump
+
+# Phase 5 — artifacts
+vol windows.filescan > filescan.txt
+grep -iE "flag|secret|password|\.txt|\.docx" filescan.txt
+```
+
+### Workflow 2: Find and extract suspicious process
+
+```bash
+# 1. Identify suspicious PID
+python3 vol.py -f memory.raw windows.psscan 2>/dev/null | grep -i "cmd\|powershell\|wscript"
+
+# 2. Get command line
+python3 vol.py -f memory.raw windows.cmdline --pid 1234
+
+# 3. Check injected memory
+python3 vol.py -f memory.raw windows.malfind --pid 1234
+
+# 4. Dump process binary
+python3 vol.py -f memory.raw windows.procdump --pid 1234
+
+# 5. Check strings in dumped binary
+strings -n 8 pid.1234.*.exe | grep -iE "flag|key|pass|http|C2"
+```
+
+### Workflow 3: File extraction from memory
+
+```bash
+# Find files of interest
+python3 vol.py -f memory.raw windows.filescan 2>/dev/null | grep -iE "flag|\.txt|\.zip|interesting"
+
+# Get virtual address from output (3rd column)
+# Example: 0xce89890 .\Users\user\Desktop\flag.txt
+
+# Dump it
+python3 vol.py -f memory.raw windows.dumpfiles --virtaddr 0xce89890
+
+# If dump produces .dat file, check type
+file file.0xce89890.dat
+strings file.0xce89890.dat
+```
+
+### Workflow 4: Linux credential recovery
+
+```bash
+# Bash history from memory
+python3 vol.py -f memory.raw linux.bash 2>/dev/null
+
+# Find interesting env vars
+python3 vol.py -f memory.raw linux.envars 2>/dev/null | grep -iE "pass|key|flag|secret|token"
+
+# Find /etc/shadow in memory
+python3 vol.py -f memory.raw linux.find_file --path /etc/shadow
+python3 vol.py -f memory.raw linux.find_file --inode <inode_from_above>
+```
+
+---
+
+## Quick Reference — Common Incident Patterns
+
+| Goal | Command |
+|------|---------|
+| Find hidden processes | `windows.psscan` vs `windows.pslist` diff |
+| Find C2 connections | `windows.netscan` → look for unusual foreign IPs/ports |
+| Find injected shellcode | `windows.malfind` → MZ header in RWX VAD |
+| Recover deleted file | `windows.filescan` → `windows.dumpfiles --virtaddr` |
+| Dump credentials | `windows.hashdump` + `windows.cachedump` + `windows.lsadump` |
+| Find target string in memory | `windows.filescan` grep indicator, then `dumpfiles` |
+| Bash history | `linux.bash` |
+| Suspicious env var | `linux.envars` grep key/flag/pass |
+| Network connections | `linux.netstat` / `windows.netscan` |
+| Process command line | `windows.cmdline` |
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/windows-memory-triage-flow.md` | Plugin sequencing, pivots, and common DFIR triage shortcuts |
+| `references/` | Plugin cheatsheet, Windows/Linux image type notes, symbol troubleshooting |

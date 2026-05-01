@@ -19,6 +19,8 @@
 - When improving or curating tool skills, use external research (`fetch_webpage` plus Tavily/web search) for important, missing, disputed, or potentially outdated tools instead of relying only on local repo context.
 - Tool skills clearly covered by stronger existing tools, duplicated elsewhere in the repo, or materially worse than modern alternatives may be removed unless the user explicitly asks to keep them.
 - For every new skill, replacement skill, or major skill refactor, follow `knowledge/skill-creator/` guidance first and keep the resulting skill aligned with AgentSkills conventions.
+- Keep `offensive-tools/` and `offensive-techniques/` strictly separated: `offensive-tools/` is for tool-specific usage guides, while `offensive-techniques/` is for general methodology/tradecraft that may reference tools without becoming tool manuals.
+- When the same topic exists in both layers (for example fuzzing), keep the distinction explicit: tool flags/workflows belong in `offensive-tools/fuzzing/`; technique process and strategy belong in `offensive-techniques/fuzzing-technique/`.
 
 ## Testing
 
@@ -34,13 +36,14 @@
 
 ## Project structure
 
-- `offensive-tools/` — category folders such as `recon/`, `web-app/`, or `windows/`; each category contains one folder per tool skill.
+- `offensive-tools/` — category folders such as `recon/`, `fuzzing/`, `cryptography/`, `web/`, or `windows/`; each category contains one folder per tool skill.
+- `offensive-techniques/` — technique-first, tool-agnostic skills (for example `fuzzing-technique/`) describing how to execute an approach, choose tools, and run a methodology without turning into per-tool command guides.
 - `offensive-coding/` — offensive development skills, including `bof/` plus workflow-focused skills like `edr-evasion/` and `windows-internals/`.
 - `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, and assembly patterns/testing/performance guidance.
 - `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, and deep-research skills.
 - `ai/` — AI framework skills (for example `langchain-py/`).
 - `hardware/` — hardware-oriented skills and subdomains (for example `arduino/`).
-- `offensive-hardware/` — reserved for offensive hardware-focused skills.
+- `commands/` — agent behavior and command modes (for example `1337/`), controlling how the agent reasons and communicates.
 - `AGENTS.md` — root operational guidance for the whole repository.
 
 ## Conventions
@@ -58,6 +61,7 @@
 - Ask first before large restructures across many skill folders, mass renames, or deleting categories.
 - Never add fake commands, placeholder paths, or guessed repo structure to `AGENTS.md`.
 - Do not move developer documentation into `AGENTS.md`; keep it in `README.md` or `references/`.
+- Never reference CTF competitions, challenge names, competition platforms, or CTF-platform branding (e.g., HTB, PicoCTF, etc.) in any skill content; all skills are written as generic, real-world professional methodology applicable to penetration testing, red team operations, and domain-specific analysis.
 
 ## PR instructions
 
