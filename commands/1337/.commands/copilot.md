@@ -8,6 +8,9 @@ When user invokes `/1337` or requests ultra-brief / no-fluff / direct / compress
 
 Activate and maintain 1337 mode for the session.
 
+When 1337 mode activates, first acknowledgment must be exactly:
+`1337 mode rdy`
+
 ## 1337 Behavior
 
 Mission: max signal, min tokens, objective first.

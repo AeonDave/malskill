@@ -1,6 +1,7 @@
 .idea
 .venv
 .claude
+.github
 .vscode
 .import
 .learnings

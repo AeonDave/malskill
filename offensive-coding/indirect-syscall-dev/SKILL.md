@@ -1,5 +1,5 @@
 ---
-name: indirect-syscall
+name: indirect-syscall-dev
 description: "Design, implement, and harden Windows x64 indirect syscall dispatchers: SSN resolution (Hell's Gate, Halo's Gate, Tartarus' Gate, FreshyCalls, Recycled Gate, RecycledGate/DWhisper), direct vs indirect dispatch, `syscall;ret` gadget discovery, layered syscall interception, and composition with stack spoofing. Use when writing or reviewing implants/loaders/BOFs that dispatch NT APIs without touching hooked ntdll stubs, porting dispatchers between C/Rust/Go, diagnosing SSN-drift failures across Windows builds, selecting between resolution strategies under specific EDR hook patterns, integrating with call-stack spoof trampolines, or building multi-arg (6+) syscall wrappers. Covers ntdll stub byte layout, PEB-walk-based module/export resolution, name obfuscation, gadget scanning, the RCX→R10 convention, WoW64 considerations, and strategy trade-offs against modern inline / IAT / nirvana hooks."
 license: MIT
 compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+. ARM64 uses `svc #0` with SSN in `x8` — structurally similar but register conventions differ; treat this skill as x64-only."

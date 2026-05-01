@@ -1,5 +1,5 @@
 ---
-name: edr-evasion
+name: edr-evasion-dev
 description: |
   Universal patterns, constraints, and trade-offs for Windows EDR evasion in
   offensive tooling (verified against S1, Defender, CrowdStrike — 2026). Covers

@@ -1,5 +1,5 @@
 ---
-name: windows-internals
+name: windows-internals-dev
 description: "Windows internals knowledge base for offensive and defensive programming: PEB/TEB walking, PE/COFF format, syscall mechanics and SSN resolution (Hell's/Halo's/Tartarus/Recycled Gate), exception handling and stack unwinding for call-stack spoofing, virtual memory and heap internals, thread/APC mechanics, token and privilege model, kernel object structures (EPROCESS, ETHREAD, KPCR, handle tables), kernel callbacks, and modern mitigation surface (ETW/ETW-TI, AMSI, CFG/XFG/CET, VBS/HVCI, userland hooks). Use when writing implants, loaders, BOFs, EDR-aware tooling, reversing Windows binaries, or building defensive telemetry that requires structural knowledge of Windows beyond Win32 APIs."
 license: MIT
 compatibility: "Windows 10 1809 through Windows 11 24H2, x86-64 and ARM64. Kernel structures referenced from Windows 11 22H2/24H2 public debug symbols. Offsets drift across builds — verify against vergiliusproject.com or live WinDbg `dt nt!_STRUCT` before production use."

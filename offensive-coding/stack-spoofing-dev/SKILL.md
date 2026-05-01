@@ -1,5 +1,5 @@
 ---
-name: stack-spoofing
+name: stack-spoofing-dev
 description: "Design, implement, and harden x86-64 Windows call-stack spoofing primitives (Draugr, SilentMoonwalk DESYNC with/without Eclipse, NtContinue-based synthetic contexts, thread-pool stack spoof) and reference implementations (YouMayPasser, VulcanRaven, Unwinder, HulkOps). Use when writing or reviewing implants/loaders/BOFs that must hide syscall origins from EDR stack walkers, porting spoofers between C/Rust/Go, choosing between strategies on a specific Windows build (10, 11 22H2/24H2, Server 2022+), tuning frame thresholds against .pdata-parsed gadget inventories, debugging JMP [RBX] / ADD RSP,X gadget failures, or integrating stack spoofing with indirect syscall dispatch or sleep obfuscation. Covers frame math, UNWIND_INFO parsing gotchas, SAVE_NONVOL safety, Eclipse validation, per-strategy ASM trampoline layouts, and strategy selection on modern Windows where classical thresholds no longer hold."
 license: MIT
 compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+. Classical thresholds assume Win10; Win11 22H2+ requires empirical re-tuning (see frame-math reference). ARM64 not covered — unwinder model differs."

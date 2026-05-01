@@ -1,5 +1,5 @@
 ---
-name: linux-internals
+name: linux-internals-dev
 description: |
   Linux internals knowledge base for offensive and defensive programming: ELF loading and relocation behavior, procfs and process metadata semantics, namespace lifecycle and capability boundaries, eBPF verifier and map and attachment mechanics, and LSM hook and policy surfaces. Use when writing implants, loaders, syscall-level tooling, container escape research, eBPF probes, or hardening and telemetry logic that needs kernel-level mechanics beyond userland APIs.
 license: MIT
