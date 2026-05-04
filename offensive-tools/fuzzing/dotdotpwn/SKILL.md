@@ -4,7 +4,7 @@ description: "DotDotPwn: directory traversal fuzzer for HTTP, FTP, and TFTP with
 license: MIT
 compatibility: "Linux / macOS. Perl + modules. apt install dotdotpwn or git clone https://github.com/wireghoul/dotdotpwn"
 metadata:
-  author: AeonDave
+    author: AeonDave
     version: "1.3"
 ---
 

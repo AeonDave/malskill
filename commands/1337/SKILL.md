@@ -1,9 +1,11 @@
 ---
-name: 1337
+name: "1337"
 description: "Ultra-compressed offensive operator mode for technical hacking tasks. Minimizes token usage in reasoning, chat output, and decision flow while keeping technical precision. Supports intensity levels: lite, full (default), ultra. Use when user invokes /1337 or asks for maximum brevity, no fluff, direct execution, offensive-security context, or fast tool-driven research/implementation. Prioritizes objective completion, assumption control, surgical changes, verifiable success gates, and fast pivots when primary approach fails."
 license: MIT
 compatibility: "Cross-domain skill behavior mode for offensive-security workflows."
-metadata: {author: AeonDave, version: "2.1"}
+metadata:
+   author: AeonDave
+   version: "2.1"
 ---
 
 # 1337

@@ -65,7 +65,10 @@ def _parse_frontmatter(content: str) -> tuple[bool, str, dict]:
     for line in raw.splitlines():
         m = re.match(r"^(\S[^:]*?):\s*(.*)", line)
         if m:
-            data[m.group(1).strip()] = m.group(2).strip()
+            value = m.group(2).strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                value = value[1:-1]
+            data[m.group(1).strip()] = value
     return True, "", data
 
 

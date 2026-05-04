@@ -4,7 +4,7 @@ description: "Arjun: HTTP parameter discovery fuzzer with a large curated parame
 license: GNU GPL v3
 compatibility: "Linux / macOS / Windows. Python 3. pip3 install arjun or git clone https://github.com/s0md3v/Arjun"
 metadata:
-  author: AeonDave
+    author: AeonDave
     version: "1.2"
 ---
 
