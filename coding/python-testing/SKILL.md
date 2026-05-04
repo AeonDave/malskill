@@ -52,6 +52,9 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 - Avoid sleeping in tests; synchronize via conditions/events.
 - Mock at boundaries (network, time, DB), not everywhere.
 - Coverage is a signal: aim for meaningful assertions, not line-hits.
+- Do not add production hooks solely for tests; use real seams or dependency injection.
+- Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
+- If mocks, timing, or flakes dominate, pair with `testing-reliability`; if the root cause is unclear, pair with `systematic-debugging`.
 
 ---
 

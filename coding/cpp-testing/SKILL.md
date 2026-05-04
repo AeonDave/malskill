@@ -37,6 +37,9 @@ High-signal workflow for writing and maintaining reliable C++ tests.
 - Use `ASSERT_*` for preconditions, `EXPECT_*` for additional checks.
 - Keep unit tests fast; label integration tests separately.
 - Keep one source of truth for test configuration in CMake targets.
+- Avoid production-only test hooks unless they expose a real design seam.
+- Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
+- Pair with `testing-reliability` for mock/timing anti-patterns and `systematic-debugging` when symptoms are far from the defect.
 
 ---
 

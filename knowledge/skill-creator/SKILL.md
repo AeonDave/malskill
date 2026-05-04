@@ -4,7 +4,7 @@ description: "Design, create, update, and package Agent Skills following the ope
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.2"
 ---
 
 # Skill Creator
@@ -66,9 +66,10 @@ Prefer explaining *why* a behavior matters over stacking rigid rules. Agents hav
 2. Plan reusable resources (scripts/references/assets)
 3. Prepare the working area (scaffold new or update existing)
 4. Author SKILL.md + resources
-5. Validate and package
-6. Install and test
-7. Iterate from real usage
+5. Pressure-test behavior with realistic failure scenarios
+6. Validate and package
+7. Install and test
+8. Iterate from real usage
 
 ---
 
@@ -85,6 +86,8 @@ Key questions (ask at most two at a time):
 - "What are the edge cases or failure modes?"
 
 For a new skill, conclude with 3–5 representative usage examples. For an update, conclude with a clear statement of what changes, what stays, and what success looks like after the edit.
+
+For offensive, research, or workflow skills, also identify likely failure pressure: time pressure, confidence, sunk cost, scanner authority, scope creep, destructive shortcuts, and overclaiming. These become evaluation scenarios later.
 
 ### Step 2: Plan Resources
 
@@ -194,7 +197,13 @@ Mix patterns as needed. Always end with a **Resources** section listing what is 
 
 Do not create: `README.md`, `CHANGELOG.md`, `INSTALLATION_GUIDE.md`, or any file that documents the skill creation process rather than the skill's domain. Every file must justify its presence to an agent executing the skill.
 
-### Step 5: Validate and Package
+### Step 5: Pressure-Test Behavior
+
+Before declaring a new or majorly refactored skill done, test whether it changes agent behavior under realistic pressure. Do not quiz the agent on the skill text; simulate situations where it would be tempted to skip the workflow, overclaim evidence, broaden scope, or take a shortcut. Also test whether natural prompts trigger the skill when the user does not name it directly.
+
+Use `references/pressure-testing-skills.md` when the skill controls safety, evidence, scope, debugging discipline, research quality, or multi-step execution. Use `references/skill-triggering-tests.md` when the risk is under-triggering, over-triggering, or weak descriptions.
+
+### Step 6: Validate and Package
 
 **Validate:**
 
@@ -216,7 +225,7 @@ python scripts/package_skill.py <path/to/skill-folder> ./dist
 
 The packager validates first, then creates `<skill-name>.skill` (a zip file). Output path is printed on success.
 
-### Step 6: Install and Test
+### Step 7: Install and Test
 
 Install the packaged skill using your agent platform's install mechanism (CLI/UI). If your platform supports scopes, prefer **workspace/repo scope** while iterating.
 
@@ -228,7 +237,7 @@ After installation, reload skills (if required by the platform), then run one re
 
 For updates, full reinstall is usually unnecessary — validate with `quick_validate.py`, then test the changed behavior with one representative prompt.
 
-### Step 7: Iterate
+### Step 8: Iterate
 
 After real usage, revisit:
 
@@ -258,6 +267,8 @@ After real usage, revisit:
 
 - See [references/patterns.md](references/patterns.md) for progressive disclosure patterns and structural examples
 - See [references/spec.md](references/spec.md) for the full AgentSkills frontmatter field reference
+- See [references/pressure-testing-skills.md](references/pressure-testing-skills.md) for realistic RED/GREEN behavior tests for skills
+- See [references/skill-triggering-tests.md](references/skill-triggering-tests.md) for natural-prompt activation checks
 
 ## Scripts
 
@@ -266,3 +277,4 @@ After real usage, revisit:
 | `scripts/init_skill.py` | Scaffold a new skill directory with template |
 | `scripts/package_skill.py` | Validate + zip a skill into a `.skill` file |
 | `scripts/quick_validate.py` | Standalone SKILL.md frontmatter validator |
+| `scripts/check_changed_files.py` | Safe changed-file newline and `git diff --check` hygiene checks |

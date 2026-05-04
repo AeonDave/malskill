@@ -29,6 +29,9 @@ This skill is about writing tests that are **reliable**, **readable**, and **use
 - Prefer **fakes** (in-memory implementations) over heavy mocks.
 - Use `t.Parallel()` only when the test is truly isolated.
 - Keep test data local and explicit; avoid hidden cross-test coupling.
+- Do not add exported production APIs solely for tests; prefer package seams, interfaces, or local fakes.
+- Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
+- Pair with `testing-reliability` for mock/timing anti-patterns and `systematic-debugging` when failure attribution is unclear.
 
 ---
 

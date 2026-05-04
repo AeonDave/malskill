@@ -4,6 +4,7 @@
 
 - Scaffold a new skill: `python knowledge/skill-creator/scripts/init_skill.py <skill-name> --path <target-dir> --resources references`
 - Validate one skill: `python knowledge/skill-creator/scripts/quick_validate.py <skill-dir>`
+- Check changed-file hygiene: `python knowledge/skill-creator/scripts/check_changed_files.py`
 - Package one skill: `python knowledge/skill-creator/scripts/package_skill.py <skill-dir>`
 - Install skills interactively (PowerShell): `.\install.ps1` (supports `folder|skill|zip` with `flat|group` layouts)
 - Install skills interactively (Bash): `./install.sh` (supports `folder|skill|zip` with `flat|group` layouts)
@@ -27,6 +28,7 @@
 - After changing a skill, validate the changed skill with `quick_validate.py` before finishing.
 - After changing shared scaffolding or shared guidance in `knowledge/skill-creator/` or `knowledge/agent-md-creator/`, revalidate the affected skill folders.
 - Prefer the smallest relevant validation command first; expand only when the change affects multiple skill directories.
+- Prefer `check_changed_files.py` over dense PowerShell one-liners for newline and `git diff --check` validation.
 
 ## Debugging
 
@@ -39,8 +41,8 @@
 - `offensive-tools/` — category folders such as `recon/`, `fuzzing/`, `cryptography/`, `web/`, or `windows/`; each category contains one folder per tool skill.
 - `offensive-techniques/` — technique-first, tool-agnostic skills (for example `fuzzing-technique/`) describing how to execute an approach, choose tools, and run a methodology without turning into per-tool command guides.
 - `offensive-coding/` — offensive development skills, including `bof/` plus workflow-focused skills like `edr-evasion/` and `windows-internals/`.
-- `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, and assembly patterns/testing/performance guidance.
-- `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, and deep-research skills.
+- `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, assembly, plus cross-cutting TDD, testing reliability, and systematic debugging guidance.
+- `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, design/planning workflows, deep-research skills, evidence/completion gates, feedback triage, and agentic orchestration workflows.
 - `ai/` — AI framework skills (for example `langchain-py/`).
 - `hardware/` — hardware-oriented skills and subdomains (for example `arduino/`).
 - `commands/` — agent behavior and command modes (for example `1337/`), controlling how the agent reasons and communicates.

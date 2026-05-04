@@ -60,7 +60,7 @@ Example:
 
 These two layers are complementary and intentionally separate.
 
-### `coding/` - Language patterns and tooling (19 skills)
+### `coding/` - Language patterns and tooling (22 skills)
 
 Idiomatic code patterns, testing strategies, and performance guidance for the languages most used in security tooling. These skills give an agent the ability to write, review, and improve code - not just run existing tools.
 
@@ -69,21 +69,27 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **Rust** - ownership, API design, performance, unsafe patterns
 - **Go** - idiomatic patterns, concurrency, performance
 - **Python** - patterns, async, pytest workflows
-- **Arduino / Sensors** - embedded and hardware development
+- **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
 
-### `knowledge/` - Research and meta-skills (8 skills)
+### `knowledge/` - Research and meta-skills (14 skills)
 
-Skills that support the workflow itself: research, analysis, and documentation automation.
+Skills that support the workflow itself: design, implementation planning, research, analysis, evidence quality, verification gates, orchestration, review triage, and documentation automation.
 
 | Skill | Role |
 |-------|------|
 | `skill-creator` | Create, validate, and package new skills |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
 | `readme-md-creator` | Create and maintain high-signal README files |
-| `self-improvement` | Capture errors, corrections, and cross-session patterns |
+| `design-before-implementation` | Clarify scope, alternatives, constraints, and success criteria before building |
+| `implementation-planning` | Turn approved designs into executable, verifiable task plans |
+| `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
+| `verification-before-completion` | Require fresh verification before claiming work is done or fixed |
+| `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
+| `agentic-offensive-orchestration` | Split scoped offensive/research work across safe independent agent tasks |
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `cve-search` | CVE enumeration and public PoC collection |
+| `zero-day-hunter` | Structured unknown-vulnerability research and hypothesis workflow |
 | `malware-analysis` | Static/dynamic malware analysis and IOC extraction |
 
 ### `ai/` - AI framework skills (1 skill)
@@ -138,6 +144,9 @@ Skills are plain folders - no build step, no runtime dependency. Copy a skill fo
 ```bash
 # Validate a single skill
 python knowledge/skill-creator/scripts/quick_validate.py offensive-tools/windows/mimikatz
+
+# Check changed files for final newlines and git diff whitespace issues
+python knowledge/skill-creator/scripts/check_changed_files.py
 
 # Validate an entire section (Bash)
 find offensive-tools/windows -type f -name SKILL.md -exec dirname {} \; | sort -u | \

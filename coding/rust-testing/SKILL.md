@@ -30,6 +30,9 @@ Use this skill when tests are part of the change, when flakiness needs to die qu
 - Use mocks sparingly; prefer fakes, temp dirs, test servers, and controlled inputs.
 - Treat doctests as part of the public contract, not decorative comments.
 - Coverage is a signal, not the goal; strong assertions beat inflated percentages.
+- Avoid production-only test hooks unless they expose a legitimate public or crate-private seam.
+- Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
+- Pair with `testing-reliability` for mock/timing anti-patterns and `systematic-debugging` when the root cause is unclear.
 
 ---
 

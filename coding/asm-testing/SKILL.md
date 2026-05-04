@@ -12,6 +12,10 @@ metadata:
 
 Structured workflow for testing, debugging, and hunting bugs in hand-written and injected assembly — from standard library functions to offensive trampolines, callgates, and PIC shellcode.
 
+If harness flakiness, timing, or weak assertions dominate, pair this skill with `testing-reliability`. If crashes or silent corruption remain unexplained after focused checks, pair with `systematic-debugging` before patching symptoms.
+
+When implementing persistent assembly-facing behavior or fixing a bug, pair with `test-driven-development` to capture the failing harness or reproducer first.
+
 ---
 
 ## Phase 1 — ABI Compliance Checklist

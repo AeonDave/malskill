@@ -27,6 +27,9 @@ Pragmatic workflow for reliable C tests and bug-finding.
 - Avoid real network/time in unit tests.
 - Run ASan/UBSan in CI for memory and UB signal.
 - Reproduce failures in the smallest possible command first.
+- Do not hide memory/UB bugs behind test-only flags, retries, or inflated timeouts.
+- Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
+- Pair with `testing-reliability` for fixture/timing anti-patterns and `systematic-debugging` when the root cause is unclear.
 
 ---
 
