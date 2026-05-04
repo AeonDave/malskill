@@ -706,6 +706,44 @@ get_agent_command_path() {
     esac
 }
 
+get_agent_skill_path() {
+    local agent="$1"
+    local name="$2"
+    local scope="$3"
+    local home_dir="${HOME:-$SCRIPT_DIR}"
+    local cwd
+    cwd="$(pwd)"
+
+    case "$agent" in
+        claude-code)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.claude/skills/%s\n' "$base" "$name"
+            ;;
+        codex)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.codex/skills/%s\n' "$base" "$name"
+            ;;
+        cursor)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.cursor/skills/%s\n' "$base" "$name"
+            ;;
+        windsurf)
+            printf '%s/.windsurf/skills/%s\n' "$cwd" "$name"
+            ;;
+        copilot)
+            printf '%s/.github/skills/%s\n' "$cwd" "$name"
+            ;;
+        gemini)
+            local base; base="$([[ "$scope" == "global" ]] && echo "$home_dir" || echo "$cwd")"
+            printf '%s/.gemini/skills/%s\n' "$base" "$name"
+            ;;
+        *)
+            printf '[ERROR] Unknown agent: %s\n' "$agent" >&2
+            exit 1
+            ;;
+    esac
+}
+
 is_project_only_agent() {
     local agent="$1"
     local a
@@ -794,7 +832,7 @@ choose_command_scope() {
 install_command_files() {
     local agent="$1"
     local scope="$2"
-    local i src dest dest_dir
+    local i src dest dest_dir skill_src skill_dest skill_dest_parent
 
     for ((i = 0; i < ${#SEL_CMD_DIRS[@]}; i++)); do
         local name="${SEL_CMD_NAMES[$i]}"
@@ -816,7 +854,19 @@ install_command_files() {
 
         step "Installing $name → $dest"
         cp "$src" "$dest"
-        info "$name installed for $agent"
+        info "$name command installed for $agent"
+
+        skill_src="$(dirname "$cmd_dir")"
+        skill_dest="$(get_agent_skill_path "$agent" "$name" "$scope")"
+        skill_dest_parent="$(dirname "$skill_dest")"
+        mkdir -p "$skill_dest_parent"
+        if [[ -d "$skill_dest" ]]; then
+            warn "Removing existing skill: $skill_dest"
+            rm -rf "$skill_dest"
+        fi
+        step "Installing skill $name → $skill_dest"
+        cp -R "$skill_src" "$skill_dest"
+        info "$name skill installed"
     done
 }
 

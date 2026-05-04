@@ -558,6 +558,37 @@ function Get-AgentCommandPath([string]$AgentName, [string]$CommandName, [string]
     }
 }
 
+function Get-AgentSkillPath([string]$AgentName, [string]$CommandName, [string]$ScopeChoice) {
+    $homeDir = [Environment]::GetFolderPath('UserProfile')
+    $cwd = (Get-Location).Path
+
+    switch ($AgentName) {
+        'claude-code' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.claude', 'skills', $CommandName)
+        }
+        'codex' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.codex', 'skills', $CommandName)
+        }
+        'cursor' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.cursor', 'skills', $CommandName)
+        }
+        'windsurf' {
+            return [System.IO.Path]::Combine($cwd, '.windsurf', 'skills', $CommandName)
+        }
+        'copilot' {
+            return [System.IO.Path]::Combine($cwd, '.github', 'skills', $CommandName)
+        }
+        'gemini' {
+            $base = if ($ScopeChoice -eq 'global') { $homeDir } else { $cwd }
+            return [System.IO.Path]::Combine($base, '.gemini', 'skills', $CommandName)
+        }
+        default { throw "Unknown agent: $AgentName" }
+    }
+}
+
 function Choose-Agent([string[]]$AvailableAgents) {
     if (-not [string]::IsNullOrWhiteSpace($Agent)) {
         if ($AvailableAgents -notcontains $Agent) {
@@ -623,7 +654,21 @@ function Install-CommandFiles([object[]]$SelectedCommands, [string]$AgentName, [
 
         Write-Step "Installing $($cmd.Name) → $dest"
         Copy-Item -LiteralPath $src -Destination $dest -Force
-        Write-Info "$($cmd.Name) installed for $AgentName"
+        Write-Info "$($cmd.Name) command installed for $AgentName"
+
+        $skillSrc = Split-Path -Parent $cmd.CommandDir
+        $skillDest = Get-AgentSkillPath -AgentName $AgentName -CommandName $cmd.Name -ScopeChoice $ScopeChoice
+        $skillDestParent = Split-Path -Parent $skillDest
+        New-Item -ItemType Directory -Path $skillDestParent -Force | Out-Null
+
+        if (Test-Path -LiteralPath $skillDest) {
+            Write-Warn "Removing existing skill: $skillDest"
+            Remove-Item -LiteralPath $skillDest -Recurse -Force
+        }
+
+        Write-Step "Installing skill $($cmd.Name) → $skillDest"
+        Copy-Item -LiteralPath $skillSrc -Destination $skillDest -Recurse -Force
+        Write-Info "$($cmd.Name) skill installed"
     }
 }
 
