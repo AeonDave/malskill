@@ -21,6 +21,7 @@ Goal: help the agent diagnose cryptographic weaknesses, select the right attack,
 - Oracle-based systems: padding oracles, timing leaks, signature verification errors.
 - Pseudo-random number generators with biased output or insufficient entropy.
 - Symmetric cipher misuse: ECB mode, IV reuse, weak key derivation.
+- Ransomware or malware encryption routines requiring algorithm, key hierarchy, and recovery-feasibility analysis.
 - Mathematical shortcuts: incomplete prime checking, careless modulus construction, protocol design flaws.
 
 ## Boundary with other skills
@@ -108,6 +109,8 @@ If attacking an oracle service (padding oracle, timing leak, signature verificat
 - Probe timing differences systematically (e.g., 100s of trials per decision point).
 - Confirm signal-to-noise ratio before committing to an oracle attack (SNR > 5 preferred).
 
+Load `references/oracle-detection-checklist.md` before building an oracle exploit; it separates real cryptographic signal from parser, cache, WAF, auth, and network-noise artifacts.
+
 Use `offensive-tools/network/*` to interact with services; use `python-patterns` or pwntools for harness scripting.
 
 ---
@@ -138,7 +141,7 @@ See `references/rsa-technique.md`.
 Tool families:
 - `offensive-tools/cryptography/rsactftool/` — automated attack selection and execution.
 - `offensive-tools/cryptography/sagemath/` — lattice-based attacks (Wiener, Boneh-Durfee), custom factorization.
-- `offensive-tools/cracking/sage/` — elliptic curve factorization (ECM).
+- `offensive-tools/cryptography/sagemath/` — elliptic curve factorization (ECM), finite-field arithmetic, custom number-theory scripts.
 
 ### 2.2 ECC and DSA weak-key decision tree
 
@@ -249,6 +252,14 @@ See `references/finite-field-technique.md`.
 Tool families:
 - `offensive-tools/cryptography/sagemath/` — Lagrange interpolation, `GF(p)`, `GF(p^k)` field arithmetic.
 
+### 2.9 Ransomware encryption analysis
+
+See `references/ransomware-encryption-analysis.md`.
+
+- **Need to identify file encryption algorithm/mode?** → Static crypto API and constant analysis, then dynamic API breakpoints.
+- **Need decryption feasibility?** → Determine key hierarchy, randomness source, nonce/IV reuse, and whether keys exist in memory or file metadata.
+- **Hybrid crypto suspected?** → Separate per-file symmetric keys from public-key wrapping and test implementation flaws before claiming recovery.
+
 ---
 
 ## Phase 3 — Execution
@@ -268,7 +279,17 @@ Once the attack is selected:
 - **Oracle harness needed?** → Use pwntools (python-patterns) + `offensive-tools/cryptography/sagemath/` or custom brute-force.
 - **Plaintext recovery from ciphertext?** → Use `offensive-tools/cryptography/cyberchef/` for offline workflows; load `offensive-tools/cryptography/cyberchef/` Node API for programmatic chaining.
 
-### 3.2 Common pitfalls
+### 3.2 Tool selection quick map
+
+| Problem shape | First tool skill | Why |
+|---|---|---|
+| RSA public key/ciphertext bundle | `offensive-tools/cryptography/rsactftool/` | Automates common weak-RSA attacks and factorization checks |
+| Lattice, finite field, ECC, DH, custom math | `offensive-tools/cryptography/sagemath/` | Algebraic modeling and exact arithmetic |
+| Encoding, mode experimentation, byte-level transforms | `offensive-tools/cryptography/cyberchef/` | Fast reversible transform chains and visual sanity checks |
+| Hash/password recovery | `cracking-technique` + `offensive-tools/cracking/hashcat/` or `john/` | Candidate generation and offline cracking strategy |
+| Oracle interaction | `coding/python-patterns/` + pwntools/socket harness | Repeatable measurements and controls |
+
+### 3.3 Common pitfalls
 
 - Running all attacks in parallel → wastes resources. Rank by likelihood, run top 3 first.
 - Trusting a single oracle query → confirming the same result 10–100 times reduces noise.
@@ -285,9 +306,11 @@ Once the attack is selected:
 - `references/ecc-technique.md` — ECC and DSA weakness diagnosis, nonce reuse patterns, curve singularity checks.
 - `references/lattice-lwe-technique.md` — LLL lattice reduction, Coppersmith's method, LWE embedding, constraint modeling.
 - `references/prng-oracle-technique.md` — PRNG state recovery, oracle timing/error-based methodology, Manger's padding oracle.
+- `references/oracle-detection-checklist.md` — Oracle confirmation workflow: observable channels, timing gates, controls, and exploit-readiness criteria.
 - `references/symmetric-cipher-technique.md` — ECB, CBC, CTR, and GCM mode weaknesses; plaintext recovery techniques.
 - `references/finite-field-technique.md` — Shamir secret sharing recovery, Lagrange interpolation over GF(p) and GF(p^k), field extension arithmetic.
 - `references/dh-technique.md` — Diffie-Hellman weak parameter attacks: small prime, Pohlig-Hellman, small subgroup confinement, logjam, static DH session recovery.
+- `references/ransomware-encryption-analysis.md` — Malware/ransomware encryption triage: API identification, key hierarchy, file format analysis, memory extraction, and recovery-feasibility assessment.
 
 ---
 

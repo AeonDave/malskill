@@ -68,11 +68,17 @@ Use metadata-first + packet drilldown workflow.
 
 - Start from connection/protocol summaries.
 - Pivot to packet-level only for sessions that materially change conclusions.
+- For encrypted or opaque traffic, combine TLS JA3/JA4/JA4S, DNS behavior, flow timing, endpoint/process context, and certificate/SNI evidence before claiming C2.
+- When evidence spans Zeek, firewall, proxy, DNS, endpoint, and packet logs, normalize into one schema before correlation.
 
 Tool families:
 - Metadata and protocol logs: `offensive-tools/forensic/zeek/`
 - Packet capture or replay context: `offensive-tools/forensic/tcpdump/`
 - Deep packet reconstruction: `offensive-tools/network/wireshark/`
+
+For DNS-heavy anomalies, prioritize query entropy, subdomain depth, TXT/NULL record abuse, DoH/DoT indicators, and timing/volume baselines before packet drilldown. Use `references/scenario-playbooks.md` Playbook F for suspected DNS exfiltration or covert channels.
+
+Use `references/encrypted-traffic-and-c2-profiling.md` for TLS/JA3/JA4, beacon jitter, DNS C2, and confidence gates. Use `references/log-aggregation.md` when joining multi-source evidence.
 
 ### Case C: “Need controlled interception/modification for app-network behavior”
 
@@ -96,7 +102,7 @@ Use tunnel/pivot workflow.
 Tool families:
 - Agent-based pivoting: `offensive-tools/network/ligolo-ng/`
 - HTTP tunnel fallback: `offensive-tools/network/chisel/`
-- Tool routing through SOCKS proxy: `offensive-tools/network/proxychains/`
+- Tool routing through SOCKS proxy: proxychains or equivalent OS routing tool (no dedicated repo skill yet)
 
 ### Case E: “Suspected credential relay/poisoning or auth abuse”
 
@@ -130,7 +136,7 @@ Use credential-validation and lateral enumeration workflow.
 - Use spray carefully: lockout policies are common in AD environments.
 
 Tool families:
-- `offensive-tools/network/crackmapexec/` — SMB/WinRM/LDAP credential validation, share enumeration, command execution, hash spraying
+- `offensive-tools/windows/crackmapexec/` — SMB/WinRM/LDAP credential validation, share enumeration, command execution, hash spraying
 
 ### Case G: “Wireless/RF traffic capture or network presence on 802.11/BLE”
 
@@ -174,3 +180,5 @@ Tool families:
 - [references/tool-selection-cases.md](references/tool-selection-cases.md)
 - [references/network-evidence-correlation.md](references/network-evidence-correlation.md)
 - [references/scenario-playbooks.md](references/scenario-playbooks.md)
+- [references/encrypted-traffic-and-c2-profiling.md](references/encrypted-traffic-and-c2-profiling.md)
+- [references/log-aggregation.md](references/log-aggregation.md)

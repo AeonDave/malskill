@@ -154,7 +154,7 @@ else:
 ```
 
 **When to suspect:**
-- Challenge mentions "multiple keys with the same modulus."
+- Multiple RSA keys or certificates share the same modulus.
 - Organization uses shared infrastructure (all systems share same `n`).
 
 **Tool**: `offensive-tools/cryptography/sagemath/` or direct Python (as above).
@@ -246,7 +246,7 @@ while not padding_oracle((f * c) % n, n, e):
 ```
 
 **When to suspect:**
-- Challenge provides a decryption server or service.
+- A decryption server or service reveals padding-validity behavior.
 - Timing differences between valid/invalid padding.
 - Error messages like "bad padding" vs. "decryption OK."
 
@@ -376,7 +376,7 @@ ECM uses elliptic curve point multiplication over modular arithmetic. By varying
 
 **When to suspect:**
 - Pollard p-1 failed but you suspect a small factor exists.
-- Challenge hints "find the hidden small factor."
+- Key generation, metadata, or factor-size signals suggest a hidden small factor.
 
 **Tool**: `offensive-tools/cracking/*` (has ECM integrations).
 
@@ -402,7 +402,7 @@ QS and GNFS find factor by constructing a linear dependency mod `n`. Highly opti
 ```
 
 **When to suspect:**
-- Challenge has a genuinely hard `n` (no weak exponent, no special structure).
+- The modulus appears genuinely hard (no weak exponent, no special structure).
 - You have days/weeks of compute available.
 
 **Tool**: `offensive-tools/cryptography/rsactftool/` (delegates to CADO-NFS or msieve internally).
@@ -488,7 +488,7 @@ for m in candidates:
 
 **When to suspect:**
 - `e` is small and `n` has many prime factors all ≡ 1 (mod e).
-- Challenge explicitly states `gcd(e, phi) != 1` or decryption fails with standard formula.
+- Decryption fails with the standard formula because `gcd(e, phi) != 1`.
 
 ---
 
@@ -773,7 +773,7 @@ DECRYPT:
 Once you've recovered plaintext:
 
 1. **Check encoding**: is it UTF-8, ASCII, or binary?
-2. **Check format**: does it look like a flag, key, or valid message?
+2. **Check format**: does it look like a secret, key, file header, or valid protocol message?
 3. **Re-encrypt**: compute `m^e mod n` and verify it equals original `c`.
 4. **If multiple candidates**: test all against the oracle or service.
 

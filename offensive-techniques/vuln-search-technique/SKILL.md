@@ -110,6 +110,8 @@ Tier 4 — Document only:
 
 See `references/cve-correlation.md` for database search patterns and version matching.
 
+Use SSVC-style prioritization when a CVSS number does not capture urgency. Combine exploitation status, technical impact, automatability, exposure, and mission prevalence into action labels (`Track`, `Track*`, `Attend`, `Act`); see `references/risk-prioritization.md`.
+
 ---
 
 ## Phase 3 — Automated scanner orchestration
@@ -165,6 +167,18 @@ nikto -h https://target.com -output nikto_out.txt -Format txt
 ```
 
 See `offensive-tools/vuln-scanners/nikto/`.
+
+### openvas — broad authenticated or infrastructure scanning
+
+Use OpenVAS/GVM when the scope requires broad infrastructure coverage, authenticated checks, or vulnerability-management style reporting. Keep it rate-controlled and scoped; use targeted tools for validation.
+
+```bash
+# Run from the OpenVAS/GVM UI or automation wrapper.
+# Configure: target list, port list, scan config, credentials if authorized.
+# Export results, then manually validate high-risk findings before handoff.
+```
+
+See `offensive-tools/vuln-scanners/openvas/`.
 
 ### nmap NSE scripts — service-level probing
 
@@ -362,12 +376,15 @@ After scanning, consolidate findings:
    - Requires chaining → rate combined impact
 4. **Document evidence**: request/response pair, screenshot, exact CVE or class
 
+Use `references/false-positive-elimination.md` before handing findings to exploitation; it defines positive/negative controls, confounder checks, and confidence levels.
+
 ## Quality gates
 
 - No exploitation attempt before confirming vulnerability is real (not scanner FP).
 - Version match verified against actual banner, not assumed from nmap guess.
 - At least two different scan methods cover each high-priority target.
 - All Tier 1 and Tier 2 findings have verified evidence before handoff.
+- Scanner findings reach C3 confidence (reproducible with positive and negative controls) before exploitation handoff.
 
 ## Anti-patterns
 
@@ -380,5 +397,7 @@ After scanning, consolidate findings:
 ## Resources
 
 - [references/cve-correlation.md](references/cve-correlation.md) — CVE lookup patterns, CISA KEV usage, version-to-CVE matching, exploitability scoring.
+- [references/risk-prioritization.md](references/risk-prioritization.md) — SSVC-style prioritization, EPSS/KEV context, exploitation status, mission relevance, and offensive handoff criteria.
 - [references/scanner-workflow.md](references/scanner-workflow.md) — nuclei template selection, nikto interpretation, nmap NSE script catalog, targeted scanner chaining.
 - [references/web-vuln-analysis.md](references/web-vuln-analysis.md) — per-class web vulnerability detection: SQLi, XSS, SSRF, SSTI, XXE, auth flaws, IDOR, file upload, deserialization.
+- [references/false-positive-elimination.md](references/false-positive-elimination.md) — manual reproduction, control matrix, confounder checks, confidence levels, and evidence package before exploit handoff.

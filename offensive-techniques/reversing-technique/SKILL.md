@@ -1,6 +1,6 @@
 ---
 name: reversing-technique
-description: "Objective-driven reverse engineering methodology: structured workflows for malware analysis, crackmes, patch diffing, firmware, protocol RE, and memory-corruption exploitation handoff. Covers triage, static/dynamic analysis patterns, anti-reversing bypass, exploitability assessment, and tool selection. Use when you need to understand unknown code, bypass protections, extract secrets, validate exploitability, or analyze threats based on a specific goal."
+description: "Objective-driven reverse engineering methodology: structured workflows for malware analysis, software protection analysis, patch diffing, firmware, protocol RE, and memory-corruption exploitation handoff. Covers triage, static/dynamic analysis patterns, anti-reversing bypass, exploitability assessment, and tool selection. Use when you need to understand unknown code, bypass protections, extract secrets, validate exploitability, or analyze threats based on a specific goal."
 license: MIT
 compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images, .NET assemblies, network captures. User-mode focus; kernel RE referenced but not detailed."
 metadata:
@@ -10,7 +10,7 @@ metadata:
   language: asm,c,cpp,rust,go,python,csharp
   objectives:
     - malware-analysis
-    - crackme-bypass
+      - software-protection-analysis
     - patch-diffing
     - firmware-reversing
     - dotnet-reversing
@@ -31,7 +31,7 @@ metadata:
 ## When to activate
 
 - **Malware analysis**: Understand behavior, C2, persistence, evasion.
-- **Crackme/keygen**: Identify protections, bypass checks, reconstruct keys.
+- **Software protection analysis**: Identify license/protection logic, emulate validation checks, reconstruct key material where authorized.
 - **Patch diffing**: Find security fixes, understand vendor patches.
 - **Firmware reversing**: Extract filesystems, analyze embedded code.
 - **.NET reversing**: Deobfuscate, understand managed code logic.
@@ -73,7 +73,7 @@ Quick assessment to decide approach:
 
 **Decision tree:**
 - High entropy + suspicious imports → **Malware analysis** workflow
-- Protection messages (registration, trial) → **Crackme** workflow
+- Protection messages (registration, trial, activation) → **Software protection** workflow
 - Two versions of same binary → **Patch diffing** workflow
 - Firmware header (uImage, vmlinux) → **Firmware** workflow
 - .NET assembly → **.NET reversing** workflow
@@ -91,6 +91,22 @@ Quick assessment to decide approach:
 - `ljmp 0x33:` / `push 0x33; retf` in 32-bit ELF → **Heaven's Gate Linux** (see `references/anti-analysis.md §Category 7`)
 - Two binary versions for patch analysis / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
 - Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Memory-corruption exploitation** workflow (see `references/binary-exploitation-capability.md`)
+- Kernel driver/module, hidden artifacts, boot-chain tampering, or EFI/bootloader changes → **Rootkit / bootkit RE** workflow (see `references/rootkit-and-bootkit-re.md`)
+
+## CLI-first tool preference
+
+Prefer CLI/scriptable tooling for triage, batch work, and repeatable evidence. Move to GUI decompilers/debuggers when semantics, types, or interaction speed justify it.
+
+| Need | Prefer first | GUI/decompiler escalation |
+|---|---|---|
+| File metadata, imports, sections, strings | `rabin2`, `radare2`, `objdump`, `readelf`, `strings` | Ghidra/Binary Ninja project when structure matters |
+| Fast static triage | `radare2` (`aaa`, `afl`, `iz`, `ii`, `iS`), `capa` | Ghidra for decompilation and type recovery |
+| Linux dynamic behavior | `strace`, `ltrace`, `gdb` | Ghidra debugger only if needed |
+| Windows crash/debug | `windbg`/`cdb` for dump triage | `x64dbg` for interactive patch/trace |
+| Firmware extraction | `binwalk` CLI first | Ghidra/radare2 per extracted binary |
+| .NET | `de4dot`/CLI metadata first | `dnspy` for decompile/debug/patch |
+
+Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, `offensive-tools/rev/frida/`, `offensive-tools/rev/binwalk/`, `offensive-tools/rev/ghidra/`, `offensive-tools/rev/binaryninja/`, `offensive-tools/rev/dnspy/`, `offensive-tools/rev/windbg/`, `offensive-tools/rev/x64dbg/`, plus `offensive-tools/forensic/capa/` for capability triage.
 
 ## Objective-driven workflows
 
@@ -126,9 +142,9 @@ Quick assessment to decide approach:
 
 ---
 
-### 2. Crackme / protection bypass
+### 2. Software protection bypass and licensing emulation
 
-**Goal**: Bypass license checks, understand protection, generate keygen.
+**Goal**: Understand license/protection checks, emulate validation, and produce authorized proof of bypass or key-generation logic.
 
 **Operator flow:**
 ```
@@ -140,7 +156,7 @@ Quick assessment to decide approach:
    - Set breakpoint on validation function or message box.
    - Trace backwards to find comparison logic.
    - Patch: NOP conditional jump, or change return value.
-4. Keygen: Understand algorithm from decompiled code.
+4. Key reconstruction: Understand algorithm from decompiled code.
    - Reconstruct in Python/C based on pseudocode.
 5. Verify: Patched binary accepts valid key.
 ```
@@ -471,7 +487,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 |-----------|------------------------------------------|------------|
 | Malware (Windows) | `ghidra`, `x64dbg`, `frida`, `capa` | Windows VM |
 | Malware (Linux) | `ghidra`, `gdb`+`pwndbg`, `radare2`, `capa` | Linux VM/WSL |
-| Crackme (Windows) | `ghidra`, `x64dbg`, `dnspy` (.NET) | Windows |
+| Software protection (Windows) | `ghidra`, `x64dbg`, `dnspy` (.NET) | Windows |
 | Patch diffing | `ghidra` (Version Tracking), `radare2` (`radiff2`) | Cross-platform |
 | Firmware | `binwalk`, `ghidra`, `radare2` | Linux |
 | .NET reversing | `dnspy`, `de4dot` | Windows |
@@ -503,6 +519,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 - [references/languages.md](references/languages.md) — language/runtime pivots for Go, Rust (crate fingerprinting), Python bytecode (PyInstaller/PyArmor), Nim, VBS/WSH, Unity IL2CPP, and HarmonyOS HAP.
 - [references/binary-diffing.md](references/binary-diffing.md) — binary diff workflow (radiff2, Ghidra VT, BinDiff), FLIRT signature generation, Ghidra FID for stripped library symbol recovery.
 - [references/binary-exploitation-capability.md](references/binary-exploitation-capability.md) — memory-corruption exploitation workflow: primitive validation, mitigation-aware strategy selection, and reproducible proof chain.
+- [references/rootkit-and-bootkit-re.md](references/rootkit-and-bootkit-re.md) — Windows/Linux kernel-mode RE, driver/module triage, bootkit workflow, hook/callback analysis, and boot-chain evidence.
 - [references/nim-rev.md](references/nim-rev.md) — Nim binary recognition, symbol recovery, GC/memory layout, decompilation patterns, stripped binary workflow.
 - [references/node-v8-snapshots.md](references/node-v8-snapshots.md) — Node.js pkg/SEA/nexe extraction, V8 startup snapshot recovery, JS deobfuscation.
 - [references/in-memory-loading.md](references/in-memory-loading.md) — Linux fileless loading via memfd_create + dlopen: detection, runtime dump, layer separation.

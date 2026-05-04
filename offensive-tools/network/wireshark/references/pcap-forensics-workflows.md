@@ -1,18 +1,18 @@
-# Wireshark / tshark — PCAP Forensics and CTF Workflows
+# Wireshark / tshark — PCAP forensics workflows
 
-Use this reference when a capture file is the evidence and the goal is to reconstruct what happened, extract artifacts, or recover flags, credentials, tokens, and files.
+Use this reference when a capture file is evidence and the goal is to reconstruct activity, extract artifacts, recover credentials or tokens, and preserve a reproducible packet-level evidence chain.
 
 ## Fast triage order
 
-1. **Protocol hierarchy** — what protocols dominate?
-2. **Endpoints** — which IPs / hosts matter most?
-3. **Conversations** — which client/server pairs carry the interesting data?
+1. **Protocol hierarchy** — identify dominant protocols and unexpected traffic classes.
+2. **Endpoints** — find top talkers and unusual peers.
+3. **Conversations** — isolate client/server pairs with meaningful byte counts or timing.
 4. **Display filters** — narrow to likely data-bearing traffic.
 5. **Follow Stream** — reconstruct requests, responses, commands, or payloads.
-6. **Find Packet** — search for flags, strings, filenames, or magic bytes.
-7. **Export artifacts** — objects, bytes, or stream output for offline decoding.
+6. **Find Packet** — search for tokens, strings, filenames, hostnames, or magic bytes.
+7. **Export artifacts** — objects, selected bytes, or stream output for offline analysis.
 
-This order works well for incident response, HTB / TryHackMe style labs, and packet-focused CTFs because it turns a noisy capture into a short list of candidate flows quickly.
+This order works for incident response, malware delivery reconstruction, credential exposure analysis, and packet-level root-cause investigations.
 
 ## Triage from the CLI
 
@@ -49,23 +49,24 @@ Use this first pass to decide whether the interesting trail is web, DNS, SMB, em
 
 `Statistics -> Conversations` is especially useful because it gives packet counts, bytes, start time, duration, and a direct **Follow Stream** button for the selected conversation.
 
-## Find Packet: fastest way to hunt secrets
+## Find Packet: fastest way to hunt strings and artifacts
 
-Use `Edit -> Find Packet` when you know or suspect a keyword, header value, filename, or byte signature exists somewhere in the capture.
+Use `Edit -> Find Packet` when you know or suspect a keyword, header value, filename, token, or byte signature exists somewhere in the capture.
 
 Useful modes:
 
 - **Display filter** — jump to the next packet matching a condition.
-- **String** — search packet data for words like `flag`, `password`, `Authorization`, `session`, `admin`, or a hostname.
+- **String** — search packet data for words like `password`, `Authorization`, `session`, `token`, `admin`, or a hostname.
 - **Hex value** — search for magic bytes or file headers.
 - **Regular expression** — search patterns inside payloads.
 
 Examples of useful searches:
 
-- `frame contains "flag"`
 - `http contains "password"`
+- `http.authorization || http.cookie`
 - `dns contains "corp"`
-- hex signatures such as PNG, ZIP, PDF, or known markers from a challenge
+- `frame contains "Authorization"`
+- hex signatures such as PNG, ZIP, PDF, PE, ELF, or archive headers
 
 ## Follow Stream effectively
 
@@ -80,8 +81,8 @@ Useful formats:
 
 - **ASCII / UTF-8** — best for HTTP, SMTP, FTP, Telnet, IRC, and text-heavy traffic.
 - **HEX Dump** — best for binary protocols or mixed binary/text payloads.
-- **Raw** — best when you want to save and decode the reconstructed bytes offline.
-- **YAML** — useful when you want packet numbers plus base64-encoded stream chunks.
+- **Raw** — best when saving reconstructed bytes for offline decoding or carving.
+- **YAML** — useful when packet numbers plus base64-encoded stream chunks are needed.
 
 CLI equivalents:
 
@@ -101,15 +102,13 @@ Typical use cases:
 - reconstruct an HTTP request/response pair
 - recover a script or command sequence from plain text protocols
 - extract an encoded blob from the response body
-- isolate a single suspicious connection out of a crowded capture
+- isolate a suspicious connection out of a crowded capture
 
 ## Export artifacts from a capture
 
 ### Export Objects
 
 Use `File -> Export Objects -> HTTP` when traffic contains clean reassembled files such as HTML, images, archives, scripts, or executables.
-
-This is often the fastest way to recover challenge artifacts or web-delivered malware samples from a `.pcap`.
 
 CLI:
 
@@ -129,7 +128,7 @@ Good for:
 
 ### Export Packet Dissections
 
-Use this when you need evidence in plain text, CSV, or JSON form for reporting or offline analysis.
+Use this when evidence is needed in plain text, CSV, or JSON form for reporting or offline analysis.
 
 Good for:
 
@@ -152,44 +151,41 @@ kerberos
 smb or smb2
 tcp.stream eq 0
 ip.addr == 10.10.10.10
-frame contains "flag"
-http contains "flag"
-tcp contains "password"
+http contains "password"
+tcp contains "Authorization"
 ```
 
 Prefer narrowing by protocol first, then by host, then by stream. Jumping straight into raw packet inspection is how analysts become one with the noise.
 
-## HTB / TryHackMe / CTF-style playbook
+## Incident reconstruction playbook
 
-When the challenge gives only a `.pcap` and asks for a flag or root cause:
+When the evidence is a `.pcap` and the objective is root cause or artifact recovery:
 
 1. Open the capture.
 2. Check Protocol Hierarchy, Endpoints, and Conversations.
 3. Identify the most promising protocol: commonly HTTP, DNS, FTP, SMTP, SMB, ICMP, or a single odd TCP flow.
-4. Search for obvious strings: `flag`, `ctf`, `key`, `token`, `user`, `pass`, `admin`, interesting filenames, or the target domain.
+4. Search for high-signal strings: `key`, `token`, `user`, `pass`, `admin`, filenames, hostnames, or the target domain.
 5. Follow the most suspicious streams.
 6. Export HTTP objects if any exist.
-7. If the recovered content looks encoded, decode it offline with the appropriate tool.
+7. If recovered content looks encoded or compressed, decode it offline with the appropriate tool.
 8. Keep packet numbers and stream indexes so the result is reproducible.
 
 Common patterns:
 
-- **Web challenge**: export HTTP objects, inspect odd responses, follow the stream, decode the returned blob.
-- **Credential challenge**: look at POST bodies, Basic auth headers, FTP `PASS`, Telnet, or NTLM/Kerberos metadata.
-- **Exfil / tunneling challenge**: inspect long DNS queries, repetitive requests, unusual hostnames, or high-volume single conversations.
-- **Binary / malware delivery challenge**: export HTTP objects or save stream data as raw and inspect the resulting file offline.
+- **Web delivery**: export HTTP objects, inspect odd responses, follow the stream, decode returned blobs.
+- **Credential exposure**: review POST bodies, Basic auth headers, FTP `PASS`, Telnet, or NTLM/Kerberos metadata.
+- **Exfiltration or tunneling**: inspect long DNS queries, repetitive requests, unusual hostnames, or high-volume single conversations.
+- **Binary or malware delivery**: export HTTP objects or save stream data as raw and inspect the resulting file offline.
 
-## When the payload is encoded or transformed
+## Encoded or transformed payloads
 
-If the followed stream or exported object is not immediately readable:
+If a followed stream or exported object is not immediately readable:
 
 - check for base64-looking text
 - check for compression markers
 - inspect magic bytes
 - try raw export instead of text export
 - save the evidence and decode it offline rather than fighting the GUI
-
-This pattern is common in CTFs where Wireshark gets you the blob, but another tool does the final decode.
 
 ## TLS and encrypted traffic
 
@@ -202,9 +198,9 @@ If the interesting session is under TLS, look for metadata first:
 
 If you have a key log file or keys, load them and re-run the same workflow on the decrypted traffic. After decryption, Follow Stream and object export become much more valuable.
 
-## VPN / lab interfaces
+## Lab or replay interfaces
 
-In labs or VPN-based environments, capture from the correct interface first.
+When reproducing traffic, capture from the correct interface first.
 
 Typical example:
 
@@ -212,4 +208,4 @@ Typical example:
 wireshark -k -i tun0
 ```
 
-If you are given a saved `.pcap`, this mainly matters for reproducing the traffic later or capturing a second session with the same target.
+If you are given a saved `.pcap`, this mainly matters for reproducing traffic later or capturing a second session with the same target.

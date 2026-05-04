@@ -26,6 +26,24 @@ Convert raw failures into a small set of reproducible, prioritized vulnerability
    - Higher priority for strong control primitives, high reachability, and low preconditions.
    - Lower priority for flaky or environment-dependent failures.
 
+## Exploitability triage state machine
+
+After a crash is minimized and replayable, classify it before handoff:
+
+1. **Crash-only**: deterministic fault, but no attacker influence beyond reachability yet.
+2. **Influence suspected**: input bytes affect crash address, size, index, or corrupted object state.
+3. **Primitive candidate**: controlled write, controlled read, instruction pointer influence, type confusion, UAF reuse, or allocator metadata corruption is demonstrated.
+4. **Exploit path candidate**: mitigations, object lifetime, heap/stack layout, and reachable payload/state path are understood.
+5. **Handoff-ready**: evidence package is sufficient for `vuln-exploit-technique` or relevant `offensive-coding/*` exploit-development skill.
+
+Minimum checks:
+
+- Re-run under debugger with the minimized input.
+- Inspect registers, fault address, stack/heap object, and taint-adjacent bytes.
+- Verify whether the same bytes control length, offset, pointer, index, or branch state.
+- Map mitigations: NX/DEP, ASLR/PIE, canary, RELRO, CFG/CET, allocator hardening.
+- Record whether the primitive is data-only, control-flow, or denial-of-service only.
+
 ## Repro metadata contract
 
 For each confirmed bucket, record:
@@ -41,6 +59,8 @@ For each confirmed bucket, record:
 - Reproduce with minimal moving parts first.
 - If non-deterministic, fix reset/time dependency before deeper analysis.
 - Maintain a regression set for fixed bugs and rerun periodically.
+- Keep minimized artifacts in a regression corpus with expected failure class and fixed-build status.
+- If behavior changes under ASLR, threading, or timing variation, isolate that variable before claiming exploitability.
 
 ## Common pitfalls
 

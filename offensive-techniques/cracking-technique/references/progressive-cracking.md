@@ -4,16 +4,16 @@ Multi-pass approach to maximize results and time efficiency.
 
 ## Strategy Overview
 
-**Progressive approach**: Start with broad, fast attacks → narrow down with targeted, complex attacks.
+**Progressive approach**: Start with fast signal → move into target-specific wordlists + rules → use hybrid/mask only when the observed pattern justifies it.
 
 ```
-Pass 1: Large dictionaries + almost no rules (catch low-hanging fruit)
-Pass 2: Specific dictionaries + comprehensive rules (increase coverage)
+Pass 1: Small/high-signal baselines + light rules (catch low-hanging fruit)
+Pass 2: Target-specific dictionaries + comprehensive rules (names, org terms, dates, local context)
 Pass 3: Small/specific dictionaries + micro-rules (targeted variations)
-Pass 4: Specific masks (even from known words) (policy-driven)
+Pass 4: Hybrid wordlist+suffix/prefix or narrow masks only when pattern evidence supports them
 ```
 
-## Pass 1: Large Dictionaries + Light Rules
+## Pass 1: High-signal dictionaries + light rules
 
 ### Objective
 
@@ -22,11 +22,11 @@ Quickly catch the most common passwords without exploding the keyspace.
 ### Execution
 
 ```bash
-# Broad context wordlist + light rules
-hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule
+# Top/common baseline + light rules
+hashcat -m 0 hashes.txt top1000.txt -r rules/best64.rule
 
-# Multiple context sources combined
-hashcat -m 0 hashes.txt context-wordlist.txt osint-wordlist.txt -r rules/best64.rule
+# Multiple high-signal context sources combined
+hashcat -m 0 hashes.txt top1000.txt context-wordlist.txt -r rules/best64.rule
 
 # With potfile (save progress)
 hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule --potfile=pass1.pot
@@ -35,14 +35,14 @@ hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule --potfile=pass1.
 ### Expected results
 
 - 30-50% of "weak" passwords cracked
-- Fast feedback (<1 hour on GPU for 10M wordlist)
+- Fast feedback and early pattern discovery
 - Identifies common patterns for next passes
 
-## Pass 2: Targeted Dictionaries + Comprehensive Rules
+## Pass 2: Targeted dictionaries + comprehensive rules
 
 ### Objective
 
-Increase coverage while staying relevant to the target/context.
+Increase coverage while staying relevant to the target/context. This is the main escalation path: target words plus rules usually beat broad masks.
 
 ### Execution
 
@@ -90,17 +90,20 @@ hashcat -m 0 hashes.txt targeted.txt -r micro.rule
 - Variations with digits, specials, dates
 - High efficiency (small keyspace, high hit rate)
 
-## Pass 4: Specific Masks (Policy-Driven)
+## Pass 4: Hybrid / narrow masks (evidence-driven)
 
 ### Objective
 
-Catch passwords that follow specific policies or known formats.
+Catch passwords that follow specific policies or known formats. Use this after recovered patterns justify the structure; masks that only express hope waste time.
 
 ### Execution
 
 ```bash
 # From known words + mask
 hashcat -m 0 hashes.txt -a 6 known-words.txt ?d?d?d
+
+# Preferred hybrid: target-specific words + likely suffix from observed policy
+hashcat -m 0 hashes.txt -a 6 org-products-names.txt ?d?d?s
 
 # Policy-driven masks
 hashcat -m 0 hashes.txt -a 3 ?u?l?l?l?l?l?l?l?d?s
@@ -165,6 +168,7 @@ hashcat --show-potfile --potfile=pass1.pot
 ## Common Pitfalls
 
 - **Starting too large** → slow feedback, poor iteration
+- **Jumping to masks too early** → explores structure without target vocabulary signal
 - **Not analyzing cracked** → missing pattern insights
 - **Ignoring potfile** → re-cracking same passwords
 - **Wrong pass order** → inefficient use of time

@@ -3,9 +3,10 @@
 .claude
 .github
 .vscode
-.import
-.learnings
+
 __pycache__/
 *.skill
 .tmp-*
 notes.md
+ctf-solvin
+.import

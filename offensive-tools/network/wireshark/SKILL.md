@@ -57,7 +57,7 @@ tshark -r capture.pcap -q -z endpoints,ip
 # Which client/server pairs matter?
 tshark -r capture.pcap -q -z conv,tcp
 
-# Fast protocol shortlist for common CTF / IR pivots
+# Fast protocol shortlist for common IR and forensic pivots
 tshark -r capture.pcap -Y "http or dns or smb or ftp or smtp or kerberos or ntlmssp"
 ```
 
@@ -76,11 +76,11 @@ tshark -r capture.pcap -q -z follow,tcp,raw,0
 
 Use Follow Stream to reconstruct the application view of a connection. In the GUI you can save the stream as ASCII for quick reading or Raw when you want to decode or carve the payload offline.
 
-### Find flags, tokens, and suspicious strings
+### Find tokens and suspicious strings
 
 ```bash
 # Broad content hunt
-tshark -r capture.pcap -Y 'frame contains "flag" || http contains "flag" || dns contains "flag"'
+tshark -r capture.pcap -Y 'frame contains "token" || http contains "Authorization" || dns contains "corp"'
 
 # Look for cookies / bearer-style tokens / auth headers
 tshark -r capture.pcap -Y "http.authorization || http.cookie"
@@ -164,13 +164,13 @@ If you already recovered the WEP or WPA key, load it in the GUI under:
 
 Or decrypt first with companion tooling and re-open the resulting capture in Wireshark / tshark.
 
-### Forensic `.pcap` workflow for labs, CTFs, and incident triage
+### Forensic `.pcap` workflow for labs and incident triage
 
 1. Open the capture and note the dominant protocols, top talkers, and suspicious endpoints.
 2. Filter to likely data-bearing traffic such as `http`, `dns`, `smtp`, `ftp`, `smb2`, or a target `ip.addr`.
 3. Use `Statistics -> Conversations` or `Statistics -> Endpoints` to isolate the most relevant flows.
 4. Use `Follow -> TCP/HTTP/TLS Stream` on candidate sessions to reconstruct requests, responses, commands, or embedded payloads.
-5. Use `Edit -> Find Packet` to search for flags, usernames, filenames, cookies, URIs, or magic strings.
+5. Use `Edit -> Find Packet` to search for tokens, usernames, filenames, cookies, URIs, or magic strings.
 6. Export HTTP objects, selected packet bytes, or stream output, then decode offline if the payload is base64, compressed, XORed, or otherwise transformed.
 7. Keep notes on packet numbers, IPs, hostnames, and extracted artifacts so the evidence chain stays reproducible.
 
@@ -179,5 +179,5 @@ Or decrypt first with companion tooling and re-open the resulting capture in Wir
 | File | When to load |
 |------|--------------|
 | `references/filters.md` | Complete display filter cheatsheet, credential extraction one-liners, stream analysis |
-| `references/pcap-forensics-and-ctf-workflows.md` | Step-by-step `.pcap` triage, Follow Stream usage, object extraction, string hunting, and lab / CTF-style workflows |
+| `references/pcap-forensics-workflows.md` | Step-by-step `.pcap` triage, Follow Stream usage, object extraction, string hunting, and incident/lab workflows |
 | `references/wireless-80211-workflows.md` | Wireless display filters, EAPOL / WPA-Enterprise review, frame-type mapping, and tshark workflows for 802.11 captures |

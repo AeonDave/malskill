@@ -1,0 +1,95 @@
+---
+name: misc-ctf
+description: >
+  Challenge-solving methodology for miscellaneous multi-domain challenge solving. Integrates crypto-technique, reversing-technique, forensic-technique, network-technique, wireless-technique, and post-exploit-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for jails, encodings, esolangs, games, VMs, DNS oddities, Linux privilege escalation puzzles, unicode tricks, QR/audio artifacts, or multi-stage puzzles.
+license: MIT
+compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+metadata:
+  author: AeonDave
+  version: "1.0"
+  category: ctf-solving
+---
+
+# Misc CTF
+
+Goal: solve miscellaneous multi-domain challenge solving tasks with professional offensive methodology, preserved imported technique coverage, and reproducible evidence.
+
+## When this skill applies
+
+- jails, encodings, esolangs, games, VMs, RF/SDR, DNS oddities, Linux privilege escalation puzzles, unicode tricks, QR/audio artifacts, or multi-stage puzzles
+- problems where no single category dominates at first triage
+
+## Operating model
+
+1. Classify the dominant artifact, primitive, or objective.
+2. Load the closest `offensive-techniques` methodology before selecting tools.
+3. Use `references/source-coverage.md` to see preserved imported topics.
+4. Load debrandized imported references only for deep technique details.
+5. Choose the smallest tool chain that can produce a validation signal.
+6. Record the exact proof path and stop once the objective is reproducible.
+
+## Technique integration
+
+Primary methodology to load:
+
+- `crypto-technique`
+- `reversing-technique`
+- `forensic-technique`
+- `post-exploit-technique`
+- `wireless-technique`
+- `network-technique`
+
+Use these as decision engines. This skill adds challenge-oriented triage, time-boxing, and preserved specialized patterns from the imported corpus.
+
+## Tool routing
+
+Prefer these tool families when the corresponding signal appears:
+
+- `offensive-tools/cryptography/cyberchef`
+- `offensive-tools/network/netcat`
+- `offensive-tools/network/wireshark`
+- `offensive-tools/wireless/aircrack-ng`
+- `offensive-tools/wireless/kismet`
+- `coding/python-patterns`
+- `coding/systematic-debugging`
+
+Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
+
+## Writeup-derived patterns
+
+- Public writeup patterns favor artifact-first triage, shortest reproducible path, and explicit validation signal before pivoting.
+- Record failed hypotheses with evidence so an agent does not repeat expensive dead paths.
+- Prefer category-specific tools after surface classification instead of running every scanner or brute-forcer by habit.
+- End with a replayable proof: recovered secret, local verification, exploit output, decoded artifact, or correlated evidence chain.
+
+## Category-specific quick pivots
+
+- Classify the primitive, not the category label: parser, sandbox, encoding, RF, protocol, game logic, or host privilege boundary.
+- Use shortest deterministic transform chain first; avoid speculative brute force until representation is known.
+- For jail and VM tasks, map constraints then build minimal escape or emulator.
+
+## Quality gates
+
+- No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
+- Do not brute force before representation, constraints, and success oracle are known.
+- Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Keep challenge/platform/competition names out of notes and generated reports.
+
+## Resources
+
+- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
+- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
+- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
+- [references/imported/bashjails.md](references/imported/bashjails.md) — preserved, debrandized imported technique material.
+- [references/imported/ctfd-navigation.md](references/imported/ctfd-navigation.md) — preserved, debrandized imported technique material.
+- [references/imported/dns.md](references/imported/dns.md) — preserved, debrandized imported technique material.
+- [references/imported/encodings-advanced.md](references/imported/encodings-advanced.md) — preserved, debrandized imported technique material.
+- [references/imported/encodings.md](references/imported/encodings.md) — preserved, debrandized imported technique material.
+- [references/imported/games-and-vms-2.md](references/imported/games-and-vms-2.md) — preserved, debrandized imported technique material.
+- [references/imported/games-and-vms-3.md](references/imported/games-and-vms-3.md) — preserved, debrandized imported technique material.
+- [references/imported/games-and-vms-4.md](references/imported/games-and-vms-4.md) — preserved, debrandized imported technique material.
+- [references/imported/games-and-vms.md](references/imported/games-and-vms.md) — preserved, debrandized imported technique material.
+- [references/imported/linux-privesc.md](references/imported/linux-privesc.md) — preserved, debrandized imported technique material.
+- [references/imported/pyjails.md](references/imported/pyjails.md) — preserved, debrandized imported technique material.
+- [references/imported/rf-sdr.md](references/imported/rf-sdr.md) — preserved, debrandized imported technique material.

@@ -20,6 +20,7 @@ Goal: move from **domain foothold or low-privilege credential to domain dominanc
 - Valid domain user credential (from phishing, spray, NTLM relay, or credential harvest).
 - Network access to DC ports (88/Kerberos, 389/LDAP, 445/SMB, 636/LDAPS).
 - Red team / pentest requiring AD attack path documentation.
+- Need to validate ACL-based privilege paths such as `GenericAll`, `WriteDacl`, `WriteOwner`, or `GenericWrite`.
 
 ## Boundary with other skills
 
@@ -101,6 +102,8 @@ Find-LocalAdminAccess
 ```
 
 See `offensive-tools/windows/powerview/`.
+
+Validate ACL edges before acting on them. BloodHound pathing is the starting point; live DACL confirmation prevents stale graph edges and helps choose the lowest-change proof path. Use `references/ad-acl-abuse.md` for rights-to-impact mapping and safe execution discipline.
 
 ### enum4linux-ng (from Linux attack host)
 
@@ -396,6 +399,7 @@ Add-DomainObjectAcl -TargetIdentity "CN=AdminSDHolder,CN=System,DC=domain,DC=loc
 ## Resources
 
 - [references/ad-enumeration.md](references/ad-enumeration.md) — BloodHound query catalog, PowerView cheatsheet, LDAP query patterns, trust enumeration.
+- [references/ad-acl-abuse.md](references/ad-acl-abuse.md) — ACL abuse methodology: GenericAll, WriteDACL, WriteOwner, GenericWrite, shadow credentials, RBCD, and reversible proof paths.
 - [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), ticket forgery, S4U attacks.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
 - [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-8 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials.

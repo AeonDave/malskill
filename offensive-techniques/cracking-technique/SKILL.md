@@ -1,8 +1,8 @@
 ---
 name: cracking-technique
-description: "Technique-first password/hash cracking methodology for AI agents. Covers triage, target modeling, strategy selection (dictionary/mask/hybrid/rule), corpus and candidate engineering, campaign orchestration, and reproducible result analysis for audits, breach analysis, and credential recovery. Use when you need the right cracking flow without turning the skill into a per-tool command manual."
+description: "Technique-first password/hash cracking methodology for AI agents. Covers triage, target modeling, strategy selection (dictionary/rules/hybrid), corpus and candidate engineering, campaign orchestration, and reproducible result analysis for audits, breach analysis, and credential recovery. Use when you need the right cracking flow without turning the skill into a per-tool command manual."
 license: MIT
-compatibility: "Linux/Windows/macOS; local and distributed cracking environments"
+compatibility: "Linux/Windows/macOS; local CPU/GPU cracking environments"
 metadata:
   author: AeonDave
   version: "2.0"
@@ -19,7 +19,7 @@ Goal: maximize useful recoveries while keeping campaigns reproducible, explainab
 - Password-strength audits and policy validation.
 - Breach/hash-dump analysis and prioritization.
 - Credential recovery with legitimate authorization.
-- Large keyspace campaigns requiring distributed orchestration.
+- Local cracking campaigns that need staged wordlist, rule, and hybrid policy.
 
 ## Boundary with offensive-tools
 
@@ -82,11 +82,14 @@ Use context-first strategy.
 2. **Target modeling**
    - Infer likely password construction patterns (language, policy, reuse behaviors, suffix habits).
    - Define candidate classes to test in order.
+   - Prefer target-specific and small high-signal corpora plus rules before generic masks.
 
 3. **Asset engineering**
    - Prepare candidate corpus from contextual and generic sources.
+   - Choose wordlist categories intentionally: leaked-password baselines, default credentials, usernames, pattern-matching, and custom OSINT-derived candidates have different purposes.
    - Deduplicate and normalize candidates before execution.
-   - Prepare masks/rules as hypothesis-driven transforms, not random expansion.
+   - Prepare rules as the default expansion layer: append years/digits/specials, toggle case, leetspeak, and mutate target terms intelligently.
+   - Use masks only for strong known structures or cleanup; do not replace targeted wordlists + rules with broad brute masks.
 
 4. **Execution orchestration**
    - Run phased campaigns (quick signal pass → focused pass → expansion pass).
@@ -121,6 +124,7 @@ Use context-first strategy.
 ## Resources
 
 - [references/wordlist-strategy.md](references/wordlist-strategy.md)
+- [references/seclists-categories.md](references/seclists-categories.md)
 - [references/mask-generation.md](references/mask-generation.md)
 - [references/rule-chaining.md](references/rule-chaining.md)
 - [references/progressive-cracking.md](references/progressive-cracking.md)

@@ -33,6 +33,7 @@ sqlmap -u "http://target.com/page" --cookie="session=abc123" --data="id=1"
 | `-r <file>` | Load HTTP request from file (Burp capture) |
 | `-m <file>` | Test multiple targets from file |
 | `--data <data>` | POST data string |
+| `--forms` | Parse and test forms from the target page |
 | `--cookie <str>` | Cookie string |
 | `-p <param>` | Test specific parameter |
 | `--dbms <type>` | Force backend DBMS (mysql/mssql/postgres/oracle) |
@@ -44,6 +45,7 @@ sqlmap -u "http://target.com/page" --cookie="session=abc123" --data="id=1"
 | `--timeout <n>` | Request timeout |
 | `--retries <n>` | Retry failed requests |
 | `--proxy <url>` | HTTP/SOCKS5 proxy |
+| `--ignore-proxy` | Ignore configured proxy settings |
 | `--tor` | Use Tor (requires tor + proxychains) |
 | `--batch` | Never ask for user input (auto yes) |
 | `--random-agent` | Use random User-Agent |
@@ -51,6 +53,7 @@ sqlmap -u "http://target.com/page" --cookie="session=abc123" --data="id=1"
 | `--auth-type <type>` | Basic/Digest/NTLM/PKI |
 | `--auth-cred <u:p>` | Auth credentials |
 | `--ignore-redirects` | Don't follow redirects |
+| `--flush-session` | Clear cached scan state for retesting |
 | `-v <0-6>` | Verbosity level |
 
 ## Level vs Risk (Critical Distinction)
@@ -193,6 +196,9 @@ sqlmap -u "http://target.com/page?id=1" --os-pwn
 # From Burp capture (most reliable):
 # Right-click request → Save → request.txt
 sqlmap -r request.txt --batch --level=3 --risk=2 --dbs
+
+# Agent-safe conservative baseline for a known parameter
+sqlmap -u "http://target.com/item?id=1" -p id --batch --level=2 --risk=1 --threads=5 --timeout=10 --retries=1 --random-agent
 
 # POST form:
 sqlmap -u "http://target.com/login" \

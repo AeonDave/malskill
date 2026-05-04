@@ -38,12 +38,26 @@ If progress stalls:
 
 Do not respond to plateaus only by increasing runtime.
 
+## When not to fuzz
+
+Stop or switch technique when fuzzing no longer matches the problem:
+
+- Harness cannot reset deterministically and failures are not reproducible.
+- Inputs do not reach meaningful parser/state depth after seed/model work.
+- Failures are harness-originated (fixture, timeout wrapper, transport reset), not target-originated.
+- The suspected bug class is better found by review: authorization, business logic, simple config exposure.
+- The target is safety-critical/destructive and no lab replica exists.
+- Coverage and unique bucket growth stay flat after corpus minimization, dictionary/token improvement, and entrypoint narrowing.
+
+Use code review, protocol RE, manual logic review, or focused unit tests instead of burning cycles.
+
 ## Continuous strategy
 
 - Keep minimized corpus as reusable campaign asset.
 - Run short CI fuzzing loops for regression detection.
 - Run longer periodic campaigns for discovery.
 - Keep clear separation between CI noise and confirmed findings.
+- Manage corpora across campaigns with `corpus-management.md`: seed, minimized, crash, regression, and negative corpora should not be mixed blindly.
 
 ## Exit criteria
 

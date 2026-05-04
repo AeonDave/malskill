@@ -22,7 +22,7 @@ katana -u https://target.com
 katana -u https://target.com -jc
 
 # Headless mode (renders JS — required for SPA/React/Angular apps)
-katana -u https://target.com -headless
+katana -u https://target.com -hl
 
 # Output to file
 katana -u https://target.com -jc -o endpoints.txt
@@ -48,6 +48,9 @@ katana -u https://target.com -jc -c 20 -p 20   # 20 concurrent crawlers, 20 para
 
 # Rate limit (requests per second)
 katana -u https://target.com -jc -rl 50
+
+# Agent-safe JSONL baseline with bounded depth and static asset filtering
+katana -u https://target.com -d 3 -jc -kf robotstxt -c 10 -p 10 -rl 50 -timeout 10 -retry 1 -ef png,jpg,jpeg,gif,svg,css,woff,woff2,ttf,eot,map -silent -j -o katana.jsonl
 ```
 
 ## JS endpoint extraction
@@ -57,6 +60,9 @@ Katana's JS crawling (`-jc`) uses JSLuice and regex patterns to extract endpoint
 ```bash
 # JS crawl + XHR/fetch call tracing
 katana -u https://target.com -jc -xhr
+
+# Deeper JS parsing (memory intensive)
+katana -u https://target.com -d 5 -jc -jsl -kf all -c 10 -p 10 -rl 50 -o katana_urls.txt
 
 # Extract all JS file URLs only
 katana -u https://target.com -jc | grep "\.js$" > js_files.txt
@@ -74,13 +80,16 @@ Standard crawler misses dynamically rendered content. Use headless for apps that
 
 ```bash
 # Headless Chrome/Chromium required
-katana -u https://target.com -headless -jc -d 3
+katana -u https://target.com -hl -jc -d 3
 
 # Headless with wait (allow JS to execute before capture)
-katana -u https://target.com -headless -jc -nos
+katana -u https://target.com -hl -jc -nos
+
+# Headless with system Chrome and XHR extraction
+katana -u https://target.com -hl -sc -nos -xhr -j -o katana_headless.jsonl
 
 # Authenticated crawl — provide session cookie
-katana -u https://target.com -headless -H "Cookie: session=<token>" -jc
+katana -u https://target.com -hl -H "Cookie: session=<token>" -jc
 ```
 
 ## Authentication and custom headers
@@ -119,8 +128,11 @@ nuclei -l endpoints.txt -t exposures/ -t vulnerabilities/
 # JSON output (structured for parsing)
 katana -u https://target.com -jc -jsonl -o katana.jsonl
 
+# Known files (robots.txt and sitemap.xml)
+katana -u https://target.com -kf all -d 3 -silent
+
 # Filter by extension (exclude static assets)
-katana -u https://target.com -jc -fx js,json
+katana -u https://target.com -jc -ef png,jpg,jpeg,gif,svg,css,woff,woff2,ttf,eot,map
 
 # Filter by response code
 katana -u https://target.com -jc -fsc 200,301,302

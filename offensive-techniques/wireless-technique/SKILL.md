@@ -19,7 +19,7 @@ Goal: identify, capture, and exploit wireless network credentials or gain direct
 - Physical proximity to target wireless infrastructure (within RF range).
 - Authorized wireless assessment of 802.11 or Bluetooth/BLE networks.
 - Initial access objective requiring network entry via Wi-Fi.
-- CTF challenge involving wireless packet captures (PCAP with WPA handshakes).
+- Authorized analysis of wireless packet captures containing WPA handshakes, PMKID material, or RF evidence.
 
 ## Boundary with other skills
 
@@ -133,6 +133,14 @@ Per AP:
 | WPA2-EAP (Enterprise) | N/A | Evil twin EAP downgrade → RADIUS | Client cert theft |
 | WPA3-SAE | N/A | Downgrade to WPA2 (if transition mode) | Dictionary via PMKID/dragonblood |
 
+Decision rules:
+
+- Prefer PMKID before deauth when the AP exposes it; no client needed and lower RF noise.
+- Prefer targeted four-way handshake capture when clients are active and PMKID is unavailable.
+- Use WPS/Pixie Dust only when WPS is enabled and not locked; stop immediately on lock indicators.
+- Treat WPA2/WPA3 Enterprise as identity/certificate/RADIUS assessment, not PSK cracking.
+- For BLE, switch to `references/bluetooth-attacks.md`; BLE pairing/GATT flaws are separate from Wi-Fi credential capture.
+
 ---
 
 ## Phase 3 — WPA2-PSK attacks
@@ -202,6 +210,14 @@ See `offensive-tools/wireless/wifite/`.
 ## Phase 4 — WPS attacks
 
 WPS PIN has a design flaw: PIN validated in two halves → only 11,000 combinations (not 100,000,000).
+
+Decision flow:
+
+1. Check WPS presence and lock state with `wash`.
+2. If WPS disabled or locked → skip WPS; move to PMKID/handshake/evil twin.
+3. If WPS enabled and unlocked → try Pixie Dust first (`reaver -K 1`) because vulnerable chipsets can reveal the PIN offline from one exchange.
+4. If Pixie Dust fails → online PIN brute-force only when explicitly allowed, rate-limited, and lock behavior is understood.
+5. If lock appears → stop; repeated attempts are noisy and can trigger WIDS or disable WPS.
 
 ```bash
 # WPS status check
@@ -305,9 +321,9 @@ bettercap> ble.enum <MAC>               # enumerate all handles
 bettercap> ble.write <MAC> <handle> <hex_data>   # write to characteristic
 ```
 
-See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`.
+See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`, `offensive-tools/wireless/kismet/`, and `offensive-tools/network/bettercap/`.
 
-→ BLE GATT exploitation, classic Bluetooth attacks, BLE MITM: `references/wpa3-and-ble.md`.
+→ BLE GATT exploitation, pairing/security-mode testing, classic Bluetooth attacks, BLE MITM: `references/bluetooth-attacks.md`.
 
 ---
 
@@ -319,6 +335,7 @@ See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`.
 - Handshake/PMKID capture verified before handing off to cracking.
 - WPS attacks stopped at first lock indicator.
 - Evil twin deployed only within authorized RF perimeter.
+- BLE writes/MITM attempted only after passive discovery and scoped device identity are confirmed.
 
 ## Anti-patterns
 
@@ -332,4 +349,5 @@ See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`.
 
 - [references/wpa-attacks.md](references/wpa-attacks.md) — WPA2 attack playbooks: PMKID, 4-way handshake, deauth strategy, hashcat format conversion, cracking handoff.
 - [references/wpa3-and-ble.md](references/wpa3-and-ble.md) — WPA3 transition mode exploitation, dragonblood, BLE enumeration, GATT service analysis, BLE MITM patterns.
+- [references/bluetooth-attacks.md](references/bluetooth-attacks.md) — Bluetooth/BLE assessment sequence: discovery, pairing, authentication, encryption, GATT/SDP, MITM/downgrade, evidence packaging.
 - [references/evil-twin.md](references/evil-twin.md) — Evil twin setup, WPA2-Personal PSK capture, WPA2-Enterprise EAP downgrade (hostapd-wpe, eaphammer), captive portal credential harvest.

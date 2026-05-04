@@ -91,6 +91,18 @@ Different target types benefit from different online tool families and research 
 **Key tools**: crt.sh + passive DNS (C2 history), SecurityTrails (PDNS pivots), Malpedia (malware classification), VirusTotal (hash associations), GitHub search (code/credentials), academic databases, job boards (hiring requirements suggest capability).
 **Output**: Infrastructure map, capability profile, likely affiliation, TTPs (MITRE ATT&CK), confidence assertions.
 
+### G. Phishing / Brand-Abuse Infrastructure
+**Trigger**: Brand, domain, certificate, URL, phishing kit, suspicious login portal.
+**Online sources first**: Certificate Transparency, passive DNS, URLScan, WHOIS/RDAP, hosting intelligence, page screenshots.
+**Key questions**: Is this a lookalike? Is content live? Does it reuse infrastructure, certificates, kits, or payment artifacts? What confidence supports any linkage?
+**Output**: Candidate domain list, enrichment table, archived pages, risk priority, and attribution confidence.
+
+### H. Ransomware Payment Tracking
+**Trigger**: Wallet address, ransom note, payment screenshot, blockchain transaction, negotiation portal.
+**Online sources first**: Chain explorers, public labels, exchange/mixer/bridge tags, threat-intel wallet reports, transaction graphing tools.
+**Key questions**: Did payment occur? Where did funds move next? Are there service touchpoints or clusters? Where does traceability stop?
+**Output**: Transaction graph, cluster rationale, cash-out hypotheses, confidence and limitations.
+
 ---
 
 ## Quality Gates
@@ -136,6 +148,7 @@ This technique focuses on *methodology + online research*. Specific tool usage l
 **Recon tools** (`offensive-tools/recon/`):
 - `subfinder/` — passive subdomain enumeration
 - `dnsx/` — DNS resolution and filtering at scale
+- `gau/` — historical URL discovery from Wayback, Common Crawl, and URLScan sources
 - `shodan/` — Shodan CLI and API queries
 - `httpx/` — HTTP probing, title/tech detection
 
@@ -152,5 +165,7 @@ Reference tool `SKILL.md` files for flags and workflows; use this technique for 
 - [image-and-geospatial-osint.md](references/image-and-geospatial-osint.md) — Reverse image search, geolocation techniques, EXIF analysis, satellite imagery, chronolocation.
 - [social-media-profiling.md](references/social-media-profiling.md) — Platform-specific techniques (X, LinkedIn, Instagram, Telegram, Mastodon, Bluesky), check-in data, content archives.
 - [threat-actor-research.md](references/threat-actor-research.md) — Infrastructure pivoting, artifact profiling, attribution discipline, MITRE ATT&CK mapping.
+- [ct-phishing-and-attribution.md](references/ct-phishing-and-attribution.md) — CT monitoring for lookalikes, phishing infrastructure enrichment, and cautious attribution methodology.
+- [ransomware-payment-tracking.md](references/ransomware-payment-tracking.md) — Cryptocurrency flow tracking, service/mixer/bridge identification, cluster confidence, and traceability limits.
 - [operational-security-and-evidence.md](references/operational-security-and-evidence.md) — Sock puppets, browser isolation, evidence archival, chain of custody, reproducibility logging.
 - [online-tools-and-apis-navigator.md](references/online-tools-and-apis-navigator.md) — Directory of online OSINT tools/APIs by domain (no downloads). Updated regularly via Tavily research.

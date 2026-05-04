@@ -102,6 +102,7 @@ Use the simplest family that gives coverage signal and reproducible failures.
   - Start with diverse valid seeds, then add malformed/edge seeds.
   - Deduplicate/minimize corpus before long runs.
   - Add dictionaries/token hints when parsing constraints are strong.
+  - Treat corpus as a reusable campaign asset: seed, minimized, crash, regression, and negative corpora have different roles.
 
 5. **Execution strategy**
   - Use diversified parallel instances (exploration-biased + bug-confirmation-biased).
@@ -127,6 +128,7 @@ Use the simplest family that gives coverage signal and reproducible failures.
 - Harness/model survives warmup at high iteration count.
 - Resource limits (`time`, `memory`) are stable on seed corpus.
 - Campaign output distinguishes exploitability candidate vs generic failure.
+- Fuzzing is still the right technique: input reaches meaningful parser/state depth and failures are target-originated, not harness-originated.
 
 ## Required deliverables from the agent
 
@@ -167,6 +169,7 @@ When using this skill, the agent should output:
 - Running long fuzzing on unstable/non-deterministic harnesses.
 - Ignoring dependency failures that prevent state depth.
 - Scaling throughput before replayability is proven.
+- Continuing after corpus/model improvements are exhausted and coverage remains flat.
 - Mixing tool usage details into technique-level guidance.
 
 ## References
@@ -178,4 +181,5 @@ When using this skill, the agent should output:
 - [references/web-api-fuzzing.md](references/web-api-fuzzing.md)
 - [references/oracle-and-signal-design.md](references/oracle-and-signal-design.md)
 - [references/campaign-orchestration.md](references/campaign-orchestration.md)
+- [references/corpus-management.md](references/corpus-management.md)
 - [references/crash-triage-and-reproducibility.md](references/crash-triage-and-reproducibility.md)

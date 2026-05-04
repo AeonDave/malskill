@@ -4,7 +4,7 @@ Full-spectrum security skill collection for AI agents - built on the open [Agent
 
 Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent deep domain knowledge: command syntax, real workflows, decision logic, edge cases, and operational caveats.
 
-The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, and developer perspectives within a single task.
+The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, private offensive CTF/lab solving, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, developer, and lab-solving perspectives within a single task.
 
 ---
 
@@ -36,15 +36,15 @@ This area is explicitly about **how to use a specific tool** to reach an objecti
 
 **Note on `forensic/`**: These skills exist because security work often requires analyzing artifacts produced by attacks - understanding what defenders see, recovering post-compromise evidence, assessing detection surface, and validating OPSEC. Tools like `volatility3`, `capa`, and `yara` are as useful for a red team operator understanding EDR behavior as they are for a blue team analyst.
 
-### `offensive-coding/` - Offensive development skills (10 skills)
+### `offensive-coding/` - Offensive development skills (12 skills)
 
 Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, syscall stubs, evasion primitives, and Windows internals. Targeted at agents doing tool development, not just tool execution.
 
-- **BOF**: `c-bof`, `cpp-bof` - Beacon Object File development workflows
-- **Evasion**: `edr-evasion`, `indirect-syscall`, `stack-spoofing` - technique-level development patterns
-- **Internals**: `windows-internals` - API, structures, and memory layout knowledge
+- **BOF**: `bof-dev/c-bof`, `bof-dev/cpp-bof` - Beacon Object File development workflows
+- **Evasion**: `edr-evasion-dev`, `indirect-syscall-dev`, `sleep-masking-dev`, `stack-spoofing-dev` - technique-level development patterns
+- **Exploit and payload development**: `heap-exploitation-dev`, `rop-development-dev`, `shellcode-dev`
+- **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, and memory layout knowledge
 - **C2**: `adaptixc2-dev` - framework-specific development
-- **Techniques**: `evasion-techniques`, `loader-techniques`, `persistence-techniques`
 
 ### `offensive-techniques/` - Methodology and tradecraft skills
 
@@ -59,6 +59,16 @@ Example:
 - `offensive-techniques/fuzzing-technique/` = *fuzzing methodology* (harnessing mindset, corpus strategy, campaign design, validation logic)
 
 These two layers are complementary and intentionally separate.
+
+### `offensive-ctf/` - Private offensive CTF and lab-solving skills
+
+Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, offline target bundles, and private lab scenarios. This area is intentionally separate from field methodology in `offensive-techniques/`.
+
+- Start with `solve-challenge-ctf` when the category is unclear.
+- Use `beginner-ctf` when the user needs first-step guidance or category selection.
+- Dedicated `*-ctf` skills cover web, crypto, pwn, reverse, forensics, OSINT, AI/ML, malware, misc, ICS/OT, hardware/embedded, blockchain/Web3, and writeup workflows.
+
+CTF skills may reference technique and tool skills, but they stay optimized for controlled lab objectives rather than real-world engagement tradecraft.
 
 ### `coding/` - Language patterns and tooling (22 skills)
 
@@ -96,9 +106,9 @@ Skills that support the workflow itself: design, implementation planning, resear
 
 - **`langchain-py`** - Production-oriented LangChain Python workflows
 
-### `hardware/` - Embedded and sensor skills (2 skills)
+### `hardware/` - Embedded skills (1 skill)
 
-- **`arduino`**, **`sensors`**
+- **`arduino`**
 
 ### `commands/` - Agent behavior and command modes (1 skill)
 
@@ -121,6 +131,9 @@ cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
 
 # Install all offensive-tools skills
 cp -r offensive-tools/*/* ~/.agents/skills/
+
+# Install all private offensive CTF skills
+cp -r offensive-ctf/* ~/.agents/skills/
 
 # Install with layout preservation (group by category)
 ./install.sh --skills offensive-tools/windows/mimikatz --format folder --layout group --destination ~/.agents/skills
@@ -167,7 +180,8 @@ python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/
 
 - Put a skill in `offensive-tools/` when the core question is: **"How do I use this specific tool well?"**
 - Put a skill in `offensive-techniques/` when the core question is: **"How do I perform this technique well, regardless of tool?"**
+- Put a skill in `offensive-ctf/` when the core question is: **"How do I solve this controlled lab, challenge, or flag-style objective?"**
 
-Do not mix these two purposes in the same skill.
+Do not mix these purposes in the same skill. Keep real-world tradecraft in `offensive-techniques/`, tool manuals in `offensive-tools/`, and lab/challenge solving in `offensive-ctf/`.
 
 Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some include `scripts/` for automation helpers, `references/` for deep dives, and `assets/` for templates.

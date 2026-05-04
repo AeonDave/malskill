@@ -20,7 +20,7 @@ Guide practical analysis flow for E01/DD/RAW disk images and ISO media while kee
 ### Common high-value artifacts
 
 - Account and session artifacts (logons, profile activity)
-- Execution indicators (prefetch-like traces, startup entries, task schedulers)
+- Execution indicators (Prefetch, LNK, Jump Lists, UserAssist, AmCache, ShimCache, SRUM, startup entries, task schedulers)
 - Command and script history
 - Browser artifacts (history, cache, downloads)
 - Security-relevant logs and audit traces
@@ -30,7 +30,7 @@ Guide practical analysis flow for E01/DD/RAW disk images and ISO media while kee
 1. Validate hash and mount read-only.
 2. Inventory structure and compare against expected vendor layout.
 3. Identify executable/script payloads and installer logic.
-4. Check autorun/config metadata and embedded resources.
+4. Check autorun/config metadata, embedded resources, shortcut chains, Office/PDF payloads, and external template references.
 5. Scan extracted content with signature/rule-based triage.
 6. Correlate suspected payloads with endpoint execution evidence.
 

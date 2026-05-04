@@ -161,7 +161,7 @@ x = discrete_log(Mod(Q_t, p), Mod(G_t, p))
 
 **When to suspect:**
 - Curve is custom or unusual (not secp256k1, P-256, Curve25519, etc.).
-- Challenge computes discriminant as zero or nearly zero.
+- Discriminant computes as zero or nearly zero.
 
 **Tool**: `offensive-tools/cryptography/sagemath/`.
 
@@ -219,7 +219,7 @@ secret = smart_attack(p, a, b, Gx, Gy, Qx, Qy)
 
 **When to suspect:**
 - `E.order() == p` — always check this first.
-- Challenge generates a custom curve; verify `order` immediately.
+- A custom curve is generated; verify `order` immediately.
 
 **Tool**: `offensive-tools/cryptography/sagemath/`.
 
@@ -699,7 +699,7 @@ assert clock_pow(G, secret, p) == Q
 **When to suspect:**
 - Protocol description uses "circle group", "unit circle", or points satisfy `x²+y²=1 mod p`.
 - Server reveals points and performs power-style operations — check if `p+1` is smooth.
-- Challenge explicitly names a "clock" or "circular" group.
+- Implementation names a "clock" or "circular" group.
 
 ---
 
@@ -748,7 +748,7 @@ Q9: Is the group a clock group (x²+y²=1 mod p)?
 
 Q10: No direct weaknesses found
   → ECDLP is hard; use best-known algorithms (Pollard rho, Pohlig-Hellman if possible)
-  → Or challenge is not exploitable by discrete-log attacks
+  → Or the target is not exploitable by discrete-log attacks
 ```
 
 ---

@@ -45,6 +45,9 @@ ffuf -u http://FUZZ.example.com -w subdomains.txt -H "Host: FUZZ.example.com"
 | `-x <proxy>` | Proxy URL |
 | `-o <file>` | Output file |
 | `-of <format>` | Output format: `json`, `html`, `csv`, `md`, `all` |
+| `-timeout <n>` | HTTP timeout in seconds |
+| `-ignore-body` | Skip response body download when only status/size matters |
+| `-noninteractive` | Disable interactive console mode for scripts and agents |
 | `-v` | Verbose (show redirects) |
 | `-s` | Silent mode |
 | `-p <delay>` | Delay between requests (e.g., `0.1` or `0.1-0.5`) |
@@ -118,15 +121,16 @@ ffuf -u https://api.target.com/v1/users -X POST \
 
 ## Operator Playbook (Recommended)
 
-1. Start with `-ac` and explicit output (`-o <file> -of json`) to reduce baseline noise.
+1. Start with `-ac`, `-noninteractive`, and explicit output (`-o <file> -of json`) to reduce baseline noise and keep automation deterministic.
 2. Lock stable match/filter logic (`-mc` + one of `-fs/-fw/-fl`) before deep recursion.
 3. Run endpoint discovery first, then parameter/header/body fuzzing on confirmed routes.
 4. Only then enable recursion (`-recursion`) to avoid exploding false positives.
+5. In agent or CI runs, always include `-noninteractive`; if ffuf drops into interactive mode, stop it and rerun with this flag.
 
 ### Fast baseline profile
 
 ```bash
-ffuf -u https://target/FUZZ -w raft-medium-words.txt -ac -fc 404 -t 80 -o ffuf-baseline.json -of json
+ffuf -u https://target/FUZZ -w raft-medium-words.txt -ac -fc 404 -t 40 -rate 100 -timeout 10 -noninteractive -o ffuf-baseline.json -of json
 ```
 
 ### Parameter-name fuzzing profile

@@ -90,6 +90,16 @@ When task is offensive-security aligned:
 5. If fail, pivot from evidence, not vibes.
 6. Report only operationally relevant findings: IOC, artifact, cred class, foothold, lateral vector, detection, blocker.
 
+## Skill routing
+
+Route by objective + suffix, not full inventory:
+- Initial triage/field methodology/tradecraft/attack path -> `*-technique`.
+- Offensive capability/code/evasion/implant/exploit development -> `*-dev`.
+- Lab/challenge/flag/offline puzzle solving -> `*-ctf`.
+- Tool skill -> only after method chosen or when user names tool.
+
+Load one primary suffix skill first; add 1-2 support skills/references only if needed.
+
 ## Research quality rules
 
 - Web/tool research surgically: authoritative or high-signal sources first (vendor advisories, CVE entries, primary-source PoCs, MITRE ATT&CK, exploit-db, project repos).

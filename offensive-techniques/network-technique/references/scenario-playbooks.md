@@ -48,3 +48,13 @@ Success condition: reachable surface map with low-noise pivot evidence.
 4. Report affected hosts/accounts and immediate hardening actions.
 
 Success condition: evidence-backed relay path and impacted scope.
+
+## Playbook F: DNS anomaly or suspected covert channel
+
+1. Baseline query volume, domains, record types, response sizes, and timing for the relevant hosts.
+2. Identify high-entropy labels, unusual subdomain depth, excessive NXDOMAINs, TXT/NULL abuse, and periodic low-volume trickle patterns.
+3. Pivot from domain → host pair → process/user context where endpoint logs exist.
+4. Check for DoH/DoT fallback, newly observed resolvers, and HTTP traffic to known DNS providers.
+5. Validate with packet or Zeek DNS evidence before declaring exfiltration.
+
+Success condition: bounded covert-channel hypothesis with source host, destination domain/resolver, time window, volume estimate, and confidence label.

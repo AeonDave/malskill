@@ -80,9 +80,6 @@ hashcat -m 0 hashes.txt -a 7 ?u?l?l?l?l?l?l wordlist.txt -r rules/toggles1.rule
 ```
 
 ## Progressive Rule Strategy
-```
-
-## Progressive Rule Strategy
 
 ### Pass 1: Large dict + light rules
 
@@ -97,6 +94,17 @@ hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule
 # Increase coverage with more rules
 hashcat -m 0 hashes.txt osint-wordlist.txt -r rules/best64.rule -r rules/toggles1.rule
 ```
+
+### Escalation policy: wordlist → rules → hybrid
+
+Prefer this order unless recovered passwords prove another pattern:
+
+1. **High-signal wordlists**: usernames, company/product names, local language terms, seasons, project names, small top lists.
+2. **Rules**: mutate those words with capitalization, digits, years, separators, symbols, and light leet.
+3. **Hybrid suffix/prefix**: only after cracked samples show consistent suffix/prefix structure.
+4. **Masks**: last resort for known policy formats; keep them narrow and time-boxed.
+
+Why: real user passwords often preserve meaningful words. Rules mutate meaning-bearing words intelligently; broad masks spend most cycles on strings humans rarely choose.
 
 ### Pass 3: Small dict + micro-rules
 
@@ -153,6 +161,7 @@ $2$0$2$6
 
 - **Wrong rule order** → suboptimal results (best64 should be first)
 - **Too many rules** → keyspace explosion, slow execution
+- **Rules on huge noisy lists** → wastes GPU time; use smaller target-aware lists when chaining heavy rules
 - **Ignoring results** → not analyzing cracked to refine rules
 - **Single rule only** → missing variations
 - **Not chaining** → poor coverage compared to chained rules

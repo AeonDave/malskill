@@ -18,8 +18,9 @@ Goal: map the attack surface with minimal noise, identify high-value entry point
 
 - External perimeter scoping before a pentest or red team engagement.
 - Bug bounty scope expansion: discover assets before prioritizing targets.
-- CTF host/service mapping before exploitation.
+- Controlled lab or internal host/service mapping before authorized exploitation testing.
 - Pre-exploitation scoping: "where do I spend time?" before vuln scanning.
+- API attack-surface mapping before authz, injection, or workflow testing.
 
 ## Boundary
 
@@ -174,6 +175,8 @@ Tool families:
 - `offensive-tools/recon/hakrawler/` — fast link extraction from static HTML
 - `offensive-tools/recon/gau/` — passive URL harvest per live host (Wayback, URLScan, Common Crawl)
 
+For REST, GraphQL, and real-time APIs, convert raw routes into an auth-aware inventory before probing. Map methods, documented vs observed sources, trust boundaries, object identifiers, and high-risk parameters; see [references/api-recon.md](references/api-recon.md).
+
 ### 2.7 Cloud asset discovery
 
 Modern targets host storage, APIs, and internal tooling in cloud providers outside their own WHOIS/ASN footprint. Shadow IT, dev environments, and data exports frequently appear here.
@@ -216,6 +219,7 @@ Move when:
 - Service inventory per host is stable (port + version + web tech known).
 - At least 3-5 prioritized entry points are identified with specific rationale.
 - Content discovery on key web hosts is complete.
+- A target package is ready for vuln-search: exact asset, service, web metadata, auth boundary, candidate scanner, and priority rationale.
 
 ---
 
@@ -245,6 +249,8 @@ Per high-priority target, specify:
 - Detected service version → relevant CVE search scope
 - Manual investigation areas (e.g., admin panel requires auth bypass testing, file upload requires extension bypass)
 
+Use `references/handoff-to-vuln-search.md` before switching to `vuln-search-technique`; it defines the minimum target package and stop conditions.
+
 ---
 
 ## Quality gates
@@ -269,3 +275,5 @@ Per high-priority target, specify:
 - [references/passive-recon.md](references/passive-recon.md) — passive source catalog, Google dork patterns, GitHub search operators, Wayback/archive strategy, subdomain enumeration and permutation candidate preparation.
 - [references/active-recon.md](references/active-recon.md) — port sweep profiles, DNS brute-force and permutation commands, WAF detection, service enumeration patterns, HTTP fingerprinting workflow, content discovery strategy, URL/parameter harvesting.
 - [references/cloud-recon.md](references/cloud-recon.md) — cloud asset discovery for AWS/Azure/GCP: bucket enumeration, cloud subdomain patterns, metadata SSRF, multi-cloud tooling.
+- [references/api-recon.md](references/api-recon.md) — API inventory, trust-boundary labeling, auth-style mapping, parameter risk profiling, and prioritized test-matrix generation.
+- [references/handoff-to-vuln-search.md](references/handoff-to-vuln-search.md) — readiness gate and target package for scanner/manual vulnerability discovery.

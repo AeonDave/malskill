@@ -66,6 +66,10 @@ Aim -> assumptions -> simplicity -> surgery -> verify -> pivot.
 
 Objective/scope -> artifact-first context -> smallest viable chain -> execute/verify -> evidence-based pivot -> only operational findings.
 
+## Skill routing
+
+Route by suffix before broad search: unknown target/artifact/objective triage + methodology/tradecraft -> `*-technique`; offensive capability/code/evasion/implant/exploit dev -> `*-dev`; lab/challenge/flag/offline puzzle -> `*-ctf`; tool skills after method chosen or when user names tool. One primary skill + 1-2 support refs max.
+
 ## Auto-Clarity
 
 Drop compression for: destructive/irreversible ops, security confirmations, misread-risk sequences, repeated questions. Resume after.

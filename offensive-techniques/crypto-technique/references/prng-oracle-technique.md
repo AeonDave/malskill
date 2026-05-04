@@ -278,7 +278,7 @@ otp = bin(rng.getrandbits(flag_len * 8))[2:]
 - PRNG emits single bits, not integers.
 - Bit generation involves modular exponentiation or a primality-style test.
 - Protocol sends ElGamal-like signatures that could encode internal PRNG state via DLP.
-- `pow(a, (p-1)//2, p)` or equivalent Legendre symbol calculation appears in challenge source.
+- `pow(a, (p-1)//2, p)` or equivalent Legendre symbol calculation appears in target source.
 
 ---
 
@@ -582,7 +582,7 @@ for ct, resp in responses.items():
 
 ---
 
-## Category 3: Challenge and Service Interaction
+## Category 3: Oracle and Service Interaction
 
 ### 3.1 Remote Oracle Harness (pwntools)
 
@@ -615,7 +615,7 @@ def oracle_check_padding(ciphertext):
 
 ## Category 4: Protocol State Machine Interaction
 
-Some protocols are not passive oracles — they actively send you mathematical challenges that you must solve to advance to the next step. Each step builds on the previous one, and the final secret is revealed only after successfully completing all rounds.
+Some protocols are not passive oracles — they actively send mathematical tasks that must be solved to advance to the next step. Each step builds on the previous one, and a protected secret may be released only after successfully completing all rounds.
 
 ### 4.1 Iterative Math Protocol (Kewiri Pattern)
 
@@ -623,7 +623,7 @@ Some protocols are not passive oracles — they actively send you mathematical c
 1. Server sends a math problem (e.g., "factor this N", "solve this DLP", "give me `k * P` for this EC point").
 2. You compute the answer and send it back.
 3. Server validates, advances to next step, sends a new problem.
-4. After N rounds, server reveals a secret or flag.
+4. After N rounds, server reveals a protected secret or capability.
 
 **Preconditions:**
 - You have network access to the server.
@@ -639,31 +639,31 @@ import re
 
 conn = remote("host", port)
 
-def solve_round(challenge_bytes):
-    """Parse challenge and dispatch to appropriate solver."""
-    challenge = challenge_bytes.decode().strip()
+def solve_round(prompt_bytes):
+    """Parse service prompt and dispatch to appropriate solver."""
+    prompt = prompt_bytes.decode().strip()
 
-    if "factor" in challenge.lower():
+    if "factor" in prompt.lower():
         # Factorization round
-        n = int(re.search(r'\d+', challenge).group())
+        n = int(re.search(r'\d+', prompt).group())
         factors = list(factor(n))
         # Format and return required factors
         return str(factors[0][0])  # Example: return largest prime factor
 
-    elif "discrete_log" in challenge.lower() or "solve" in challenge.lower():
+    elif "discrete_log" in prompt.lower() or "solve" in prompt.lower():
         # DLP round: g^x ≡ A (mod p)  or  in GF(p^k)
-        # Extract g, A, p from challenge string
+        # Extract g, A, p from service prompt
         # Example parsing (adapt to actual format):
-        m = re.search(r'g=(\d+),\s*A=(\d+),\s*p=(\d+)', challenge)
+        m = re.search(r'g=(\d+),\s*A=(\d+),\s*p=(\d+)', prompt)
         if m:
             g_val, A_val, p_val = int(m.group(1)), int(m.group(2)), int(m.group(3))
             F = GF(p_val)
             x = discrete_log(F(A_val), F(g_val))
             return str(x)
 
-    elif "EC" in challenge or "point" in challenge.lower():
+    elif "EC" in prompt or "point" in prompt.lower():
         # EC arithmetic round: given P, compute k*P
-        # Extract curve params, k, P from challenge string
+        # Extract curve params, k, P from service prompt
         p_val = <extract_p>
         a_val = <extract_a>
         b_val = <extract_b>
@@ -676,7 +676,7 @@ def solve_round(challenge_bytes):
         return f"{int(result[0])},{int(result[1])}"
 
     else:
-        raise ValueError(f"Unknown challenge type: {challenge}")
+        raise ValueError(f"Unknown task type: {prompt}")
 
 
 # Main loop
@@ -685,17 +685,17 @@ while True:
     print(f"[RECV] {line}")
 
     # Detect termination condition
-    if b"flag" in line.lower() or b"secret" in line.lower() or b"well done" in line.lower():
+    if b"secret" in line.lower() or b"key" in line.lower() or b"well done" in line.lower():
         print(f"[DONE] Got final response: {line.decode()}")
-        # Attempt to read any subsequent flag data
+        # Attempt to read any subsequent secret data
         try:
             extra = conn.recvall(timeout=3)
-            print(f"[FLAG] {extra}")
+            print(f"[SECRET] {extra}")
         except EOFError:
             pass
         break
 
-    if b"challenge" in line.lower() or b"solve" in line.lower() or any(kw in line.lower() for kw in [b"factor", b"log", b"point"]):
+    if b"task" in line.lower() or b"solve" in line.lower() or any(kw in line.lower() for kw in [b"factor", b"log", b"point"]):
         answer = solve_round(line)
         print(f"[SEND] {answer}")
         conn.sendline(answer.encode())
@@ -729,10 +729,10 @@ while True:
 ### 4.3 Detecting Last Round
 
 **Methods to detect when a protocol ends:**
-- Server sends a different message format containing "flag", "key", "secret", or a hexadecimal blob.
+- Server sends a different message format containing a key, secret, or hexadecimal blob.
 - Server closes connection after last response.
 - Response length is substantially longer than previous rounds.
-- Challenge type changes to a "verification" step.
+- Task type changes to a "verification" step.
 
 ```python
 # Defensive recv: handle both normal and final rounds
@@ -790,7 +790,7 @@ Q4: PRNG-based attack
     YES → Entropy test and state recovery (§1.1–1.4)
     NO → PRNG likely strong; move to other attack vectors
 
-Q5: Does the service send math challenges requiring iteration?
+Q5: Does the service send iterative math tasks?
   YES → Protocol state machine interaction (§4.1–4.3)
   NO → Static oracle; apply §1–3 techniques
 ```

@@ -43,7 +43,7 @@ for i in range(256):
 ```
 
 **When to suspect:**
-- Challenge explicitly says "ECB mode."
+- Source, configuration, or protocol notes explicitly indicate ECB mode.
 - Ciphertext blocks have visible repetition.
 - Image encryption shows pattern (ECB penguin vulnerability).
 
@@ -85,7 +85,7 @@ ct_new = iv_new + c  # Prepend modified IV
 See `prng-oracle-technique.md § 2.1`.
 
 **When to suspect:**
-- Challenge says "CBC mode used."
+- Source, configuration, or protocol notes indicate CBC mode.
 - IV is derived from predictable source (timestamp, counter).
 - You can modify ciphertext and observe decryption result.
 
@@ -118,8 +118,8 @@ Given two ciphertexts, you get plaintext XOR. Often enough to recover both plain
 xor_plain = bytes([c1[i] ^ c2[i] for i in range(len(c1))])
 
 # Now, if you know/guess part of m1, recover corresponding part of m2
-# Example: m1 starts with "flag{"
-known = b"flag{"
+# Example: m1 starts with a known file header or protocol marker
+known = b"POST "
 m1_start = known
 for i in range(len(known)):
     m2_byte = xor_plain[i] ^ m1_start[i]
@@ -127,7 +127,7 @@ for i in range(len(known)):
 ```
 
 **When to suspect:**
-- Challenge uses CTR or stream cipher.
+- Implementation uses CTR or a stream cipher.
 - Multiple ciphertexts with same key/nonce.
 - Nonce is not random (hardcoded, incrementing, etc.).
 
@@ -168,7 +168,7 @@ tag_forge = ghash(ct_forge, A, H)
 
 **When to suspect:**
 - AES-GCM with nonce reuse (explicit or implicit).
-- Challenge mentions authentication bypass.
+- Protocol behavior suggests authentication bypass or tag forgery is possible.
 
 **Tool**: External GCM-break tools or `offensive-tools/cryptography/cyberchef/`.
 
@@ -211,7 +211,7 @@ plt.show()
 ```
 
 **When to suspect:**
-- Challenge uses RC4 or obsolete stream cipher.
+- Implementation uses RC4 or another obsolete stream cipher.
 - Problem mentions "weak key schedule" or "biased output."
 
 **Tool**: Specialized RC4 analysis tools or custom statistical analysis.
@@ -258,7 +258,7 @@ except:
 ```
 
 **When to suspect:**
-- Challenge uses LFSR or linear feedback.
+- Implementation uses LFSR or linear feedback.
 - Known plaintext is available.
 
 **Tool**: `offensive-tools/cryptography/sagemath/` for linear algebra.
@@ -304,7 +304,7 @@ for length in range(1, 10):
 ```
 
 **When to suspect:**
-- Challenge mentions "password-based encryption."
+- Implementation uses password-based encryption.
 - KDF uses weak hash or low iteration count.
 
 **Tool**: `offensive-tools/cracking/hashcat/` or `offensive-tools/cracking/john/` for brute-force.
@@ -331,7 +331,7 @@ weak_keys_des = [
 ```
 
 **When to suspect:**
-- Challenge uses DES or Blowfish.
+- Implementation uses DES, Blowfish, or another cipher with known weak-key classes.
 - Key is guessable or constrained.
 
 ---

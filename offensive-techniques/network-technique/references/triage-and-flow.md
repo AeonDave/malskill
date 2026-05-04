@@ -26,6 +26,8 @@ Provide a deterministic first-pass process that routes investigations to the rig
 3. Focused packet capture for sessions that change hypothesis confidence.
 4. Optional interception or tunnel testing if required by objective.
 
+NetFlow, sFlow, IPFIX, cloud flow logs, or Zeek `conn.log` can replace full packet capture for initial scoping when payload visibility is unavailable. Use metadata to bound host pairs, timing, byte counts, and protocol hypotheses; escalate to packets only when content or protocol semantics materially affect confidence.
+
 ## 4) Pivot discipline
 
 Use stable pivots in this order:

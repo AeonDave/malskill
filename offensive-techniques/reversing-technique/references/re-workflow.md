@@ -132,7 +132,7 @@ r2 -F elf ./binary /tmp/dump_decrypted.core
 [0x0]> /iz                        # Search for strings in all segments
 
 # strings (quick pass)
-strings /tmp/dump_decrypted.core | grep -iE "flag|key|pass|secret"
+strings /tmp/dump_decrypted.core | grep -iE "key|pass|secret|token|credential"
 ```
 
 **Extract a specific mapped region:**

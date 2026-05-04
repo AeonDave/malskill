@@ -231,11 +231,11 @@ POP_JUMP_IF_FALSE fail
 **Even/odd index XOR pattern:**
 ```python
 # If disassembly shows:
-# flag[i] ^ flag[i+1] == expected[i//2]   for even i
+# candidate[i] ^ candidate[i+1] == expected[i//2]   for even i
 # Then recover:
-flag = ['?'] * n
+candidate = ['?'] * n
 for i in range(0, n-1, 2):
-    flag[i+1] = chr(ord(flag[i]) ^ expected[i//2])
+    candidate[i+1] = chr(ord(candidate[i]) ^ expected[i//2])
 ```
 
 ---
@@ -444,14 +444,14 @@ print(f"Changing input[0] changes output bytes: {diffs}")
 
 **Recovery:**
 ```python
-flag = bytearray(32)
+recovered = bytearray(32)
 for pos in range(32):
     for guess in range(256):
         candidate = bytearray(b'\x00' * 32)
         candidate[pos] = guess
         enc = encrypt(bytes(candidate))
         if enc[pos] == target_enc[pos]:
-            flag[pos] = guess
+            recovered[pos] = guess
             break
 ```
 
@@ -496,14 +496,14 @@ for row in range(img.shape[0]):
 
 ---
 
-### 5.3 GF(2^8) Gaussian Elimination for Flag Recovery
+### 5.3 GF(2^8) Gaussian Elimination for Input Recovery
 
-**Pattern:** Validation computes linear combinations of flag bytes over GF(2^8) and checks the results.
+**Pattern:** Validation computes linear combinations of protected input bytes over GF(2^8) and checks the results.
 
 ```python
 import numpy as np
 
-# Each equation: sum(coeff[j] * flag[j]) over GF(2^8) == result[i]
+# Each equation: sum(coeff[j] * input[j]) over GF(2^8) == result[i]
 # coeff matrix and results extracted from disassembly
 
 def gf_multiply(a, b, poly=0x11b):
@@ -533,8 +533,8 @@ for col in range(n):
             for j in range(n + 1):
                 matrix[row][j] ^= gf_multiply(factor, matrix[col][j])
 
-flag = ''.join(chr(matrix[i][n]) for i in range(n))
-print(f'Flag: {flag}')
+recovered = ''.join(chr(matrix[i][n]) for i in range(n))
+print(f'Recovered input: {recovered}')
 ```
 
 ---
@@ -547,24 +547,24 @@ print(f'Flag: {flag}')
 from z3 import *
 
 # sbox[i] = observed table (not 1-to-1)
-# encoded[i] = sbox[flag[i]] for each i
-# Multiple flag[i] candidates per encoded[i]
+# encoded[i] = sbox[input[i]] for each i
+# Multiple input[i] candidates per encoded[i]
 
 solver = Solver()
-flag_vars = [BitVec(f'f_{i}', 8) for i in range(len(encoded))]
+input_vars = [BitVec(f'in_{i}', 8) for i in range(len(encoded))]
 
-for i, (var, enc) in enumerate(zip(flag_vars, encoded)):
-    # flag[i] must be printable ASCII
+for i, (var, enc) in enumerate(zip(input_vars, encoded)):
+    # input[i] must be printable ASCII
     solver.add(var >= 0x20, var <= 0x7e)
     # Encode must match
     solver.add(Select(sbox_array, var) == enc)
 
 # Add any additional constraints (known prefix, charset)
-solver.add(flag_vars[0] == ord('F'))   # if flag starts with 'F'
+solver.add(input_vars[0] == ord('A'))   # if the protected input has a known prefix
 
 if solver.check() == sat:
     model = solver.model()
-    print(''.join(chr(model[v].as_long()) for v in flag_vars))
+    print(''.join(chr(model[v].as_long()) for v in input_vars))
 ```
 
 ---
@@ -590,16 +590,16 @@ def converges_to(c, target_root, max_iter=1000, tol=1e-6):
     return min(range(3), key=lambda i: abs(z - roots[i]))
 
 # Expected bitmap (grid of 0/1/2 classifications) extracted from binary
-# Map flag character space: each ASCII character maps to a classification
+# Map protected-input character space: each ASCII character maps to a classification
 charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_!@#$%^&*'
 classification_map = {c: converges_to(ord(c)/10.0, 0) for c in charset}
 
 # Reverse: for each expected classification, find matching character
-flag = ''
+recovered = ''
 for expected_class in expected_bitmap:
     candidates = [c for c, cls in classification_map.items() if cls == expected_class]
-    flag += candidates[0]   # Multiple solutions may exist; additional constraints needed
-print(f'Flag: {flag}')
+    recovered += candidates[0]   # Multiple solutions may exist; additional constraints needed
+print(f'Recovered input: {recovered}')
 ```
 
 ---
@@ -647,7 +647,7 @@ strings binary_or_dropper | grep -iE "wscript|cscript|\.vbs|CreateObject|WScript
 strings binary | grep -iE "Execute\(|Eval\(|ExecuteGlobal"
 ```
 
-**Standalone `.vbs` / `.js` files:** directly readable in a text editor; obfuscation is the challenge.
+**Standalone `.vbs` / `.js` files:** directly readable in a text editor; obfuscation is the main obstacle.
 
 ### 7.2 Common obfuscation patterns
 

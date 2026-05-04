@@ -1,6 +1,6 @@
 # Custom VM, Side-Channel, and Emulation Techniques
 
-Methodology for reversing custom bytecode VMs, bypassing nanomites and signal-handler tricks, recovering flag bytes via side channels, and using emulation frameworks when direct debugging is blocked.
+Methodology for reversing custom bytecode VMs, bypassing nanomites and signal-handler tricks, recovering protected input bytes via side channels, and using emulation frameworks when direct debugging is blocked.
 
 ---
 
@@ -263,15 +263,15 @@ def count_instructions(input_str):
     with open('inscount.out') as f:
         return int(f.read().split()[-1])
 
-flag = ''
-for pos in range(64):   # max flag length
+recovered = ''
+for pos in range(64):   # max protected-input length
     best_count, best_char = 0, ''
     for c in string.printable[:62]:
-        n = count_instructions(flag + c + 'A' * (63 - pos))
+        n = count_instructions(recovered + c + 'A' * (63 - pos))
         if n > best_count:
             best_count, best_char = n, c
-    flag += best_char
-    print(f'[+] flag so far: {flag}')
+    recovered += best_char
+    print(f'[+] input so far: {recovered}')
 ```
 
 **Also works for:** Movfuscated binaries (compiles everything to `mov`), binaries with loop-count-dependent execution.
@@ -335,15 +335,15 @@ def time_check(candidate, host, port):
     io.close()
     return elapsed
 
-flag = ''
+recovered = ''
 for pos in range(40):
     best_time, best_char = 0, ''
     for c in string.printable[:62]:
-        t = time_check(flag + c + 'A' * (39 - pos), 'target', 1234)
+        t = time_check(recovered + c + 'A' * (39 - pos), 'target', 1234)
         if t > best_time:
             best_time, best_char = t, c
-    flag += best_char
-    print(f'[+] {flag}')
+    recovered += best_char
+    print(f'[+] {recovered}')
 ```
 
 ---
@@ -371,12 +371,12 @@ def count_sigfpe(input_str):
     )
     return proc.stderr.count(b'SIGFPE')
 
-flag = ''
+recovered = ''
 for pos in range(32):
     best = max(string.printable[:62],
-               key=lambda c: count_sigfpe(flag + c + 'A' * (31 - pos)))
-    flag += best
-    print(f'[+] {flag}')
+               key=lambda c: count_sigfpe(recovered + c + 'A' * (31 - pos)))
+    recovered += best
+    print(f'[+] {recovered}')
 ```
 
 ---
@@ -456,13 +456,13 @@ def test_input(candidate: str):
     ql.run()
     return stdout_buf.getvalue()
 
-flag = ''
+recovered = ''
 for pos in range(40):
     for c in string.printable[:62]:
-        out = test_input(flag + c)
-        if b'Correct' in out or b'flag' in out.lower():
-            flag += c; break
-print(flag)
+        out = test_input(recovered + c)
+        if b'Correct' in out or b'success' in out.lower():
+            recovered += c; break
+print(recovered)
 ```
 
 ---
@@ -507,23 +507,23 @@ print(f'Recovered input: {uc.reg_read(UC_X86_REG_RAX):#x}')
 
 ### 5.3 angr Symbolic Execution
 
-**Best for:** Crackmes where you want to find input satisfying a comparison without understanding the algorithm.
+**Best for:** software protection routines where you want to find input satisfying a comparison without understanding the full algorithm.
 
 ```python
 import angr, claripy
 
 proj = angr.Project('./binary', auto_load_libs=False)
 
-# Symbolic input (32-byte flag)
-flag = claripy.BVS('flag', 32 * 8)
+# Symbolic input (32-byte protected value)
+protected_input = claripy.BVS('protected_input', 32 * 8)
 state = proj.factory.full_init_state(
     args=['./binary'],
-    stdin=claripy.Concat(flag, claripy.BVV(b'\n'))
+    stdin=claripy.Concat(protected_input, claripy.BVV(b'\n'))
 )
 
 # Add printable ASCII constraints
 for i in range(32):
-    byte = flag.get_byte(i)
+    byte = protected_input.get_byte(i)
     state.add_constraints(byte >= 0x20, byte <= 0x7e)
 
 # Explore: find "Correct" path, avoid "Wrong"
@@ -535,7 +535,7 @@ sm.explore(
 
 if sm.found:
     sol = sm.found[0]
-    print(sol.solver.eval(flag, cast_to=bytes))
+    print(sol.solver.eval(protected_input, cast_to=bytes))
 ```
 
 **Dealing with path explosion:**
@@ -570,10 +570,10 @@ for i in range(32):
 for (addr, opcode) in trace:
     inst = ctx.processing(addr, opcode)
 
-# At the comparison point, solve for flag
+# At the comparison point, solve for protected input
 model = ctx.getModel(ctx.getPathConstraintsAst())
-flag = ''.join(chr(v.getValue()) for _, v in sorted(model.items()))
-print(f'Flag: {flag}')
+recovered = ''.join(chr(v.getValue()) for _, v in sorted(model.items()))
+print(f'Recovered input: {recovered}')
 ```
 
 ---
@@ -718,9 +718,9 @@ M = np.column_stack([run_with_unit_vector(code, BASE, INPUT_SIZE, i)
 import angr, claripy, numpy as np
 
 proj = angr.Project('./binary')
-flag = claripy.BVS('flag', 8 * INPUT_SIZE)
+protected_input = claripy.BVS('protected_input', 8 * INPUT_SIZE)
 state = proj.factory.blank_state(addr=VM_START)
-state.memory.store(INPUT_ADDR, flag)
+state.memory.store(INPUT_ADDR, protected_input)
 
 sm = proj.factory.simulation_manager(state)
 sm.run(until=lambda s: s.addr == CHECK_ADDR)

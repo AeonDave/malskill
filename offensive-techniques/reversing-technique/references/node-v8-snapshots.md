@@ -177,7 +177,7 @@ require('./obfuscated');
 ```bash
 # After deobfuscation, search for crypto, network, file ops
 grep -E "crypto\.|https?\.|fs\.|child_process\.|require\(" clean.js | head -50
-grep -iE "password|secret|key|token|flag|encrypt|decrypt" clean.js
+grep -iE "password|secret|key|token|credential|encrypt|decrypt" clean.js
 ```
 
 ### 3.4 Dynamic analysis

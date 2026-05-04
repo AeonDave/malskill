@@ -41,7 +41,7 @@ Do not move to deep extraction/carving before timeline framing and hypothesis de
 
 ## Core forensic model
 
-1. **Preserve**: isolate evidence, hash, document chain-of-custody.
+1. **Preserve**: isolate evidence, hash, and record provenance needed for reproducibility.
 2. **Collect**: acquire additional required artifacts with minimal alteration.
 3. **Examine**: parse artifacts by source type (disk, memory, network).
 4. **Correlate**: build a unified timeline across sources.
@@ -66,6 +66,7 @@ Use when you need file-system artifacts, deleted-content recovery, execution tra
 
 - Start with integrity + partition mapping.
 - Enumerate file systems and prioritize user/profile, startup, logs, scheduled tasks, shell history.
+- On Windows evidence, prioritize execution artifacts such as Prefetch, LNK, Jump Lists, AmCache, ShimCache, SRUM, PowerShell logs, services, and scheduled tasks.
 - Build an initial timeline before deep carving.
 - Recover/decode only artifacts linked to hypotheses (do not carve everything by default).
 - Validate notable findings in at least one secondary source (e.g., link file + event log + registry).
@@ -83,6 +84,7 @@ Use when the evidence is installer-like media, archives, or mounted image conten
 
 - Verify hash and mount read-only.
 - Inventory executable/script content and autorun-related metadata.
+- Extract Office/PDF/archive payload chains, embedded objects, external template references, shortcut chains, and script launchers before any dynamic handling.
 - Compare bundle contents against expected vendor structure and signatures.
 - Extract suspicious binaries/configs for static triage and rule scanning.
 - Correlate ISO-delivered artifacts with host execution traces from endpoint evidence.
@@ -147,7 +149,7 @@ Primary tool families:
 
 ## Practical quality gates
 
-- Chain-of-custody and hash records exist for all primary evidence.
+- Provenance and hash records exist for all primary evidence.
 - At least one key claim is corroborated across two independent sources.
 - Timeline includes both malicious and benign context to avoid narrative bias.
 - Every IOC or behavioral claim has exact source pointer (artifact + timestamp).
@@ -172,6 +174,8 @@ Primary tool families:
 
 - [references/evidence-preservation.md](references/evidence-preservation.md)
 - [references/disk-and-iso-analysis.md](references/disk-and-iso-analysis.md)
+- [references/windows-execution-indicators.md](references/windows-execution-indicators.md)
+- [references/document-malware-analysis.md](references/document-malware-analysis.md)
 - [references/pcap-analysis.md](references/pcap-analysis.md)
 - [references/memory-analysis.md](references/memory-analysis.md)
 - [references/timeline-correlation.md](references/timeline-correlation.md)

@@ -414,7 +414,7 @@ B_red = B.BKZ(block_size=30)
 ```
 
 **When to suspect:**
-- Challenge description says "error is small", "noise-free" LWE, or gives a matrix + biased observations.
+- Source, configuration, or problem description says "error is small", "noise-free" LWE, or provides a matrix with biased observations.
 - Equation system mod `q` with small additive errors.
 
 ---
@@ -734,7 +734,7 @@ if plaintext_bits:
 ```
 
 **When to suspect:**
-- Challenge presents a "knapsack" or "subset sum" structure.
+- The scheme presents a "knapsack" or "subset sum" structure.
 - Public key is a list of integers and ciphertext is their linear combination over {0,1}.
 - Merkle-Hellman or related broken knapsack scheme.
 
