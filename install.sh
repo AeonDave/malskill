@@ -331,8 +331,10 @@ select_skills() {
     fi
 
     step "Discovered ${#SKILL_FULLS[@]} skill folders under $SOURCE_ROOT"
+    local index_width="${#SKILL_FULLS[@]}"
+    index_width="${#index_width}"
     for ((i = 0; i < ${#SKILL_FULLS[@]}; i++)); do
-        printf '[%3d] %s\n' "$((i + 1))" "${SKILL_RELS[$i]}"
+        printf '[%*d] %s\n' "$index_width" "$((i + 1))" "${SKILL_RELS[$i]}"
     done
     printf '\n'
     read -r -p 'Select skills by index (e.g. 1,4-7 or all): ' raw_selection
@@ -583,9 +585,29 @@ extract_skill_description() {
         in_fm && /^description:[ \t]*\|/ { in_block=1; next }
         in_fm && in_block && /^[ \t]+/ { sub(/^[ \t]+/, ""); print; exit }
         in_fm && /^description:[ \t]+[^|]/ {
-            sub(/^description:[ \t]*/, ""); print; exit
+            sub(/^description:[ \t]*/, "")
+            gsub(/^["'\'' ]+|["'\'' ]+$/, "")
+            print; exit
         }
     ' "$skill_file" | head -1
+}
+
+trim_description_for_menu() {
+    local raw="$1"
+
+    raw="${raw#${raw%%[![:space:]]*}}"
+    raw="${raw%${raw##*[![:space:]]}}"
+
+    if [[ -z "$raw" ]]; then
+        printf '%s' ""
+        return
+    fi
+
+    if [[ "$raw" == *.* ]]; then
+        raw="${raw%%.*}."
+    fi
+
+    printf '%s' "$raw"
 }
 
 # Arrays for discovered commands
@@ -630,23 +652,25 @@ discover_commands() {
     fi
 }
 
-declare -a SEL_CMD_NAMES=()
 declare -a SEL_CMD_DIRS=()
 declare -a SEL_CMD_AGENTS=()
 
 select_commands() {
     local raw_selection i idx
     step "Found ${#CMD_DIRS[@]} command(s)"
+    local index_width="${#CMD_DIRS[@]}"
+    index_width="${#index_width}"
     for ((i = 0; i < ${#CMD_DIRS[@]}; i++)); do
-        local desc="${CMD_DESCS[$i]}"
+        local desc
         local agents="${CMD_AGENTS[$i]}"
         local label
+        desc="$(trim_description_for_menu "${CMD_DESCS[$i]}")"
         if [[ -n "$desc" ]]; then
             label="${CMD_NAMES[$i]} — $desc"
         else
             label="${CMD_NAMES[$i]}"
         fi
-        printf '[%3d] %s  [%s]\n' "$((i + 1))" "$label" "$agents"
+        printf '[%*d] %s  [%s]\n' "$index_width" "$((i + 1))" "$label" "$agents"
     done
     printf '\n'
     read -r -p 'Select commands by index (e.g. 1,3-5 or all): ' raw_selection

@@ -63,6 +63,12 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Rank attacks by structural evidence: factorability, smoothness, nonce reuse, small roots, linear recurrence, or mode misuse.
 - Validate recovered material by re-encryption, signature verification, oracle replay, or known plaintext.
 
+## Targeted hint research gate
+
+If local triage has already classified the primitive, ranked attacks, and still hit a specific wall, load `knowledge/known-problem-hint-research`.
+
+Use it only as a post-triage spike to find a paper, blog, article, public writeup, source discussion, or implementation note that maps to the exact problem fingerprint. Do not use it as broad search or before the local pivot ledger has evidence.
+
 ## Quality gates
 
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.

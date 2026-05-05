@@ -125,6 +125,12 @@ Classify the problem and match it to a primary attack. Most crypto breaks reduce
 4. **Cipher mode abuse** → ECB pattern leakage, IV reuse, block manipulation.
 5. **Mathematical shortcut** → modulus construction, curve singularity, protocol flaw.
 
+### 2.0 Known-problem hint research gate
+
+If the primitive and anomaly are known but the attack construction is still missing after local tests, load `knowledge/known-problem-hint-research`.
+
+Use it to find one decisive external hint — a paper, implementation note, technical article, public writeup, or discussion that matches the current fingerprint. Do not use it for broad crypto learning or before problem diagnosis; return with a local test and validation condition.
+
 ### 2.1 RSA weak-key decision tree
 
 See `references/rsa-technique.md`.

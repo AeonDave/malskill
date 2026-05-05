@@ -227,9 +227,10 @@ function Select-Skills([object[]]$Skills) {
     }
 
     Write-Step "Discovered $($Skills.Count) skill folders under $SourceRoot"
+    $indexWidth = $Skills.Count.ToString().Length
     for ($i = 0; $i -lt $Skills.Count; $i++) {
         $index = $i + 1
-        Write-Host ("[{0,3}] {1}" -f $index, $Skills[$i].RelativePath) -ForegroundColor Cyan
+        Write-Host ("[{0,$indexWidth}] {1}" -f $index, $Skills[$i].RelativePath) -ForegroundColor Cyan
     }
     Write-Host ""
     $rawSelection = Read-Host "Select skills by index (e.g. 1,4-7 or all)"
@@ -679,10 +680,16 @@ function Invoke-CommandsFlow {
     }
 
     Write-Step "Found $($commands.Count) command(s)"
+    $indexWidth = $commands.Count.ToString().Length
     for ($i = 0; $i -lt $commands.Count; $i++) {
         $agents = $commands[$i].AvailableAgents -join ', '
-        $desc = if ($commands[$i].Description) { " — $($commands[$i].Description)" } else { "" }
-        Write-Host ("[{0,3}] {1}{2}  [{3}]" -f ($i + 1), $commands[$i].Name, $desc, $agents) -ForegroundColor Cyan
+        $rawDesc = $commands[$i].Description
+        if ($rawDesc) {
+            $dotIdx = $rawDesc.IndexOf('.')
+            if ($dotIdx -ge 0) { $rawDesc = $rawDesc.Substring(0, $dotIdx + 1) }
+            $desc = " — $rawDesc"
+        } else { $desc = "" }
+        Write-Host ("[{0,$indexWidth}] {1}{2}  [{3}]" -f ($i + 1), $commands[$i].Name, $desc, $agents) -ForegroundColor Cyan
     }
     Write-Host ""
     $rawSelection = Read-Host "Select commands by index (e.g. 1,3-5 or all)"
