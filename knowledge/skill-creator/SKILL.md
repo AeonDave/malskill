@@ -126,8 +126,7 @@ Required fields only; no extras:
 ```yaml
 ---
 name: my-skill                  # lowercase, hyphens, max 64 chars, matches folder name
-description: >                  # what it does + when to use it; max 1024 chars
-  Single coherent paragraph covering capabilities and activation triggers.
+description: "Single coherent paragraph covering what it does + when to use it; max 1024 chars."
 ---
 ```
 

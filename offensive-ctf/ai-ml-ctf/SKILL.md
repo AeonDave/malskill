@@ -1,7 +1,6 @@
 ---
 name: ai-ml-ctf
-description: >
-  Challenge-solving methodology for AI and machine-learning challenge solving. Integrates web-exploit-technique, vuln-search-technique, reversing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on AI and machine-learning challenge solving tasks involving model files, checkpoints, embeddings, LoRA adapters, classifiers, or model APIs.
+description: "Challenge-solving methodology for AI and machine-learning challenge solving. Integrates web-exploit-technique, vuln-search-technique, reversing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on AI and machine-learning challenge solving tasks involving model files, checkpoints, embeddings, LoRA adapters, classifiers, or model APIs."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

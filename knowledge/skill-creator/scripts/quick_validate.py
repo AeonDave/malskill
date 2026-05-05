@@ -72,6 +72,16 @@ def _parse_frontmatter(content: str) -> tuple[bool, str, dict]:
     return True, "", data
 
 
+def _uses_folded_description_scalar(content: str) -> bool:
+    """Return True when description uses YAML folded-scalar syntax (>, >-, >+)."""
+    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        return False
+
+    raw = match.group(1)
+    return bool(re.search(r"(?m)^description:\s*>[+-]?\s*$", raw))
+
+
 def validate_skill(skill_path: Path | str) -> tuple[bool, str]:
     """
     Validate a skill directory.
@@ -96,6 +106,12 @@ def validate_skill(skill_path: Path | str) -> tuple[bool, str]:
     ok, err, fm = _parse_frontmatter(content)
     if not ok:
         return False, err
+
+    if _uses_folded_description_scalar(content):
+        return False, (
+            "Field 'description' must use a plain or quoted YAML string; "
+            "folded-scalar syntax ('description: >', '>-', '>+') is not allowed"
+        )
 
     # Unexpected keys
     unexpected = set(fm.keys()) - ALLOWED_FIELDS

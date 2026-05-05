@@ -1,7 +1,6 @@
 ---
 name: osint-ctf
-description: >
-  Challenge-solving methodology for open-source intelligence challenge solving. Integrates osint-technique, recon-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on open-source intelligence challenge solving tasks involving people, usernames, emails, domains, infrastructure, images, videos, geolocation, social-media clues, DNS history, or public records.
+description: "Challenge-solving methodology for open-source intelligence challenge solving. Integrates osint-technique, recon-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on open-source intelligence challenge solving tasks involving people, usernames, emails, domains, infrastructure, images, videos, geolocation, social-media clues, DNS history, or public records."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

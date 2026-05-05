@@ -1,7 +1,6 @@
 ---
 name: forensics-ctf
-description: >
-  Challenge-solving methodology for forensics and steganography challenge solving. Integrates forensic-technique, network-technique, reversing-technique, and wireless-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for disk images, memory dumps, PCAPs, event logs, archives, media files, firmware-like blobs, steganography, and evidence recovery.
+description: "Challenge-solving methodology for forensics and steganography challenge solving. Integrates forensic-technique, network-technique, reversing-technique, and wireless-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for disk images, memory dumps, PCAPs, event logs, archives, media files, firmware-like blobs, steganography, and evidence recovery."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

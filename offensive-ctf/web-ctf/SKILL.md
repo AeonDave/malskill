@@ -1,7 +1,6 @@
 ---
 name: web-ctf
-description: >
-  Challenge-solving methodology for web-application challenge solving. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, and prototype pollution.
+description: "Challenge-solving methodology for web-application challenge solving. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, and prototype pollution."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

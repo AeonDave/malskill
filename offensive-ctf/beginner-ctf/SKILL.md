@@ -1,7 +1,6 @@
 ---
 name: beginner-ctf
-description: >
-  Beginner-friendly challenge-solving entrypoint for users who do not know which CTF category or skill to use. Use when the prompt contains a vague challenge description, unknown artifact, URL, service, source bundle, binary, PCAP, image, model, smart contract, hardware trace, or the user asks what to do first. Explains category choice in plain language, chooses the smallest next 1-3 actions, and then hands off to the correct dedicated ctf-solving skill.
+description: "Beginner-friendly challenge-solving entrypoint for users who do not know which CTF category or skill to use. Use when the prompt contains a vague challenge description, unknown artifact, URL, service, source bundle, binary, PCAP, image, model, smart contract, hardware trace, or the user asks what to do first. Explains category choice in plain language, chooses the smallest next 1-3 actions, and then hands off to the correct dedicated ctf-solving skill."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

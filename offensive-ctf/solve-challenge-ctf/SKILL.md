@@ -1,7 +1,6 @@
 ---
 name: solve-challenge-ctf
-description: >
-  Challenge-solving methodology for multi-category challenge triage and routing. Integrates recon-technique, forensic-technique, reversing-technique, web-exploit-technique, network-technique, wireless-technique, and crypto-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for unknown bundles, remote services, partial hints, mixed artifacts, category-ambiguous tasks, ICS/OT traces, hardware captures, firmware, RF/SDR, or blockchain/Web3 artifacts; dispatches to dedicated category skills.
+description: "Challenge-solving methodology for multi-category challenge triage and routing. Integrates recon-technique, forensic-technique, reversing-technique, web-exploit-technique, network-technique, wireless-technique, and crypto-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for unknown bundles, remote services, partial hints, mixed artifacts, category-ambiguous tasks, ICS/OT traces, hardware captures, firmware, RF/SDR, or blockchain/Web3 artifacts; dispatches to dedicated category skills."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
