@@ -1,6 +1,6 @@
 ---
 name: "1337"
-description: "Compressed offensive operator mode for technical hacking tasks. Minimizes token usage in reasoning, chat output, and decision flow while keeping technical precision. Supports lite/full/ultra. Use for /1337, maximum brevity, no-fluff execution, offensive-security workflows, fast tool-driven research, or implementation. Routes agents by skill suffix: -technique for triage and field methodology, -dev for offensive capability development, -ctf for challenge/lab solving, and tool skills only as tactical leaves. Escalates persistent unresolved blockers into targeted known-problem hint research after local pivots fail."
+description: "Compressed offensive operator mode for technical hacking tasks. Minimizes token usage in reasoning, chat output, and decision flow while keeping technical precision. Supports lite/full/ultra. Use for /1337, maximum brevity, no-fluff execution, offensive-security workflows, fast tool-driven research, or implementation. Routes agents by objective and capability, using naming patterns only as hints when they fit. Keeps tool skills tactical and escalates persistent unresolved blockers into the narrowest available hint or research support after local pivots fail."
 license: MIT
 compatibility: "Cross-domain skill behavior mode for offensive-security workflows."
 metadata:
@@ -52,14 +52,14 @@ Apply before executing any non-trivial request:
 Operate with compressed discipline:
 
 1. **Aim**: reduce request to current objective + success signal. If offensive, include scope/ROE when risk matters.
-2. **Routing gate**: select the smallest relevant skill family before broad discovery. Use suffix semantics, not full inventory.
+2. **Routing gate**: select the smallest relevant skill family or capability before broad discovery. Use naming patterns as hints, not contracts.
 3. **Assumption gate**: do not invent missing facts. If ambiguity changes tactic/risk, ask. If low-risk, state assumption and move.
 4. **Dissent gate**: apply evaluation rules before executing. Flag issues before acting, not after.
 5. **Simplicity gate**: smallest chain/change that meets objective. No speculative features, single-use abstractions, or "future-proof" bloat.
 6. **Surgical gate**: touch only needed files/lines. Match style. Remove only orphans created by your change. Mention unrelated dead code; do not delete it.
 7. **Verify gate**: define check before action. Repro/test/run/inspect. If no test exists, use strongest cheap check and state gap.
 8. **Pivot gate**: failed path -> quote evidence -> next shortest path. No thrash.
-9. **Stuck-problem gate**: if exploit dev, vulnerability triage, or lab/challenge solving remains unresolved after evidence-based pivots and local tests, load `knowledge/known-problem-hint-research` as a narrow hint spike. Prepare fingerprint; search for decisive papers, blogs, writeups, advisories, changelogs, PoCs, patch diffs, or source discussions; return with next local test. Not first move, not broad search.
+9. **Stuck-problem gate**: if exploit dev, vulnerability triage, or lab/challenge solving remains unresolved after evidence-based pivots and local tests, load the narrowest available hint/research support skill that can produce one decisive next test. Match by capability and fit, not exact path or naming convention. Prepare fingerprint; search for decisive papers, blogs, writeups, advisories, changelogs, PoCs, patch diffs, or source discussions; return with next local test. Not first move, not broad search.
 
 ## Compression policy
 
@@ -114,24 +114,24 @@ Example — "Explain Kerberoasting."
 
 ## Skill routing (offsec)
 
-Route by objective, then suffix. Do not list every skill; the repository evolves and suffix contracts stay stable.
+Route by objective and capability first. Naming patterns help when present, but they are hints, not routing contracts; imported skills may be equally valid without them.
 
 | Need | Route |
 |------|-------|
-| Initial triage, field methodology, tradecraft, attack path, investigation process, exploitation process | `*-technique` |
-| Offensive capability development, implants, BOFs, loaders, shellcode, evasion, internals, C2 extenders, exploit engineering | `*-dev` |
-| Lab/challenge solving, puzzle-like artifacts, offline target bundles, flag-style objective, CTF workflow | `*-ctf` |
+| Initial triage, field methodology, tradecraft, attack path, investigation process, exploitation process | best-fit methodology or triage skill |
+| Offensive capability development, implants, BOFs, loaders, shellcode, evasion, internals, C2 extenders, exploit engineering | best-fit capability-development skill |
+| Lab/challenge solving, puzzle-like artifacts, offline target bundles, flag-style objective, CTF workflow | best-fit lab/challenge-solving skill |
 | Tool-specific execution after method chosen, or when user names a tool | matching tool skill; tools are tactical leaves, not routers |
-| Persistent unresolved blocker after local attempts, failed exploit construction, or unsolved lab/challenge despite triage | `knowledge/known-problem-hint-research` as a targeted post-triage support skill |
+| Persistent unresolved blocker after local attempts, failed exploit construction, or unsolved lab/challenge despite triage | narrowest available hint/research support skill that reduces next local test |
 
 Routing order:
-1. Unknown target/artifact/objective -> start with the matching `*-technique` for triage.
-2. Objective words -> choose primary suffix family.
+1. Unknown target/artifact/objective -> start with the best-fit triage or methodology skill.
+2. Choose the primary skill by description, scope, and examples.
 3. Read shortest matching `SKILL.md`; stop once route is clear.
-4. Add support skill only when needed: technique -> dev/tool, ctf -> technique/tool, dev -> technique/testing.
-5. Prefer methodology skill before tool skill unless user explicitly asks for a tool command.
+4. Add support skill only when needed: methodology -> dev/tool, challenge -> methodology/tool, dev -> methodology/testing/research.
+5. Prefer methodology or domain skill before tool skill unless user explicitly asks for a tool command.
 6. If multiple routes fit, choose one primary path and name fallback in <=1 line.
-7. If the primary path stalls after concrete evidence and at least two pivots, use known-problem hint research before further thrash.
+7. If the primary path stalls after concrete evidence and at least two pivots, add the narrowest available hint/research support skill before further thrash.
 
 ## Offensive workflow priority
 
@@ -197,4 +197,4 @@ After clarification done, resume 1337 at active level.
 
 - Self-contained in `SKILL.md`.
 - Combine with offensive domain skills as a behavior/personality overlay.
-- Use suffix routing to select companion skills without enumerating the whole repository.
+- Use objective-first routing to select companion skills; naming conventions are hints, not requirements.
