@@ -78,19 +78,38 @@ Use it only as a post-triage spike to find a paper, blog, article, public writeu
 
 ## Resources
 
-- [references/advanced-math.md](references/advanced-math.md) — preserved, debrandized imported technique material.
-- [references/classic-ciphers.md](references/classic-ciphers.md) — preserved, debrandized imported technique material.
-- [references/ecc-attacks.md](references/ecc-attacks.md) — preserved, debrandized imported technique material.
-- [references/exotic-crypto-2.md](references/exotic-crypto-2.md) — preserved, debrandized imported technique material.
-- [references/exotic-crypto.md](references/exotic-crypto.md) — preserved, debrandized imported technique material.
-- [references/historical.md](references/historical.md) — preserved, debrandized imported technique material.
-- [references/lattice-and-lwe.md](references/lattice-and-lwe.md) — preserved, debrandized imported technique material.
-- [references/modern-ciphers-2.md](references/modern-ciphers-2.md) — preserved, debrandized imported technique material.
-- [references/modern-ciphers-3.md](references/modern-ciphers-3.md) — preserved, debrandized imported technique material.
-- [references/modern-ciphers.md](references/modern-ciphers.md) — preserved, debrandized imported technique material.
-- [references/prng-attacks.md](references/prng-attacks.md) — preserved, debrandized imported technique material.
-- [references/prng.md](references/prng.md) — preserved, debrandized imported technique material.
-- [references/rsa-attacks-2.md](references/rsa-attacks-2.md) — preserved, debrandized imported technique material.
-- [references/rsa-attacks.md](references/rsa-attacks.md) — preserved, debrandized imported technique material.
-- [references/stream-ciphers.md](references/stream-ciphers.md) — preserved, debrandized imported technique material.
-- [references/zkp-and-advanced.md](references/zkp-and-advanced.md) — preserved, debrandized imported technique material.
+
+### Modern Cipher Attacks
+- [references/modern-cipher-modes-and-forgery.md](references/modern-cipher-modes-and-forgery.md) — AES/CFB/CBC/CTR/GCM/OFB mode failures, padding and decode oracles, bit-flip/cut-and-paste forgeries, cookie/session tampering, and practical ciphertext manipulation workflows.
+- [references/modern-hash-mac-and-collision-attacks.md](references/modern-hash-mac-and-collision-attacks.md) — Hash/MAC weaknesses: length extension, CRC misuse, chosen-prefix and multi-collision workflows, linear-MAC breaks, and aggregate-hash forgery patterns.
+- [references/modern-oracles-protocols-and-custom-crypto.md](references/modern-oracles-protocols-and-custom-crypto.md) — Protocol and design failures: Bleichenbacher/Rabin/Blum-Goldwasser oracles, SRP and KDF flaws, reduced-round/custom constructions, and algebraic attack pivots.
+
+### RSA Attacks
+- [references/rsa-attacks.md](references/rsa-attacks.md) — Small exponent recovery, common modulus attacks, Wiener's attack, Pollard p-1 factorization, Hastad broadcast, Fermat factorization, multi-prime RSA, restricted-digit primes, Coppersmith attacks, Manger's padding oracle, specialized RSA (p=q bypass, gcd(e,phi)>1, phi-multiple factoring, CRT faults, homomorphic bypass, batch GCD, partial key recovery), signature forgery (homomorphic, Bleichenbacher, low-exponent), ROCA attack (CVE-2017-15361), timing attacks, dependent-prime RSA, three-key GCD.
+
+### Exotic Cryptography
+- [references/exotic-crypto.md](references/exotic-crypto.md) — Braid group DH (Alexander polynomial multiplicativity), monotone function inversion, tropical semiring residuation, Paillier homomorphic encryption, Hamming codes, ElGamal variants, format-preserving encryption Feistel, icosahedral symmetry group cipher, Goldwasser-Micali ciphertext replication, BB-84 quantum key distribution MITM.
+
+### PRNG & Key Recovery
+- [references/prng.md](references/prng.md) — Mersenne Twister state recovery (untemper, symbolic solving), MT from random.random() floats via GF(2) matrix (not_random library), time-based seed attacks, C srand/rand via ctypes, layered encryption recovery, LCG parameter recovery, ChaCha20 key recovery, GF(2) matrix PRNG seed recovery, middle-square PRNG brute-force, deterministic RNG from flag bytes (hill climbing), byte-by-byte oracle, RSA key reuse, logistic map/chaotic PRNG seed recovery, V8 XorShift128+ state recovery (Math.random prediction), and CTF-era advanced techniques (MT constraint propagation, Z3 timing oracle, cellular automaton LFSR, Java LCG MITM).
+
+### Elliptic Curve Attacks
+- [references/ecc-attacks.md](references/ecc-attacks.md) — Small subgroup attacks, invalid curve attacks, Smart's attack, ECDSA nonce reuse, curve order factorization, twist attacks, anomalous curves, special-form curve weaknesses.
+
+### Advanced Mathematics
+- [references/advanced-math.md](references/advanced-math.md) — Isogenies and CSIDH, Pohlig-Hellman algorithm, LLL lattice reduction, Coppersmith small-roots method, Clock group DLP, Babai nearest-plane algorithm, CVP/SVP solvers, GF(2) linear algebra, generalized birthday attacks, sparse polynomial systems.
+
+### Lattice & LWE
+- [references/lattice-and-lwe.md](references/lattice-and-lwe.md) — Lattice problems (SVP, CVP, HNP), LWE attacks (Gaussian elimination, BKZ reduction), hidden number problem, ECDSA partial-nonce recovery via lattice, LWE parameter tweaking, NTRU attacks.
+
+### Classic Ciphers
+- [references/classic-ciphers.md](references/classic-ciphers.md) — Vigenere cipher frequency analysis, Atbash simple substitution, Polybius square attacks, substitution cipher key recovery, XOR-based cipher analysis, pattern matching and constraint solving.
+
+### Stream Ciphers
+- [references/stream-ciphers.md](references/stream-ciphers.md) — LFSR feedback polynomial recovery, RC4 state recovery and keystream prediction, XOR-based stream cipher weaknesses, mode misuse (reusing nonces/IVs), correlated keystream analysis.
+
+### Historical Ciphers
+- [references/historical.md](references/historical.md) — Lorenz SZ40/42 rotor machine analysis, book cipher key recovery, pre-modern cryptanalysis techniques, mechanical cipher exploitation.
+
+### ZKP & Advanced Techniques
+- [references/zkp-and-advanced.md](references/zkp-and-advanced.md) — Zero-knowledge proof attacks, interactive proof verification bypass, Z3 SMT solver application, garbled circuits (generator/evaluator attacks), Shamir secret sharing, race conditions in crypto protocols, Fiat-Shamir heuristic vulnerabilities.

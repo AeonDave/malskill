@@ -4,7 +4,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Crypto - Stream Cipher Attacks
 
-LFSR, RC4, and XOR-based stream cipher attacks. For block cipher attacks (AES, padding oracle, MAC forgery), see [modern-ciphers.md](modern-ciphers.md).
+LFSR, RC4, and XOR-based stream cipher attacks. For block-cipher and message-forgery patterns, see [modern-cipher-modes-and-forgery.md](modern-cipher-modes-and-forgery.md).
 
 ## Table of Contents
 - [LFSR Stream Cipher Attacks](#lfsr-stream-cipher-attacks)

@@ -4,9 +4,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Reverse - Advanced Tools & Deobfuscation
 
-Advanced tooling for commercial packers/protectors, binary diffing, deobfuscation frameworks, emulation, and symbolic execution beyond angr.
-
-For advanced GDB scripting, Ghidra automation, patching frameworks, and GDB-driven CTF techniques, see [tools-advanced-2.md](tools-advanced-2.md).
+Canonical advanced-tooling reference for deobfuscation, packers/protectors, diffing, symbolic execution, advanced debugger automation, scripting, and binary patching.
 
 ## Table of Contents
 - [VMProtect Analysis](#vmprotect-analysis)
@@ -30,6 +28,13 @@ For advanced GDB scripting, Ghidra automation, patching frameworks, and GDB-driv
 - [Rizin / Cutter](#rizin-cutter)
 - [RetDec (Retargetable Decompiler)](#retdec-retargetable-decompiler)
 - [Custom VM Bytecode Lifting to LLVM IR]
+- [Advanced GDB Techniques](#advanced-gdb-techniques)
+- [Advanced Ghidra Scripting](#advanced-ghidra-scripting)
+- [Patching Strategies](#patching-strategies)
+- [GDB Constraint Extraction with ILP/LP Solver]
+- [GDB Position-Encoded Input with Zero Flag Monitoring]
+- [LD_PRELOAD to Dump Execute-Only Binary]
+- [PEDA current_inst Bit-by-Bit Flag Scraper]
 
 -
 
@@ -409,3 +414,209 @@ For complex custom VMs, transpile the VM bytecode to LLVM IR and use LLVM's opti
 ```
 
 **Key insight:** LLVM's optimization passes (inlining, constant folding, dead code elimination) dramatically simplify lifted VM bytecode. A custom VM with 26 registers and 3 opcodes that produces 1300 lines of IL reduces to ~150 lines after `-O3`, revealing the underlying algorithm (e.g., Collatz sequence computation).
+
+-
+
+## Advanced GDB Techniques
+
+### Python Scripting
+
+```python
+# ~/.gdbinit or source from GDB
+import gdb
+
+class TraceCompare(gdb.Breakpoint):
+    """Log all comparison operations."""
+    def __init__(self, addr):
+        super().__init__(f"*{addr}", gdb.BP_BREAKPOINT)
+
+    def stop(self):
+        frame = gdb.selected_frame()
+        rdi = int(frame.read_register("rdi"))
+        rsi = int(frame.read_register("rsi"))
+        rdx = int(frame.read_register("rdx"))
+        inferior = gdb.selected_inferior()
+        buf1 = inferior.read_memory(rdi, rdx).tobytes()
+        buf2 = inferior.read_memory(rsi, rdx).tobytes()
+        print(f"memcmp({buf1!r}, {buf2!r}, {rdx})")
+        return False
+```
+
+### Brute-Force with GDB Script
+
+```python
+import gdb, string
+
+def bruteforce_flag(check_addr, success_addr, fail_addr, flag_len):
+    flag = []
+    for pos in range(flag_len):
+        for ch in string.printable:
+            candidate = ''.join(flag) + ch + 'A' * (flag_len - pos - 1)
+            gdb.execute('start', to_string=True)
+            gdb.execute(f'b *{check_addr}', to_string=True)
+            gdb.execute('continue', to_string=True)
+            rip = int(gdb.parse_and_eval('$rip'))
+            if rip == success_addr:
+                flag.append(ch)
+                break
+        gdb.execute('delete breakpoints', to_string=True)
+    return ''.join(flag)
+```
+
+### Conditional Breakpoints
+
+```bash
+(gdb) b *0x401234 if $rax == 0x41
+(gdb) b *0x401234 if *(char*)$rdi == 'f'
+(gdb) b *0x401234
+(gdb) ignore 1 99
+```
+
+### Watchpoints
+
+```bash
+(gdb) watch *(int*)0x601050
+(gdb) rwatch *(int*)0x601050
+(gdb) awatch *(int*)0x601050
+```
+
+### Reverse Debugging (rr)
+
+```bash
+rr record ./binary
+rr replay
+```
+
+### GDB Dashboard / GEF / pwndbg
+
+```bash
+pwndbg> context
+pwndbg> vmmap
+pwndbg> search -s "flag{"
+pwndbg> telescope $rsp 20
+```
+
+-
+
+## Advanced Ghidra Scripting
+
+```python
+from ghidra.program.model.symbol import SourceType
+
+fm = currentProgram.getFunctionManager()
+for func in fm.getFunctions(True):
+    if func.getName().startswith("FUN_"):
+        body = func.getBody()
+        inst_iter = currentProgram.getListing().getInstructions(body, True)
+        for inst in inst_iter:
+            if inst.getMnemonicString() == "CPUID":
+                func.setName("anti_vm_check_" + hex(func.getEntryPoint().getOffset()),
+                            SourceType.USER_DEFINED)
+                break
+```
+
+-
+
+## Patching Strategies
+
+### Binary Ninja Patching (Python API)
+
+```python
+import binaryninja as bn
+
+bv = bn.open_view("binary")
+bv.write(0x401234, b"\x90" * 5)
+bv.save("patched")
+```
+
+### LIEF (Library for Instrumenting Executable Formats)
+
+```python
+import lief
+
+binary = lief.parse("binary")
+binary.header.entrypoint = 0x401000
+binary.write("patched")
+```
+
+-
+
+## GDB Constraint Extraction with ILP/LP Solver
+
+When a binary enforces linear arithmetic relationships between input bytes, extract constraints automatically via GDB and solve with an ILP solver.
+
+```python
+from pulp import *
+
+n = 32
+prob = LpProblem("crackme", LpMinimize)
+x = [LpVariable(f'x{i}', 32, 126, cat='Integer') for i in range(n)]
+prob += 0
+prob += x[3] + x[7] == 0xAB
+prob += x[1] - x[5] == 0x0C
+prob.solve(PULP_CBC_CMD(msg=0))
+```
+
+**Key insight:** Position-encoded test inputs plus automated comparison logging turn linear validators into direct ILP instances.
+
+-
+
+## GDB Position-Encoded Input with Zero Flag Monitoring
+
+Send input where `input[i] = i` and monitor the zero flag after comparisons to recover expected values in a single pass.
+
+```python
+import gdb
+
+class ZFMonitor(gdb.Breakpoint):
+    def stop(self):
+        zf = (int(gdb.parse_and_eval('$eflags')) >> 6) & 1
+        if zf:
+            rip = int(gdb.parse_and_eval('$rip'))
+            disasm = gdb.execute(f'x/1i {rip-5}', to_string=True)
+            print(f"ZF set at {rip:#x}: {disasm.strip()}")
+        return False
+```
+
+-
+
+## LD_PRELOAD to Dump Execute-Only Binary
+
+A binary has execute-only permissions and cannot be read directly, but its mapped memory remains accessible from inside the process.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+__attribute__((constructor)) void dump() {
+    FILE *maps = fopen("/proc/self/maps", "r");
+    char line[256];
+    unsigned long base = 0, end = 0;
+    while (fgets(line, sizeof(line), maps)) {
+        if (strstr(line, "binary_name")) {
+            sscanf(line, "%lx-%lx", &base, &end);
+            break;
+        }
+    }
+    fclose(maps);
+}
+```
+
+**Key insight:** Execute-only prevents file reads, not self-introspection via `/proc/self/mem`.
+
+-
+
+## PEDA current_inst Bit-by-Bit Flag Scraper
+
+**Pattern:** A large validator dispatches one checker per flag bit. Rather than decompile every wrapper, drive GDB+PEDA to step through the dispatcher and read `edi` / `eax` directly.
+
+```python
+def get_current_inst():
+    return peda.current_inst(peda.getreg("rip"))[1]
+
+peda.execute('file ./elementary')
+peda.set_breakpoint(0x555555554000 + 0xCEB88)
+```
+
+**Key insight:** If the validator reduces every bit check to a black-box oracle, scrape the dispatcher rather than the individual checkers.
