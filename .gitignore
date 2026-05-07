@@ -3,6 +3,7 @@
 .claude
 .github
 .vscode
+.kilo
 
 __pycache__/
 *.skill
