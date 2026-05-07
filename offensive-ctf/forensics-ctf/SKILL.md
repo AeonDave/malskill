@@ -70,25 +70,22 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/3d-printing.md](references/imported/3d-printing.md) — preserved, debrandized imported technique material.
-- [references/imported/disk-advanced.md](references/imported/disk-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/disk-and-memory.md](references/imported/disk-and-memory.md) — preserved, debrandized imported technique material.
-- [references/imported/disk-recovery.md](references/imported/disk-recovery.md) — preserved, debrandized imported technique material.
-- [references/imported/linux-forensics.md](references/imported/linux-forensics.md) — preserved, debrandized imported technique material.
-- [references/imported/network-advanced.md](references/imported/network-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/network.md](references/imported/network.md) — preserved, debrandized imported technique material.
-- [references/imported/peripheral-capture.md](references/imported/peripheral-capture.md) — preserved, debrandized imported technique material.
-- [references/imported/signals-and-hardware.md](references/imported/signals-and-hardware.md) — preserved, debrandized imported technique material.
-- [references/imported/steganography.md](references/imported/steganography.md) — preserved, debrandized imported technique material.
-- [references/imported/stego-advanced-2.md](references/imported/stego-advanced-2.md) — preserved, debrandized imported technique material.
-- [references/imported/stego-advanced.md](references/imported/stego-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/stego-image.md](references/imported/stego-image.md) — preserved, debrandized imported technique material.
-- [references/imported/windows.md](references/imported/windows.md) — preserved, debrandized imported technique material.
+- [references/3d-printing.md](references/3d-printing.md) — preserved, debrandized imported technique material.
+- [references/disk-advanced.md](references/disk-advanced.md) — preserved, debrandized imported technique material.
+- [references/disk-and-memory.md](references/disk-and-memory.md) — preserved, debrandized imported technique material.
+- [references/disk-recovery.md](references/disk-recovery.md) — preserved, debrandized imported technique material.
+- [references/linux-forensics.md](references/linux-forensics.md) — preserved, debrandized imported technique material.
+- [references/network-advanced.md](references/network-advanced.md) — preserved, debrandized imported technique material.
+- [references/network.md](references/network.md) — preserved, debrandized imported technique material.
+- [references/peripheral-capture.md](references/peripheral-capture.md) — preserved, debrandized imported technique material.
+- [references/signals-and-hardware.md](references/signals-and-hardware.md) — preserved, debrandized imported technique material.
+- [references/steganography.md](references/steganography.md) — preserved, debrandized imported technique material.
+- [references/stego-advanced-2.md](references/stego-advanced-2.md) — preserved, debrandized imported technique material.
+- [references/stego-advanced.md](references/stego-advanced.md) — preserved, debrandized imported technique material.
+- [references/stego-image.md](references/stego-image.md) — preserved, debrandized imported technique material.
+- [references/windows.md](references/windows.md) — preserved, debrandized imported technique material.

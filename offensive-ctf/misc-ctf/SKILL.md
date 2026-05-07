@@ -72,23 +72,20 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/bashjails.md](references/imported/bashjails.md) — preserved, debrandized imported technique material.
-- [references/imported/ctfd-navigation.md](references/imported/ctfd-navigation.md) — preserved, debrandized imported technique material.
-- [references/imported/dns.md](references/imported/dns.md) — preserved, debrandized imported technique material.
-- [references/imported/encodings-advanced.md](references/imported/encodings-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/encodings.md](references/imported/encodings.md) — preserved, debrandized imported technique material.
-- [references/imported/games-and-vms-2.md](references/imported/games-and-vms-2.md) — preserved, debrandized imported technique material.
-- [references/imported/games-and-vms-3.md](references/imported/games-and-vms-3.md) — preserved, debrandized imported technique material.
-- [references/imported/games-and-vms-4.md](references/imported/games-and-vms-4.md) — preserved, debrandized imported technique material.
-- [references/imported/games-and-vms.md](references/imported/games-and-vms.md) — preserved, debrandized imported technique material.
-- [references/imported/linux-privesc.md](references/imported/linux-privesc.md) — preserved, debrandized imported technique material.
-- [references/imported/pyjails.md](references/imported/pyjails.md) — preserved, debrandized imported technique material.
-- [references/imported/rf-sdr.md](references/imported/rf-sdr.md) — preserved, debrandized imported technique material.
+- [references/bashjails.md](references/bashjails.md) — preserved, debrandized imported technique material.
+- [references/ctfd-navigation.md](references/ctfd-navigation.md) — preserved, debrandized imported technique material.
+- [references/dns.md](references/dns.md) — preserved, debrandized imported technique material.
+- [references/encodings-advanced.md](references/encodings-advanced.md) — preserved, debrandized imported technique material.
+- [references/encodings.md](references/encodings.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms-2.md](references/games-and-vms-2.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms-3.md](references/games-and-vms-3.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms-4.md](references/games-and-vms-4.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms.md](references/games-and-vms.md) — preserved, debrandized imported technique material.
+- [references/linux-privesc.md](references/linux-privesc.md) — preserved, debrandized imported technique material.
+- [references/pyjails.md](references/pyjails.md) — preserved, debrandized imported technique material.
+- [references/rf-sdr.md](references/rf-sdr.md) — preserved, debrandized imported technique material.

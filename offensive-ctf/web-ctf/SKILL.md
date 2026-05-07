@@ -1,6 +1,6 @@
 ---
 name: web-ctf
-description: "Challenge-solving methodology for web-application challenge solving. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, and prototype pollution."
+description: "Challenge-solving methodology for web-application challenge solving. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with curated web reference packs and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, prototype pollution, and chained web attack paths."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # Web CTF
 
-Goal: solve web-application challenge solving tasks with professional offensive methodology, preserved imported technique coverage, and reproducible evidence.
+Goal: solve web-application challenge tasks with professional offensive methodology, curated high-signal references, and reproducible evidence.
 
 ## When this skill applies
 
@@ -22,8 +22,8 @@ Goal: solve web-application challenge solving tasks with professional offensive 
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
+3. Load the closest curated top-level reference for the dominant primitive before touching deeper topic banks.
+4. Use the older narrow topic files only when the curated reference is too shallow for the current edge case.
 5. Choose the smallest tool chain that can produce a validation signal.
 6. Record the exact proof path and stop once the objective is reproducible.
 
@@ -36,7 +36,7 @@ Primary methodology to load:
 - `recon-technique`
 - `fuzzing-technique`
 
-Use these as decision engines. This skill adds challenge-oriented triage, time-boxing, and preserved specialized patterns from the imported corpus.
+Use these as decision engines. This skill adds challenge-oriented triage, time-boxing, and curated reference routing.
 
 ## Tool routing
 
@@ -88,31 +88,18 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve coverage by starting from curated reference packs, then loading narrower legacy topic files only for unresolved edge cases.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/auth-and-access-2.md](references/imported/auth-and-access-2.md) — preserved, debrandized imported technique material.
-- [references/imported/auth-and-access.md](references/imported/auth-and-access.md) — preserved, debrandized imported technique material.
-- [references/imported/auth-infra.md](references/imported/auth-infra.md) — preserved, debrandized imported technique material.
-- [references/imported/auth-jwt.md](references/imported/auth-jwt.md) — preserved, debrandized imported technique material.
-- [references/imported/client-side-advanced.md](references/imported/client-side-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/client-side.md](references/imported/client-side.md) — preserved, debrandized imported technique material.
-- [references/imported/cves.md](references/imported/cves.md) — preserved, debrandized imported technique material.
-- [references/imported/field-notes.md](references/imported/field-notes.md) — preserved, debrandized imported technique material.
-- [references/imported/node-and-prototype.md](references/imported/node-and-prototype.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-2.md](references/imported/server-side-2.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-advanced-2.md](references/imported/server-side-advanced-2.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-advanced-3.md](references/imported/server-side-advanced-3.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-advanced-4.md](references/imported/server-side-advanced-4.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-advanced.md](references/imported/server-side-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-deser.md](references/imported/server-side-deser.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-exec-2.md](references/imported/server-side-exec-2.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side-exec.md](references/imported/server-side-exec.md) — preserved, debrandized imported technique material.
-- [references/imported/server-side.md](references/imported/server-side.md) — preserved, debrandized imported technique material.
-- [references/imported/sql-injection.md](references/imported/sql-injection.md) — preserved, debrandized imported technique material.
-- [references/imported/web3.md](references/imported/web3.md) — preserved, debrandized imported technique material.
+- [references/auth-access-control.md](references/auth-access-control.md) — curated auth pack: sessions, access control, JWT/JWE, OAuth/OIDC/SAML, identity-admin pivots, and auth edge cases.
+- [references/browser-attacks.md](references/browser-attacks.md) — curated client/browser pack: XSS, DOM sinks, CSP bypass, XS-leaks, cache poisoning, and Node/prototype chains.
+- [references/server-injection.md](references/server-injection.md) — curated server-side sink pack: LFI/traversal, SSTI, SSRF, XXE, parser abuse, and loose-validation flaws.
+- [references/server-execution.md](references/server-execution.md) — curated execution pack: runtime injection, upload-to-RCE, deserialization, and advanced framework chains.
+- [references/web-vulnerabilities-and-cves.md](references/web-vulnerabilities-and-cves.md) — curated framework/product CVE pack for stack-specific web shortcuts.
+- [references/web3-attacks.md](references/web3-attacks.md) — curated Web3/web-wallet/contract interaction pack.
+- [references/field-notes.md](references/field-notes.md) — preserved, debrandized imported technique material.
+- [references/sql-injection.md](references/sql-injection.md) — preserved, debrandized imported technique material.
+
+Legacy narrow-topic files remain in `references/` as deep banks for edge cases, but they are no longer the primary load path.

@@ -68,14 +68,11 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/geolocation-and-media.md](references/imported/geolocation-and-media.md) — preserved, debrandized imported technique material.
-- [references/imported/social-media.md](references/imported/social-media.md) — preserved, debrandized imported technique material.
-- [references/imported/web-and-dns.md](references/imported/web-and-dns.md) — preserved, debrandized imported technique material.
+- [references/geolocation-and-media.md](references/geolocation-and-media.md) — preserved, debrandized imported technique material.
+- [references/social-media.md](references/social-media.md) — preserved, debrandized imported technique material.
+- [references/web-and-dns.md](references/web-and-dns.md) — preserved, debrandized imported technique material.

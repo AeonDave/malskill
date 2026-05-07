@@ -73,27 +73,24 @@ Use it only as a post-triage spike to find a paper, blog, article, public writeu
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-math.md](references/imported/advanced-math.md) — preserved, debrandized imported technique material.
-- [references/imported/classic-ciphers.md](references/imported/classic-ciphers.md) — preserved, debrandized imported technique material.
-- [references/imported/ecc-attacks.md](references/imported/ecc-attacks.md) — preserved, debrandized imported technique material.
-- [references/imported/exotic-crypto-2.md](references/imported/exotic-crypto-2.md) — preserved, debrandized imported technique material.
-- [references/imported/exotic-crypto.md](references/imported/exotic-crypto.md) — preserved, debrandized imported technique material.
-- [references/imported/historical.md](references/imported/historical.md) — preserved, debrandized imported technique material.
-- [references/imported/lattice-and-lwe.md](references/imported/lattice-and-lwe.md) — preserved, debrandized imported technique material.
-- [references/imported/modern-ciphers-2.md](references/imported/modern-ciphers-2.md) — preserved, debrandized imported technique material.
-- [references/imported/modern-ciphers-3.md](references/imported/modern-ciphers-3.md) — preserved, debrandized imported technique material.
-- [references/imported/modern-ciphers.md](references/imported/modern-ciphers.md) — preserved, debrandized imported technique material.
-- [references/imported/prng-attacks.md](references/imported/prng-attacks.md) — preserved, debrandized imported technique material.
-- [references/imported/prng.md](references/imported/prng.md) — preserved, debrandized imported technique material.
-- [references/imported/rsa-attacks-2.md](references/imported/rsa-attacks-2.md) — preserved, debrandized imported technique material.
-- [references/imported/rsa-attacks.md](references/imported/rsa-attacks.md) — preserved, debrandized imported technique material.
-- [references/imported/stream-ciphers.md](references/imported/stream-ciphers.md) — preserved, debrandized imported technique material.
-- [references/imported/zkp-and-advanced.md](references/imported/zkp-and-advanced.md) — preserved, debrandized imported technique material.
+- [references/advanced-math.md](references/advanced-math.md) — preserved, debrandized imported technique material.
+- [references/classic-ciphers.md](references/classic-ciphers.md) — preserved, debrandized imported technique material.
+- [references/ecc-attacks.md](references/ecc-attacks.md) — preserved, debrandized imported technique material.
+- [references/exotic-crypto-2.md](references/exotic-crypto-2.md) — preserved, debrandized imported technique material.
+- [references/exotic-crypto.md](references/exotic-crypto.md) — preserved, debrandized imported technique material.
+- [references/historical.md](references/historical.md) — preserved, debrandized imported technique material.
+- [references/lattice-and-lwe.md](references/lattice-and-lwe.md) — preserved, debrandized imported technique material.
+- [references/modern-ciphers-2.md](references/modern-ciphers-2.md) — preserved, debrandized imported technique material.
+- [references/modern-ciphers-3.md](references/modern-ciphers-3.md) — preserved, debrandized imported technique material.
+- [references/modern-ciphers.md](references/modern-ciphers.md) — preserved, debrandized imported technique material.
+- [references/prng-attacks.md](references/prng-attacks.md) — preserved, debrandized imported technique material.
+- [references/prng.md](references/prng.md) — preserved, debrandized imported technique material.
+- [references/rsa-attacks-2.md](references/rsa-attacks-2.md) — preserved, debrandized imported technique material.
+- [references/rsa-attacks.md](references/rsa-attacks.md) — preserved, debrandized imported technique material.
+- [references/stream-ciphers.md](references/stream-ciphers.md) — preserved, debrandized imported technique material.
+- [references/zkp-and-advanced.md](references/zkp-and-advanced.md) — preserved, debrandized imported technique material.

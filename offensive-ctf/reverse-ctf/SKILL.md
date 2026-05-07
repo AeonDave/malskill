@@ -70,29 +70,26 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/anti-analysis-ctf.md](references/imported/anti-analysis-ctf.md) — preserved, debrandized imported technique material.
-- [references/imported/anti-analysis.md](references/imported/anti-analysis.md) — preserved, debrandized imported technique material.
-- [references/imported/field-notes.md](references/imported/field-notes.md) — preserved, debrandized imported technique material.
-- [references/imported/languages-compiled.md](references/imported/languages-compiled.md) — preserved, debrandized imported technique material.
-- [references/imported/languages-platforms.md](references/imported/languages-platforms.md) — preserved, debrandized imported technique material.
-- [references/imported/languages.md](references/imported/languages.md) — preserved, debrandized imported technique material.
-- [references/imported/patterns-ctf-2.md](references/imported/patterns-ctf-2.md) — preserved, debrandized imported technique material.
-- [references/imported/patterns-ctf-3.md](references/imported/patterns-ctf-3.md) — preserved, debrandized imported technique material.
-- [references/imported/patterns-ctf.md](references/imported/patterns-ctf.md) — preserved, debrandized imported technique material.
-- [references/imported/patterns-runtime.md](references/imported/patterns-runtime.md) — preserved, debrandized imported technique material.
-- [references/imported/patterns.md](references/imported/patterns.md) — preserved, debrandized imported technique material.
-- [references/imported/platforms-hardware.md](references/imported/platforms-hardware.md) — preserved, debrandized imported technique material.
-- [references/imported/platforms.md](references/imported/platforms.md) — preserved, debrandized imported technique material.
-- [references/imported/tools-advanced-2.md](references/imported/tools-advanced-2.md) — preserved, debrandized imported technique material.
-- [references/imported/tools-advanced.md](references/imported/tools-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/tools-dynamic.md](references/imported/tools-dynamic.md) — preserved, debrandized imported technique material.
-- [references/imported/tools-emulation.md](references/imported/tools-emulation.md) — preserved, debrandized imported technique material.
-- [references/imported/tools.md](references/imported/tools.md) — preserved, debrandized imported technique material.
+- [references/anti-analysis-ctf.md](references/anti-analysis-ctf.md) — preserved, debrandized imported technique material.
+- [references/anti-analysis.md](references/anti-analysis.md) — preserved, debrandized imported technique material.
+- [references/field-notes.md](references/field-notes.md) — preserved, debrandized imported technique material.
+- [references/languages-compiled.md](references/languages-compiled.md) — preserved, debrandized imported technique material.
+- [references/languages-platforms.md](references/languages-platforms.md) — preserved, debrandized imported technique material.
+- [references/languages.md](references/languages.md) — preserved, debrandized imported technique material.
+- [references/patterns-ctf-2.md](references/patterns-ctf-2.md) — preserved, debrandized imported technique material.
+- [references/patterns-ctf-3.md](references/patterns-ctf-3.md) — preserved, debrandized imported technique material.
+- [references/patterns-ctf.md](references/patterns-ctf.md) — preserved, debrandized imported technique material.
+- [references/patterns-runtime.md](references/patterns-runtime.md) — preserved, debrandized imported technique material.
+- [references/patterns.md](references/patterns.md) — preserved, debrandized imported technique material.
+- [references/platforms-hardware.md](references/platforms-hardware.md) — preserved, debrandized imported technique material.
+- [references/platforms.md](references/platforms.md) — preserved, debrandized imported technique material.
+- [references/tools-advanced-2.md](references/tools-advanced-2.md) — preserved, debrandized imported technique material.
+- [references/tools-advanced.md](references/tools-advanced.md) — preserved, debrandized imported technique material.
+- [references/tools-dynamic.md](references/tools-dynamic.md) — preserved, debrandized imported technique material.
+- [references/tools-emulation.md](references/tools-emulation.md) — preserved, debrandized imported technique material.
+- [references/tools.md](references/tools.md) — preserved, debrandized imported technique material.

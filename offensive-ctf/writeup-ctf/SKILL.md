@@ -70,9 +70,3 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
 - Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
-
-## Resources
-
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.

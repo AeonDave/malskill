@@ -70,14 +70,11 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/adversarial-ml.md](references/imported/adversarial-ml.md) — preserved, debrandized imported technique material.
-- [references/imported/llm-attacks.md](references/imported/llm-attacks.md) — preserved, debrandized imported technique material.
-- [references/imported/model-attacks.md](references/imported/model-attacks.md) — preserved, debrandized imported technique material.
+- [references/adversarial-ml.md](references/adversarial-ml.md) — preserved, debrandized imported technique material.
+- [references/llm-attacks.md](references/llm-attacks.md) — preserved, debrandized imported technique material.
+- [references/model-attacks.md](references/model-attacks.md) — preserved, debrandized imported technique material.

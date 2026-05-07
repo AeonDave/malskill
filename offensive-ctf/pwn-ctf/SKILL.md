@@ -1,6 +1,6 @@
 ---
 name: pwn-ctf
-description: "Challenge-solving methodology for binary-exploitation challenge solving. Integrates reversing-technique, vuln-exploit-technique, fuzzing-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on binary-exploitation challenge solving tasks involving native binaries, remote services, memory corruption, format strings, heap bugs, ROP/SROP, shellcode, seccomp, kernel primitives, or sandbox escapes."
+description: "Challenge-solving methodology for binary-exploitation challenge solving. Integrates reversing-technique, vuln-exploit-technique, fuzzing-technique, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on binary-exploitation challenge solving tasks involving native binaries, remote services, memory corruption, format strings, heap bugs, ROP/SROP, shellcode, seccomp, kernel primitives, or sandbox escapes."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # Pwn CTF
 
-Goal: solve binary-exploitation challenge solving tasks with professional offensive methodology, preserved imported technique coverage, and reproducible evidence.
+Goal: solve binary-exploitation challenge solving tasks with professional offensive methodology and reproducible evidence.
 
 ## When this skill applies
 
@@ -22,8 +22,8 @@ Goal: solve binary-exploitation challenge solving tasks with professional offens
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
+3. Load the closest top-level reference for the dominant primitive (`overflow.md`, `rop.md`, `heap.md`, `heap-fsop.md`, `sandbox.md`, `kernel.md`, `exotic-arch.md`, `advanced-primitives.md`, `weird-machines.md`, `windows-pwn.md`).
+4. Load only top-level references in `references/`.
 5. Choose the smallest tool chain that can produce a validation signal.
 6. Record the exact proof path and stop once the objective is reproducible.
 
@@ -35,7 +35,7 @@ Primary methodology to load:
 - `vuln-exploit-technique`
 - `fuzzing-technique`
 
-Use these as decision engines. This skill adds challenge-oriented triage, time-boxing, and preserved specialized patterns from the imported corpus.
+Use these as decision engines. This skill adds challenge-oriented triage and time-boxing.
 
 ## Tool routing
 
@@ -71,29 +71,21 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/imported/`.
+- Preserve coverage by using the top-level references in `references/` and keeping cross-links between them consistent.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/agentic-workflow.md](references/agentic-workflow.md) — category workflow, tool routing, and technique handoff.
-- [references/source-coverage.md](references/source-coverage.md) — no-loss map of preserved imported source files and topics.
-- [references/imported/source-skill.md](references/imported/source-skill.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-exploits-2.md](references/imported/advanced-exploits-2.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-exploits-3.md](references/imported/advanced-exploits-3.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-exploits-4.md](references/imported/advanced-exploits-4.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-exploits-5.md](references/imported/advanced-exploits-5.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced-exploits.md](references/imported/advanced-exploits.md) — preserved, debrandized imported technique material.
-- [references/imported/advanced.md](references/imported/advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/field-notes.md](references/imported/field-notes.md) — preserved, debrandized imported technique material.
-- [references/imported/format-string.md](references/imported/format-string.md) — preserved, debrandized imported technique material.
-- [references/imported/heap-fsop.md](references/imported/heap-fsop.md) — preserved, debrandized imported technique material.
-- [references/imported/heap-techniques-2.md](references/imported/heap-techniques-2.md) — preserved, debrandized imported technique material.
-- [references/imported/heap-techniques.md](references/imported/heap-techniques.md) — preserved, debrandized imported technique material.
-- [references/imported/kernel-bypass.md](references/imported/kernel-bypass.md) — preserved, debrandized imported technique material.
-- [references/imported/kernel-techniques.md](references/imported/kernel-techniques.md) — preserved, debrandized imported technique material.
-- [references/imported/kernel.md](references/imported/kernel.md) — preserved, debrandized imported technique material.
-- [references/imported/overflow-basics.md](references/imported/overflow-basics.md) — preserved, debrandized imported technique material.
-- [references/imported/rop-advanced.md](references/imported/rop-advanced.md) — preserved, debrandized imported technique material.
-- [references/imported/rop-and-shellcode.md](references/imported/rop-and-shellcode.md) — preserved, debrandized imported technique material.
-- [references/imported/sandbox-escape.md](references/imported/sandbox-escape.md) — preserved, debrandized imported technique material.
+- [references/advanced-primitives.md](references/advanced-primitives.md) — advanced edge cases: seccomp oddities, VM/JIT/interpreter bugs, runtime pivots, and data-reinterpretation tricks that do not fit cleanly under the core references.
+- [references/exotic-arch.md](references/exotic-arch.md) — RISC-V, ARM32, ARM64, and MIPS exploitation notes: register conventions, shellcode, gadget patterns, and architecture-specific pitfalls.
+- [references/field-notes.md](references/field-notes.md) — compact exploit playbook with fast pivots and cross-links to deeper references.
+- [references/format-string.md](references/format-string.md) — format-string exploitation workflow: leaks, arbitrary writes, staged loops, and hardened-binary pivots.
+- [references/heap.md](references/heap.md) — heap exploitation core: bins, safe-linking bypass strategy, modern chains, and allocator-specific notes.
+- [references/heap-fsop.md](references/heap-fsop.md) — FSOP-focused heap chains and modern glibc stream abuse patterns.
+- [references/kernel.md](references/kernel.md) — kernel exploitation notes: primitives, mitigation-aware pivots, and practical escalation paths.
+- [references/overflow.md](references/overflow.md) — stack/global/OOB overflow patterns and mitigation-aware exploitation flow.
+- [references/rop.md](references/rop.md) — x86-64 ROP and shellcode flow: leaks, pivots, chain assembly, and constrained environments.
+- [references/sandbox.md](references/sandbox.md) — restricted-environment escapes, proc-based pivots, and command-execution constraints.
+- [references/weird-machines.md](references/weird-machines.md) — emulator, interpreter, ML-dispatch, bit-flip, constrained-shellcode, and data-reinterpretation exploitation patterns.
+- [references/windows-pwn.md](references/windows-pwn.md) — Windows-native exploitation notes: SEH/DEP bypass, CFG-aware call-target hijacks, PEB-walk shellcode, and privilege-abuse pivots after code execution.
+- [references/wasm-pwn.md](references/wasm-pwn.md) — WASM binary exploitation under wasmtime/wasmer: linear memory OOB, shadow stack overflow, function table index overwrite.
