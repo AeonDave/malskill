@@ -70,7 +70,7 @@ Objective/scope -> artifact-first context -> smallest viable chain -> execute/ve
 
 ## Skill routing
 
-Route by objective/capability before broad search: prefer best-fit triage or methodology skill for unknown target/artifact/objective triage + methodology/tradecraft; best-fit capability-development skill for offensive capability/code/evasion/implant/exploit dev; best-fit lab/challenge-solving skill for lab/challenge/flag/offline puzzle work; tool skills after method chosen or when user names tool. Common naming conventions are hints, not hard requirements. One primary skill + 1-2 support refs max.
+Route by objective/capability before broad search: prefer best-fit technical skill for unknown target/artifact/objective triage + methodology/tradecraft, offensive capability/code/evasion/implant/exploit dev, and lab/challenge/flag/offline puzzle work; tool skills after method chosen or when user names tool. Technical skills define correct behavior. Tool skills help operate tools. Common naming conventions are hints, not hard requirements. One primary skill + 1-2 support refs max.
 
 If exploit construction or lab/challenge solve stays blocked after evidence-based pivots, add narrowest available hint/research support skill as targeted post-triage support.
 

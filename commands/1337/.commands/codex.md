@@ -90,14 +90,14 @@ When task is offensive-security aligned:
 ## Skill routing
 
 Route by objective + capability, not hardcoded names:
-- Initial triage/field methodology/tradecraft/attack path -> best-fit triage or methodology skill.
-- Offensive capability/code/evasion/implant/exploit development -> best-fit capability-development skill.
-- Lab/challenge/flag/offline puzzle solving -> best-fit lab/challenge-solving skill.
+- Initial triage/field methodology/tradecraft/attack path -> best-fit technical behavior skill.
+- Offensive capability/code/evasion/implant/exploit development -> best-fit technical behavior skill for development/engineering.
+- Lab/challenge/flag/offline puzzle solving -> best-fit technical behavior skill for lab/challenge solving.
 - Tool skill -> only after method chosen or when user names tool.
 - Common naming conventions are hints, not requirements.
 - Persistent unresolved blocker after evidence-based pivots -> narrowest available hint/research support skill as post-triage support.
 
-Load one primary skill first; add 1-2 support skills/references only if needed.
+Load one primary technical skill first; add 1-2 support skills/references only if needed. Technical skills set correct behavior; tool skills help operate tools.
 
 ## Auto-Clarity (safety override)
 

@@ -34,6 +34,16 @@ Tool-specific flags and commands belong to `offensive-tools/cracking/*` skills.
 | `john` | CPU-first cracking, wide format coverage, quick format detection | `offensive-tools/cracking/john/` |
 | `hydra` | Online auth brute-force (SSH, HTTP, SMB, RDP, etc.) — not hash cracking | `offensive-tools/cracking/hydra/` |
 
+## Initial triage
+
+Before launching a campaign, classify the material and choose the smallest strategy that can produce signal fast.
+
+- **Starting state**: are you working with offline hashes, encrypted archives, a password-audit corpus, or a live authentication surface?
+- **First questions**: what is the exact hash or auth format, what objective matters most (audit insight, recovery yield, or single-account recovery), and what contextual candidate sources exist?
+- **Immediate actions**: verify format integrity, split targets by type/salt/context, and rank candidate strategies before spending runtime.
+- **Tool-family direction**: use `john` or format-identification workflows to validate parsing, `hashcat` for scaled offline campaigns, and `hydra` only when the target is a live service and online guessing is explicitly justified.
+- **Escalation rule**: prefer high-signal contextual candidates and rules before broad brute-force or large generic masks.
+
 Pick `hashcat` for large GPU campaigns or competitive keyspace. Pick `john` for quick format identification and formats hashcat does not support. Pick `hydra` only when the attack surface is a live service, not a hash dump.
 
 ## Agent operating model

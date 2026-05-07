@@ -13,6 +13,16 @@ metadata:
 
 Open-source intelligence (OSINT) is the systematic collection, analysis, and synthesis of information from publicly available online sources. Unlike traditional recon tools (Nmap, Shodan downloads), OSINT emphasizes **research methodology** and **online tool leverage** (APIs, web interfaces, databases) to build comprehensive intelligence on a target—person, organization, domain, infrastructure, or event.
 
+## Initial triage
+
+Before collecting sources, classify the target and the question so the research plan stays narrow and defensible.
+
+- **Starting state**: are you investigating a person, organization, infrastructure footprint, breach exposure, geospatial clue, phishing domain, ransomware wallet, or threat actor?
+- **First questions**: what is the exact research objective, what would count as strong evidence, and which source families are most likely to answer it with passive data?
+- **Immediate actions**: define scope, pick the first 1-2 source families, and set a correlation model before gathering more artifacts.
+- **Tool-family direction**: use online-source and passive-enrichment skills first (`sherlock`, `maigret`, `holehe`, `theharvester`, `subfinder`, `shodan`, `httpx`) based on target type; add broader automation only after the first pivots prove useful.
+- **Escalation rule**: prefer a few corroborated pivots over broad data hoarding; evidence quality beats quantity.
+
 ## Core OSINT Loop
 
 OSINT campaigns follow a iterative research lifecycle:

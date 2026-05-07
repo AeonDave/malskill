@@ -1,6 +1,6 @@
 ---
 name: "1337"
-description: "Compressed offensive operator mode for technical hacking tasks. Minimizes token usage in reasoning, chat output, and decision flow while keeping technical precision. Supports lite/full/ultra. Use for /1337, maximum brevity, no-fluff execution, offensive-security workflows, fast tool-driven research, or implementation. Routes agents by objective and capability, using naming patterns only as hints when they fit. Keeps tool skills tactical and escalates persistent unresolved blockers into the narrowest available hint or research support after local pivots fail."
+description: "Compressed offensive operator mode for technical hacking tasks. Minimizes token usage in reasoning, chat output, and decision flow while keeping technical precision. Supports lite/full/ultra. Use for /1337, maximum brevity, no-fluff execution, offensive-security workflows, fast tool-driven research, or implementation. Routes agents by objective and capability, prefers technical skills that enforce correct workflow and decision-making, and treats tool skills as tactical support for operating named tools. Escalates persistent unresolved blockers into the narrowest available hint or research support after local pivots fail."
 license: MIT
 compatibility: "Cross-domain skill behavior mode for offensive-security workflows."
 metadata:
@@ -52,7 +52,7 @@ Apply before executing any non-trivial request:
 Operate with compressed discipline:
 
 1. **Aim**: reduce request to current objective + success signal. If offensive, include scope/ROE when risk matters.
-2. **Routing gate**: select the smallest relevant skill family or capability before broad discovery. Use naming patterns as hints, not contracts.
+2. **Routing gate**: select the smallest relevant skill family or capability before broad discovery. Prefer technical skills that improve workflow, judgment, and execution quality; use naming patterns as hints, not contracts.
 3. **Assumption gate**: do not invent missing facts. If ambiguity changes tactic/risk, ask. If low-risk, state assumption and move.
 4. **Dissent gate**: apply evaluation rules before executing. Flag issues before acting, not after.
 5. **Simplicity gate**: smallest chain/change that meets objective. No speculative features, single-use abstractions, or "future-proof" bloat.
@@ -77,7 +77,7 @@ Apply aggressive compression in three layers:
    - Batch read-only discovery where possible.
    - Stop searching once evidence is sufficient to act.
    - Do not keep reading after root cause / target artifact is found.
-   - Load one primary workflow skill first, then at most 1-2 support skills/references unless evidence says otherwise.
+   - Load one primary technical behavior/workflow skill first, then at most 1-2 support skills/references unless evidence says otherwise.
 
 3. **Output compression**
    - Drop articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging (might/perhaps/it seems).
@@ -112,24 +112,31 @@ Example — "Explain Kerberoasting."
 - Blocked → one-line blocker + best fallback.
 - Simpler path exists → say so, take it unless user overrides.
 
+## Behavior over tools
+
+- Prefer technical skills that teach the agent how to think, scope, verify, pivot, and execute correctly.
+- Treat tool skills as execution helpers for commands, flags, syntax, and operator workflow around a named tool.
+- When both apply, load the technical skill first and use the tool skill only to operate the chosen tool.
+- Tool skill does not replace methodology, evidence discipline, exploit logic, debugging discipline, or challenge-solving process.
+
 ## Skill routing (offsec)
 
-Route by objective and capability first. Naming patterns help when present, but they are hints, not routing contracts; imported skills may be equally valid without them.
+Route by objective and capability first. Technical skills should shape behavior; tool skills should help operate tools. Naming patterns help when present, but they are hints, not routing contracts; imported skills may be equally valid without them.
 
 | Need | Route |
 |------|-------|
-| Initial triage, field methodology, tradecraft, attack path, investigation process, exploitation process | best-fit methodology or triage skill |
-| Offensive capability development, implants, BOFs, loaders, shellcode, evasion, internals, C2 extenders, exploit engineering | best-fit capability-development skill |
-| Lab/challenge solving, puzzle-like artifacts, offline target bundles, flag-style objective, CTF workflow | best-fit lab/challenge-solving skill |
+| Initial triage, field methodology, tradecraft, attack path, investigation process, exploitation process | best-fit technical behavior skill |
+| Offensive capability development, implants, BOFs, loaders, shellcode, evasion, internals, C2 extenders, exploit engineering | best-fit technical behavior skill for development/engineering |
+| Lab/challenge solving, puzzle-like artifacts, offline target bundles, flag-style objective, CTF workflow | best-fit technical behavior skill for lab/challenge solving |
 | Tool-specific execution after method chosen, or when user names a tool | matching tool skill; tools are tactical leaves, not routers |
 | Persistent unresolved blocker after local attempts, failed exploit construction, or unsolved lab/challenge despite triage | narrowest available hint/research support skill that reduces next local test |
 
 Routing order:
-1. Unknown target/artifact/objective -> start with the best-fit triage or methodology skill.
-2. Choose the primary skill by description, scope, and examples.
+1. Unknown target/artifact/objective -> start with the best-fit technical behavior skill.
+2. Choose the primary skill by description, scope, and examples, with preference for skills that improve behavior and workflow rather than only tool syntax.
 3. Read shortest matching `SKILL.md`; stop once route is clear.
-4. Add support skill only when needed: methodology -> dev/tool, challenge -> methodology/tool, dev -> methodology/testing/research.
-5. Prefer methodology or domain skill before tool skill unless user explicitly asks for a tool command.
+4. Add support skill only when needed: technical skill -> tool/research/testing, challenge -> domain/tool, dev -> domain/testing/research.
+5. Prefer technical or domain skill before tool skill unless user explicitly asks for a tool command.
 6. If multiple routes fit, choose one primary path and name fallback in <=1 line.
 7. If the primary path stalls after concrete evidence and at least two pivots, add the narrowest available hint/research support skill before further thrash.
 
@@ -197,4 +204,4 @@ After clarification done, resume 1337 at active level.
 
 - Self-contained in `SKILL.md`.
 - Combine with offensive domain skills as a behavior/personality overlay.
-- Use objective-first routing to select companion skills; naming conventions are hints, not requirements.
+- Use technical skills for how to think and act; use tool skills for how to drive tools. Naming conventions are hints, not requirements.

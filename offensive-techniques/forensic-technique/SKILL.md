@@ -26,6 +26,16 @@ Goal: produce **defensible, reproducible findings** from heterogeneous evidence.
 This skill explains **methodology and decision flow**.
 Tool-specific syntax belongs to `offensive-tools/*` skills.
 
+## Initial triage
+
+Before extracting deeply, classify the evidence mix and decide what source can answer the objective fastest with the least interpretive risk.
+
+- **Starting state**: is the case driven by disk, memory, PCAP, ISO/media, logs, or a mixed evidence set?
+- **First questions**: what is the investigation objective, which artifacts are most volatile or most probative, and what timeline window and provenance constraints apply?
+- **Immediate actions**: verify integrity, normalize time and scope, then inspect the highest-value source first instead of carving everything.
+- **Tool-family direction**: use forensic acquisition/timeline families (`sleuth-kit`, `autopsy`, `ftk-imager`) for disk/media, `volatility3` for memory, and `zeek`/`tcpdump`/`wireshark` for network evidence; use `yara` and `capa` only after suspicious artifacts are isolated.
+- **Escalation rule**: require corroboration across sources before claiming compromise, execution, persistence, or exfiltration.
+
 ## Agent operating model
 
 The agent should keep this loop:

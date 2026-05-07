@@ -28,6 +28,16 @@ Goal: map the attack surface with minimal noise, identify high-value entry point
 - **vs. network-technique**: network-technique covers protocol analysis, PCAP, and in-engagement pivoting. Recon-technique is pre-exploitation surface mapping.
 - **vs. vuln-scanners**: recon produces the target list and service inventory that vuln scanners consume. Do not skip recon and throw scanners at the whole scope.
 
+## Initial triage
+
+Before enumerating, classify the scope and decide whether passive or active collection should answer the next question.
+
+- **Starting state**: do you begin with a domain, organization name, IP range, web target, or partial asset list?
+- **First questions**: what assets are in scope, what can be learned passively first, and what entry-point clusters are most likely to justify active probing?
+- **Immediate actions**: define scope boundaries, run passive collection to build an initial asset map, then promote only the most promising clusters into active validation.
+- **Tool-family direction**: use passive discovery and enrichment first (`subfinder`, `amass`, `theharvester`, `asnmap`, `shodan`, `gau`), then active validation and fingerprinting (`dnsx`, `massdns`, `masscan`, `rustscan`, `nmap`, `httpx`, `eyewitness`, `feroxbuster`, `gobuster`, `katana`, `hakrawler`) once a target package exists.
+- **Escalation rule**: do not start vulnerability scanning until recon has produced a prioritized, validated target list.
+
 ## Agent operating model
 
 Recon is **iterative**, not a single pass. Each discovery opens new threads.

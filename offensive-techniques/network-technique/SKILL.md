@@ -27,6 +27,16 @@ Goal: move from **network signal to validated finding** quickly, with reproducib
 This skill defines **workflow, triage decisions, and pivot strategy**.
 Tool flags and command syntax belong in `offensive-tools/*` skills.
 
+## Initial triage
+
+Before collecting deeply, classify the network problem and choose the smallest evidence set that can change the conclusion.
+
+- **Starting state**: is the task about exposure mapping, traffic reconstruction, interception, pivoting, auth abuse, or wireless presence?
+- **First questions**: what is the exact objective, what time window or target boundary matters, and which source will answer that first with the least noise?
+- **Immediate actions**: define scope, assign the case to one primary workflow, and collect only the minimum high-value telemetry for that case before pivoting wider.
+- **Tool-family direction**: use discovery families (`masscan`, `rustscan`, `nmap`) for exposure, metadata/packet families (`zeek`, `tcpdump`, `wireshark`) for traffic, proxy/MITM families for interception, and pivot/auth tool skills only after the path is justified.
+- **Escalation rule**: do not mix case types prematurely; finish initial case classification before combining scan, packet, and auth evidence.
+
 ## Agent operating model
 
 The agent should keep this loop:

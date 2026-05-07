@@ -45,6 +45,16 @@ metadata:
 - **Language-specific RE**: Go, Rust, Python bytecode, Unity IL2CPP, Nim, VBS/WSH, Node.js/V8 snapshots requires language-specific tooling (see `references/languages.md`, `references/nim-rev.md`, `references/node-v8-snapshots.md`).
 - **In-memory loading**: Linux binary loads a second-stage ELF via `memfd_create` + `dlopen` (fileless; see `references/in-memory-loading.md`).
 
+## Initial triage
+
+Before diving deep, classify the artifact and the operator objective so the workflow starts in the right lane.
+
+- **Starting state**: is the target malware, protected software, firmware, a managed assembly, a protocol artifact, a crash primitive, or an unknown binary?
+- **First questions**: what do you need to learn first, what architecture/runtime/packing signals are present, and is static or dynamic evidence the fastest way to reduce uncertainty?
+- **Immediate actions**: perform fast format/entropy/import/string triage, assign the objective workflow, and only then choose the decompiler/debugger/tooling mix.
+- **Tool-family direction**: start with CLI/static triage families (`radare2`, `objdump`, `readelf`, `strings`, `capa`, `binwalk`) and escalate to heavy decompilation/debugging (`ghidra`, `binaryninja`, `gdb`, `x64dbg`, `windbg`, `dnspy`, `frida`) once the goal is defined.
+- **Escalation rule**: objective first, tool second; do not decompile everything before deciding what question you are answering.
+
 ## Core methodology
 
 ```

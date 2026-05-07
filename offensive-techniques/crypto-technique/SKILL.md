@@ -31,6 +31,16 @@ Goal: help the agent diagnose cryptographic weaknesses, select the right attack,
 - **vs. offensive-tools/cryptography/**: tool skills (rsactftool, sagemath, cyberchef) describe command syntax and flags. Crypto-technique is the decision flow: "should I use SageMath or RsaCtfTool here?"
 - **vs. programming skills**: when you need to script an oracle interaction or build a custom solver, load the relevant programming skill (python-patterns, python-testing) *after* crypto-technique tells you what to build.
 
+## Initial triage
+
+Before attempting attacks, reduce the problem to a concrete primitive and rank the most plausible weaknesses.
+
+- **Starting state**: do you have source code, ciphertexts, public keys, signatures, oracle access, PRNG outputs, or protocol transcripts?
+- **First questions**: what primitive is involved (RSA, ECC, DH, symmetric, hash/PRNG, constraint system), what exact parameters are known, and is there a structural anomaly or observable oracle?
+- **Immediate actions**: extract parameters, test the highest-signal hypotheses first, and define what successful validation looks like before scripting or brute force.
+- **Tool-family direction**: use `cyberchef` for fast transform sanity checks, `rsactftool` for common weak-RSA triage, `sagemath` for algebraic or lattice work, and Python/pwntools only after the attack shape is clear.
+- **Escalation rule**: do not parallelize many unrelated attacks; pick the top 1-3 based on evidence and iterate from results.
+
 ## Agent operating model
 
 Cryptanalysis is a **structured diagnosis → decision → execution** loop:

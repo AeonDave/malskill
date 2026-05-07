@@ -60,3 +60,6 @@ Load on demand:
 - `references/worktree-isolation.md` — when and how to isolate risky dev work with git worktrees.
 - `references/worker-prompts.md` — implementer prompt packet, status handling, and self-review contract.
 - `references/reviewer-prompts.md` — spec compliance, evidence, and code quality reviewer prompt patterns.
+- `references/attack-chain-scoring.md` — chain link types, path scoring matrix, confidence levels, chain comparison matrix, lateral movement mapping, and dual-perspective (red/blue) output format.
+- `references/engagement-planning.md` — engagement types, phased structure (scoping → recon → enumeration → vuln analysis → exploitation → post-ex → reporting), planning standards table, and rules of engagement template.
+- `references/red-team-operations.md` — full red-team lifecycle: C2 infrastructure, initial access, foothold, persistence, lateral movement, objectives, cleanup, and operator log format.

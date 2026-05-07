@@ -30,6 +30,16 @@ Goal: move from **domain foothold or low-privilege credential to domain dominanc
 - **Cracking**: NTLM/Kerberos hashes from this skill → `cracking-technique` for offline cracking.
 - **Lateral movement tooling**: `network-technique` §Case D/H for proxychains, crackmapexec basics.
 
+## Initial triage
+
+Before taking action, classify the starting point and choose the shortest low-noise path.
+
+- **Starting state**: do you have a shell on a domain host, a low-priv domain credential, relayed auth, or only network reachability?
+- **First questions**: what domain are you in, what are the lockout rules, is SMB signing enforced, is AD CS present, and what high-value principals or paths already exist?
+- **Immediate actions**: confirm domain context, collect the minimum graph/evidence needed to rank attack paths, then choose one path at a time.
+- **Tool-family direction**: start with AD graph/enumeration skills (`bloodhound`, `sharphound`, `powerview`, `enum4linux`); switch to credential attacks (`kerbrute`, `rubeus`, `impacket`) only after a path is justified; use lateral-movement tool skills (`crackmapexec`, `evil-winrm`, `impacket`) after a target and credential type are known.
+- **Escalation rule**: prefer the shortest confirmed privilege path over broad spraying or host-by-host movement.
+
 ## Agent operating model
 
 ```
@@ -47,6 +57,11 @@ Loop:
   6. Domain dominance — DCSync, Golden/Silver ticket, persistence.
 
 Shortest path: BloodHound path from current user to Domain Admin → execute that path.
+
+OPSEC noise levels (tag every command before execution):
+  QUIET    : LDAP/DNS queries, BloodHound stealth collection, Kerbrute enum
+  MODERATE : Standard SMB/LDAP enum, Kerberoasting, AS-REP, Coercer
+  LOUD     : DCSync, PSExec (creates service), BloodHound -c All, Mimikatz on host
 ```
 
 Do not brute-force domain accounts blindly — AD lockout policies are common. Spray once with confirmed policy.
@@ -379,6 +394,36 @@ Add-DomainObjectAcl -TargetIdentity "CN=AdminSDHolder,CN=System,DC=domain,DC=loc
 
 ---
 
+## Detection signatures
+
+Key Windows Event IDs triggered by AD attacks:
+
+| Event ID | Meaning | Attack it reveals |
+|----------|---------|-------------------|
+| 4624 | Successful logon | Lateral movement, PTH |
+| 4625 | Failed logon | Password spraying |
+| 4648 | Explicit credential logon | Pass-the-Hash |
+| 4662 | Operation on directory object | DCSync |
+| 4768 | Kerberos TGT requested | Golden Ticket reuse |
+| 4769 | Kerberos service ticket requested | Kerberoasting |
+| 4771 | Kerberos pre-auth failed | AS-REP Roasting |
+| 4720 | User account created | RBCD / persistence |
+| 4738 | User account changed | ACL abuse |
+| 5136 | Directory object modified | DACL changes, RBCD |
+| 7045 | Service installed | PSExec |
+
+MITRE ATT&CK primary mappings:
+
+| Phase | TTPs |
+|-------|------|
+| Enumeration | T1087.002, T1069.002, T1018 |
+| Kerberos attacks | T1558.003 (Kerberoasting), T1558.004 (AS-REP), T1558.001 (Golden), T1558.002 (Silver) |
+| Credential access | T1003.006 (DCSync) |
+| Lateral movement | T1550.002 (PTH), T1550.003 (PTT), T1021.002 (SMB), T1021.006 (WinRM) |
+| Persistence | T1484 (Domain Policy), T1134 (Token Manipulation) |
+
+---
+
 ## Quality gates
 
 - Lockout policy confirmed before any spray.
@@ -387,6 +432,7 @@ Add-DomainObjectAcl -TargetIdentity "CN=AdminSDHolder,CN=System,DC=domain,DC=loc
 - Certificate abuse: template vulnerability class confirmed before request.
 - DCSync: krbtgt hash validated (test decrypt with known user hash).
 - All escalation steps documented with exact commands and timestamps.
+- Evidence files named: `{tool}_{domain}_{YYYYMMDD_HHMMSS}.{ext}`.
 
 ## Anti-patterns
 

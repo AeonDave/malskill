@@ -28,6 +28,16 @@ Goal: identify, capture, and exploit wireless network credentials or gain direct
 - **PCAP analysis**: traffic captured during or after attack → `forensic-technique` §3 (PCAP/network forensics) or `network-technique` §Case B.
 - **BLE protocol RE**: deep protocol analysis → `reversing-technique` §6 (protocol reversing).
 
+## Initial triage
+
+Before transmitting, classify the wireless target set and choose the quietest path that can satisfy the assessment objective.
+
+- **Starting state**: are you assessing Wi-Fi access control, handshake capture, WPS exposure, evil-twin resilience, BLE exposure, or analyzing an existing capture?
+- **First questions**: what RF scope is authorized, what SSIDs/BSSIDs and encryption modes are present, are clients active, and is the likely first path passive capture, PMKID, targeted handshake, WPS, or BLE enumeration?
+- **Immediate actions**: complete passive survey, rank targets by value and feasibility, then choose one attack lane per target.
+- **Tool-family direction**: use passive survey skills first (`kismet`, `aircrack-ng` capture flow, `lswifi`, `bluez`, `sparrow-wifi`), then move to active capture or impersonation tooling (`aircrack-ng`, `wifite`, `bettercap`) only when the classification justifies it.
+- **Escalation rule**: prefer passive and targeted capture over noisy broadcast actions; only deauth or impersonate when passive routes are insufficient.
+
 ## Hardware requirements
 
 - 802.11 adapter capable of **monitor mode** and **packet injection** (iwconfig / airmon-ng compatible).

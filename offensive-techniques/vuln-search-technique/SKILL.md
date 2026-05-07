@@ -29,6 +29,16 @@ Goal: convert a recon-produced asset inventory into a **confirmed, prioritized, 
 - **Not covered**: exploitation — this skill stops at confirmed finding + exploitation route.
 - **Fuzzing**: deep campaigns follow `fuzzing-technique`; integrated here as a bounded probe phase.
 
+## Initial triage
+
+Before scanning, classify each target by service type and likely failure mode so coverage stays deliberate instead of noisy.
+
+- **Starting state**: what asset package came from recon — web app, API, network service, TLS endpoint, WordPress site, or mixed host?
+- **First questions**: how precise is the version fingerprint, which vulnerabilities are most plausible for this target, and which scanner or manual probe classes are justified first?
+- **Immediate actions**: verify the fingerprint, rank CVE and logic-review hypotheses, then choose layered scans and probes for that specific target type.
+- **Tool-family direction**: use broad-but-targeted scanners first (`nuclei`, `nikto`, `openvas`, `nmap` NSE), then technology-specific skills (`testssl`, `wpscan`, `sqlmap`, `dalfox`, `corsy`, `smuggler`, `sstimap`, `ssrfmap`, `nosqlmap`) based on what fingerprinting and app mapping reveal.
+- **Escalation rule**: confirmed findings beat scanner volume; stop expanding tools when the next step is manual verification, not more enumeration.
+
 ## Agent operating model
 
 ```

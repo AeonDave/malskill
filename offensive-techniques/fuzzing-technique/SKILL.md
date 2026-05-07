@@ -26,6 +26,16 @@ Goal: help the agent run fuzzing as a **repeatable engineering process** that fi
 This skill defines **methodology, decision flow, and quality gates**.
 Tool-specific flags, options, and command syntax belong in `offensive-tools/*`.
 
+## Initial triage
+
+Before starting a campaign, classify the target shape and decide what kind of model and oracle will produce meaningful failures.
+
+- **Starting state**: are you testing source-available code, a binary-only target, a stateful network service, or an API/schema-driven system?
+- **First questions**: what are the highest-value entry points, what bug signal counts as success, and can you build a deterministic harness or request model?
+- **Immediate actions**: choose one narrow target path, define oracles, and prove replayability before scaling throughput.
+- **Tool-family direction**: use in-process coverage-guided families (`libfuzzer`, `aflplusplus`, `honggfuzz`) for source targets, binary instrumentation families (`winafl` and similar) for closed binaries, `boofuzz` for stateful protocols, and `restler`/`schemathesis` for APIs.
+- **Escalation rule**: improve model quality and seed quality before extending campaign duration.
+
 ## Agent operating model
 
 The agent should keep this loop:
