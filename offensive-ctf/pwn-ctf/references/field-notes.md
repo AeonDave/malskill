@@ -1,6 +1,6 @@
 # Pwn Field Notes
 
-Detailed pwn notes that support [`SKILL.md`](SKILL.md). Read this file after confirming the challenge really needs exploitation.
+Detailed pwn notes that support [`SKILL.md`](../SKILL.md). Read this file after confirming the challenge really needs exploitation.
 
 ## Table of Contents
 
@@ -25,8 +25,8 @@ Detailed pwn notes that support [`SKILL.md`](SKILL.md). Read this file after con
   - [Timing Attack Flag Recovery]
   - [DNS Record Buffer Overflow]
   - [ASAN Shadow Memory Exploitation](#asan-shadow-memory-exploitation)
-  - [Format String.fini_array Loop for Multi-Stage Exploitation](#format-string-fini_array-loop-for-multi-stage-exploitation)
-  - [Format String with RWX.fini_array Hijack](#format-string-with-rwx-fini_array-hijack)
+  - [Format String.fini_array Loop for Multi-Stage Exploitation](#format-stringfini_array-loop-for-multi-stage-exploitation)
+  - [Format String with RWX.fini_array Hijack](#format-string-with-rwxfini_array-hijack)
   - [Custom Canary Preservation](#custom-canary-preservation)
   - [MD5 Preimage Gadget Construction](#md5-preimage-gadget-construction)
   - [Python Sandbox Escape](#python-sandbox-escape)
@@ -81,7 +81,7 @@ Detailed pwn notes that support [`SKILL.md`](SKILL.md). Read this file after con
 
 **tcache stashing unlink (glibc 2.29+):** Corrupt smallbin chunk's `bk` during tcache stashing → arbitrary address linked into tcache → write primitive. See [heap.md](heap.md#tcache-stashing-unlink-attack).
 
-**UAF vtable pointer encoding shell argument:** After UAF, heap spray places `system()` at offset +3. Object address containing `0x6873` ("sh") in low bytes doubles as the command string argument when `system(this)` is called through the hijacked vtable. See [heap-techniques-2.md].
+**UAF vtable pointer encoding shell argument:** After UAF, heap spray places `system()` at offset +3. Object address containing `0x6873` ("sh") in low bytes doubles as the command string argument when `system(this)` is called through the hijacked vtable. See [heap.md](heap.md#uaf-vtable-pointer-encoding-shell-argument).
 
 **Fastbin stdout vtable two-stage hijack (PIE + Full RELRO):** Use 0x7f byte in libc's stdout region as fake fastbin chunk size. Two-stage: first vtable redirect to `gets()` (rdi=stdout), then `gets()` overwrites vtable again to `system()` with command string. See [heap.md].
 

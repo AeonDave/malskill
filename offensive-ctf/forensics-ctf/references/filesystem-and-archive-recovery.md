@@ -2,29 +2,29 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Disk Recovery and Extraction Patterns
+# CTF Forensics - Filesystem and Archive Recovery
 
 ## Table of Contents
-- [LUKS Master Key Recovery from Memory Dump]
-- [PRNG Timestamp Seed Brute-Force for Encryption Key Recovery]
-- [VBA Macro Encoded Binary Recovery]
-- [FemtoZip Shared Dictionary Decompression]
-- [XFS Filesystem Reconstruction from Corrupted Metadata]
-- [Tar Archive Duplicate Entry Extraction]
-- [Nested Matryoshka Filesystem Extraction]
-- [Anti-Carving via Null Byte Interleaving]
-- [BTRFS Subvolume/Snapshot Recovery]
-- [FAT16 Free Space Data Recovery]
-- [FAT16 Deleted File Recovery via Sleuth Kit]
-- [Ext2 Orphaned Inode Recovery via fsck]
-- [Corrupted ZIP Repair via Header Field Manipulation]
-- [Recovering Deleted.git Repository from FAT Image]
-- [DNSSEC Key Recovery from Git Commit History]
-- [XZ Stream Header Repair via CRC32 Reconstruction]
-- [ZipCrypto Known-Plaintext Cracking via bkcrack]
-- [SQLite Serial-Type Byte Forensics]
-- [Recursive Binwalk Chain PNG->PDF->DOCX->PNG->Base64]
-- [Regex-Password Nested Zip Chain with exrex]
+- [LUKS Master Key Recovery from Memory Dump](#luks-master-key-recovery-from-memory-dump)
+- [PRNG Timestamp Seed Brute-Force for Encryption Key Recovery](#prng-timestamp-seed-brute-force-for-encryption-key-recovery)
+- [VBA Macro Encoded Binary Recovery](#vba-macro-encoded-binary-recovery)
+- [FemtoZip Shared Dictionary Decompression](#femtozip-shared-dictionary-decompression)
+- [XFS Filesystem Reconstruction from Corrupted Metadata](#xfs-filesystem-reconstruction-from-corrupted-metadata)
+- [Tar Archive Duplicate Entry Extraction](#tar-archive-duplicate-entry-extraction)
+- [Nested Matryoshka Filesystem Extraction](#nested-matryoshka-filesystem-extraction)
+- [Anti-Carving via Null Byte Interleaving](#anti-carving-via-null-byte-interleaving)
+- [BTRFS Subvolume/Snapshot Recovery](#btrfs-subvolumesnapshot-recovery)
+- [FAT16 Free Space Data Recovery](#fat16-free-space-data-recovery)
+- [FAT16 Deleted File Recovery via Sleuth Kit](#fat16-deleted-file-recovery-via-sleuth-kit)
+- [Ext2 Orphaned Inode Recovery via fsck](#ext2-orphaned-inode-recovery-via-fsck)
+- [Corrupted ZIP Repair via Header Field Manipulation](#corrupted-zip-repair-via-header-field-manipulation)
+- [Recovering Deleted.git Repository from FAT Image](#recovering-deletedgit-repository-from-fat-image)
+- [DNSSEC Key Recovery from Git Commit History](#dnssec-key-recovery-from-git-commit-history)
+- [XZ Stream Header Repair via CRC32 Reconstruction](#xz-stream-header-repair-via-crc32-reconstruction)
+- [ZipCrypto Known-Plaintext Cracking via bkcrack](#zipcrypto-known-plaintext-cracking-via-bkcrack)
+- [SQLite Serial-Type Byte Forensics](#sqlite-serial-type-byte-forensics)
+- [Recursive Binwalk Chain PNG->PDF->DOCX->PNG->Base64](#recursive-binwalk-chain-png-pdf-docx-png-base64)
+- [Regex-Password Nested Zip Chain with exrex](#regex-password-nested-zip-chain-with-exrex)
 - [See Also](#see-also)
 
 -
@@ -678,5 +678,5 @@ for i in range(10000):
 
 ## See Also
 
-- [disk-and-memory.md](disk-and-memory.md) - Core disk/memory forensics (Volatility, disk image analysis, VM/OVA/VMDK, VMware snapshots, coredumps, KAPE triage, PowerShell ransomware, Android/Docker/cloud forensics, BSON reconstruction, TrueCrypt/VeraCrypt mounting)
-- [disk-advanced.md](disk-advanced.md) - Advanced disk and memory techniques
+- [disk-memory-and-vm-triage.md](disk-memory-and-vm-triage.md) - Core disk/memory forensics (Volatility, disk image analysis, VM/OVA/VMDK, VMware snapshots, coredumps, KAPE triage, PowerShell ransomware, Android/Docker/cloud forensics, BSON reconstruction, TrueCrypt/VeraCrypt mounting)
+- [advanced-disk-and-memory.md](advanced-disk-and-memory.md) - Advanced disk and memory techniques

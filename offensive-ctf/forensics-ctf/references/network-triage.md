@@ -2,7 +2,7 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Network
+# CTF Forensics - Network Triage
 
 ## Table of Contents
 - [tcpdump Quick Reference](#tcpdump-quick-reference)
@@ -16,17 +16,16 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [SMB3 Encrypted Traffic](#smb3-encrypted-traffic)
 - [5G/NR Protocol Analysis](#5gnr-protocol-analysis)
 - [Email Headers](#email-headers)
-- [USB HID Stenography/Chord PCAP]
-- [BCD Encoding in UDP]
-- [HTTP File Upload Exfiltration in PCAP]
-- [TLS Master Key Extraction from Coredump]
-- [Split Archive Reassembly from HTTP Transfers]
-- [WPA/WEP WiFi Decryption from PCAP]
-- [Corrupted PCAP Repair with pcapfix]
-- [SAP Dialog Protocol Decryption from PCAP]
-- [DNS Exfiltration Oracle via Binary Response Probing]
-- [ICMP Echo Payload Length as Covert Channel]
-
+- [USB HID Stenography/Chord PCAP](#usb-hid-stenographychord-pcap)
+- [BCD Encoding in UDP](#bcd-encoding-in-udp)
+- [HTTP File Upload Exfiltration in PCAP](#http-file-upload-exfiltration-in-pcap)
+- [TLS Master Key Extraction from Coredump](#tls-master-key-extraction-from-coredump)
+- [Split Archive Reassembly from HTTP Transfers](#split-archive-reassembly-from-http-transfers)
+- [WPA/WEP WiFi Decryption from PCAP](#wpawep-wifi-decryption-from-pcap)
+- [Corrupted PCAP Repair with pcapfix](#corrupted-pcap-repair-with-pcapfix)
+- [SAP Dialog Protocol Decryption from PCAP](#sap-dialog-protocol-decryption-from-pcap)
+- [DNS Exfiltration Oracle via Binary Response Probing](#dns-exfiltration-oracle-via-binary-response-probing)
+- [ICMP Echo Payload Length as Covert Channel](#icmp-echo-payload-length-as-covert-channel)
 -
 
 ## tcpdump Quick Reference
@@ -643,4 +642,4 @@ print(flag)
 
 **Key insight:** Any metadata field a sender can influence (packet length, TTL, IPID, TCP window size, DNS QNAME length, HTTP request ordering) is a potential covert channel. Before analyzing payload contents, plot per-packet metadata distributions — a histogram that hits only printable-ASCII-range values is a giveaway. Combine with `tshark -T fields -e icmp.data_len` for rapid extraction from large PCAPs.
 
-See also: [network-advanced.md](network-advanced.md) for advanced network forensics techniques.
+See also: [network-covert-and-protocols.md](network-covert-and-protocols.md) for advanced network forensics techniques.

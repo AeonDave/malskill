@@ -7,7 +7,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 ## Table of Contents
 - [Log Analysis](#log-analysis)
 - [Linux Attack Chain Forensics](#linux-attack-chain-forensics)
-- [Docker Image Forensics]
+- [Docker Image Forensics](#docker-image-forensics)
 - [Browser Credential Decryption](#browser-credential-decryption)
 - [Firefox Browser History (places.sqlite)](#firefox-browser-history-placessqlite)
 - [USB Audio Extraction from PCAP](#usb-audio-extraction-from-pcap)
@@ -15,17 +15,16 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [TLS Traffic Decryption via Weak RSA](#tls-traffic-decryption-via-weak-rsa)
 - [ROT18 Decoding](#rot18-decoding)
 - [Common Encodings](#common-encodings)
-- [Git Directory Recovery]
-- [KeePass Database Extraction and Cracking]
-- [Git Reflog and fsck for Squashed Commit Recovery]
+- [Git Directory Recovery](#git-directory-recovery)
+- [KeePass Database Extraction and Cracking](#keepass-database-extraction-and-cracking)
+- [Git Reflog and fsck for Squashed Commit Recovery](#git-reflog-and-fsck-for-squashed-commit-recovery)
 - [Browser Artifact Analysis](#browser-artifact-analysis)
   - [Chrome/Chromium](#chromechromium)
   - [Firefox](#firefox)
-- [Corrupted Git Blob Repair via Byte Brute-Force]
-- [VBA Macro Forensics - Excel Cell Data to ELF Binary]
-- [Ethereum / Blockchain Transaction Tracing]
-- [Python In-Memory Source Recovery via pyrasite]
-
+- [Corrupted Git Blob Repair via Byte Brute-Force](#corrupted-git-blob-repair-via-byte-brute-force)
+- [VBA Macro Forensics - Excel Cell Data to ELF Binary](#vba-macro-forensics-excel-cell-data-to-elf-binary)
+- [Ethereum / Blockchain Transaction Tracing](#ethereum-blockchain-transaction-tracing)
+- [Python In-Memory Source Recovery via pyrasite](#python-in-memory-source-recovery-via-pyrasite)
 -
 
 ## Log Analysis

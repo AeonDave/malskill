@@ -4,6 +4,17 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Crypto - Modern Cipher Modes and Forgery
 
+## Use This Reference When
+
+- The artifact shows block-mode or stream-mode misuse: ECB patterns, CBC bit flips, CTR/OFB/CFB keystream reuse, padding or decode oracles, or repeated GCM nonces.
+- The expected proof is a forged token, modified ciphertext, recovered plaintext, recovered authentication subkey, or replayable oracle transcript.
+- The fastest validation signal is local re-encryption, tag verification, known-plaintext recovery, or a server response that accepts the forged ciphertext.
+
+## External Anchors
+
+- NIST SP 800-38D specifies GCM/GMAC and is the baseline for nonce uniqueness and tag-validation assumptions.
+- RFC 8017 is the baseline for PKCS #1 terminology when RSA padding-oracle material crosses into mode/oracle workflows.
+
 ## Table of Contents
 - [AES-CFB-8 Static IV State Forging](#aes-cfb-8-static-iv-state-forging)
 - [ECB Pattern Leakage on Images](#ecb-pattern-leakage-on-images)
@@ -395,7 +406,7 @@ for i in range(len(ciphertext_blocks) - 3, -1, -1):
 
 ## Square Attack on Reduced-Round AES
 
-**Pattern:** 4-round AES is vulnerable to the square (integral) attack. Choose 256 plaintexts differing in one byte (a "lambda set"). After 3 rounds, the XOR sum at any byte position epublic source 0. Guess one byte of the last round key and partially decrypt - if XOR sum is 0, the guess is correct.
+**Pattern:** 4-round AES is vulnerable to the square (integral) attack. Choose 256 plaintexts differing in one byte (a "lambda set"). After 3 rounds, the XOR sum at any byte position equals 0. Guess one byte of the last round key and partially decrypt - if XOR sum is 0, the guess is correct.
 
 ```python
 # For each byte position in the last round key:
@@ -563,7 +574,7 @@ forged = ct.hex()
 
 ## AES-CFB IV Recovery from Timestamp-Seeded PRNG
 
-**Pattern:** Ransomware encrypts files with AES-CFB using a hardcoded password from bash_history. The IV is derived from `random.choice()` seeded with `int(time())` at encryption time. The file's mtime (preserved by the filesystem) epublic source the exact seed used, enabling full decryption without the private key.
+**Pattern:** File encryption uses AES-CFB with a hardcoded password. The IV is derived from `random.choice()` seeded with `int(time())` at encryption time. The file's mtime, when preserved by the filesystem, provides the exact seed used and enables full decryption without the private key.
 
 ```python
 import random, os, string, base64
@@ -650,4 +661,4 @@ buf[offset] ^= ord('0') ^ ord('1')             # 0x30 ^ 0x31 = 0x01
 forged_cookie = b64encode(bytes(buf)).decode()
 ```
 
-**Key insight:** In AES-CBC, `P_{n+1} = AES_dec(C_{n+1}) XOR C_n`. Flipping byte `i` of `C_n` flips byte `i` of `P_{n+1}` with zero side effects on `P_{n+1}`, but turns `P_n` (which was `AES_dec(C_n) XOR C_{n-1}`) into pseudo-random garbage. Works whenever the server (a) uses CBC without integrity checks, (b) parses the JSON/cookie leniently enough to tolerate a corrupted earlier block (unknown-key field, ignored garbage, lenient JSON parser), and (c) exposes the block boundary offset of the target byte. Contrast with [AES-CBC IV Bit-Flip], which targets block 0 by flipping the IV and leaves all later blocks intact.
+**Key insight:** In AES-CBC, `P_{n+1} = AES_dec(C_{n+1}) XOR C_n`. Flipping byte `i` of `C_n` flips byte `i` of `P_{n+1}` with zero side effects on `P_{n+1}`, but turns `P_n` (which was `AES_dec(C_n) XOR C_{n-1}`) into pseudo-random garbage. Works whenever the server (a) uses CBC without integrity checks, (b) parses the JSON/cookie leniently enough to tolerate a corrupted earlier block (unknown-key field, ignored garbage, lenient JSON parser), and (c) exposes the block boundary offset of the target byte. Contrast with [AES-CBC IV Bit-Flip Authentication Bypass](#aes-cbc-iv-bit-flip-authentication-bypass), which targets block 0 by flipping the IV and leaves all later blocks intact.

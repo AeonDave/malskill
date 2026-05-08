@@ -241,7 +241,7 @@ p.sendline(b'cat flag')  # free() → system("cat flag")
 
 **When to use:** Full RELRO + glibc < 2.34 (hooks still exist). For glibc >= 2.34, hooks are removed - target return addresses or `_IO_FILE` structs instead.
 
-##.rela.plt /.dynsym Patching
+## .rela.plt /.dynsym Patching
 
 **When to use:** GOT addresses contain bad bytes (e.g., 0x0a with fgets), making direct GOT overwrite impossible. Requires `.rela.plt` and `.dynsym` in writable memory.
 

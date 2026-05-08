@@ -2,29 +2,28 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Network (Advanced)
+# CTF Forensics - Network Covert Channels and Protocols
 
-For USB/HID/Bluetooth peripheral capture analysis, see [peripheral-capture.md](peripheral-capture.md). For basic network forensics, see [network.md](network.md).
+For USB/HID/Bluetooth peripheral capture analysis, see [usb-and-peripheral-captures.md](usb-and-peripheral-captures.md). For basic network forensics, see [network-triage.md](network-triage.md).
 
 ## Table of Contents
-- [Packet Interval Timing-Based Encoding]
-- [NTLMv2 Hash Cracking from PCAP]
-- [TCP Flag Covert Channel]
-- [DNS Query Name Last-Byte Steganography]
-  - [DNS Trailing Byte Binary Encoding]
-- [Multi-Layer PCAP with XOR + ZIP]
-- [Brotli Decompression Bomb Seam Analysis]
-- [SMB RID Recycling via LSARPC]
-- [Timeroasting / MS-SNTP Hash Extraction]
-- [ICMP Payload Steganography with Byte Rotation]
-- [Packet Reconstruction via Checksum Validation]
-- [dnscat2 Traffic Reassembly from DNS PCAP]
-- [Unreferenced PDF Objects with Hidden Pages]
-- [RDP Session Decryption via Extracted PKCS12 Key]
-- [RADIUS Shared Secret Cracking]
-- [RC4 Stream Identification in Shellcode PCAP]
-- [ICMP Ping Time-Delay Covert Channel]
-
+- [Packet Interval Timing-Based Encoding](#packet-interval-timing-based-encoding)
+- [NTLMv2 Hash Cracking from PCAP](#ntlmv2-hash-cracking-from-pcap)
+- [TCP Flag Covert Channel](#tcp-flag-covert-channel)
+- [DNS Query Name Last-Byte Steganography](#dns-query-name-last-byte-steganography)
+  - [DNS Trailing Byte Binary Encoding](#dns-trailing-byte-binary-encoding)
+- [Multi-Layer PCAP with XOR + ZIP](#multi-layer-pcap-with-xor-zip)
+- [Brotli Decompression Bomb Seam Analysis](#brotli-decompression-bomb-seam-analysis)
+- [SMB RID Recycling via LSARPC](#smb-rid-recycling-via-lsarpc)
+- [Timeroasting / MS-SNTP Hash Extraction](#timeroasting-ms-sntp-hash-extraction)
+- [ICMP Payload Steganography with Byte Rotation](#icmp-payload-steganography-with-byte-rotation)
+- [Packet Reconstruction via Checksum Validation](#packet-reconstruction-via-checksum-validation)
+- [dnscat2 Traffic Reassembly from DNS PCAP](#dnscat2-traffic-reassembly-from-dns-pcap)
+- [Unreferenced PDF Objects with Hidden Pages](#unreferenced-pdf-objects-with-hidden-pages)
+- [RDP Session Decryption via Extracted PKCS12 Key](#rdp-session-decryption-via-extracted-pkcs12-key)
+- [RADIUS Shared Secret Cracking](#radius-shared-secret-cracking)
+- [RC4 Stream Identification in Shellcode PCAP](#rc4-stream-identification-in-shellcode-pcap)
+- [ICMP Ping Time-Delay Covert Channel](#icmp-ping-time-delay-covert-channel)
 -
 
 ## Packet Interval Timing-Based Encoding
@@ -556,7 +555,7 @@ plaintext = rc4(key, ciphertext)
 
 -
 
-See also: [network.md](network.md) for basic network forensics techniques (tcpdump, TLS/SSL decryption, Wireshark, port scanning, SMB3 decryption, credential extraction, 5G protocols).
+See also: [network-triage.md](network-triage.md) for basic network forensics techniques (tcpdump, TLS/SSL decryption, Wireshark, port scanning, SMB3 decryption, credential extraction, 5G protocols).
 
 -
 

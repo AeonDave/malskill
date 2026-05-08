@@ -10,8 +10,8 @@ Comprehensive reference covering glibc heap techniques, custom allocators, and a
 
 ### tcache Techniques
 - [tcache Stashing Unlink Attack](#tcache-stashing-unlink-attack)
-- [tcache strcpy Null-Byte Overflow + Backward Consolidation](#tcache-strcpy-null-byte-overflow--backward-consolidation)
-- [Tcache Double-Free + Fake _IO_FILE Vtable Stdout Hijack](#tcache-double-free--fake-_io_file-vtable-stdout-hijack)
+- [tcache strcpy Null-Byte Overflow + Backward Consolidation](#tcache-strcpy-null-byte-overflow-backward-consolidation)
+- [Tcache Double-Free + Fake _IO_FILE Vtable Stdout Hijack](#tcache-double-free-fake-_io_file-vtable-stdout-hijack)
 - [Tcache-to-Fastbin Promotion Cross-Bin Attack](#tcache-to-fastbin-promotion-cross-bin-attack)
 - [Hidden Menu Option 1337 for Tcache Poisoning](#hidden-menu-option-1337-for-tcache-poisoning)
 
@@ -20,10 +20,10 @@ Comprehensive reference covering glibc heap techniques, custom allocators, and a
 - [Filename-Regex-Constrained Fastbin via LSB-Only Heap Pointer Overwrite](#filename-regex-constrained-fastbin-via-lsb-only-heap-pointer-overwrite)
 
 ### House of X Family
-- [House of Apple 2 — FSOP for glibc 2.34+](#house-of-apple-2--fsop-for-glibc-234)
+- [House of Apple 2 — FSOP for glibc 2.34+](#house-of-apple-2-fsop-for-glibc-234)
   - [setcontext Variant for SUID Binaries](#setcontext-variant-for-suid-binaries)
 - [House of Botcake](#house-of-botcake)
-- [House of Einherjar — Off-by-One Null Byte](#house-of-einherjar--off-by-one-null-byte)
+- [House of Einherjar — Off-by-One Null Byte](#house-of-einherjar-off-by-one-null-byte)
 - [House of Force](#house-of-force)
 - [House of Lore](#house-of-lore)
 - [House of Orange](#house-of-orange)
@@ -31,24 +31,24 @@ Comprehensive reference covering glibc heap techniques, custom allocators, and a
 
 ### Unlink Attacks
 - [Classic Heap Unlink Attack](#classic-heap-unlink-attack)
-- [Unsafe Unlink to BSS + Top Chunk Consolidation](#unsafe-unlink-to-bss--top-chunk-consolidation)
+- [Unsafe Unlink to BSS + Top Chunk Consolidation](#unsafe-unlink-to-bss-top-chunk-consolidation)
 - [Custom Allocator Unsafe Unlink to GOT](#custom-allocator-unsafe-unlink-to-got)
 
 ### TLS and Exit-Time Exploitation
 - [TLS dtor_list Hijack for Code Execution After Exit](#tls-dtor_list-hijack-for-code-execution-after-exit)
 
 ### Alternative Allocators
-- [musl libc Heap Exploitation — Meta Pointer + atexit](#musl-libc-heap-exploitation--meta-pointer--atexit)
+- [musl libc Heap Exploitation — Meta Pointer + atexit](#musl-libc-heap-exploitation-meta-pointer-atexit)
 - [Custom Allocator Exploitation](#custom-allocator-exploitation)
   - [talloc Pool Header Forgery for Arbitrary Read/Write](#talloc-pool-header-forgery-for-arbitrary-readwrite)
 
 ### UAF and Info Leak Patterns
 - [UAF Vtable Pointer Encoding Shell Argument](#uaf-vtable-pointer-encoding-shell-argument)
 - [Uninitialized Chunk Residue Pointer Leak](#uninitialized-chunk-residue-pointer-leak)
-- [Adjacent-Struct fn-Pointer Overflow for Libc Leak + GOT Overwrite](#adjacent-struct-fn-pointer-overflow-for-libc-leak--got-overwrite)
+- [Adjacent-Struct fn-Pointer Overflow for Libc Leak + GOT Overwrite](#adjacent-struct-fn-pointer-overflow-for-libc-leak-got-overwrite)
 
 ### OOB and Accumulator Techniques
-- [6-Bit Index OOB + written_bytes Accumulator for Fn-Pointer Increment](#6-bit-index-oob--written_bytes-accumulator-for-fn-pointer-increment)
+- [6-Bit Index OOB + written_bytes Accumulator for Fn-Pointer Increment](#6-bit-index-oob-written_bytes-accumulator-for-fn-pointer-increment)
 
 ---
 
@@ -602,7 +602,7 @@ create(0x2f0)
 write_to_note(rop_chain_at_return_address_offset)
 ```
 
-**House of Spirit on stack — extended technique (idekCTF pattern):**
+**House of Spirit on stack — extended challenge pattern:**
 ```python
 # Allocate a note buffer on the stack (program does malloc → returns stack-adjacent alloc)
 create(0, 112)       # allocates 112 bytes on stack (intentional design)

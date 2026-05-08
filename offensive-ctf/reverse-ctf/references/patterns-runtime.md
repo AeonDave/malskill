@@ -1,24 +1,18 @@
-# Preserved source: patterns-runtime.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Reverse - Runtime Patching and Oracle Techniques
 
 Malware unpacking, multi-stage shellcode, timing/signal side channels, and CTF-specific oracle attacks that rely on runtime state rather than static pattern matching.
 
-For static reversing patterns (custom VMs, anti-debug, self-modifying code, LLVM obfuscation, S-box generation, SECCOMP/BPF, memory dumps, x86-64 gotchas, byte-wise transforms), see [patterns.md](patterns.md).
+For static reversing patterns (custom VMs, anti-debug, self-modifying code, LLVM obfuscation, SECCOMP/BPF, and memory dumps), see [patterns-static-vm-obfuscation-and-memory.md](patterns-static-vm-obfuscation-and-memory.md). For byte transforms, S-boxes, x86-64 gotchas, and signal paths, see [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md).
 
 ## Table of Contents
 - [Malware Anti-Analysis Bypass via Patching](#malware-anti-analysis-bypass-via-patching)
 - [Multi-Stage Shellcode Loaders](#multi-stage-shellcode-loaders)
 - [Timing Side-Channel Attack](#timing-side-channel-attack)
-- [Multi-Thread Anti-Debug with Decoy + Signal Handler Mixed Boolean-Arithmetic]
-- [INT3 Patch + Coredump Brute-Force Oracle]
-- [Signal Handler Chain + LD_PRELOAD Oracle]
-- [printf Format String VM Decompilation to Z3]
-- [Quadtree Recursive Image Format Parser]
-
--
+- [Multi-Thread Anti-Debug with Decoy + Signal Handler Mixed Boolean-Arithmetic](#multi-thread-anti-debug-with-decoy-signal-handler-mixed-boolean-arithmetic)
+- [INT3 Patch + Coredump Brute-Force Oracle](#int3-patch-coredump-brute-force-oracle)
+- [Signal Handler Chain + LD_PRELOAD Oracle](#signal-handler-chain-ld_preload-oracle)
+- [printf Format String VM Decompilation to Z3](#printf-format-string-vm-decompilation-to-z3)
+- [Quadtree Recursive Image Format Parser](#quadtree-recursive-image-format-parser)
 
 ## Malware Anti-Analysis Bypass via Patching
 
@@ -173,8 +167,6 @@ done
 
 **Key insight:** Use INT3/SIGTRAP as a breakpoint oracle - the coredump captures computed state at the crash point. Avoids full reverse engineering of the transformation.
 
--
-
 ## Signal Handler Chain + LD_PRELOAD Oracle
 
 Binary uses Unix signals for flow control: `main()` sends SIGINT to itself 1024 times, each handler checks one password character, then calls `signal()` to install the next handler. Bypass: LD_PRELOAD a custom `signal()` that logs when it's called (indicating correct character), brute-force each position.
@@ -190,9 +182,7 @@ sighandler_t signal(int sig, sighandler_t handler) {
 
 **Key insight:** Signal-handler-chain anti-reversing can be defeated by hooking `signal()` via LD_PRELOAD. The call to `signal()` (to install the next handler) acts as a side-channel confirming the current character.
 
--
-
-### printf Format String VM Decompilation to Z3
+## printf Format String VM Decompilation to Z3
 
 A "virtual machine" implemented entirely via `%hhn` format strings. Format string `%hhn` writes the count of printed characters (mod 256) to a pointed-to byte. A sequence of `%Nc%hhn` instructions implements arbitrary byte-to-memory writes, effectively creating a bytecode VM.
 

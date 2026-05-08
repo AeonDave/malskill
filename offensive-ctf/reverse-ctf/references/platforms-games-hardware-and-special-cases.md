@@ -44,7 +44,7 @@ Blueprints compile to bytecode in .uasset files.
 
 ### Unity (Beyond IL2CPP)
 
-See [languages.md](languages.md#unity-il2cpp-games) for IL2CPP basics.
+See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md#unity-il2cpp-games) for IL2CPP basics.
 
 **Mono-based Unity (not IL2CPP):**
 ```bash

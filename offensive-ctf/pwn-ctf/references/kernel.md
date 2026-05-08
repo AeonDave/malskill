@@ -18,7 +18,7 @@
 - [Kernel Stack Overflow and Canary Leak](#kernel-stack-overflow-and-canary-leak)
 - [Privilege Escalation Primitives](#privilege-escalation-primitives)
   - [ret2usr (No SMEP/SMAP)](#ret2usr-no-smepsmap)
-  - [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred--commit_creds)
+  - [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred-commit_creds)
   - [Saving and Restoring Userland State](#saving-and-restoring-userland-state)
 - [modprobe_path Overwrite](#modprobe_path-overwrite)
   - [Technique Overview](#technique-overview)
@@ -39,11 +39,11 @@
   - [Freelist Pointer Hardening](#freelist-pointer-hardening)
   - [Freelist Obfuscation (CONFIG_SLAB_FREELIST_HARDEN)](#freelist-obfuscation-config_slab_freelist_harden)
 - [Leak via Kernel Panic](#leak-via-kernel-panic)
-- [Race Window Extension via MADV_DONTNEED + mprotect](#race-window-extension-via-madv_dontneed--mprotect)
+- [Race Window Extension via MADV_DONTNEED + mprotect](#race-window-extension-via-madv_dontneed-mprotect)
 - [Cross-Cache Attack via CPU-Split Strategy](#cross-cache-attack-via-cpu-split-strategy)
 - [PTE Overlap Primitive for File Write](#pte-overlap-primitive-for-file-write)
 - [Kernel addr_limit Bypass via Failed File Open](#kernel-addr_limit-bypass-via-failed-file-open)
-- [Custom binfmt Loader OOB Read + clear_user for Privesc](#custom-binfmt-loader-oob-read--clear_user-for-privesc)
+- [Custom binfmt Loader OOB Read + clear_user for Privesc](#custom-binfmt-loader-oob-read-clear_user-for-privesc)
 - [KASLR and FGKASLR Bypass](#kaslr-and-fgkaslr-bypass)
   - [KASLR Bypass via Stack Leak](#kaslr-bypass-via-stack-leak)
   - [FGKASLR Bypass](#fgkaslr-bypass)
@@ -52,14 +52,14 @@
   - [Method 2: Signal Handler (SIGSEGV)](#method-2-signal-handler-sigsegv)
   - [Method 3: modprobe_path via ROP](#method-3-modprobe_path-via-rop)
   - [Method 4: core_pattern via ROP](#method-4-core_pattern-via-rop)
-- [SMEP / SMAP Bypass](#smep--smap-bypass)
-- [KPTI / SMEP / SMAP Quick Reference](#kpti--smep--smap-quick-reference)
+- [SMEP / SMAP Bypass](#smep-smap-bypass)
+- [KPTI / SMEP / SMAP Quick Reference](#kpti-smep-smap-quick-reference)
 - [GDB Kernel Module Debugging](#gdb-kernel-module-debugging)
 - [Initramfs and virtio-9p Workflow](#initramfs-and-virtio-9p-workflow)
 - [Finding Symbol Offsets Without CONFIG_KALLSYMS_ALL](#finding-symbol-offsets-without-config_kallsyms_all)
 - [Exploit Templates](#exploit-templates)
-  - [Full Kernel ROP Template (SMEP + KPTI)](#full-kernel-rop-template-smep--kpti)
-  - [ret2usr Template (No SMEP/SMAP)](#ret2usr-template-no-smepsmap-1)
+  - [Full Kernel ROP Template (SMEP + KPTI)](#full-kernel-rop-template-smep-kpti)
+  - [ret2usr Template (No SMEP/SMAP)](#ret2usr-template-no-smepsmap)
 - [Exploit Delivery](#exploit-delivery)
 
 ---
@@ -1128,7 +1128,7 @@ See [core_pattern Overwrite](#core_pattern-overwrite) for the full technique and
 ## SMEP / SMAP Bypass
 
 **SMEP (Supervisor Mode Execution Prevention):** Blocks executing userland pages from kernel mode.
-- **Bypass:** Use kernel ROP (kROP) chains — all gadgets from kernel `.text`. See [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred--commit_creds).
+- **Bypass:** Use kernel ROP (kROP) chains — all gadgets from kernel `.text`. See [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred-commit_creds).
 
 **SMAP (Supervisor Mode Access Prevention):** Blocks accessing userland memory from kernel mode.
 - **Bypass:** kROP with heap-resident chain (all data in kernel heap), or `stac`/`clac` gadgets to temporarily disable SMAP.
@@ -1141,7 +1141,7 @@ See [core_pattern Overwrite](#core_pattern-overwrite) for the full technique and
 
 | Protection | Blocks | Bypass |
 |-|-|-|
-| SMEP | Executing userland pages from kernel | kROP (kernel ROP chain) — see [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred--commit_creds) |
+| SMEP | Executing userland pages from kernel | kROP (kernel ROP chain) — see [Kernel ROP with prepare_kernel_cred / commit_creds](#kernel-rop-with-prepare_kernel_cred-commit_creds) |
 | SMAP | Accessing userland memory from kernel | kROP with heap-resident chain, `stac`/`clac` gadgets |
 | No SMEP/SMAP | (nothing) | [ret2usr](#ret2usr-no-smepsmap) — directly call userland privesc function |
 | KPTI | Kernel page table isolation | [Trampoline](#method-1-swapgs_restore-trampoline), [signal handler](#method-2-signal-handler-sigsegv), [modprobe_path](#method-3-modprobe_path-via-rop), [core_pattern](#method-4-core_pattern-via-rop) |

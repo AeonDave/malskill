@@ -2,13 +2,13 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - 3D Printing / CAD File Forensics
+# CTF Forensics - CAD and 3D Printing
 
 ## Table of Contents
 - [PrusaSlicer Binary G-code (.g /.bgcode)](#prusaslicer-binary-g-code-g-bgcode)
 - [QOIF (Quite OK Image Format)](#qoif-quite-ok-image-format)
 - [G-code Analysis Tips](#g-code-analysis-tips)
-- [G-code Side View Visualization]
+- [G-code Side View Visualization](#g-code-side-view-visualization)
 - [Uncommon File Magic Bytes](#uncommon-file-magic-bytes)
 
 -

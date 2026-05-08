@@ -36,17 +36,18 @@ Load these as decision engines when their domain appears:
 - `forensic-technique` for evidence handling, timelines, and artifact preservation.
 - `wireless-technique` for RF, serial-over-radio, or fieldbus captures crossing into wireless analysis.
 - `reversing-technique` for PLC program blocks, firmware, protocol clients, or custom encoders.
-- `coding/python-patterns` for parsers, register decoders, and safe replay harnesses.
+- `python-patterns` for parsers, register decoders, and safe replay harnesses.
 
 ## Tool routing
 
 Use tool families based on the evidence, not habit:
 
-- Wireshark/tshark and Zeek for protocol carving, conversations, timing, and exported fields.
-- Scapy, pymodbus, python-snap7, OPC UA clients, MQTT clients, and can-utils for controlled parsing and replay.
-- CyberChef, jq, pandas, and Python notebooks/scripts for endian, scaling, timestamp, and register-table transformations.
-- Nmap OT NSE scripts only against authorized isolated labs; passive PCAP analysis is preferred when artifacts are enough.
-- Binwalk, Ghidra, radare2, and strings when the task includes PLC firmware, engineering-project exports, or custom protocol binaries.
+- `wireshark`, `tcpdump`, and `zeek` for protocol carving, conversations, timing, and exported fields.
+- `pymodbus`, MQTT clients, OPC UA clients, Scapy, python-snap7, and can-utils for controlled parsing and replay.
+- CyberChef, jq, pandas, and Python scripts for endian, scaling, timestamp, and register-table transformations.
+- `nmap` OT NSE scripts only against authorized isolated labs; passive PCAP analysis is preferred when artifacts are enough.
+- `binwalk`, `ghidra`, `radare2`, and `strings` when the task includes PLC firmware, engineering-project exports, or custom protocol binaries.
+- `saleae-logic-2` when a capture includes serial, CAN, or fieldbus waveforms rather than decoded network traffic.
 
 ## Safety and scope gates
 
@@ -65,8 +66,10 @@ Use tool families based on the evidence, not habit:
 - EtherNet/IP/CIP: decode sessions, class/instance/attribute paths, tag names, and explicit messaging.
 - MQTT/OPC UA: reconstruct topics/nodes, publisher roles, credentials, retained messages, and process-state deltas.
 - CAN/CANopen: infer arbitration IDs, periodic frames, PDO/SDO patterns, endian, counters, and checksum bytes.
+- Historian/log exports: normalize timestamps, recover tag/value/unit columns, identify sparse writes, and correlate alarm rows with process deltas.
+- Project exports/firmware: extract symbols, comments, ladder/ST strings, tag databases, constants, network configuration, and custom encoders before dynamic interaction.
+- Serial/fieldbus captures: identify baud/framing, address fields, checksums, counters, and periodic control loops before replaying frames.
 
 ## Resources
 
-- `references/ot-protocol-workflow.md` — detailed protocol triage, field extraction, anomaly workflow, and validation cues.
-- `references/source-coverage.md` — source and gap coverage map for this dedicated skill.
+- [references/ot-protocol-workflow.md](references/ot-protocol-workflow.md) — detailed protocol triage, field extraction, anomaly workflow, and validation cues.

@@ -4,7 +4,7 @@ Patterns centered on staged decryptors, lattices, field arithmetic, decision tre
 
 ## Table of Contents
 - [Multi-Layer Self-Decrypting Binary](#multi-layer-self-decrypting-binary)
-- [Embedded ZIP + XOR License Decryption](#embedded-zip--xor-license-decryption)
+- [Embedded ZIP + XOR License Decryption](#embedded-zip-xor-license-decryption)
 - [Stack String Deobfuscation from .rodata XOR Blob](#stack-string-deobfuscation-from-rodata-xor-blob)
 - [Prefix Hash Brute-Force](#prefix-hash-brute-force)
 - [CVP/LLL Lattice for Constrained Integer Validation](#cvplll-lattice-for-constrained-integer-validation)

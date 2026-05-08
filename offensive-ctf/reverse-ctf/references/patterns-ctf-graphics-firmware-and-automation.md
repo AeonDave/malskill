@@ -8,7 +8,7 @@ Patterns built around emulation, rendering artifacts, firmware symbol recovery, 
 - [Thread Race Condition with Signed Integer Overflow](#thread-race-condition-with-signed-integer-overflow)
 - [ESP32/Xtensa Firmware Reversing with ROM Symbol Map](#esp32xtensa-firmware-reversing-with-rom-symbol-map)
 - [Batch Crackme Automation via objdump Pattern Extraction](#batch-crackme-automation-via-objdump-pattern-extraction)
-- [Fork + Pipe + Dead Branch Anti-Analysis](#fork--pipe--dead-branch-anti-analysis)
+- [Fork + Pipe + Dead Branch Anti-Analysis](#fork-pipe-dead-branch-anti-analysis)
 - [Time-Locked Binary with Date-Based Key](#time-locked-binary-with-date-based-key)
 - [ARM Code in Image Pixels via UnicornJS](#arm-code-in-image-pixels-via-unicornjs)
 

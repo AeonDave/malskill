@@ -4,6 +4,17 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Crypto - Modern Hash, MAC, and Collision Attacks
 
+## Use This Reference When
+
+- The artifact contains a digest, checksum, MAC, signature-over-hash, hash chain, truncated hash, CRC, or custom linear hash construction.
+- The likely break is length extension, collision generation, multicollision composition, CRC linearity, XOR aggregation, leaked intermediate state, or a flawed HMAC-like design.
+- The validation signal is a matching digest/MAC, accepted forged message, recovered secret component, or collision pair that passes the verifier.
+
+## External Anchors
+
+- RFC 2104 defines HMAC behavior, including the rule that keys longer than the hash block size are first hashed.
+- The 2020 "SHA-1 is a Shambles" result is the practical chosen-prefix collision baseline for SHA-1 collision workflows.
+
 ## Table of Contents
 - [Weak Hash Functions / GF(2) Gaussian Elimination](#weak-hash-functions-gf2-gaussian-elimination)
 - [Custom Linear MAC Forgery](#custom-linear-mac-forgery)
@@ -18,7 +29,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [SHA-1 Length Extension Plus AES-CBC Cookie Forgery](#sha-1-length-extension-plus-aes-cbc-cookie-forgery)
 - [Custom Hash State Reversal via Known Intermediates](#custom-hash-state-reversal-via-known-intermediates)
 - [CRC32 Brute-Force for Small Payloads](#crc32-brute-force-for-small-payloads)
-- [SHA-256 Bgeneric case Attack for XOR-Aggregate Hash Bypass](#sha-256-bgeneric-case-attack-for-xor-aggregate-hash-bypass)
+- [SHA-256 Basis Attack for XOR-Aggregate Hash Bypass](#sha-256-basis-attack-for-xor-aggregate-hash-bypass)
 - [Custom MAC Forgery via XOR Block Cancellation with Key Rotation](#custom-mac-forgery-via-xor-block-cancellation-with-key-rotation)
 - [Bit-by-Bit HMAC Key Recovery via XOR Plus Addition Arithmetic](#bit-by-bit-hmac-key-recovery-via-xor-plus-addition-arithmetic)
 - [SHA-1 Length Extension with UTF-8 High-Byte Bypass](#sha-1-length-extension-with-utf-8-high-byte-bypass)
@@ -206,7 +217,7 @@ new_hash, new_data = hashpumpy.hashpump(
 
 **Key insight:** Merkle-Damgard hashes (MD5, SHA-1, SHA-256) process data in blocks, and the hash output IS the internal state. Given `H(secret || msg)`, you can compute `H(secret || msg || padding || extension)` without knowing `secret` — just initialize the hash state from the known output and continue hashing. Only HMAC (`H(K XOR opad || H(K XOR ipad || msg))`) is immune. If the secret length is unknown, try lengths 1-32.
 
-*See also [ctf-web/auth-infra.md — Hash Length Extension Attack] for the same primitive applied to a web auth token bypass.*
+The same primitive also appears in web authentication tokens when the verifier computes a raw Merkle-Damgard hash over `secret || data` instead of HMAC.
 
 -
 
@@ -378,18 +389,18 @@ for chars in itertools.product(string.printable[:95], repeat=5):
 
 -
 
-## SHA-256 Bgeneric case Attack for XOR-Aggregate Hash Bypass
+## SHA-256 Basis Attack for XOR-Aggregate Hash Bypass
 
-**Pattern:** Find 256 files whose SHA-256 hashes form a bgeneric case for Z_2^256. Then for any target hash, compute which subset of bgeneric case files XORs to produce the desired hash difference. This breaks systems that verify integrity via `XOR(sha256(file_i)) == expected`.
+**Pattern:** Find 256 files whose SHA-256 hashes form a linear basis for `Z_2^256`. Then for any target hash, compute which subset of basis files XORs to produce the desired hash difference. This breaks systems that verify integrity via `XOR(sha256(file_i)) == expected`.
 
 ```python
 # 1. Generate ~300 random valid Python files
 # 2. Compute SHA-256 of each -> 256-bit vectors over GF(2)
 # 3. Gaussian elimination to find 256 linearly independent vectors
-# 4. Target: h_new XOR) = h_orig
-# 5. Solve the linear system to find which bgeneric case files to include
+# 4. Target: h_new XOR h_delta = h_orig
+# 5. Solve the linear system to find which basis files to include
 from sage.all import GF, matrix
-M = matrix(GF(2), [hash_to_bits(sha256(f)) for f in bgeneric case_files])
+M = matrix(GF(2), [hash_to_bits(sha256(f)) for f in basis_files])
 target = hash_to_bits(sha256(malicious_zip)) ^ hash_to_bits(original_hash)
 solution = M.solve_left(target)
 ```

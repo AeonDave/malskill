@@ -2,18 +2,17 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Peripheral Capture Analysis
+# CTF Forensics - USB and Peripheral Captures
 
-USB, HID, and Bluetooth peripheral traffic reconstruction from packet captures. For general network PCAP forensics (DNS/TCP/ICMP/SMB/RADIUS/RC4), see [network-advanced.md](network-advanced.md). For basic network forensics, see [network.md](network.md).
+USB, HID, and Bluetooth peripheral traffic reconstruction from packet captures. For general network PCAP forensics (DNS/TCP/ICMP/SMB/RADIUS/RC4), see [network-covert-and-protocols.md](network-covert-and-protocols.md). For basic network forensics, see [network-triage.md](network-triage.md).
 
 ## Table of Contents
-- [USB HID Mouse/Pen Drawing Recovery]
-- [USB HID Keyboard Capture Decoding]
-- [USB Keyboard LED Morse Code Exfiltration]
-- [USB HID Keyboard Arrow Key Navigation Tracking]
-- [Bluetooth RFCOMM Packet Reassembly]
-- [GBA USB URB_INTERRUPT Framebuffer Extraction]
-
+- [USB HID Mouse/Pen Drawing Recovery](#usb-hid-mousepen-drawing-recovery)
+- [USB HID Keyboard Capture Decoding](#usb-hid-keyboard-capture-decoding)
+- [USB Keyboard LED Morse Code Exfiltration](#usb-keyboard-led-morse-code-exfiltration)
+- [USB HID Keyboard Arrow Key Navigation Tracking](#usb-hid-keyboard-arrow-key-navigation-tracking)
+- [Bluetooth RFCOMM Packet Reassembly](#bluetooth-rfcomm-packet-reassembly)
+- [GBA USB URB_INTERRUPT Framebuffer Extraction](#gba-usb-urb_interrupt-framebuffer-extraction)
 -
 
 ## USB HID Mouse/Pen Drawing Recovery

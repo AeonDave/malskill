@@ -4,33 +4,32 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Forensics - Steganography
 
-Non-image steganography techniques (PDF, SVG, terminal, text, compression, spreadsheet) and general-purpose image stego patterns. For image-specific steganography (JPEG DQT/F5/slack, BMP bitplane, PNG palette, pixel permutation, edge matching), see [stego-image.md](stego-image.md). For advanced techniques (FFT, SSTV, audio, video, JPEG XL), see [stego-advanced.md](stego-advanced.md) and [stego-advanced-2.md](stego-advanced-2.md).
+Non-image steganography techniques (PDF, SVG, terminal, text, compression, spreadsheet) and general-purpose image stego patterns. For image-specific steganography (JPEG DQT/F5/slack, BMP bitplane, PNG palette, pixel permutation, edge matching), see [image-stego.md](image-stego.md). For advanced audio/archive techniques, see [audio-and-archive-stego.md](audio-and-archive-stego.md). For video and container stego, see [video-and-container-stego.md](video-and-container-stego.md).
 
 ## Table of Contents
 - [Quick Tools](#quick-tools)
 - [Binary Border Steganography](#binary-border-steganography)
-- [Multi-Layer PDF Steganography]
-- [Advanced PDF Steganography]
-- [SVG Animation Keyframe Steganography]
-- [PNG Chunk Reordering]
-- [File Format Overlays]
-- [Nested PNG with Iterating XOR Keys]
-- [GIF Frame Differential + Morse Code]
-- [GZSteg + Spammimic Text Steganography]
-- [Spreadsheet Frequency Analysis Binary Recovery]
-- [Kitty Terminal Graphics Protocol Decoding]
-- [ANSI Escape Sequence Steganography in Terminal Art]
-- [Autostereogram / Magic Eye Solving]
-- [Two-Layer Byte+Line Interleaving]
-- [Progressive PNG Layered XOR Decryption]
-- [Multi-Stream Video Container Steganography]
-- [APNG (Animated PNG) Frame Extraction]
-- [PNG Height/CRC Manipulation for Hidden Content]
-- [QR Code Reconstruction from Curved Glass Reflection in Video]
-- [GIF Palette Manipulation for QR Code Reconstruction]
-- [Angecryption: AES-CBC Encrypting One Valid File into Another]
-- [SVG Micro-Coordinate Steganography]
-
+- [Multi-Layer PDF Steganography](#multi-layer-pdf-steganography)
+- [Advanced PDF Steganography](#advanced-pdf-steganography)
+- [SVG Animation Keyframe Steganography](#svg-animation-keyframe-steganography)
+- [PNG Chunk Reordering](#png-chunk-reordering)
+- [File Format Overlays](#file-format-overlays)
+- [Nested PNG with Iterating XOR Keys](#nested-png-with-iterating-xor-keys)
+- [GIF Frame Differential + Morse Code](#gif-frame-differential-morse-code)
+- [GZSteg + Spammimic Text Steganography](#gzsteg-spammimic-text-steganography)
+- [Spreadsheet Frequency Analysis Binary Recovery](#spreadsheet-frequency-analysis-binary-recovery)
+- [Kitty Terminal Graphics Protocol Decoding](#kitty-terminal-graphics-protocol-decoding)
+- [ANSI Escape Sequence Steganography in Terminal Art](#ansi-escape-sequence-steganography-in-terminal-art)
+- [Autostereogram / Magic Eye Solving](#autostereogram-magic-eye-solving)
+- [Two-Layer Byte+Line Interleaving](#two-layer-byteline-interleaving)
+- [Progressive PNG Layered XOR Decryption](#progressive-png-layered-xor-decryption)
+- [Multi-Stream Video Container Steganography](#multi-stream-video-container-steganography)
+- [APNG (Animated PNG) Frame Extraction](#apng-animated-png-frame-extraction)
+- [PNG Height/CRC Manipulation for Hidden Content](#png-heightcrc-manipulation-for-hidden-content)
+- [QR Code Reconstruction from Curved Glass Reflection in Video](#qr-code-reconstruction-from-curved-glass-reflection-in-video)
+- [GIF Palette Manipulation for QR Code Reconstruction](#gif-palette-manipulation-for-qr-code-reconstruction)
+- [Angecryption: AES-CBC Encrypting One Valid File into Another](#angecryption-aes-cbc-encrypting-one-valid-file-into-another)
+- [SVG Micro-Coordinate Steganography](#svg-micro-coordinate-steganography)
 -
 
 ## Quick Tools

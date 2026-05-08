@@ -1,7 +1,3 @@
-# Preserved source: social-media.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # Social Media OSINT
 
 ## Table of Contents
@@ -12,13 +8,11 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [Platform False Positives](#platform-false-positives)
 - [Social Media General Tips](#social-media-general-tips)
 - [Multi-Platform OSINT Chain](#multi-platform-osint-chain)
-- [Gaming Platform OSINT / MMO Character Lookup]
-- [OSINT Challenge Patterns]
-- [Unicode Homoglyph Steganography on BlueSky]
-- [Strava Fitness Route OSINT]
+- [Gaming Platform OSINT / MMO Character Lookup](#gaming-platform-osint-mmo-character-lookup)
+- [OSINT Challenge Patterns](#osint-challenge-patterns)
+- [Unicode Homoglyph Steganography on BlueSky](#unicode-homoglyph-steganography-on-bluesky)
+- [Strava Fitness Route OSINT](#strava-fitness-route-osint)
 - [Discord API Enumeration](#discord-api-enumeration)
-
--
 
 ## Twitter/X Account Tracking
 

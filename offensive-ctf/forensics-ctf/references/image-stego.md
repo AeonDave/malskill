@@ -4,30 +4,29 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Forensics - Image Steganography
 
-Techniques specific to hiding data in image formats (JPEG, PNG, BMP, GIF). For non-image steganography (PDF, audio, terminal, text), see [steganography.md](steganography.md). For advanced techniques (FFT, SSTV, audio, video, JPEG XL), see [stego-advanced.md](stego-advanced.md) and [stego-advanced-2.md](stego-advanced-2.md).
+Techniques specific to hiding data in image formats (JPEG, PNG, BMP, GIF). For non-image steganography (PDF, audio, terminal, text), see [steganography.md](steganography.md). For advanced audio/archive techniques, see [audio-and-archive-stego.md](audio-and-archive-stego.md). For video and container stego, see [video-and-container-stego.md](video-and-container-stego.md).
 
 ## Table of Contents
-- [JPEG Unused Quantization Table LSB Steganography]
-- [BMP Bitplane QR Code Extraction + Steghide]
-- [Image Jigsaw Puzzle Reassembly via Edge Matching]
-- [F5 JPEG DCT Coefficient Ratio Detection]
-- [PNG Unused Palette Entry Steganography]
-- [QR Code Tile Reconstruction]
-- [Seed-Based Pixel Permutation + Multi-Bitplane QR]
-- [JPEG Thumbnail Pixel-to-Text Mapping]
-- [Conditional LSB Extraction — Near-Black Pixel Filter]
-- [JPEG Slack Space Steganography]
-- [Nearest-Neighbor Interpolation Steganography]
-- [RGB Parity Steganography]
-- [Pixel Coordinate Chain Steganography]
-- [AVI Frame Differential Pixel Steganography]
-- [JPEG Single-Bit-Flip Brute Force with OCR]
-- [GIF Frame PLTE Chunk Concatenation to ELF]
-- [Nested-Resize QR Overlay at Survivor Pixels]
-- [ImageMagick +append Puzzle Stitching + gaps Solver]
-- [Steghide Passphrase in JPEG Header Metadata]
-- [Corrupted PNG Magic and Lowercase Chunk Repair]
-
+- [JPEG Unused Quantization Table LSB Steganography](#jpeg-unused-quantization-table-lsb-steganography)
+- [BMP Bitplane QR Code Extraction + Steghide](#bmp-bitplane-qr-code-extraction-steghide)
+- [Image Jigsaw Puzzle Reassembly via Edge Matching](#image-jigsaw-puzzle-reassembly-via-edge-matching)
+- [F5 JPEG DCT Coefficient Ratio Detection](#f5-jpeg-dct-coefficient-ratio-detection)
+- [PNG Unused Palette Entry Steganography](#png-unused-palette-entry-steganography)
+- [QR Code Tile Reconstruction](#qr-code-tile-reconstruction)
+- [Seed-Based Pixel Permutation + Multi-Bitplane QR](#seed-based-pixel-permutation-multi-bitplane-qr)
+- [JPEG Thumbnail Pixel-to-Text Mapping](#jpeg-thumbnail-pixel-to-text-mapping)
+- [Conditional LSB Extraction — Near-Black Pixel Filter](#conditional-lsb-extraction-near-black-pixel-filter)
+- [JPEG Slack Space Steganography](#jpeg-slack-space-steganography)
+- [Nearest-Neighbor Interpolation Steganography](#nearest-neighbor-interpolation-steganography)
+- [RGB Parity Steganography](#rgb-parity-steganography)
+- [Pixel Coordinate Chain Steganography](#pixel-coordinate-chain-steganography)
+- [AVI Frame Differential Pixel Steganography](#avi-frame-differential-pixel-steganography)
+- [JPEG Single-Bit-Flip Brute Force with OCR](#jpeg-single-bit-flip-brute-force-with-ocr)
+- [GIF Frame PLTE Chunk Concatenation to ELF](#gif-frame-plte-chunk-concatenation-to-elf)
+- [Nested-Resize QR Overlay at Survivor Pixels](#nested-resize-qr-overlay-at-survivor-pixels)
+- [ImageMagick +append Puzzle Stitching + gaps Solver](#imagemagick-append-puzzle-stitching-gaps-solver)
+- [Steghide Passphrase in JPEG Header Metadata](#steghide-passphrase-in-jpeg-header-metadata)
+- [Corrupted PNG Magic and Lowercase Chunk Repair](#corrupted-png-magic-and-lowercase-chunk-repair)
 -
 
 ## JPEG Unused Quantization Table LSB Steganography

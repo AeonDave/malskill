@@ -22,10 +22,9 @@ Goal: solve miscellaneous multi-domain challenge solving tasks with professional
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
-5. Choose the smallest tool chain that can produce a validation signal.
-6. Record the exact proof path and stop once the objective is reproducible.
+3. Load debrandized imported references only for deep technique details.
+4. Choose the smallest tool chain that can produce a validation signal.
+5. Record the exact proof path and stop once the objective is reproducible.
 
 ## Technique integration
 
@@ -44,11 +43,11 @@ Use these as decision engines. This skill adds challenge-oriented triage, time-b
 
 Prefer these tool families when the corresponding signal appears:
 
-- `offensive-tools/cryptography/cyberchef`
-- `offensive-tools/network/netcat`
-- `offensive-tools/network/wireshark`
-- `offensive-tools/wireless/aircrack-ng`
-- `offensive-tools/wireless/kismet`
+- `cyberchef`
+- `netcat`
+- `wireshark`
+- `aircrack-ng`
+- `kismet`
 - `coding/python-patterns`
 - `coding/systematic-debugging`
 
@@ -72,7 +71,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources

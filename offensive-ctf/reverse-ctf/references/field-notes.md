@@ -1,15 +1,11 @@
-# Preserved source: field-notes.md
+# CTF Reverse - Field Notes
 
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
-# Reverse Engineering Field Notes
-
-Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after triage, not before.
+Detailed quick notes that support [`SKILL.md`](../SKILL.md). Read this file after triage, not before.
 
 ## Table of Contents
 
 - [Binary Types](#binary-types)
-  - [Python.pyc](#python-pyc)
+  - [Python pyc](#python-pyc)
   - [WASM](#wasm)
   - [Android APK](#android-apk)
   - [Flutter APK (Dart AOT)](#flutter-apk-dart-aot)
@@ -33,10 +29,10 @@ Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after t
   - [Roblox Place File Analysis](#roblox-place-file-analysis)
   - [Unstripped Binary Information Leaks](#unstripped-binary-information-leaks)
   - [Custom Mangle Function Reversing](#custom-mangle-function-reversing)
-  - [Rust serde_json Schema Recovery]
+  - [Rust serde_json Schema Recovery](#rust-serde_json-schema-recovery)
   - [Position-Based Transformation Reversing](#position-based-transformation-reversing)
   - [Hex-Encoded String Comparison](#hex-encoded-string-comparison)
-- [CTF Case Notes]
+- [CTF Case Notes](#ctf-case-notes)
   - [Embedded ZIP + XOR License Decryption](#embedded-zip-xor-license-decryption)
   - [Stack String Deobfuscation (.rodata XOR Blob)](#stack-string-deobfuscation-rodata-xor-blob)
   - [Prefix Hash Brute-Force](#prefix-hash-brute-force)
@@ -50,7 +46,7 @@ Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after t
   - [Android JNI RegisterNatives Obfuscation](#android-jni-registernatives-obfuscation)
   - [Multi-Layer Self-Decrypting Binary](#multi-layer-self-decrypting-binary)
   - [GLSL Shader VM with Self-Modifying Code](#glsl-shader-vm-with-self-modifying-code)
-  - [GF(2^8) Gaussian Elimination for Flag Recovery]
+  - [GF(2^8) Gaussian Elimination for Flag Recovery](#gf28-gaussian-elimination-for-flag-recovery)
   - [Z3 for Single-Line Python Boolean Circuit](#z3-for-single-line-python-boolean-circuit)
   - [Sliding Window Popcount Differential Propagation](#sliding-window-popcount-differential-propagation)
   - [Ruby/Perl Polyglot Constraint Satisfaction](#rubyperl-polyglot-constraint-satisfaction)
@@ -61,7 +57,7 @@ Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after t
   - [Brainfuck Character-by-Character Static Analysis](#brainfuck-character-by-character-static-analysis)
   - [Brainfuck Side-Channel via Read Count Oracle](#brainfuck-side-channel-via-read-count-oracle)
   - [Brainfuck Comparison Idiom Detection](#brainfuck-comparison-idiom-detection)
-  - [Backdoored Shared Library Detection]
+  - [Backdoored Shared Library Detection](#backdoored-shared-library-detection)
   - [Go Binary Reversing](#go-binary-reversing)
   - [Go Binary UUID Patching for C2 Enumeration](#go-binary-uuid-patching-for-c2-enumeration)
   - [D Language Binary Reversing](#d-language-binary-reversing)
@@ -85,7 +81,7 @@ Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after t
   - [Burrows-Wheeler Transform Inversion](#burrows-wheeler-transform-inversion)
   - [FRACTRAN Program Inversion](#fractran-program-inversion)
   - [Opcode-Only Trace Reconstruction](#opcode-only-trace-reconstruction)
-  - [Thread Race Signed Integer Overflow]
+  - [Thread Race Signed Integer Overflow](#thread-race-signed-integer-overflow)
   - [ESP32/Xtensa Firmware Reversing](#esp32xtensa-firmware-reversing)
   - [Custom VM Bytecode Lifting to LLVM IR](#custom-vm-bytecode-lifting-to-llvm-ir)
   - [SIGFPE Signal Handler Side-Channel](#sigfpe-signal-handler-side-channel)
@@ -95,8 +91,8 @@ Detailed quick notes that support [`SKILL.md`](SKILL.md). Read this file after t
 
 ## Binary Types
 
-### Python.pyc
-Disassemble with `marshal.load()` + `dis.dis()`. Header: 8 bytes (2.x), 12 (3.0-3.6), 16 (3.7+). See [languages.md](languages.md#python-bytecode-reversing-disdis-output).
+### Python pyc
+Disassemble with `marshal.load()` + `dis.dis()`. Header: 8 bytes (2.x), 12 (3.0-3.6), 16 (3.7+). See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md#python-bytecode-reversing).
 
 ### WASM
 ```bash
@@ -112,12 +108,12 @@ wat2wasm main.wat -o patched.wasm # Text → binary
 **WASM game patching:** If proof generation is independent of move quality, patch minimax (flip `i64.lt_s` → `i64.gt_s`, change bestScore sign) to make AI play badly while proofs remain valid. Invoke `/ctf-misc` for full game patching patterns (games-and-vms).
 
 ### Android APK
-`apktool d app.apk -o decoded/` for resources; `jadx app.apk` for Java decompilation. Check `decoded/res/values/strings.xml` for flags. See [tools.md](tools.md#android-apk).
+`apktool d app.apk -o decoded/` for resources; `jadx app.apk` for Java decompilation. Check `decoded/res/values/strings.xml` for flags. See [tools-bytecode-mobile-and-managed.md](tools-bytecode-mobile-and-managed.md#android-apk-toolchain).
 
 ### Flutter APK (Dart AOT)
-If `lib/arm64-v8a/libapp.so` + `libflutter.so` present, use [Blutter](https://github.com/worawit/blutter): `python3 blutter.py path/to/app/lib/arm64-v8a out_dir`. Outputs reconstructed Dart symbols + Frida script. See [tools.md](tools.md#flutter-apk-blutter).
+If `lib/arm64-v8a/libapp.so` + `libflutter.so` present, use [Blutter](https://github.com/worawit/blutter): `python3 blutter.py path/to/app/lib/arm64-v8a out_dir`. Outputs reconstructed Dart symbols + Frida script. See [languages-platforms-mobile-and-apps.md](languages-platforms-mobile-and-apps.md).
 
-###.NET
+### .NET
 - dnSpy - debugging + decompilation
 - ILSpy - decompiler
 
@@ -142,9 +138,9 @@ Common checks:
 - Signal-based: SIGTRAP handler, SIGALRM timeout, SIGSEGV for real logic
 - Frida/DBI detection: `/proc/self/maps` scan, port 27042, inline hook checks
 
-Bypass: Set breakpoint at check, modify register to bypass conditional. pwntools patch: `elf.asm(elf.symbols.ptrace, 'ret')` to replace function with immediate return. See [patterns.md](patterns.md#pwntools-binary-patching).
+Bypass: Set breakpoint at check, modify register to bypass conditional. pwntools patch: `elf.asm(elf.symbols.ptrace, 'ret')` to replace function with immediate return. See [anti-analysis-obfuscation-and-runtime.md](anti-analysis-obfuscation-and-runtime.md#comprehensive-bypass-strategies).
 
-For comprehensive anti-analysis techniques and bypasses (30+ methods with code), see [anti-analysis.md](anti-analysis.md).
+For comprehensive anti-analysis techniques and bypasses, see [anti-analysis-detection-and-evasion.md](anti-analysis-detection-and-evasion.md) and [anti-analysis-obfuscation-and-runtime.md](anti-analysis-obfuscation-and-runtime.md).
 
 ## Specialized Patterns
 
@@ -160,15 +156,15 @@ For comprehensive anti-analysis techniques and bypasses (30+ methods with code),
 4. Often easier to bruteforce than fully reverse
 5. Look for the bytecode file loaded via command-line arg
 
-See [patterns.md](patterns.md#custom-vm-reversing) for VM workflow, opcode tables, and state machine BFS.
+See [patterns-static-vm-obfuscation-and-memory.md](patterns-static-vm-obfuscation-and-memory.md#custom-vm-reversing) for VM workflow, opcode tables, and state machine BFS.
 
-**Sequential key-chain brute-force:** When a VM validates input in small blocks (e.g., 3 bytes = 2^24 candidates) with each block's output key feeding the next, brute-force each block sequentially with OpenMP parallelization. Compile solver with `gcc -O3 -march=native -fopenmp`. See [patterns-ctf.md].
+**Sequential key-chain brute-force:** When a VM validates input in small blocks (e.g., 3 bytes = 2^24 candidates) with each block's output key feeding the next, brute-force each block sequentially with OpenMP parallelization. Compile solver with `gcc -O3 -march=native -fopenmp`. See [patterns-ctf-runtime-and-ui.md](patterns-ctf-runtime-and-ui.md#vm-sequential-key-chain-brute-force).
 
 ### Python Bytecode Reversing
-XOR flag checkers with interleaved even/odd tables are common. See [languages.md](languages.md#python-bytecode-reversing-disdis-output) for bytecode analysis tips and reversing patterns.
+XOR flag checkers with interleaved even/odd tables are common. See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md#python-bytecode-reversing) for bytecode analysis tips and reversing patterns.
 
 ### Signal-Based Binary Exploration
-Binary uses UNIX signals as binary tree navigation; hook `sigaction` via `LD_PRELOAD`, DFS by sending signals. See [patterns.md](patterns.md#signal-based-binary-exploration).
+Binary uses UNIX signals as binary tree navigation; hook `sigaction` via `LD_PRELOAD`, DFS by sending signals. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#signal-based-binary-exploration).
 
 ### Malware Anti-Analysis Bypass via Patching
 Flip `JNZ`/`JZ` (0x75/0x74), change sleep values, patch environment checks in Ghidra (`Ctrl+Shift+G`). See [patterns-runtime.md](patterns-runtime.md#malware-anti-analysis-bypass-via-patching).
@@ -177,13 +173,13 @@ Flip `JNZ`/`JZ` (0x75/0x74), change sleep values, patch environment checks in Gh
 Locate with `objdump -s -j.rodata binary | less` — look near comparison instructions, size matches flag length.
 
 ### x86-64 Gotchas
-Sign extension and 32-bit truncation pitfalls. See [patterns.md](patterns.md#x86-64-gotchas) for details and code examples.
+Sign extension and 32-bit truncation pitfalls. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#x86-64-gotchas) for details and code examples.
 
 ### Iterative Solver Pattern
-Try each byte (0-255) per position, match against expected output. **Uniform transform shortcut:** if one input byte only changes one output byte, build 0..255 mapping then invert. See [patterns.md](patterns.md) for full implementation.
+Try each byte (0-255) per position, match against expected output. **Uniform transform shortcut:** if one input byte only changes one output byte, build 0..255 mapping then invert. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#byte-wise-uniform-transforms).
 
 ### Unicorn Emulation (Complex State)
-`from unicorn import *` - map segments, set up stack, hook to trace. **Mixed-mode pitfall:** 64-bit stub jumping to 32-bit via `retf` requires switching to UC_MODE_32 and copying GPRs + EFLAGS + XMM regs. See [tools.md](tools.md#unicorn-emulation).
+`from unicorn import *` - map segments, set up stack, hook to trace. **Mixed-mode pitfall:** 64-bit stub jumping to 32-bit via `retf` requires switching to UC_MODE_32 and copying GPRs + EFLAGS + XMM regs. See [tools-emulation-and-side-channels.md](tools-emulation-and-side-channels.md#unicorn).
 
 ### Multi-Stage Shellcode Loaders
 Nested shellcode with XOR decode loops; break at `call rax`, bypass ptrace with `set $rax=0`, extract flag from `mov` instructions. See [patterns-runtime.md](patterns-runtime.md#multi-stage-shellcode-loaders).
@@ -192,126 +188,126 @@ Nested shellcode with XOR decode loops; break at `call rax`, bypass ptrace with 
 Validation time varies per correct character; measure elapsed time per candidate to recover flag byte-by-byte. See [patterns-runtime.md](patterns-runtime.md#timing-side-channel-attack).
 
 ### Godot Game Asset Extraction
-Use KeyDot to extract encryption key from executable, then gdsdecomp to extract.pck package. See [languages-platforms.md](languages-platforms.md#godot-game-asset-extraction).
+Use KeyDot to extract encryption key from executable, then gdsdecomp to extract.pck package. See [languages-platforms-games-and-special-platforms.md](languages-platforms-games-and-special-platforms.md#godot-game-asset-extraction).
 
 ### Roblox Place File Analysis
-Query Asset Delivery API for version history; parse `.rbxlbin` chunks (INST/PROP/PRNT) to diff script sources across versions. See [languages-platforms.md](languages-platforms.md#roblox-place-file-analysis).
+Query Asset Delivery API for version history; parse `.rbxlbin` chunks (INST/PROP/PRNT) to diff script sources across versions. See [languages-platforms-games-and-special-platforms.md](languages-platforms-games-and-special-platforms.md#roblox-place-file-analysis).
 
 ### Unstripped Binary Information Leaks
 **Pattern:** Debug info and file paths leak author identity. Quick checks: `strings binary | grep "/home/"` (home dirs), `file binary` (stripped?), `readelf -S binary | grep debug` (debug sections).
 
 ### Custom Mangle Function Reversing
-Binary mangles input 2 bytes at a time with running state; extract target from `.rodata`, write inverse function. See [patterns.md](patterns.md#custom-mangle-function-reversing).
+Binary mangles input 2 bytes at a time with running state; extract target from `.rodata`, write inverse function. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#custom-mangle-function-reversing).
 
 ### Rust serde_json Schema Recovery
-Disassemble serde `Visitor` implementations to recover expected JSON schema; field names in order reveal flag. See [languages-platforms.md].
+Disassemble serde `Visitor` implementations to recover expected JSON schema; field names in order reveal flag. See [languages-platforms-games-and-special-platforms.md](languages-platforms-games-and-special-platforms.md#rust-serde_json-schema-recovery).
 
 ### Position-Based Transformation Reversing
-Binary adds/subtracts position index; reverse by undoing per-index offset. See [patterns.md](patterns.md#position-based-transformation-reversing).
+Binary adds/subtracts position index; reverse by undoing per-index offset. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#position-based-transformation-reversing).
 
 ### Hex-Encoded String Comparison
-Input converted to hex, compared against constant. Decode with `xxd -r -p`. See [patterns.md](patterns.md#hex-encoded-string-comparison).
+Input converted to hex, compared against constant. Decode with `xxd -r -p`. See [patterns-transforms-keystreams-and-signal-paths.md](patterns-transforms-keystreams-and-signal-paths.md#hex-encoded-string-comparison).
 
 ## CTF Case Notes
 
 ### Embedded ZIP + XOR License Decryption
-Binary with named symbols (`EMBEDDED_ZIP`, `ENCRYPTED_MESSAGE`) in `.rodata` → extract ZIP containing license, XOR encrypted message with license bytes to recover flag. No execution needed. See [patterns-ctf.md].
+Binary with named symbols (`EMBEDDED_ZIP`, `ENCRYPTED_MESSAGE`) in `.rodata` → extract ZIP containing license, XOR encrypted message with license bytes to recover flag. No execution needed. See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### Stack String Deobfuscation (.rodata XOR Blob)
-Binary mmaps `.rodata` blob, XOR-deobfuscates, uses it to validate input. Reimplement verification loop with pyelftools to extract blob. Look for `0x9E3779B9`, `0x85EBCA6B` constants and `rol32()`. See [patterns-ctf.md].
+Binary mmaps `.rodata` blob, XOR-deobfuscates, uses it to validate input. Reimplement verification loop with pyelftools to extract blob. Look for `0x9E3779B9`, `0x85EBCA6B` constants and `rol32()`. See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### Prefix Hash Brute-Force
-Binary hashes every prefix independently. Recover one character at a time by matching prefix hashes. See [patterns-ctf.md].
+Binary hashes every prefix independently. Recover one character at a time by matching prefix hashes. See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### Mathematical Convergence Bitmap
-**Pattern:** Binary classifies coordinate pairs by Newton's method convergence (e.g., z^3-1=0). Grid of pass/fail results renders ASCII art flag. Key: the binary is a classifier, not a checker — reverse the math and visualize. See [patterns-ctf.md].
+**Pattern:** Binary classifies coordinate pairs by Newton's method convergence (e.g., z^3-1=0). Grid of pass/fail results renders ASCII art flag. Key: the binary is a classifier, not a checker — reverse the math and visualize. See [patterns-ctf-analysis-and-extraction.md](patterns-ctf-analysis-and-extraction.md#mathematical-convergence-bitmap).
 
 ### RISC-V Binary Analysis
-Statically linked, stripped RISC-V ELF. Use Capstone with `CS_MODE_RISCVC | CS_MODE_RISCV64` for mixed compressed instructions. Emulate with `qemu-riscv64`. Watch for fake flags and XOR decryption with incremental keys. See [tools.md].
+Statically linked, stripped RISC-V ELF. Use Capstone with `CS_MODE_RISCVC | CS_MODE_RISCV64` for mixed compressed instructions. Emulate with `qemu-riscv64`. Watch for fake flags and XOR decryption with incremental keys. See [tools-bytecode-mobile-and-managed.md](tools-bytecode-mobile-and-managed.md#risc-v-analysis-helpers).
 
 ### Sprague-Grundy Game Theory Binary
-Game binary plays bounded Nim with PRNG for losing-position moves. Identify game framework (Grundy values = pile % (k+1), XOR determines position), track PRNG state evolution through user input feedback. See [patterns-ctf.md].
+Game binary plays bounded Nim with PRNG for losing-position moves. Identify game framework (Grundy values = pile % (k+1), XOR determines position), track PRNG state evolution through user input feedback. See [patterns-ctf-systems-and-vms.md](patterns-ctf-systems-and-vms.md#sprague-grundy-game-theory-binary).
 
 ### Kernel Module Maze Solving
-Rust kernel module implements maze via device ioctls. Enumerate commands dynamically, build DFS solver with decoy avoidance, deploy as minimal static binary (raw syscalls, no libc). See [patterns-ctf.md].
+Rust kernel module implements maze via device ioctls. Enumerate commands dynamically, build DFS solver with decoy avoidance, deploy as minimal static binary (raw syscalls, no libc). See [patterns-ctf-systems-and-vms.md](patterns-ctf-systems-and-vms.md#kernel-module-maze-solving).
 
 ### Multi-Threaded VM with Channels
 Custom VM with 16+ threads communicating via futex channels. Trace data flow across thread boundaries, extract constants
 
 ### CVP/LLL Lattice for Constrained Integer Validation
-Binary validates flag via matrix multiplication with 64-bit coefficients; solutions must be printable ASCII. Use LLL reduction + CVP in SageMath to find nearest lattice point in the constrained range. Two-phase pattern: Phase 1 recovers AES key, Phase 2 decrypts custom VM bytecode with another linear system (mod 2^32). See [patterns-ctf.md].
+Binary validates flag via matrix multiplication with 64-bit coefficients; solutions must be printable ASCII. Use LLL reduction + CVP in SageMath to find nearest lattice point in the constrained range. Two-phase pattern: Phase 1 recovers AES key, Phase 2 decrypts custom VM bytecode with another linear system (mod 2^32). See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### Decision Tree Function Obfuscation
 ~200+ auto-generated functions routing input through polynomial comparisons. Script extraction via Ghidra headless rather than reversing each function manually. Constraint propagation
 
 ### Android JNI RegisterNatives Obfuscation
-`RegisterNatives` in `JNI_OnLoad` hides which C++ function handles each Java native method (no standard `Java_com_pkg_Class_method` symbol). Find the real handler by tracing `JNI_OnLoad` → `RegisterNatives` → `fnPtr`. Use x86_64 `.so` from APK for best Ghidra decompilation. See [languages-platforms.md].
+`RegisterNatives` in `JNI_OnLoad` hides which C++ function handles each Java native method (no standard `Java_com_pkg_Class_method` symbol). Find the real handler by tracing `JNI_OnLoad` -> `RegisterNatives` -> `fnPtr`. Use x86_64 `.so` from APK for best Ghidra decompilation. See [languages-platforms-mobile-and-apps.md](languages-platforms-mobile-and-apps.md#android-jni-registernatives-obfuscation).
 
 ### Multi-Layer Self-Decrypting Binary
-N-layer binary where each layer decrypts the next using user-provided key bytes + SHA-NI. Use oracle (correct key → valid code with expected pattern). JIT execution with fork-per-candidate COW isolation for speed. See [patterns-ctf.md].
+N-layer binary where each layer decrypts the next using user-provided key bytes + SHA-NI. Use oracle (correct key → valid code with expected pattern). JIT execution with fork-per-candidate COW isolation for speed. See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### GLSL Shader VM with Self-Modifying Code
-**Pattern:** WebGL2 fragment shader implements Turing-complete VM on a 256x256 RGBA texture (program memory + VRAM). Self-modifying code (STORE opcode) patches drawing instructions. GPU parallelism causes write conflicts — emulate sequentially in Python to recover full output. See [patterns-ctf.md].
+**Pattern:** WebGL2 fragment shader implements Turing-complete VM on a 256x256 RGBA texture (program memory + VRAM). Self-modifying code (STORE opcode) patches drawing instructions. GPU parallelism causes write conflicts — emulate sequentially in Python to recover full output. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#glsl-shader-vm-with-self-modifying-code).
 
 ### GF(2^8) Gaussian Elimination for Flag Recovery
-**Pattern:** Binary performs Gaussian elimination over GF(2^8) with the AES polynomial (0x11b). Matrix + augmentation vector in `.rodata`; solution vector is the flag. Look for constant `0x1b` in disassembly. Addition is XOR, multiplication uses polynomial reduction. See [patterns-ctf.md].
+**Pattern:** Binary performs Gaussian elimination over GF(2^8) with the AES polynomial (0x11b). Matrix + augmentation vector in `.rodata`; solution vector is the flag. Look for constant `0x1b` in disassembly. Addition is XOR, multiplication uses polynomial reduction. See [patterns-ctf-constraint-and-crypto.md](patterns-ctf-constraint-and-crypto.md).
 
 ### Z3 for Single-Line Python Boolean Circuit
-**Pattern:** Single-line Python with walrus operator chains validates flag as big-endian integer via boolean circuit. Obfuscated XOR `(a | b) & ~(a & b)`. Split on semicolons, translate to Z3 symbolically, solve in under a second. See [patterns-ctf.md].
+**Pattern:** Single-line Python with walrus operator chains validates flag as big-endian integer via boolean circuit. Obfuscated XOR `(a | b) & ~(a & b)`. Split on semicolons, translate to Z3 symbolically, solve in under a second. See [patterns-ctf-runtime-and-ui.md](patterns-ctf-runtime-and-ui.md#z3-for-single-line-python-boolean-circuit).
 
 ### Sliding Window Popcount Differential Propagation
-**Pattern:** Binary validates input via expected popcount for each position of a 16-bit sliding window. Popcount differences create a recurrence: `bit[i+16] = bit[i] + (data[i+1] - data[i])`. Brute-force ~4000-8000 valid initial 16-bit windows; each determines the entire bit sequence. See [patterns-ctf.md].
+**Pattern:** Binary validates input via expected popcount for each position of a 16-bit sliding window. Popcount differences create a recurrence: `bit[i+16] = bit[i] + (data[i+1] - data[i])`. Brute-force ~4000-8000 valid initial 16-bit windows; each determines the entire bit sequence. See [patterns-ctf-runtime-and-ui.md](patterns-ctf-runtime-and-ui.md#sliding-window-popcount-differential-propagation).
 
 ### Ruby/Perl Polyglot Constraint Satisfaction
-**Pattern:** Single file valid in both Ruby and Perl, each imposing different constraints on a key. Exploits `=begin`/`=end` (Ruby block comment) vs `=begin`/`=cut` (Perl POD) to run different code per interpreter. Intersect constraints from both languages to recover the unique key. See [languages-platforms.md].
+**Pattern:** Single file valid in both Ruby and Perl, each imposing different constraints on a key. Exploits `=begin`/`=end` (Ruby block comment) vs `=begin`/`=cut` (Perl POD) to run different code per interpreter. Intersect constraints from both languages to recover the unique key. See [languages-platforms-games-and-special-platforms.md](languages-platforms-games-and-special-platforms.md).
 
 ### Verilog/Hardware RE
-**Pattern:** Verilog HDL source for state machines with hidden conditions gated on shift register history. Analyze `always @(posedge clk)` blocks and `case` statements to find correct input sequences. See [languages-platforms.md].
+**Pattern:** Verilog HDL source for state machines with hidden conditions gated on shift register history. Analyze `always @(posedge clk)` blocks and `case` statements to find correct input sequences. See [languages-platforms-games-and-special-platforms.md](languages-platforms-games-and-special-platforms.md).
 
 ### Custom binfmt Kernel Module with RC4 Flat Binaries
 **Pattern:** Kernel module registers binfmt handler for encrypted flat binaries. Reverse the `.ko` to find RC4 key (in `movabs` immediates), decrypt the flat binary, import at the fixed virtual address
 
 ### Hash-Resolved Imports / No-Import Ransomware
-**Pattern:** Binary with zero visible imports resolves APIs via symbol name hashing at runtime. Skip the hash reversing — hook OpenSSL functions via `LD_PRELOAD` in Docker to capture AES keys directly. See [patterns-ctf.md].
+**Pattern:** Binary with zero visible imports resolves APIs via symbol name hashing at runtime. Skip the hash reversing — hook OpenSSL functions via `LD_PRELOAD` in Docker to capture AES keys directly. See [patterns-ctf-systems-and-vms.md](patterns-ctf-systems-and-vms.md#hash-resolved-imports-no-import-ransomware).
 
 ### ELF Section Header Corruption for Anti-Analysis
-**Pattern:** Corrupted section headers crash analysis tools but program headers are intact so binary runs normally. Patch `e_shoff` to zero or use `readelf -l` (program headers only). Flag hidden after corrupted sections with magic marker + XOR. See [patterns-ctf.md].
+**Pattern:** Corrupted section headers crash analysis tools but program headers are intact so binary runs normally. Patch `e_shoff` to zero or use `readelf -l` (program headers only). Flag hidden after corrupted sections with magic marker + XOR. See [patterns-ctf-systems-and-vms.md](patterns-ctf-systems-and-vms.md#elf-section-header-corruption-for-anti-analysis).
 
 ### Brainfuck Character-by-Character Static Analysis
-**Pattern:** BF programs validating input have `,` (read char) followed by `+` operations whose count = expected ASCII value. Extract increment counts per input position to recover expected input without execution. See [languages.md].
+**Pattern:** BF programs validating input have `,` (read char) followed by `+` operations whose count = expected ASCII value. Extract increment counts per input position to recover expected input without execution. See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md).
 
 ### Brainfuck Side-Channel via Read Count Oracle
-**Pattern:** BF input validators read more bytes when a character is correct. Count `,` operations per candidate — highest read count = correct byte. Character-by-character recovery. See [languages.md].
+**Pattern:** BF input validators read more bytes when a character is correct. Count `,` operations per candidate — highest read count = correct byte. Character-by-character recovery. See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md).
 
 ### Brainfuck Comparison Idiom Detection
-**Pattern:** Compiled BF uses fixed idioms for equality checks (`<[-<->] +<[>-<[-]]>[-<+>]`). Instrument interpreter to detect patterns and extract comparison operands (expected flag bytes). See [languages.md].
+**Pattern:** Compiled BF uses fixed idioms for equality checks (`<[-<->] +<[>-<[-]]>[-<+>]`). Instrument interpreter to detect patterns and extract comparison operands (expected flag bytes). See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md).
 
 ### Backdoored Shared Library Detection
-Binary works in GDB but fails when run normally (suid)? Check `ldd` for non-standard libc paths, then `strings | diff` the suspicious vs. system library to find injected code/passwords. See [patterns-ctf.md].
+Binary works in GDB but fails when run normally (suid)? Check `ldd` for non-standard libc paths, then `strings | diff` the suspicious vs. system library to find injected code/passwords. See [patterns-ctf-systems-and-vms.md](patterns-ctf-systems-and-vms.md#backdoored-shared-library-detection-via-string-diffing).
 
 ### Go Binary Reversing
-Large static binary with `go.buildid`? Use GoReSym to recover function names (works even on stripped binaries). Go strings are `{ptr, len}` pairs — not null-terminated. Look for `main.main`, `runtime.gopanic`, channel ops (`runtime.chansend1`/`chanrecv1`). Use Ghidra golang-loader plugin for best results. See [languages-compiled.md](languages-compiled.md#go-binary-reversing).
+Large static binary with `go.buildid`? Use GoReSym to recover function names (works even on stripped binaries). Go strings are `{ptr, len}` pairs — not null-terminated. Look for `main.main`, `runtime.gopanic`, channel ops (`runtime.chansend1`/`chanrecv1`). Use Ghidra golang-loader plugin for best results. See [languages-compiled-go-rust-and-native.md](languages-compiled-go-rust-and-native.md#go-binary-reversing).
 
 ### Go Binary UUID Patching for C2 Enumeration
-**Pattern:** Go C2 client with UUID from `-ldflags -X`. Binary-patch UUID bytes (same length), register with C2, enumerate clients/files via API. See [languages-compiled.md].
+**Pattern:** Go C2 client with UUID from `-ldflags -X`. Binary-patch UUID bytes (same length), register with C2, enumerate clients/files via API. See [languages-compiled-go-rust-and-native.md](languages-compiled-go-rust-and-native.md).
 
 ### D Language Binary Reversing
-D language binaries have unique symbol mangling (not C++ style). Template-heavy, many function variants. Look for `_D` prefix in symbols. See [languages-compiled.md].
+D language binaries have unique symbol mangling (not C++ style). Template-heavy, many function variants. Look for `_D` prefix in symbols. See [languages-compiled-go-rust-and-native.md](languages-compiled-go-rust-and-native.md).
 
 ### Rust Binary Reversing
-Binary with `core::panicking` strings and `_ZN` mangled symbols? Use `rustfilt` for demangling. Panic messages contain source paths and line numbers — `strings binary | grep "panicked"` is the fastest approach. Option/Result enums use discriminant byte (0=None/Err, 1=Some/Ok). See [languages-compiled.md](languages-compiled.md#rust-binary-reversing).
+Binary with `core::panicking` strings and `_ZN` mangled symbols? Use `rustfilt` for demangling. Panic messages contain source paths and line numbers — `strings binary | grep "panicked"` is the fastest approach. Option/Result enums use discriminant byte (0=None/Err, 1=Some/Ok). See [languages-compiled-go-rust-and-native.md](languages-compiled-go-rust-and-native.md#rust-binary-reversing).
 
 ### Frida Dynamic Instrumentation
-Hook runtime functions without modifying binary. `frida -f./binary -l hook.js` to spawn with instrumentation. Hook `strcmp`/`memcmp` to capture expected values, bypass anti-debug by replacing `ptrace` return value, scan memory for flag patterns, replace validation functions. See [tools-dynamic.md](tools-dynamic.md#frida-dynamic-instrumentation).
+Hook runtime functions without modifying binary. `frida -f./binary -l hook.js` to spawn with instrumentation. Hook `strcmp`/`memcmp` to capture expected values, bypass anti-debug by replacing `ptrace` return value, scan memory for flag patterns, replace validation functions. See [tools-dynamic-analysis-and-instrumentation.md](tools-dynamic-analysis-and-instrumentation.md#frida).
 
 ### Frida Firebase Cloud Functions Bypass
-**Pattern:** Android app validates via Firebase Cloud Functions. Post-login Frida hook constructs valid payload (UID + value + timestamp) and calls Cloud Function directly, bypassing QR/payment validation. See [languages-platforms.md].
+**Pattern:** Android app validates via Firebase Cloud Functions. Post-login Frida hook constructs valid payload (UID + value + timestamp) and calls Cloud Function directly, bypassing QR/payment validation. See [languages-platforms-mobile-and-apps.md](languages-platforms-mobile-and-apps.md#frida-firebase-cloud-functions-bypass).
 
 ### angr Symbolic Execution
-Automatic path exploration to find inputs satisfying constraints. Load binary with `angr.Project`, set find/avoid addresses, call `simgr.explore()`. Constrain input to printable ASCII and known prefix for faster solving. Hook expensive functions (crypto, I/O) to prevent path explosion. See [tools-dynamic.md](tools-dynamic.md#angr-symbolic-execution).
+Automatic path exploration to find inputs satisfying constraints. Load binary with `angr.Project`, set find/avoid addresses, call `simgr.explore()`. Constrain input to printable ASCII and known prefix for faster solving. Hook expensive functions (crypto, I/O) to prevent path explosion. See [tools-dynamic-analysis-and-instrumentation.md](tools-dynamic-analysis-and-instrumentation.md#angr).
 
 ### Qiling Emulation
-Cross-platform binary emulation with OS-level support (syscalls, filesystem). Emulate Linux/Windows/ARM/MIPS binaries on any host. No debugger artifacts — bypasses all anti-debug by default. Hook syscalls and addresses with Python API. See [tools-emulation.md](tools-emulation.md#qiling-framework-cross-platform-emulation).
+Cross-platform binary emulation with OS-level support (syscalls, filesystem). Emulate Linux/Windows/ARM/MIPS binaries on any host. No debugger artifacts — bypasses all anti-debug by default. Hook syscalls and addresses with Python API. See [tools-emulation-and-side-channels.md](tools-emulation-and-side-channels.md#qiling).
 
 ### VMProtect / Themida Analysis
 VMProtect virtualizes code into custom bytecode. Identify VM entry (pushad-like), find handler table (large indirect jump), trace handlers dynamically. For CTF, focus on tracing operations on input rather than full devirtualization. Themida: dump at OEP with ScyllaHide + Scylla. See [tools-advanced.md](tools-advanced.md#vmprotect-analysis).
@@ -323,58 +319,58 @@ BinDiff and Diaphora compare two binaries to highlight changes. Essential when A
 pwndbg: `context`, `vmmap`, `search -s "flag{"`, `telescope $rsp`. GEF alternative. Reverse debugging with `rr record`/`rr replay` — step backward through execution. Python scripting for brute-force and automated tracing. See [tools-advanced.md](tools-advanced.md#advanced-gdb-techniques).
 
 ### macOS / iOS Reversing
-Mach-O binaries: `otool -l` for load commands, `class-dump` for Objective-C headers. Swift: `swift demangle` for symbols. iOS apps: decrypt FairPlay DRM with frida-ios-dump, bypass jailbreak detection with Frida hooks. Re-sign patched binaries with `codesign -f -s -`. See [platforms.md](platforms.md#macos-ios-reversing).
+Mach-O binaries: `otool -l` for load commands, `class-dump` for Objective-C headers. Swift: `swift demangle` for symbols. iOS apps: decrypt FairPlay DRM with frida-ios-dump, bypass jailbreak detection with Frida hooks. Re-sign patched binaries with `codesign -f -s -`. See [platforms-apple-firmware-and-kernel.md](platforms-apple-firmware-and-kernel.md#macos-ios-reversing).
 
 ### Embedded / IoT Firmware RE
-`binwalk -Me firmware.bin` for recursive extraction. Hardware: UART/JTAG/SPI flash for firmware dumps. Filesystems: SquashFS (`unsquashfs`), JFFS2, UBI. Emulate with QEMU: `qemu-arm -L /usr/arm-linux-gnueabihf/./binary`. See [platforms.md](platforms.md#embedded-iot-firmware-re).
+`binwalk -Me firmware.bin` for recursive extraction. Hardware: UART/JTAG/SPI flash for firmware dumps. Filesystems: SquashFS (`unsquashfs`), JFFS2, UBI. Emulate with QEMU: `qemu-arm -L /usr/arm-linux-gnueabihf/./binary`. See [platforms-apple-firmware-and-kernel.md](platforms-apple-firmware-and-kernel.md#embedded-iot-firmware-re).
 
 ### Kernel Driver Reversing
-Linux `.ko`: find ioctl handler via `file_operations` struct, trace `copy_from_user`/`copy_to_user`. Debug with QEMU+GDB (`-s -S`). eBPF: `bpftool prog dump xlated`. Windows `.sys`: find `DriverEntry` → `IoCreateDevice` → IRP handlers. See [platforms.md](platforms.md#kernel-driver-reversing).
+Linux `.ko`: find ioctl handler via `file_operations` struct, trace `copy_from_user`/`copy_to_user`. Debug with QEMU+GDB (`-s -S`). eBPF: `bpftool prog dump xlated`. Windows `.sys`: find `DriverEntry` → `IoCreateDevice` → IRP handlers. See [platforms-apple-firmware-and-kernel.md](platforms-apple-firmware-and-kernel.md#kernel-driver-reversing).
 
 ### Game Engine Reversing
-Unreal: extract.pak with UnrealPakTool, reverse Blueprint bytecode with FModel. Unity Mono: decompile Assembly-CSharp.dll with dnSpy. Anti-cheat (EAC, BattlEye, VAC): identify system, bypass specific check. Lua games: `luadec`/`unluac` for bytecode. See [platforms.md](platforms.md#game-engine-reversing).
+Unreal: extract.pak with UnrealPakTool, reverse Blueprint bytecode with FModel. Unity Mono: decompile Assembly-CSharp.dll with dnSpy. Anti-cheat (EAC, BattlEye, VAC): identify system, bypass specific check. Lua games: `luadec`/`unluac` for bytecode. See [platforms-games-hardware-and-special-cases.md](platforms-games-hardware-and-special-cases.md#game-engine-reversing).
 
 ### Swift / Kotlin Binary Reversing
-Swift: `swift demangle` symbols, protocol witness tables for dispatch, `__swift5_*` sections. Kotlin/JVM: coroutines compile to state machines in `invokeSuspend`, `jadx` with Kotlin mode for best decompilation. Kotlin/Native: LLVM backend, looks like C++ in disassembly. See [languages-compiled.md](languages-compiled.md#swift-binary-reversing).
+Swift: `swift demangle` symbols, protocol witness tables for dispatch, `__swift5_*` sections. Kotlin/JVM: coroutines compile to state machines in `invokeSuspend`, `jadx` with Kotlin mode for best decompilation. Kotlin/Native: LLVM backend, looks like C++ in disassembly. See [languages-compiled-go-rust-and-native.md](languages-compiled-go-rust-and-native.md#swift-binary-reversing).
 
 ### INT3 Patch + Coredump Brute-Force Oracle
-Patch `0xCC` (INT3) after transform output, enable core dumps, brute-force each input character by extracting computed state from coredump via `strings`. Avoids full reverse of transformation. See [patterns.md].
+Patch `0xCC` (INT3) after transform output, enable core dumps, brute-force each input character by extracting computed state from coredump via `strings`. Avoids full reverse of transformation. See [patterns-runtime.md](patterns-runtime.md#int3-patch-coredump-brute-force-oracle).
 
 ### Signal Handler Chain + LD_PRELOAD Oracle
-Binary uses signal handler chains for per-character password validation. Hook `signal()` via LD_PRELOAD - the call to install the next handler confirms the current character is correct. See [patterns.md].
+Binary uses signal handler chains for per-character password validation. Hook `signal()` via LD_PRELOAD - the call to install the next handler confirms the current character is correct. See [patterns-runtime.md](patterns-runtime.md#signal-handler-chain-ld_preload-oracle).
 
 ### Font Ligature Exploitation
-Custom OpenType font maps multi-character ligature sequences to single glyphs; reverse the GSUB table to decode hidden messages. See [patterns-ctf.md].
+Custom OpenType font maps multi-character ligature sequences to single glyphs; reverse the GSUB table to decode hidden messages. See [patterns-ctf-runtime-and-ui.md](patterns-ctf-runtime-and-ui.md#opentype-font-ligature-exploitation-for-hidden-messages).
 
 ### Instruction Counter as Cryptographic State
-**Pattern:** Hand-written assembly uses a dedicated register (e.g., `r12`) as an instruction counter incremented after nearly every instruction. The counter feeds into XOR/ROL/multiply transformations on input bytes, making transformation path-dependent. Byte-by-byte brute force with Unicorn emulation recovers the flag. See [patterns-ctf.md].
+**Pattern:** Hand-written assembly uses a dedicated register (e.g., `r12`) as an instruction counter incremented after nearly every instruction. The counter feeds into XOR/ROL/multiply transformations on input bytes, making transformation path-dependent. Byte-by-byte brute force with Unicorn emulation recovers the flag. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#instruction-counter-as-cryptographic-state).
 
 ### Burrows-Wheeler Transform Inversion
-Invert BWT without terminator character by trying all possible row indices. Standard `bwtool` or manual column-sorting reconstruction. See [patterns-ctf.md].
+Invert BWT without terminator character by trying all possible row indices. Standard `bwtool` or manual column-sorting reconstruction. See [patterns-ctf-runtime-and-ui.md](patterns-ctf-runtime-and-ui.md#burrows-wheeler-transform-inversion-without-terminator).
 
 ### FRACTRAN Program Inversion
-Esoteric language using iterated fraction multiplication. Invert by swapping numerator/denominator in fraction table, run output backward. I/O encoded as prime factorization exponents. See [languages.md].
+Esoteric language using iterated fraction multiplication. Invert by swapping numerator/denominator in fraction table, run output backward. I/O encoded as prime factorization exponents. See [languages-core-scripting-and-esolangs.md](languages-core-scripting-and-esolangs.md).
 
 ### Opcode-Only Trace Reconstruction
-Execution traces with only opcodes (no data) still leak info through branch decisions. Sorting algorithm comparisons reveal element ordering. Reconstruct by deduplicating trace, splitting into basic blocks. See [tools-dynamic.md].
+Execution traces with only opcodes (no data) still leak info through branch decisions. Sorting algorithm comparisons reveal element ordering. Reconstruct by deduplicating trace, splitting into basic blocks. See [tools-dynamic-analysis-and-instrumentation.md](tools-dynamic-analysis-and-instrumentation.md).
 
 ### Thread Race Signed Integer Overflow
-Game binary with thread-unsafe skill lock. Race between skill selection and damage calculation; `cdqe` sign-extends 0xFFFFFFFF to -1 (signed), causing HP overflow on subtraction. See [patterns-ctf.md].
+Game binary with thread-unsafe skill lock. Race between skill selection and damage calculation; `cdqe` sign-extends 0xFFFFFFFF to -1 (signed), causing HP overflow on subtraction. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#thread-race-condition-with-signed-integer-overflow).
 
 ### ESP32/Xtensa Firmware Reversing
-No IDA support — use radare2 + ESP-IDF ROM linker script (`esp32.rom.ld`) for symbol resolution. Cross-reference with public ESP-IDF HTTP server examples to identify app logic. See [patterns-ctf.md].
+No IDA support — use radare2 + ESP-IDF ROM linker script (`esp32.rom.ld`) for symbol resolution. Cross-reference with public ESP-IDF HTTP server examples to identify app logic. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#esp32xtensa-firmware-reversing-with-rom-symbol-map).
 
 ### Custom VM Bytecode Lifting to LLVM IR
 Transpile custom VM bytecode to LLVM IR, then use `opt -O3` to simplify (inlining, constant folding, dead code elimination). Reduces 1300 lines to ~150 lines, revealing the underlying algorithm. See [tools-advanced.md].
 
 ### SIGFPE Signal Handler Side-Channel
-SIGFPE signal handlers create implicit control flow invisible to static analysis. Count SIGFPE signals via `strace -e signal=SIGFPE` per candidate character - correct characters produce more signals. See [anti-analysis.md].
+SIGFPE signal handlers create implicit control flow invisible to static analysis. Count SIGFPE signals via `strace -e signal=SIGFPE` per candidate character - correct characters produce more signals. See [anti-analysis-obfuscation-and-runtime.md](anti-analysis-obfuscation-and-runtime.md#sigfpe-signal-handler-side-channel-via-strace-counting).
 
 ### Batch Crackme Automation via objdump
-Mass crackme challenges (100s of binaries) with identical structure: script `objdump` to extract CMP immediates and add/sub arithmetic sequences, then reverse-compute keys algebraically without execution. See [patterns-ctf.md].
+Mass crackme challenges (100s of binaries) with identical structure: script `objdump` to extract CMP immediates and add/sub arithmetic sequences, then reverse-compute keys algebraically without execution. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#batch-crackme-automation-via-objdump-pattern-extraction).
 
 ### Android DEX Runtime Bytecode Patching
-Native JNI library patches Dalvik bytecode in memory via `/proc/self/maps` + `mprotect` + XOR. Static APK analysis alone is insufficient - extract XOR key and offsets from the native `.so` to reconstruct the runtime DEX. See [languages-platforms.md].
+Native JNI library patches Dalvik bytecode in memory via `/proc/self/maps` + `mprotect` + XOR. Static APK analysis alone is insufficient - extract XOR key and offsets from the native `.so` to reconstruct the runtime DEX. See [languages-platforms-mobile-and-apps.md](languages-platforms-mobile-and-apps.md#android-dex-runtime-bytecode-patching).
 
 ### Fork + Pipe + Dead Branch Anti-Analysis
-Fork/pipe IPC where parent writes data and exits, child reads and continues. Real validation hidden in a dead branch (always-false comparison). `strace` reveals the fork/pipe pattern; patch the comparison constant to reach hidden code. See [patterns-ctf.md].
+Fork/pipe IPC where parent writes data and exits, child reads and continues. Real validation hidden in a dead branch (always-false comparison). `strace` reveals the fork/pipe pattern; patch the comparison constant to reach hidden code. See [patterns-ctf-graphics-firmware-and-automation.md](patterns-ctf-graphics-firmware-and-automation.md#fork-pipe-dead-branch-anti-analysis).

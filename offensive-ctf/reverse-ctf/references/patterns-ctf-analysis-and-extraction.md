@@ -4,14 +4,14 @@ Patterns where the fastest path is to extract data, dump assets, hook a crypto b
 
 ## Table of Contents
 - [Hidden Emulator Opcodes + LD_PRELOAD Key Extraction](#hidden-emulator-opcodes-ld_preload-key-extraction)
-- [Spectre-RSB SPN Cipher — Static Parameter Extraction](#spectre-rsb-spn-cipher--static-parameter-extraction)
+- [Spectre-RSB SPN Cipher - Static Parameter Extraction](#spectre-rsb-spn-cipher-static-parameter-extraction)
 - [Image XOR Mask Recovery via Smoothness](#image-xor-mask-recovery-via-smoothness)
 - [Shellcode in Data Section via mmap RWX](#shellcode-in-data-section-via-mmap-rwx)
 - [Recursive execve Subtraction](#recursive-execve-subtraction)
 - [Byte-at-a-Time Block Cipher Attack](#byte-at-a-time-block-cipher-attack)
 - [Mathematical Convergence Bitmap](#mathematical-convergence-bitmap)
-- [Windows PE XOR Bitmap Extraction + OCR](#windows-pe-xor-bitmap-extraction--ocr)
-- [Two-Stage Loader: RC4 Gate + VM Constraints](#two-stage-loader-rc4-gate--vm-constraints)
+- [Windows PE XOR Bitmap Extraction + OCR](#windows-pe-xor-bitmap-extraction-ocr)
+- [Two-Stage Loader: RC4 Gate + VM Constraints](#two-stage-loader-rc4-gate-vm-constraints)
 - [GBA ROM VM Hash Inversion via Meet-in-the-Middle](#gba-rom-vm-hash-inversion-via-meet-in-the-middle)
 
 ## Hidden Emulator Opcodes + LD_PRELOAD Key Extraction

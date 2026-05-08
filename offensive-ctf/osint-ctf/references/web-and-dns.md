@@ -1,12 +1,8 @@
-# Preserved source: web-and-dns.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # Web and DNS OSINT
 
 ## Table of Contents
-- [Google Dorking]
-- [Google Docs/Sheets in OSINT]
+- [Google Dorking](#google-dorking)
+- [Google Docs/Sheets in OSINT](#google-docssheets-in-osint)
 - [DNS Reconnaissance](#dns-reconnaissance)
 - [DNS TXT Record OSINT](#dns-txt-record-osint)
 - [Tor Relay Lookups](#tor-relay-lookups)
@@ -15,15 +11,13 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [FEC Political Donation Research](#fec-political-donation-research)
 - [Wayback Machine](#wayback-machine)
 - [WHOIS Investigation](#whois-investigation)
-- [Shodan SSH Fingerprint Lookup]
-- [Fake Service Banner Detection via Fingerprinting]
-- [Git Commit Author Mining for Credentials]
-- [.DS_Store Directory Enumeration with Python-dsstore]
-- [TTF Glyph Contour Diffing for Obfuscated CAPTCHA]
-- [Cross-Challenge Container IP Reuse]
+- [Shodan SSH Fingerprint Lookup](#shodan-ssh-fingerprint-lookup)
+- [Fake Service Banner Detection via Fingerprinting](#fake-service-banner-detection-via-fingerprinting)
+- [Git Commit Author Mining for Credentials](#git-commit-author-mining-for-credentials)
+- [.DS_Store Directory Enumeration with Python-dsstore](#dsstore-directory-enumeration-with-python-dsstore)
+- [TTF Glyph Contour Diffing for Obfuscated CAPTCHA](#ttf-glyph-contour-diffing-for-obfuscated-captcha)
+- [Cross-Challenge Container IP Reuse](#cross-challenge-container-ip-reuse)
 - [Resources](#resources)
-
--
 
 ## Google Dorking
 
@@ -287,7 +281,7 @@ gh api "users/<target-user>/events/public" -paginate \
 
 -
 
-##.DS_Store Directory Enumeration with Python-dsstore
+## .DS_Store Directory Enumeration with Python-dsstore
 
 **Pattern:** macOS `.DS_Store` files leak directory listings even when the web server hides them behind `robots.txt` or obscured paths. Download `.DS_Store` wherever possible (root, `/uploads/`, `/static/`) and parse it to enumerate filenames that are otherwise un-guessable.
 

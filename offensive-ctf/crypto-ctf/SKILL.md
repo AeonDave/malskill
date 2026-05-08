@@ -22,10 +22,9 @@ Goal: solve cryptography challenge solving tasks with professional offensive met
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
-5. Choose the smallest tool chain that can produce a validation signal.
-6. Record the exact proof path and stop once the objective is reproducible.
+3. Load debrandized imported references only for deep technique details.
+4. Choose the smallest tool chain that can produce a validation signal.
+5. Record the exact proof path and stop once the objective is reproducible.
 
 ## Technique integration
 
@@ -40,11 +39,11 @@ Use these as decision engines. This skill adds challenge-oriented triage, time-b
 
 Prefer these tool families when the corresponding signal appears:
 
-- `offensive-tools/cryptography/rsactftool`
-- `offensive-tools/cryptography/sagemath`
-- `offensive-tools/cryptography/cyberchef`
-- `offensive-tools/cracking/hashcat`
-- `offensive-tools/cracking/john`
+- `rsactftool`
+- `sagemath`
+- `cyberchef`
+- `hashcat`
+- `john`
 - `coding/python-patterns`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
@@ -73,11 +72,10 @@ Use it only as a post-triage spike to find a paper, blog, article, public writeu
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
+- Preserve coverage by keeping every operational topic reachable from the Resources routing below.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
-
 
 ### Modern Cipher Attacks
 - [references/modern-cipher-modes-and-forgery.md](references/modern-cipher-modes-and-forgery.md) — AES/CFB/CBC/CTR/GCM/OFB mode failures, padding and decode oracles, bit-flip/cut-and-paste forgeries, cookie/session tampering, and practical ciphertext manipulation workflows.

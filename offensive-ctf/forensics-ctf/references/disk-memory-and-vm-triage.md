@@ -2,25 +2,25 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Disk and Memory Analysis
+# CTF Forensics - Disk, Memory, and VM Triage
 
 ## Table of Contents
 - [Memory Forensics (Volatility 3)](#memory-forensics-volatility-3)
 - [Disk Image Analysis](#disk-image-analysis)
 - [VM Forensics (OVA/VMDK)](#vm-forensics-ovavmdk)
 - [VMware Snapshot Forensics](#vmware-snapshot-forensics)
-- [GIMP Raw Memory Dump Visual Inspection]
+- [GIMP Raw Memory Dump Visual Inspection](#gimp-raw-memory-dump-visual-inspection)
 - [Coredump Analysis](#coredump-analysis)
-- [Windows KAPE Triage Analysis]
+- [Windows KAPE Triage Analysis](#windows-kape-triage-analysis)
 - [PowerShell Ransomware Analysis](#powershell-ransomware-analysis)
 - [Android Forensics](#android-forensics)
 - [Container Forensics (Docker)](#container-forensics-docker)
 - [Cloud Storage Forensics (AWS S3 / GCP / Azure)](#cloud-storage-forensics-aws-s3-gcp-azure)
-- [BSON (Binary JSON) Format Reconstruction]
-- [TrueCrypt / VeraCrypt Volume Mounting]
-- [Volatility mftparser Offset-Based Deleted File Recovery]
-- [Brotli Blob Detection via ASCII-Art Signature]
-- [corkami/pocs MD5 PDF Collision Generation]
+- [BSON (Binary JSON) Format Reconstruction](#bson-binary-json-format-reconstruction)
+- [TrueCrypt / VeraCrypt Volume Mounting](#truecrypt-veracrypt-volume-mounting)
+- [Volatility mftparser Offset-Based Deleted File Recovery](#volatility-mftparser-offset-based-deleted-file-recovery)
+- [Brotli Blob Detection via ASCII-Art Signature](#brotli-blob-detection-via-ascii-art-signature)
+- [corkami/pocs MD5 PDF Collision Generation](#corkamipocs-md5-pdf-collision-generation)
 - [See Also](#see-also)
 
 -
@@ -485,5 +485,5 @@ md5sum target1.pdf target2.pdf    # identical
 
 ## See Also
 
-- [disk-advanced.md](disk-advanced.md) - Advanced disk and memory techniques
-- [disk-recovery.md] - Disk recovery and extraction patterns
+- [advanced-disk-and-memory.md](advanced-disk-and-memory.md) - Advanced disk and memory techniques
+- [filesystem-and-archive-recovery.md](filesystem-and-archive-recovery.md) - Disk recovery and extraction patterns

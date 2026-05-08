@@ -1,7 +1,3 @@
-# Preserved source: sql-injection.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Web - SQL Injection Techniques
 
 Comprehensive SQL injection techniques for challenges. For other server-side attacks (SSTI, SSRF, XXE, command injection, GraphQL), see [server-injection.md](server-injection.md).
@@ -11,33 +7,31 @@ Comprehensive SQL injection techniques for challenges. For other server-side att
 - [Hex Encoding for Quote Bypass](#hex-encoding-for-quote-bypass)
 - [Second-Order SQL Injection](#second-order-sql-injection)
 - [SQLi LIKE Character Brute-Force](#sqli-like-character-brute-force)
-- [MySQL Column Truncation]
+- [MySQL Column Truncation](#mysql-column-truncation)
 - [SQLi to SSTI Chain](#sqli-to-ssti-chain)
 - [MySQL information_schema.processList Trick](#mysql-information_schemaprocesslist-trick)
 - [WAF Bypass via XML Entity Encoding](#waf-bypass-via-xml-entity-encoding)
-- [SQLi via EXIF Metadata Injection]
-- [Shift-JIS Encoding SQL Injection]
-- [SQL Injection via QR Code Input]
-- [SQL Double-Keyword Filter Bypass]
-- [MySQL Session Variable for Dual-Value Injection]
-- [PHP PCRE Backtrack Limit WAF Bypass]
-- [information_schema.processlist Race Condition Leak]
-- [SQL BETWEEN Operator Tautology Bypass]
-- [Host Header SQL Injection with PROCEDURE ANALYSE()]
-- [SQLite Blind SQLi via randomblob() Timing]
-- [vsprintf Double-Prepare Format String SQLi]
-- [SQL INSERT ON DUPLICATE KEY UPDATE Password Overwrite]
-- [MySQL innodb_table_stats as information_schema Alternative]
-- [SQLi Inline Comment Multi-Field Split]
-- [PHP Full-Width Dollar Regex Anchor Bypass]
-- [MySQL REGEXP Byte-by-Byte Oracle + Backtick Comment Bypass]
-- [LDAP Filter Breakout with Wildcard Injection]
-- [ExpressionEngine FileManager ORDER BY Sort-Key SQLi]
-- [PHP parse_str() Variable Injection]
-- [SQLite UNION via X-Forwarded-For with PHPSESSID Oracle]
-- [Quote-Adjacent UNION Keyword Filter Bypass]
-
--
+- [SQLi via EXIF Metadata Injection](#sqli-via-exif-metadata-injection)
+- [Shift-JIS Encoding SQL Injection](#shift-jis-encoding-sql-injection)
+- [SQL Injection via QR Code Input](#sql-injection-via-qr-code-input)
+- [SQL Double-Keyword Filter Bypass](#sql-double-keyword-filter-bypass)
+- [MySQL Session Variable for Dual-Value Injection](#mysql-session-variable-for-dual-value-injection)
+- [PHP PCRE Backtrack Limit WAF Bypass](#php-pcre-backtrack-limit-waf-bypass)
+- [information_schema.processlist Race Condition Leak](#information_schemaprocesslist-race-condition-leak)
+- [SQL BETWEEN Operator Tautology Bypass](#sql-between-operator-tautology-bypass)
+- [Host Header SQL Injection with PROCEDURE ANALYSE()](#host-header-sql-injection-with-procedure-analyse)
+- [SQLite Blind SQLi via randomblob() Timing](#sqlite-blind-sqli-via-randomblob-timing)
+- [vsprintf Double-Prepare Format String SQLi](#vsprintf-double-prepare-format-string-sqli)
+- [SQL INSERT ON DUPLICATE KEY UPDATE Password Overwrite](#sql-insert-on-duplicate-key-update-password-overwrite)
+- [MySQL innodb_table_stats as information_schema Alternative](#mysql-innodb_table_stats-as-information_schema-alternative)
+- [SQLi Inline Comment Multi-Field Split](#sqli-inline-comment-multi-field-split)
+- [PHP Full-Width Dollar Regex Anchor Bypass](#php-full-width-dollar-regex-anchor-bypass)
+- [MySQL REGEXP Byte-by-Byte Oracle + Backtick Comment Bypass](#mysql-regexp-byte-by-byte-oracle-backtick-comment-bypass)
+- [LDAP Filter Breakout with Wildcard Injection](#ldap-filter-breakout-with-wildcard-injection)
+- [ExpressionEngine FileManager ORDER BY Sort-Key SQLi](#expressionengine-filemanager-order-by-sort-key-sqli)
+- [PHP parse_str() Variable Injection](#php-parse_str-variable-injection)
+- [SQLite UNION via X-Forwarded-For with PHPSESSID Oracle](#sqlite-union-via-x-forwarded-for-with-phpsessid-oracle)
+- [Quote-Adjacent UNION Keyword Filter Bypass](#quote-adjacent-union-keyword-filter-bypass)
 
 ## Backslash Escape Quote Bypass
 ```bash
@@ -318,7 +312,6 @@ for _ in range(100):
 
 **Key insight:** `information_schema.processlist.INFO` exposes the full SQL text of all currently running queries on the MySQL server. By racing an injection query against a concurrent application query that references secrets, those secrets can be captured from the process list. This extends the existing `information_schema.processList` trick by adding a timing/race component to capture transient queries that contain secrets (encryption keys, passwords) only visible during execution.
 
--
 
 ## SQL BETWEEN Operator Tautology Bypass
 
@@ -360,7 +353,6 @@ SELECT * FROM users WHERE id BETWEEN id AND id PROCEDURE ANALYSE()
 
 **Key insight:** SQL `BETWEEN col AND col` with the same column as both bounds is semantically a tautology but syntactically avoids digit and comparison operator signatures. Combine with string column references for blind extraction when numeric literals and `=`/`<`/`>` are filtered.
 
--
 
 ## Host Header SQL Injection with PROCEDURE ANALYSE()
 
@@ -416,7 +408,6 @@ Referer              # logged for referral tracking
 
 **Key insight:** `PROCEDURE ANALYSE()` is a MySQL-specific alternative to `information_schema` for schema enumeration — it analyzes the result set and returns column metadata. Host header injection is often overlooked by WAFs and developers because it's not a typical user input field, yet it frequently flows into SQL queries for logging, virtual hosting, or analytics.
 
--
 
 ## SQLite Blind SQLi via randomblob() Timing
 
@@ -455,7 +446,6 @@ for pos in range(32):
 
 **Key insight:** `randomblob()` generates random data proportional to the argument size, creating measurable delays. This is the SQLite equivalent of MySQL's `SLEEP()` or PostgreSQL's `pg_sleep()`. Adjust the argument (e.g., `300000000`) based on server performance to get a reliable timing difference. Other SQLite delay alternatives include `zeroblob()` and recursive CTEs, but `randomblob()` is the most reliable.
 
--
 
 ## vsprintf Double-Prepare Format String SQLi
 
@@ -492,7 +482,6 @@ r = requests.post("http://target/login", data={
 
 **Key insight:** `%c` in `vsprintf` converts an integer to a character, bypassing string-level escaping. If user input passes through `vsprintf` twice (once for formatting, once for query building), format specifiers in the first input become SQL injection vectors in the second pass. The key trick is sending `39` as one parameter (ASCII code for single quote) and `%1$c` as another to reference that parameter as a character. Look for PHP code that chains `sprintf`/`vsprintf` with query construction.
 
--
 
 ### SQL INSERT ON DUPLICATE KEY UPDATE Password Overwrite
 
@@ -531,7 +520,6 @@ print(r.text)
 
 **Key insight:** MySQL's `ON DUPLICATE KEY UPDATE` clause in INSERT statements can modify existing rows when a UNIQUE constraint conflicts, enabling password overwrite without SELECT privileges. This is particularly useful when the database user has INSERT but not SELECT permissions, making traditional UNION-based extraction impossible. Look for registration or user creation endpoints with injectable INSERT queries.
 
--
 
 ### MySQL innodb_table_stats as information_schema Alternative
 
@@ -584,7 +572,6 @@ print(f"Tables: {tables}")
 
 **Key insight:** `mysql.innodb_table_stats` contains `database_name` and `table_name` columns, providing an alternative metadata source when `information_schema` access is filtered by WAF rules. Unlike `information_schema`, it only tracks InnoDB tables (not column names), so combine with error-based or blind techniques to discover column names after finding tables.
 
--
 
 ## SQLi Inline Comment Multi-Field Split
 
@@ -614,7 +601,6 @@ r = requests.post("http://target/login", data={
 
 **Key insight:** MySQL `/*... */` comments span across string delimiters and field boundaries when the filter runs before interpolation, not after. Any validator that checks one field at a time misses the full injected string. When a blocklist hits the username regex but the password field is rendered into the same query, split payloads across both inputs.
 
--
 
 ## PHP Full-Width Dollar Regex Anchor Bypass
 
@@ -634,7 +620,6 @@ curl "http://target/?key2=1337%EF%BC%84$(python3 -c 'print("a"*50)')"
 
 **Key insight:** Always compare regex special characters by codepoint, not by appearance. Unicode look-alikes of `$`, `^`, `.`, `[`, `]`, `*`, `+`, `?`, `(`, `)` are literals in PCRE and silently downgrade the pattern. Check every anchor in a filter with `hexdump -C` before trusting it.
 
--
 
 ## MySQL REGEXP Byte-by-Byte Oracle + Backtick Comment Bypass
 
@@ -669,7 +654,6 @@ while True:
 
 **Key insight:** `REGEXP` is rarely on a WAF keyword list and supports anchors (`^`, `$`) and character classes, giving a full byte-by-byte oracle without `AND`, `IF`, or `SUBSTRING`. Backticked column references bypass space stripping because `/**/` comments separate tokens without spaces. Null bytes after the payload truncate the SQL string early in MySQL clients that still honor embedded NULs.
 
--
 
 ## LDAP Filter Breakout with Wildcard Injection
 
@@ -695,7 +679,6 @@ print(r.text)
 
 **Key insight:** LDAP filters use a prefix-notation boolean tree: `&` / `|` / `!` followed by parenthesised children. Unescaped user input that contains `)`, `(`, `*`, or `\` lets the attacker rebalance that tree. Common payloads: `*)(uid=*` (OR wildcard), `*))(&(1=1)` (force true), `foo)(|(password=*)`  (enumerate records). Escape with `\28`, `\29`, `\2a`, `\5c` on the server side.
 
--
 
 ## PHP parse_str() Variable Injection
 
@@ -717,7 +700,6 @@ curl "http://target/auth.php?action=auth&password=anything&hashed_password=$(php
 
 **Key insight:** `parse_str()` and `extract()` are register_globals-style primitives: any parameter sent by the client becomes a PHP variable that might shadow logic the developer assumed was local. The fix is always the two-argument form. When auditing PHP, grep for `parse_str\(\s*\$[^,]*\)` with no comma.
 
--
 
 ## ExpressionEngine FileManager ORDER BY Sort-Key SQLi
 
@@ -731,7 +713,6 @@ Use `sleep()` / `benchmark()` inside the sort expression to run a blind timing o
 
 **Key insight:** Any ORM that lets the client pick sort columns must allowlist them. The attack is particularly nasty because `ORDER BY` subqueries are rarely caught by WAFs that focus on `SELECT`/`UNION` keywords.
 
--
 
 ## SQLite UNION via X-Forwarded-For with PHPSESSID Oracle
 
@@ -752,7 +733,6 @@ Pad with `null` columns until the UNION fits; place the target expression in the
 
 **Key insight:** Session-ID generation logic often includes unsanitized HTTP headers (`X-Forwarded-For`, `Client-IP`, `True-Client-IP`). The reflected row becomes a free oracle: no error-based or time-based inference required. SQLite-specific UNION uses `null` padding and `sqlite_master(type,name,tbl_name,sql)` for schema enumeration (no `information_schema`).
 
--
 
 ## Quote-Adjacent UNION Keyword Filter Bypass
 

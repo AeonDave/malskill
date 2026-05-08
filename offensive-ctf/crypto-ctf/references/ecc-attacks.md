@@ -56,9 +56,9 @@ If discriminant delta = 0, curve is singular. DLP becomes easy (maps to additive
 
 ## Smart's Attack (Anomalous Curves)
 
-**When to use:** Curve order epublic source field characteristic p (anomalous curve). Solves ECDLP in O(1) via p-adic lifting.
+**When to use:** Curve order equals field characteristic p (anomalous curve). Solves ECDLP in O(1) via p-adic lifting.
 
-**Key insight:** Always check `E.order() == p` first. If the curve order epublic source the field prime, the ECDLP is solved instantly via p-adic lifting (Smart's attack). SageMath's `discrete_log` handles this automatically, but manual p-adic lift code is needed when the built-in method fails.
+**Key insight:** Always check `E.order() == p` first. If the curve order equals the field prime, the ECDLP is solved instantly via p-adic lifting (Smart's attack). SageMath's `discrete_log` handles this automatically, but manual p-adic lift code is needed when the built-in method fails.
 
 **Detection:** `E.order() == p` — always check this first!
 

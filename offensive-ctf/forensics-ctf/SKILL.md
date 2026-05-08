@@ -22,10 +22,9 @@ Goal: solve forensics and steganography challenge solving tasks with professiona
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
-5. Choose the smallest tool chain that can produce a validation signal.
-6. Record the exact proof path and stop once the objective is reproducible.
+3. Load debrandized imported references only for deep technique details.
+4. Choose the smallest tool chain that can produce a validation signal.
+5. Record the exact proof path and stop once the objective is reproducible.
 
 ## Technique integration
 
@@ -42,13 +41,18 @@ Use these as decision engines. This skill adds challenge-oriented triage, time-b
 
 Prefer these tool families when the corresponding signal appears:
 
-- `offensive-tools/forensic/volatility3`
-- `offensive-tools/forensic/sleuth-kit`
-- `offensive-tools/forensic/autopsy`
-- `offensive-tools/forensic/zeek`
-- `offensive-tools/network/wireshark`
-- `offensive-tools/rev/binwalk`
-- `offensive-tools/cryptography/cyberchef`
+- `volatility3`
+- `sleuth-kit`
+- `autopsy`
+- `zeek`
+- `wireshark`
+- `tcpdump`
+- `binwalk`
+- `cyberchef`
+- `exiftool`
+- `foremost`
+- `steghide`
+- `zsteg`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
@@ -70,22 +74,21 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
 
-- [references/3d-printing.md](references/3d-printing.md) — preserved, debrandized imported technique material.
-- [references/disk-advanced.md](references/disk-advanced.md) — preserved, debrandized imported technique material.
-- [references/disk-and-memory.md](references/disk-and-memory.md) — preserved, debrandized imported technique material.
-- [references/disk-recovery.md](references/disk-recovery.md) — preserved, debrandized imported technique material.
-- [references/linux-forensics.md](references/linux-forensics.md) — preserved, debrandized imported technique material.
-- [references/network-advanced.md](references/network-advanced.md) — preserved, debrandized imported technique material.
-- [references/network.md](references/network.md) — preserved, debrandized imported technique material.
-- [references/peripheral-capture.md](references/peripheral-capture.md) — preserved, debrandized imported technique material.
-- [references/signals-and-hardware.md](references/signals-and-hardware.md) — preserved, debrandized imported technique material.
-- [references/steganography.md](references/steganography.md) — preserved, debrandized imported technique material.
-- [references/stego-advanced-2.md](references/stego-advanced-2.md) — preserved, debrandized imported technique material.
-- [references/stego-advanced.md](references/stego-advanced.md) — preserved, debrandized imported technique material.
-- [references/stego-image.md](references/stego-image.md) — preserved, debrandized imported technique material.
-- [references/windows.md](references/windows.md) — preserved, debrandized imported technique material.
+- [references/disk-memory-and-vm-triage.md](references/disk-memory-and-vm-triage.md) — First-pass disk, VM, container, cloud-storage, coredump, and Volatility memory workflows.
+- [references/filesystem-and-archive-recovery.md](references/filesystem-and-archive-recovery.md) — Filesystem and archive recovery: LUKS, XFS/BTRFS/FAT/ext, corrupted ZIP/XZ, nested archives, deleted Git, and known-plaintext ZipCrypto.
+- [references/advanced-disk-and-memory.md](references/advanced-disk-and-memory.md) — Advanced disk and memory pivots: partition/ZFS/GPT/APFS/RAID recovery, VMDK sparse parsing, minidumps, malware extraction, and database history reconstruction.
+- [references/linux-forensics.md](references/linux-forensics.md) — Linux/browser/container/application artifacts: Docker layers, Chromium secrets, Git history, KeePass, VBA recovery, blockchain traces, and in-memory Python source.
+- [references/windows-forensics.md](references/windows-forensics.md) — Windows artifacts: registry hives, LNK/jumplists, SRUM, prefetch, USN journal, event logs, Volatility plugins, clipboard, credentials, and wipe artifacts.
+- [references/network-triage.md](references/network-triage.md) — Core packet triage: tcpdump/Wireshark, TLS key logs, HTTP/SMB/WiFi/SAP traffic, uploads, split archives, HID-over-PCAP, and simple covert channels.
+- [references/network-covert-and-protocols.md](references/network-covert-and-protocols.md) — Advanced PCAP analysis: timing/flag/DNS/ICMP covert channels, NTLMv2/MS-SNTP/RADIUS cracking, RDP decryption, dnscat2, PDF object recovery, and RC4 shellcode streams.
+- [references/usb-and-peripheral-captures.md](references/usb-and-peripheral-captures.md) — USB/Bluetooth peripheral captures: HID mouse, pen, keyboard, LED Morse, arrow navigation, RFCOMM, and framebuffer extraction.
+- [references/signal-and-hardware-captures.md](references/signal-and-hardware-captures.md) — Signal and hardware captures: VGA/HDMI/DisplayPort, UART/I2C, SDR/audio decoding, punched cards, logic analyzer CSV, MIDI, and acoustic/LED side channels.
+- [references/cad-and-3d-printing.md](references/cad-and-3d-printing.md) — 3D-printing and fabrication artifacts: G-code visualization, Prusa/G-code thumbnail extraction, and CAD-like motion reconstruction.
+- [references/steganography.md](references/steganography.md) — General and non-image stego: PDF/SVG/GIF/APNG/terminal/spreadsheet/text/container overlays, nested formats, QR recovery, and PNG chunk manipulation.
+- [references/image-stego.md](references/image-stego.md) — Image-specific stego: JPEG DQT/F5/slack, BMP/PNG bitplanes and palettes, pixel permutations, jigsaw/QR reconstruction, thumbnails, and visual filters.
+- [references/audio-and-archive-stego.md](references/audio-and-archive-stego.md) — Advanced audio/archive stego: FFT, SSTV, DotCode, DTMF, multi-track subtraction, MIDI, DeepSound, spectrograms, and bidirectional archives.
+- [references/video-and-container-stego.md](references/video-and-container-stego.md) — Advanced video/image-container stego: frame accumulation, reversed audio, JPEG XL permutations, cat maps, MJPEG slack, PDF xref channels, ANSI-in-PCAP, and multi-color QR mapping.

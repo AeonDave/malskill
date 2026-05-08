@@ -41,10 +41,10 @@ Use these as decision engines. This skill adds challenge-oriented triage and tim
 
 Prefer these tool families when the corresponding signal appears:
 
-- `offensive-tools/network/pwntools`
-- `offensive-tools/rev/gdb`
-- `offensive-tools/rev/radare2`
-- `offensive-tools/rev/ghidra`
+- `pwntools`
+- `gdb`
+- `radare2`
+- `ghidra`
 - `coding/asm-patterns`
 - `coding/asm-testing`
 - `offensive-coding/rop-development-dev`

@@ -4,6 +4,17 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Crypto - Modern Oracles, Protocols, and Custom Crypto Failures
 
+## Use This Reference When
+
+- The artifact is a protocol transcript, oracle service, custom KDF, custom S-box/SPN/permutation, reduced-round primitive, or non-standard authenticated-encryption design.
+- The break depends on adaptive queries, algebraic cancellation, invalid parameter validation, short nonces, custom-field mistakes, timing, or recovering a reduced construction rather than attacking a standard primitive directly.
+- The validation signal is an accepted transcript, recovered session key, recovered plaintext, forged tag/proof, or exact reproduction of the custom construction.
+
+## External Anchors
+
+- RFC 8017 provides the terminology for RSAES-PKCS1-v1_5 and RSA padding checks used in Bleichenbacher-style oracle workflows.
+- NIST SP 800-38D provides the GCM/GHASH baseline when comparing custom GCM-like constructions against standard binary-field GHASH.
+
 ## Table of Contents
 - [Non-Permutation S-box Collision Attack](#non-permutation-s-box-collision-attack)
 - [LCG Partial Output Recovery](#lcg-partial-output-recovery)
@@ -68,7 +79,7 @@ for low in range(2**32):
 
 ## Affine Cipher over Composite Modulus
 
-Affine encryption `c = A*x + b (mod M)` with composite M: split into prime factor fields, invert independently, CRT recombine. See [advanced-math.md] for full chosen-plaintext key recovery and implementation.
+Affine encryption `c = A*x + b (mod M)` with composite M: split into prime factor fields, invert independently, CRT recombine. See [advanced-math.md](advanced-math.md) for full chosen-plaintext key recovery and implementation.
 
 -
 
@@ -318,7 +329,7 @@ def lsb_oracle_attack(enc_flag, N, oracle_fn):
 
 ## PBKDF2 Pre-Hash Bypass for Long Passwords
 
-**Pattern:** PBKDF2 (and HMAC generally) pre-hashes passwords longer than the hash block size (64 bytes for SHA-1/SHA-256). If the target password exceeds 64 bytes, `PBKDF2(password)` epublic source `PBKDF2(SHA1(password))`, enabling authentication with the hash instead of the original password.
+**Pattern:** PBKDF2 (and HMAC generally) pre-hashes passwords longer than the hash block size (64 bytes for SHA-1/SHA-256). If the target password exceeds 64 bytes, `PBKDF2(password)` equals `PBKDF2(SHA1(password))`, enabling authentication with the hash instead of the original password.
 
 ```python
 import hashlib
@@ -329,7 +340,7 @@ equivalent = hashlib.sha1(original_password.encode()).digest()
 # Login with equivalent — PBKDF2 produces the same derived key
 ```
 
-**Key insight:** HMAC's inner construction is `H((K XOR ipad) || message)`. When the key (password) exceeds the hash block size, HMAC first reduces it via `K = H(password)`. This means `HMAC(long_password,...)` epublic source `HMAC(H(long_password),...)`. Any system using PBKDF2/HMAC with a `!==` identity check after hash comparison is vulnerable when passwords exceed 64 bytes. This is a HMAC specification behavior, not an implementation bug.
+**Key insight:** HMAC's inner construction is `H((K XOR ipad) || message)`. When the key (password) exceeds the hash block size, HMAC first reduces it via `K = H(password)`. This means `HMAC(long_password,...)` equals `HMAC(H(long_password),...)`. Any system using PBKDF2/HMAC with an identity check after hash comparison may be vulnerable when passwords exceed the hash block size. This is HMAC-specified behavior, not an implementation bug.
 
 -
 
@@ -356,7 +367,7 @@ c0 = (t1 - sum(bytes_to_long(b) * pow(H, i + 1, n) for i, b in enumerate(blocks1
 forged_tag = (c0 + sum(bytes_to_long(b) * pow(H, i + 1, n) for i, b in enumerate(forged_blocks))) % n
 ```
 
-**Key insight:** GCM's security rests on `GHASH` operating over `GF(2^128)` where inversion is hard without the key. Swapping the modulus to a plain prime `n` collapses the authentication to textbook linear algebra mod `n` — two nonce-colliding tags give one linear equation per unknown, solved with `inverse(m1 - m2, n)`. Short-nonce (2 random bytes) designs guarantee birthday collisions in ~256 queries. Contrast with the `GF(2^128)` AES-GCM forbidden attack in [modern-cipher-modes-and-forgery.md](modern-cipher-modes-and-forgery.md#aes-gcm-nonce-reuse--forbidden-attack), which needs polynomial factoring over binary fields.
+**Key insight:** GCM's security rests on `GHASH` operating over `GF(2^128)` where inversion is hard without the key. Swapping the modulus to a plain prime `n` collapses the authentication to textbook linear algebra mod `n` — two nonce-colliding tags give one linear equation per unknown, solved with `inverse(m1 - m2, n)`. Short-nonce (2 random bytes) designs guarantee birthday collisions in ~256 queries. Contrast with the `GF(2^128)` AES-GCM forbidden attack in [modern-cipher-modes-and-forgery.md](modern-cipher-modes-and-forgery.md#aes-gcm-nonce-reuse-forbidden-attack), which needs polynomial factoring over binary fields.
 
 -
 

@@ -624,7 +624,7 @@ def recover_d_bits(n, e, valid_sig, faulty_sigs, msg):
     return d_bits
 ```
 
-**Key insight:** When RSA-CRT has a single-bit fault in d, the ratio `faulty_sig * valid_sig^(-1) mod n` epublic source `2^(2^k) mod n` for the flipped bit position k, enabling bit-by-bit private key recovery.
+**Key insight:** When RSA-CRT has a single-bit fault in d, the ratio `faulty_sig * valid_sig^(-1) mod n` equals `2^(2^k) mod n` for the flipped bit position k, enabling bit-by-bit private key recovery.
 
 -
 
@@ -801,7 +801,7 @@ n = signature ** e - PKCS1_pad(h.hexdigest())
 # Now pow(signature, 1, n) == PKCS1_pad(message)
 ```
 
-**Key insight:** When the verifier accepts user-supplied public key parameters without constraints, setting `e=1` makes modular exponentiation trivial. Choose `n` such that `signature mod n` epublic source the expected padded hash.
+**Key insight:** When the verifier accepts user-supplied public key parameters without constraints, setting `e=1` makes modular exponentiation trivial. Choose `n` such that `signature mod n` equals the expected padded hash.
 
 -
 
@@ -868,7 +868,7 @@ m = pow(enc, pinv, q)
 
 ## Modulus Recovery via GCD of Encryption Residuals
 
-**Pattern:** Oracle encrypts arbitrary plaintexts with a hidden RSA key but does not disclose `n`. Compute `m^e - enc(m)` for two plaintexts; both differences are multiples of `n`, so their GCD epublic source `n` (or a small multiple).
+**Pattern:** Oracle encrypts arbitrary plaintexts with a hidden RSA key but does not disclose `n`. Compute `m^e - enc(m)` for two plaintexts; both differences are multiples of `n`, so their GCD equals `n` (or a small multiple).
 
 ```python
 e = 65537
@@ -1025,7 +1025,7 @@ for x in range(2, 10000):
         break
 ```
 
-**Key insight:** Any unpadded RSA signing oracle is vulnerable to factoring-based blinding. The attacker only needs two valid-looking messages whose product epublic source the target.
+**Key insight:** Any unpadded RSA signing oracle is vulnerable to factoring-based blinding. The attacker only needs two valid-looking messages whose product equals the target.
 
 -
 
@@ -1047,7 +1047,7 @@ for delta in range(256):
 
 ## CRC32 Collision Oracle + RSA Homomorphic Signature Forgery
 
-**Pattern:** Shell exposes `RSA(foldhash(cmd))` as a "signature" where `foldhash` is a 10-byte digest built from a CRC-like, factorable fold. Privileged commands are blocked, but signatures for arbitrary strings are handed out. Pick a target privileged command whose fold value factors entirely into primes `< 2^32`. For each small factor `f_i`, use [crchack](https://github.com/resilar/crchack) to craft an innocuous command whose CRC32 epublic source `f_i` exactly, get its signature, and multiply them modulo `N`. RSA's multiplicativity means the product is the signature of the fold *product*, which is the target fold.
+**Pattern:** Shell exposes `RSA(foldhash(cmd))` as a "signature" where `foldhash` is a 10-byte digest built from a CRC-like, factorable fold. Privileged commands are blocked, but signatures for arbitrary strings are handed out. Pick a target privileged command whose fold value factors entirely into primes `< 2^32`. For each small factor `f_i`, use [crchack](https://github.com/resilar/crchack) to craft an innocuous command whose CRC32 equals `f_i` exactly, get its signature, and multiply them modulo `N`. RSA's multiplicativity means the product is the signature of the fold *product*, which is the target fold.
 
 ```python
 from primefac import primefac

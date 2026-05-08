@@ -23,10 +23,9 @@ Goal: solve AI and machine-learning challenge solving tasks with professional of
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Use `references/source-coverage.md` to see preserved imported topics.
-4. Load debrandized imported references only for deep technique details.
-5. Choose the smallest tool chain that can produce a validation signal.
-6. Record the exact proof path and stop once the objective is reproducible.
+3. Load debrandized imported references only for deep technique details.
+4. Choose the smallest tool chain that can produce a validation signal.
+5. Record the exact proof path and stop once the objective is reproducible.
 
 ## Technique integration
 
@@ -45,10 +44,10 @@ Prefer these tool families when the corresponding signal appears:
 - `coding/python-patterns`
 - `coding/python-testing`
 - `ai/langchain-py`
-- `offensive-tools/web/jwt-tool`
-- `offensive-tools/network/mitmproxy`
-- `offensive-tools/rev/frida`
-- `offensive-tools/rev/ghidra`
+- `jwt-tool`
+- `mitmproxy`
+- `frida`
+- `ghidra`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
@@ -70,7 +69,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve source coverage: every imported file is mapped in `references/source-coverage.md` and available in `references/`.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources

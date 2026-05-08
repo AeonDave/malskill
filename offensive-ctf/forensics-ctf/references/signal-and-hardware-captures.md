@@ -2,26 +2,25 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Signals and Hardware
+# CTF Forensics - Signal and Hardware Captures
 
 ## Table of Contents
 - [VGA Signal Decoding](#vga-signal-decoding)
 - [HDMI TMDS Decoding](#hdmi-tmds-decoding)
 - [DisplayPort 8b/10b + LFSR Decoding](#displayport-8b10b-lfsr-decoding)
-- [Voyager Golden Record Audio]
-- [Side-Channel Power Analysis]
-- [Saleae Logic 2 UART Decode]
-- [Flipper Zero.sub File]
-- [Keyboard Acoustic Side-Channel]
-- [CD Audio Disc Image Steganography]
-- [Caps-Lock LED Morse Code Extraction from Video]
-- [Linux input_event Keylogger Dump Parsing]
-- [I2C Bus Protocol Decoding]
-- [IBM-29 Punched Card OCR]
-- [Serial UART Data Decoding from WAV Audio]
-- [USB MIDI Launchpad Traffic Reconstruction]
-- [Tektronix Logic-Analyzer CSV Clock-Edge Extraction]
-
+- [Voyager Golden Record Audio](#voyager-golden-record-audio)
+- [Side-Channel Power Analysis](#side-channel-power-analysis)
+- [Saleae Logic 2 UART Decode](#saleae-logic-2-uart-decode)
+- [Flipper Zero.sub File](#flipper-zerosub-file)
+- [Keyboard Acoustic Side-Channel](#keyboard-acoustic-side-channel)
+- [CD Audio Disc Image Steganography](#cd-audio-disc-image-steganography)
+- [Caps-Lock LED Morse Code Extraction from Video](#caps-lock-led-morse-code-extraction-from-video)
+- [Linux input_event Keylogger Dump Parsing](#linux-input_event-keylogger-dump-parsing)
+- [I2C Bus Protocol Decoding](#i2c-bus-protocol-decoding)
+- [IBM-29 Punched Card OCR](#ibm-29-punched-card-ocr)
+- [Serial UART Data Decoding from WAV Audio](#serial-uart-data-decoding-from-wav-audio)
+- [USB MIDI Launchpad Traffic Reconstruction](#usb-midi-launchpad-traffic-reconstruction)
+- [Tektronix Logic-Analyzer CSV Clock-Edge Extraction](#tektronix-logic-analyzer-csv-clock-edge-extraction)
 -
 
 ## VGA Signal Decoding

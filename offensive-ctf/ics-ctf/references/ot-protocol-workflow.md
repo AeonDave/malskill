@@ -38,6 +38,14 @@ An anomaly is stronger when it violates more than one baseline dimension: new so
 - Correlate values with names from HMI screens, topic paths, comments, symbols, or repeated physical ranges.
 - Avoid assuming a flag is ASCII until framing and byte order are proven.
 
+## Artifact lanes
+
+- PCAP lane: export conversations, protocol fields, stream payloads, timing deltas, and read/write subsets before scripting.
+- Historian/log lane: normalize timezone and clock skew, identify tag/value/unit columns, sort sparse writes, and correlate alarms with process changes.
+- Project-export lane: search symbols, comments, ladder/ST code, tag databases, constants, screen labels, and network configuration.
+- Firmware lane: carve archives and strings, locate protocol clients, extract hard-coded endpoints, and map custom encoders before dynamic testing.
+- Serial/CAN lane: infer baud/framing or arbitration IDs, periodic frames, counters, checksums, and message groups before replay.
+
 ## Write-event analysis
 
 When a packet writes state, extract:

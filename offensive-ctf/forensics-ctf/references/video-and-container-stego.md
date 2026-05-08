@@ -2,24 +2,23 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Advanced Steganography (Part 2)
+# CTF Forensics - Video and Container Stego
 
-See also: [stego-advanced.md](stego-advanced.md) for audio steganography and whitespace/archive encoding.
+See also: [audio-and-archive-stego.md](audio-and-archive-stego.md) for audio steganography and whitespace/archive encoding.
 
 ## Table of Contents
-- [Video Frame Accumulation for Hidden Image]
-- [Reversed Audio Hidden Message]
-- [Video Frame Averaging for Hidden Content]
-- [JPEG XL TOC Permutation Steganography]
-- [Arnold's Cat Map Image Descrambling]
-- [High-Resolution SSTV Custom FM Demodulation]
-- [MJPEG Extra Bytes After FFD9 Steganography]
-- [EXIF Zlib Data with Non-Default LSB Pixel Pattern]
-- [PDF Cross-Reference Table Covert Channel]
-- [ANSI Escape Code Steganography in Network Capture]
-- [Pixel-Wise ECB Deduplication for Image Recovery]
-- [Multi-Color QR Code Binary Mapping Brute Force]
-
+- [Video Frame Accumulation for Hidden Image](#video-frame-accumulation-for-hidden-image)
+- [Reversed Audio Hidden Message](#reversed-audio-hidden-message)
+- [Video Frame Averaging for Hidden Content](#video-frame-averaging-for-hidden-content)
+- [JPEG XL TOC Permutation Steganography](#jpeg-xl-toc-permutation-steganography)
+- [Arnold's Cat Map Image Descrambling](#arnolds-cat-map-image-descrambling)
+- [High-Resolution SSTV Custom FM Demodulation](#high-resolution-sstv-custom-fm-demodulation)
+- [MJPEG Extra Bytes After FFD9 Steganography](#mjpeg-extra-bytes-after-ffd9-steganography)
+- [EXIF Zlib Data with Non-Default LSB Pixel Pattern](#exif-zlib-data-with-non-default-lsb-pixel-pattern)
+- [PDF Cross-Reference Table Covert Channel](#pdf-cross-reference-table-covert-channel)
+- [ANSI Escape Code Steganography in Network Capture](#ansi-escape-code-steganography-in-network-capture)
+- [Pixel-Wise ECB Deduplication for Image Recovery](#pixel-wise-ecb-deduplication-for-image-recovery)
+- [Multi-Color QR Code Binary Mapping Brute Force](#multi-color-qr-code-binary-mapping-brute-force)
 -
 
 ## Video Frame Accumulation for Hidden Image

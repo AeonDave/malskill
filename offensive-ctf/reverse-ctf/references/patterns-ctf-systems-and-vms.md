@@ -8,7 +8,7 @@ Patterns where the target behaves like a mini-system: games, kernels, VMs, loade
 - [Multi-Threaded VM with Channel Synchronization](#multi-threaded-vm-with-channel-synchronization)
 - [Backdoored Shared Library Detection via String Diffing](#backdoored-shared-library-detection-via-string-diffing)
 - [Custom binfmt Kernel Module with RC4 Flat Binaries](#custom-binfmt-kernel-module-with-rc4-flat-binaries)
-- [Hash-Resolved Imports / No-Import Ransomware](#hash-resolved-imports--no-import-ransomware)
+- [Hash-Resolved Imports / No-Import Ransomware](#hash-resolved-imports-no-import-ransomware)
 - [ELF Section Header Corruption for Anti-Analysis](#elf-section-header-corruption-for-anti-analysis)
 - [VM Trace Diffing Instead of Full Disassembly](#vm-trace-diffing-instead-of-full-disassembly)
 

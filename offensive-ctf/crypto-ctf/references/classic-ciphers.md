@@ -9,7 +9,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [Atbash Cipher](#atbash-cipher)
 - [Polybius Square Cipher]
 - [Substitution Cipher with Rotating Wheel](#substitution-cipher-with-rotating-wheel)
-- [Kgeneric caseki Examination for Key Length]
+- [Kasiski Examination for Key Length]
 - [XOR Variants](#xor-variants)
   - [Multi-Byte XOR Key Recovery via Frequency Analysis]
   - [Cascade XOR (First-Byte Brute Force)](#cascade-xor-first-byte-brute-force)
@@ -60,9 +60,9 @@ def derive_key(ciphertext, plaintext):
     return ''.join(key)
 ```
 
-### Kgeneric caseki Examination for Key Length
+### Kasiski Examination for Key Length
 
-When no known plaintext is available, determine the Vigenere key length using Kgeneric caseki examination: find repeated sequences in the ciphertext and compute the GCD of their distances.
+When no known plaintext is available, determine the Vigenere key length using Kasiski examination: find repeated sequences in the ciphertext and compute the GCD of their distances.
 
 ```python
 from math import gcd

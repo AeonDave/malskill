@@ -2,24 +2,24 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Advanced Disk and Memory Techniques
+# CTF Forensics - Advanced Disk and Memory
 
 ## Table of Contents
-- [Deleted Partition Recovery]
-- [ZFS Forensics]
-- [GPT Partition GUID Data Encoding]
-- [Windows Minidump String Carving]
-- [VMDK Sparse Parsing]
-- [Memory Dump String Carving]
-- [Memory Dump Malware Extraction + XOR]
-- [Linux Ransomware Memory-Key Recovery]
-- [WordPerfect Macro XOR Extraction]
-- [Minidump ISO 9660 Recovery + XOR Key]
-- [APFS Snapshot Historical File Recovery]
-- [RAID 5 Disk Recovery via XOR]
-- [HFS+ Resource Fork Hidden Binary Recovery]
-- [Kyoto Cabinet Hash Database Forensics via Incremental Key Insertion]
-- [SQLite Edit History Reconstruction from Diff Table]
+- [Deleted Partition Recovery](#deleted-partition-recovery)
+- [ZFS Forensics](#zfs-forensics)
+- [GPT Partition GUID Data Encoding](#gpt-partition-guid-data-encoding)
+- [Windows Minidump String Carving](#windows-minidump-string-carving)
+- [VMDK Sparse Parsing](#vmdk-sparse-parsing)
+- [Memory Dump String Carving](#memory-dump-string-carving)
+- [Memory Dump Malware Extraction + XOR](#memory-dump-malware-extraction-xor)
+- [Linux Ransomware Memory-Key Recovery](#linux-ransomware-memory-key-recovery)
+- [WordPerfect Macro XOR Extraction](#wordperfect-macro-xor-extraction)
+- [Minidump ISO 9660 Recovery + XOR Key](#minidump-iso-9660-recovery-xor-key)
+- [APFS Snapshot Historical File Recovery](#apfs-snapshot-historical-file-recovery)
+- [RAID 5 Disk Recovery via XOR](#raid-5-disk-recovery-via-xor)
+- [HFS+ Resource Fork Hidden Binary Recovery](#hfs-resource-fork-hidden-binary-recovery)
+- [Kyoto Cabinet Hash Database Forensics via Incremental Key Insertion](#kyoto-cabinet-hash-database-forensics-via-incremental-key-insertion)
+- [SQLite Edit History Reconstruction from Diff Table](#sqlite-edit-history-reconstruction-from-diff-table)
 - [See Also](#see-also)
 
 -
@@ -497,5 +497,5 @@ for op_type, position, text in diffs:
 
 ## See Also
 
-- [disk-and-memory.md](disk-and-memory.md) - Core disk and memory forensics (Volatility 3, disk image analysis, VM/OVA/VMDK forensics, VMware snapshots, GIMP raw memory dump visual inspection, coredump analysis, Windows KAPE triage, PowerShell ransomware, Android forensics, Docker container forensics, cloud storage forensics, BSON reconstruction, TrueCrypt/VeraCrypt mounting)
-- [disk-recovery.md] - Disk recovery and extraction patterns
+- [disk-memory-and-vm-triage.md](disk-memory-and-vm-triage.md) - Core disk and memory forensics (Volatility 3, disk image analysis, VM/OVA/VMDK forensics, VMware snapshots, GIMP raw memory dump visual inspection, coredump analysis, Windows KAPE triage, PowerShell ransomware, Android forensics, Docker container forensics, cloud storage forensics, BSON reconstruction, TrueCrypt/VeraCrypt mounting)
+- [filesystem-and-archive-recovery.md](filesystem-and-archive-recovery.md) - Disk recovery and extraction patterns

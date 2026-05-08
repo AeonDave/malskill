@@ -1,6 +1,6 @@
 ---
 name: web-ctf
-description: "Challenge-solving methodology for web-application challenge solving. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with curated web reference packs and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, prototype pollution, and chained web attack paths."
+description: "Challenge-solving methodology for web-application CTF tasks. Integrates web-exploit-technique, vuln-search-technique, recon-technique, and fuzzing-technique with curated web reference packs and tool-routing for agentic AI. Use for HTTP apps, APIs, browser clients, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, prototype pollution, GraphQL/WebSocket APIs, and chained web attack paths."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
@@ -11,19 +11,19 @@ metadata:
 
 # Web CTF
 
-Goal: solve web-application challenge tasks with professional offensive methodology, curated high-signal references, and reproducible evidence.
+Goal: solve web-application CTF tasks with professional methodology, curated high-signal references, and reproducible evidence.
 
 ## When this skill applies
 
-- HTTP apps, APIs, browser clients, templates, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, or prototype pollution
+- HTTP apps, APIs, browser clients, templates, auth flows, file uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, request smuggling, GraphQL/WebSocket APIs, or prototype pollution
 - tasks requiring endpoint mapping, parameter discovery, exploit chaining, or stateful session testing
 
 ## Operating model
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Load the closest curated top-level reference for the dominant primitive before touching deeper topic banks.
-4. Use the older narrow topic files only when the curated reference is too shallow for the current edge case.
+3. Load the closest curated reference for the dominant primitive before touching deep topic banks.
+4. Use `field-notes.md` and `sql-injection.md` as deep banks only when the focused reference is too shallow for the current edge case.
 5. Choose the smallest tool chain that can produce a validation signal.
 6. Record the exact proof path and stop once the objective is reproducible.
 
@@ -42,15 +42,26 @@ Use these as decision engines. This skill adds challenge-oriented triage, time-b
 
 Prefer these tool families when the corresponding signal appears:
 
-- `offensive-tools/web/jwt-tool`
-- `offensive-tools/web/commix`
-- `offensive-tools/web/xsstrike`
-- `offensive-tools/web/smuggler`
-- `offensive-tools/vuln-scanners/sqlmap`
-- `offensive-tools/vuln-scanners/sstimap`
-- `offensive-tools/recon/ffuf`
-- `offensive-tools/recon/katana`
-- `offensive-tools/network/burpsuite`
+- `jwt-tool`
+- `commix`
+- `xsstrike`
+- `smuggler`
+- `zap`
+- `sqlmap`
+- `sstimap`
+- `tplmap`
+- `ssrfmap`
+- `nosqlmap`
+- `dalfox`
+- `nuclei`
+- `ffuf`
+- `feroxbuster`
+- `httpx`
+- `katana`
+- `gau`
+- `hakrawler`
+- `burpsuite`
+- `mitmproxy`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
@@ -80,6 +91,9 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - For SQLi, identify query shape before extraction: SELECT/INSERT/UPDATE/DELETE plus WHERE, ORDER, GROUP, LIMIT, JSON/XML, full-text, and identifier positions. Choose the quietest reliable oracle (error, boolean diff, visible UNION, timing, OAST), fingerprint DBMS only as needed, and inspect ORM/query-builder raw fragments such as dynamic identifiers, `LIKE`, `IN`, `ORDER BY`, JSON operators, and report/export filters.
 - For SSRF, map every server-side fetcher: URL params, webhooks, previews, imports, renderers, analytics, GraphQL resolvers, and background crawlers. Establish an OAST or timing/status oracle, then test loopback/RFC1918/link-local/IPv6/address-encoded targets, parser differentials, redirect chains, protocol handlers, header/method control, and high-value metadata or control-plane endpoints.
 - For XSS, trace source to sink before payload iteration: URL/hash/referrer, postMessage, storage, WebSocket/SSE, server JSON, file metadata, or rendered markdown into HTML, attribute, URL, JS string, CSS, SVG/MathML, DOM API, framework escape hatch, or template sink. Then evaluate sanitizer, CSP, Trusted Types, MIME/sniffing, hydration, and alternate render paths with minimal context-specific proof.
+- For GraphQL, separate schema discovery, resolver auth, batching/alias abuse, depth/cost limits, persisted query behavior, and GET-vs-POST CSRF. Test field-level auth with two principals before chasing injection payloads.
+- For WebSocket/SSE, capture the handshake and one normal message flow. Test Origin checks, auth binding after connect, message type confusion, replayed subscriptions, room/channel IDOR, and server-side event injection.
+- For request smuggling/desync, fingerprint front-end and back-end behavior first. Use one harmless differential proof before attempting cache poisoning, credential capture, or admin-bot pivots.
 - Confirm vulnerability class with minimal request/response proof, then chain only as far as objective requires.
 - Preserve session state across proxy, CLI, and custom scripts.
 
@@ -88,7 +102,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.
 - Do not brute force before representation, constraints, and success oracle are known.
 - Keep a pivot ledger: hypothesis, evidence, result, next shortest path.
-- Preserve coverage by starting from curated reference packs, then loading narrower legacy topic files only for unresolved edge cases.
+- Preserve coverage by starting from curated reference packs, then loading deep banks only for unresolved edge cases.
 - Keep challenge/platform/competition names out of notes and generated reports.
 
 ## Resources
@@ -99,7 +113,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/server-execution.md](references/server-execution.md) — curated execution pack: runtime injection, upload-to-RCE, deserialization, and advanced framework chains.
 - [references/web-vulnerabilities-and-cves.md](references/web-vulnerabilities-and-cves.md) — curated framework/product CVE pack for stack-specific web shortcuts.
 - [references/web3-attacks.md](references/web3-attacks.md) — curated Web3/web-wallet/contract interaction pack.
-- [references/field-notes.md](references/field-notes.md) — preserved, debrandized imported technique material.
-- [references/sql-injection.md](references/sql-injection.md) — preserved, debrandized imported technique material.
+- [references/field-notes.md](references/field-notes.md) — deep quick-reference bank for compact payloads, niche chains, and challenge-specific pivots.
+- [references/sql-injection.md](references/sql-injection.md) — deep SQLi bank for DBMS quirks, filter bypasses, second-order cases, timing oracles, and SQL-adjacent injections.
 
-Legacy narrow-topic files remain in `references/` as deep banks for edge cases, but they are no longer the primary load path.
+Use the focused references as the primary load path; use deep banks when an edge case needs more detail.

@@ -523,20 +523,20 @@ plaintext = AES.new(aes_key, AES.MODE_CBC, captured_iv).decrypt(captured_ct)
 **Pattern:** In simulated BB-84 QKD without authentication, perform a full man-in-the-middle by independently negotiating with both Alice and Bob.
 
 ```python
-# Strategy: Always use bgeneric case Z, always send value 1 to Bob
+# Strategy: Always use basis Z, always send value 1 to Bob
 # Alice side: measure in random bases, record results
-# Bob side: always receives 1 in bgeneric case Z
+# Bob side: always receives 1 in basis Z
 # Bob's key = all 1s (known to attacker)
 # Alice's key = attacker's measured qbit values
 
 # Heuristic: throttle Bob's correct-guess count to match Alice's
 # Both parties verify by comparing subset of bits — attacker controls both sides
 for qbit in alice_qbits:
-    my_bgeneric case = 'Z'  # always measure in Z bgeneric case
+    my_basis = 'Z'  # always measure in Z basis
     my_value = measure
     send_to_bob  # always send 1
 
-# After bgeneric case reconciliation:
+# After basis reconciliation:
 # key_with_alice = [measured values where bases matched]
 # key_with_bob = [all 1s]
 ```
@@ -558,7 +558,7 @@ if (B + 1) == p:
     # Decrypt ElGamal: shared_secret = pow(ephemeral, key, p)
 ```
 
-**Key insight:** The generator raised to `(p-1)/2` always epublic source `-1 mod p` (Euler's criterion for quadratic residues). When the public key `B` epublic source `p-1`, the private key is trivially `(p-1)/2`. Always check `B == p-1` (and `B == 1` for key=0) before attempting general DLP.
+**Key insight:** The generator raised to `(p-1)/2` always equals `-1 mod p` (Euler's criterion for quadratic residues). When the public key `B` equals `p-1`, the private key is trivially `(p-1)/2`. Always check `B == p-1` (and `B == 1` for key=0) before attempting general DLP.
 
 -
 
@@ -671,7 +671,7 @@ for i in range(high_bit_count):
 G = Matrix(GF(p), [[...]])  # generator matrix
 H = Matrix(GF(p), [[...]])  # H = G^alpha
 J, P = G.jordan_form(transformation=True)
-H_prime = ~P * H * P  # H in Jordan bgeneric case
+H_prime = ~P * H * P  # H in Jordan basis
 # For Jordan block with eigenvalue lambda:
 # J^alpha has alpha * lambda^(alpha-1) on super-diagonal
 # alpha = J[3][3] * H_prime[3][4] / H_prime[3][3]

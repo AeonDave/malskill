@@ -2,27 +2,26 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Advanced Steganography
+# CTF Forensics - Audio and Archive Stego
 
-See also: [stego-advanced-2.md](stego-advanced-2.md) for video frame techniques, JPEG XL TOC permutation, Arnold's Cat Map, SSTV FM demodulation, MJPEG steganography, EXIF/Stegano pixel patterns, PDF xref covert channels, ANSI escape code stego, and ECB image recovery.
+See also: [video-and-container-stego.md](video-and-container-stego.md) for video frame techniques, JPEG XL TOC permutation, Arnold's Cat Map, SSTV FM demodulation, MJPEG steganography, EXIF/Stegano pixel patterns, PDF xref covert channels, ANSI escape code stego, and ECB image recovery.
 
 ## Table of Contents
-- [FFT Frequency Domain Steganography]
-- [SSTV Red Herring + LSB Audio Stego]
-- [DotCode Barcode via SSTV]
+- [FFT Frequency Domain Steganography](#fft-frequency-domain-steganography)
+- [SSTV Red Herring + LSB Audio Stego](#sstv-red-herring-lsb-audio-stego)
+- [DotCode Barcode via SSTV](#dotcode-barcode-via-sstv)
 - [DTMF Audio Decoding](#dtmf-audio-decoding)
-- [Custom Frequency DTMF / Dual-Tone Keypad Encoding]
-- [Multi-Track Audio Differential Subtraction]
-- [Cross-Channel Multi-Bit LSB Steganography]
-- [Audio FFT Musical Note Identification]
-- [Audio Metadata Octal Encoding]
-- [Nested Tar Archive with Whitespace Encoding]
-- [DeepSound Audio Steganography with Password Cracking]
-- [Audio Waveform Binary Encoding]
-- [Audio Spectrogram Hidden QR Code]
-- [Byte-Reversed.docx ZIP Bidirectional Archive]
-- [MIDI Note-On/Note-Off Pitch Pair Encoding]
-
+- [Custom Frequency DTMF / Dual-Tone Keypad Encoding](#custom-frequency-dtmf-dual-tone-keypad-encoding)
+- [Multi-Track Audio Differential Subtraction](#multi-track-audio-differential-subtraction)
+- [Cross-Channel Multi-Bit LSB Steganography](#cross-channel-multi-bit-lsb-steganography)
+- [Audio FFT Musical Note Identification](#audio-fft-musical-note-identification)
+- [Audio Metadata Octal Encoding](#audio-metadata-octal-encoding)
+- [Nested Tar Archive with Whitespace Encoding](#nested-tar-archive-with-whitespace-encoding)
+- [DeepSound Audio Steganography with Password Cracking](#deepsound-audio-steganography-with-password-cracking)
+- [Audio Waveform Binary Encoding](#audio-waveform-binary-encoding)
+- [Audio Spectrogram Hidden QR Code](#audio-spectrogram-hidden-qr-code)
+- [Byte-Reversed.docx ZIP Bidirectional Archive](#byte-reverseddocx-zip-bidirectional-archive)
+- [MIDI Note-On/Note-Off Pitch Pair Encoding](#midi-note-onnote-off-pitch-pair-encoding)
 -
 
 ## FFT Frequency Domain Steganography

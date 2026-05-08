@@ -2,12 +2,12 @@
 
 This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
 
-# CTF Forensics - Windows
+# CTF Forensics - Windows Forensics
 
 ## Table of Contents
 - [Windows Event Logs (.evtx)](#windows-event-logs-evtx)
 - [Registry Analysis](#registry-analysis)
-  - [OEMInformation Backdoor Detection]
+  - [OEMInformation Backdoor Detection](#oeminformation-backdoor-detection)
 - [SAM Database Analysis](#sam-database-analysis)
 - [Recycle Bin Forensics](#recycle-bin-forensics)
 - [Browser History](#browser-history)
@@ -25,11 +25,10 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [RDP Session Event IDs](#rdp-session-event-ids)
 - [Windows Defender MPLog Analysis](#windows-defender-mplog-analysis)
 - [Anti-Forensics Detection Checklist](#anti-forensics-detection-checklist)
-- [Windows Memory Forensics: certutil Base64 ZIP Recovery]
-- [NTFS EFSTMPWP Folder as cipher.exe Wipe Artifact]
-- [Volatility clipboard Plugin for Copy-Paste Secret Recovery]
-- [Volatility Credential Recovery Toolkit]
-
+- [Windows Memory Forensics: certutil Base64 ZIP Recovery](#windows-memory-forensics-certutil-base64-zip-recovery)
+- [NTFS EFSTMPWP Folder as cipher.exe Wipe Artifact](#ntfs-efstmpwp-folder-as-cipherexe-wipe-artifact)
+- [Volatility clipboard Plugin for Copy-Paste Secret Recovery](#volatility-clipboard-plugin-for-copy-paste-secret-recovery)
+- [Volatility Credential Recovery Toolkit](#volatility-credential-recovery-toolkit)
 -
 
 ## Windows Event Logs (.evtx)

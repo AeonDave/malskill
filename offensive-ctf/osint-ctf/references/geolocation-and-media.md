@@ -1,7 +1,3 @@
-# Preserved source: geolocation-and-media.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # Geolocation and Media Analysis
 
 ## Table of Contents
@@ -10,23 +6,21 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [Reverse Image Search](#reverse-image-search)
 - [Geolocation Techniques](#geolocation-techniques)
 - [MGRS (Military Grid Reference System)](#mgrs-military-grid-reference-system)
-- [Google Plus Codes / Open Location Codes]
-- [Metadata Extraction]
+- [Google Plus Codes / Open Location Codes](#google-plus-codes-open-location-codes)
+- [Metadata Extraction](#metadata-extraction)
 - [Hardware/Product Identification](#hardwareproduct-identification)
 - [Newspaper Archives and Historical Research](#newspaper-archives-and-historical-research)
-- [Google Street View Panorama Matching]
-- [Road Sign Language and Driving Side Analysis]
-- [Post-Soviet Architecture and Brand Identification]
+- [Google Street View Panorama Matching](#google-street-view-panorama-matching)
+- [Road Sign Language and Driving Side Analysis](#road-sign-language-and-driving-side-analysis)
+- [Post-Soviet Architecture and Brand Identification](#post-soviet-architecture-and-brand-identification)
 - [IP Geolocation and Attribution](#ip-geolocation-and-attribution)
-- [Google Lens Cropped Region Search]
-- [Reflected and Mirrored Text Reading]
-- [What3Words (W3W) Geolocation]
-- [Monumental Letters / Letreiro Identification]
-- [Google Maps Crowd-Sourced Photo Verification]
-- [Overpass Turbo Spatial Queries]
-- [Music-Themed Landmark Geolocation with Key Encoding]
-
--
+- [Google Lens Cropped Region Search](#google-lens-cropped-region-search)
+- [Reflected and Mirrored Text Reading](#reflected-and-mirrored-text-reading)
+- [What3Words (W3W) Geolocation](#what3words-w3w-geolocation)
+- [Monumental Letters / Letreiro Identification](#monumental-letters-letreiro-identification)
+- [Google Maps Crowd-Sourced Photo Verification](#google-maps-crowd-sourced-photo-verification)
+- [Overpass Turbo Spatial Queries](#overpass-turbo-spatial-queries)
+- [Music-Themed Landmark Geolocation with Key Encoding](#music-themed-landmark-geolocation-with-key-encoding)
 
 ## Image Analysis
 

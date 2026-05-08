@@ -1,7 +1,3 @@
-# Preserved source: field-notes.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Web Field Notes
 
 Long-form exploit notes that were moved out of `SKILL.md` so the main skill can stay focused on routing and first-pass execution.
@@ -15,7 +11,7 @@ Long-form exploit notes that were moved out of `SKILL.md` so the main skill can 
 - [Path Traversal / LFI Quick Reference](#path-traversal-lfi-quick-reference)
 - [JWT Quick Reference](#jwt-quick-reference)
 - [SSTI Quick Reference](#ssti-quick-reference)
-- [Python str.format() Attribute Traversal]
+- [Python str.format() Attribute Traversal](#python-strformat-attribute-traversal)
 - [SSRF Quick Reference](#ssrf-quick-reference)
 - [Command Injection Quick Reference](#command-injection-quick-reference)
 - [XXE Quick Reference](#xxe-quick-reference)
@@ -27,10 +23,10 @@ Long-form exploit notes that were moved out of `SKILL.md` so the main skill can 
 - [Race Conditions (Time-of-Check to Time-of-Use)](#race-conditions-time-of-check-to-time-of-use)
 - [Node.js Quick Reference](#nodejs-quick-reference)
 - [Auth & Access Control Quick Reference](#auth-access-control-quick-reference)
-- [Apache CVE-2012-0053 HttpOnly Cookie Leak]
+- [Apache CVE-2012-0053 HttpOnly Cookie Leak](#apache-cve-2012-0053-httponly-cookie-leak)
 - [Apache mod_status Information Disclosure](#apache-mod_status-information-disclosure)
 - [Open Redirect Chains](#open-redirect-chains)
-- [Subdomain Takeover]
+- [Subdomain Takeover](#subdomain-takeover)
 - [File Upload to RCE](#file-upload-to-rce)
 - [Multi-Stage Chain Patterns](#multi-stage-chain-patterns)
 - [Flask/Werkzeug Debug Mode](#flaskwerkzeug-debug-mode)
@@ -41,7 +37,7 @@ Long-form exploit notes that were moved out of `SKILL.md` so the main skill can 
 - [DOM Clobbering + MIME Mismatch](#dom-clobbering-mime-mismatch)
 - [HTTP Request Smuggling via Cache Proxy](#http-request-smuggling-via-cache-proxy)
 - [Path Traversal: URL-Encoded Slash Bypass](#path-traversal-url-encoded-slash-bypass)
-- [WeasyPrint SSRF & File Read]
+- [WeasyPrint SSRF and File Read](#weasyprint-ssrf-and-file-read)
 - [MongoDB Regex / $where Blind Injection](#mongodb-regex-where-blind-injection)
 - [Pongo2 / Go Template Injection](#pongo2-go-template-injection)
 - [ZIP Upload with PHP Webshell](#zip-upload-with-php-webshell)
@@ -49,29 +45,29 @@ Long-form exploit notes that were moved out of `SKILL.md` so the main skill can 
 - [Custom Linear MAC Forgery](#custom-linear-mac-forgery)
 - [CSS/JS Paywall Bypass](#cssjs-paywall-bypass)
 - [SSRF to Docker API RCE Chain](#ssrf-to-docker-api-rce-chain)
-- [Castor XML Deserialization via xsi:type]
-- [Apache ErrorDocument Expression File Read]
+- [Castor XML Deserialization via xsi:type](#castor-xml-deserialization-via-xsitype)
+- [Apache ErrorDocument Expression File Read](#apache-errordocument-expression-file-read)
 - [HTTP TRACE Method Bypass](#http-trace-method-bypass)
 - [LLM/AI Chatbot Jailbreak](#llmai-chatbot-jailbreak)
 - [Admin Bot javascript: URL Scheme Bypass](#admin-bot-javascript-url-scheme-bypass)
-- [XS-Leak via Image Load Timing + GraphQL CSRF]
-- [React Server Components Flight Protocol RCE]
-- [Unicode Case Folding XSS Bypass]
-- [CSS Font Glyph + Container Query Data Exfiltration]
-- [Hyperscript / Alpine.js CDN CSP Bypass]
+- [XS-Leak via Image Load Timing + GraphQL CSRF](#xs-leak-via-image-load-timing-graphql-csrf)
+- [React Server Components Flight Protocol RCE](#react-server-components-flight-protocol-rce)
+- [Unicode Case Folding XSS Bypass](#unicode-case-folding-xss-bypass)
+- [CSS Font Glyph + Container Query Data Exfiltration](#css-font-glyph-container-query-data-exfiltration)
+- [Hyperscript / Alpine.js CDN CSP Bypass](#hyperscript-alpinejs-cdn-csp-bypass)
 - [Solidity Transient Storage Clearing Collision (0.8.28-0.8.33)](#solidity-transient-storage-clearing-collision-0828-0833)
-- [Chrome Unicode URL Normalization Bypass]
-- [CSP Nonce Bypass via base Tag Hijacking]
-- [JA4/JA4H TLS Fingerprint Matching]
-- [Client-Side HMAC Bypass via Leaked JS Secret]
-- [SQLi Keyword Fragmentation Bypass]
-- [Pickle Chaining via STOP Opcode Stripping]
-- [XPath Blind Injection]
-- [SQLite File Path Traversal to Bypass String Equality]
-- [PHP Serialization Length Manipulation via Filter Word Expansion]
-- [CSP Bypass via link prefetch]
-- [XML Injection via X-Forwarded-For Header]
-- [Base64 Decode Leniency and Parameter Override for Signature Bypass]
+- [Chrome Unicode URL Normalization Bypass](#chrome-unicode-url-normalization-bypass)
+- [CSP Nonce Bypass via base Tag Hijacking](#csp-nonce-bypass-via-base-tag-hijacking)
+- [JA4/JA4H TLS Fingerprint Matching](#ja4ja4h-tls-fingerprint-matching)
+- [Client-Side HMAC Bypass via Leaked JS Secret](#client-side-hmac-bypass-via-leaked-js-secret)
+- [SQLi Keyword Fragmentation Bypass](#sqli-keyword-fragmentation-bypass)
+- [Pickle Chaining via STOP Opcode Stripping](#pickle-chaining-via-stop-opcode-stripping)
+- [XPath Blind Injection](#xpath-blind-injection)
+- [SQLite File Path Traversal to Bypass String Equality](#sqlite-file-path-traversal-to-bypass-string-equality)
+- [PHP Serialization Length Manipulation via Filter Word Expansion](#php-serialization-length-manipulation-via-filter-word-expansion)
+- [CSP Bypass via link prefetch](#csp-bypass-via-link-prefetch)
+- [XML Injection via X-Forwarded-For Header](#xml-injection-via-x-forwarded-for-header)
+- [Base64 Decode Leniency and Parameter Override for Signature Bypass](#base64-decode-leniency-and-parameter-override-for-signature-bypass)
 - [Common Flag Locations](#common-flag-locations)
 
 ## Reconnaissance
@@ -125,7 +121,10 @@ JSONP endpoint (`?callback=func`) wraps sensitive data in a function call. Load 
 
 ## Path Traversal / LFI Quick Reference
 
-```text../../../etc/passwd....//....//....//etc/passwd     # Filter bypass..%2f..%2f..%2fetc/passwd        # URL encoding
+```text
+../../../etc/passwd
+....//....//....//etc/passwd     # Filter bypass
+..%2f..%2f..%2fetc/passwd        # URL encoding
 %252e%252e%252f                  # Double URL encoding
 {.}{.}/flag.txt                  # Brace stripping bypass
 ```
@@ -233,7 +232,7 @@ See [server-injection.md](server-injection.md) for filter chains and adjacent pi
 
 **Ruby `instance_eval`:** Break string + comment: `VALID');INJECTED_CODE#`
 **Perl `open()`:** 2-arg open allows pipe: `|command|`
-**JS `eval` blocklist bypass:** `row['con'+'structor']['con'+'structor']('return this')()`
+**JS `eval` blocklist bypass:** rebuild `constructor.constructor` through concatenated property names, then call it as a function factory.
 **PHP deserialization:** Craft serialized object in cookie → LFI/RCE
 **LaTeX injection:** `\input{|"cat /flag.txt"}` — shell command via pipe syntax in PDF generation services. `\@@input"/etc/passwd"` for file reads without shell.
 - **LaTeX restricted write18 bypass:** When `write18` is restricted, `mpost -ini "-tex=bash -c (cmd)" file.mp` uses mpost's whitelisted status to execute arbitrary commands. `${IFS}` replaces spaces. See [server-execution.md](server-execution.md).
@@ -353,7 +352,7 @@ Cache proxy desync for cookie theft via incomplete POST body. See [browser-attac
 
 `%2f` bypasses nginx route matching but filesystem resolves it. See [server-injection.md](server-injection.md).
 
-## WeasyPrint SSRF & File Read
+## WeasyPrint SSRF and File Read
 
 `<a rel="attachment" href="file:///flag.txt">` or `<link rel="attachment" href="http://127.0.0.1/admin">` - WeasyPrint embeds fetched content as PDF attachments, bypassing header checks. Boolean oracle via `/Type /EmbeddedFile` presence. See [server-execution.md](server-execution.md) and [web-vulnerabilities-and-cves.md](web-vulnerabilities-and-cves.md).
 
@@ -411,7 +410,7 @@ HTML injection → meta refresh redirect (CSP bypass) → admin bot loads attack
 
 ## React Server Components Flight Protocol RCE
 
-Identify via `Next-Action` + `Accept: text/x-component` headers. CVE-2025-55182: fake Flight chunk exploits constructor chain for server-side JS execution. Exfiltrate via `NEXT_REDIRECT` error → `x-action-redirect` header. WAF bypass: `'chi'+'ld_pro'+'cess'` or hex `'\x63\x68\x69\x6c\x64\x5f\x70\x72\x6f\x63\x65\x73\x73'`. See [server-execution.md](server-execution.md) and [web-vulnerabilities-and-cves.md](web-vulnerabilities-and-cves.md).
+Identify via `Next-Action`, `Accept: text/x-component`, Flight payloads, App Router routes, or server-action responses. CVE-2025-55182 belongs in the React Server Components / Flight deserialization lane: confirm stack and version signals first, then use the smallest harmless proof available, such as a controlled redirect/error header, callback, or container-local echo. See [server-execution.md](server-execution.md) and [web-vulnerabilities-and-cves.md](web-vulnerabilities-and-cves.md#modern-framework-pivots).
 
 ## Unicode Case Folding XSS Bypass
 

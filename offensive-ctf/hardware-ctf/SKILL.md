@@ -71,4 +71,3 @@ Load these as needed:
 ## Resources
 
 - `references/hardware-artifact-workflow.md` — detailed triage and workflows for captures, buses, firmware, RF, side-channel, and CAD/G-code.
-- `references/source-coverage.md` — source and gap coverage map for this dedicated skill.

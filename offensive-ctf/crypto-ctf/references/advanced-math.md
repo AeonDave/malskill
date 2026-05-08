@@ -235,7 +235,7 @@ for row in res:
         break
 ```
 
-**Key insight:** The knapsack problem becomes easy when reformulated as a shortest vector problem. The LLL-reduced bgeneric case contains a row representing the binary plaintext when the last column is zero.
+**Key insight:** The knapsack problem becomes easy when reformulated as a shortest vector problem. The LLL-reduced basis contains a row representing the binary plaintext when the last column is zero.
 
 ## Coppersmith's Method (Close Private Keys)
 
@@ -561,12 +561,12 @@ n = 256   # Secret dimension
 m = 512   # Number of samples
 
 # A is m×n matrix, b is m-vector, all mod q
-# Construct lattice bgeneric case for CVP approach
+# Construct lattice basis for CVP approach
 # Lattice: rows of [q*I_m | 0] on top, [A^T | I_n] below
 # Target: b
 
 def solve_lwe_cvp(A, b, q, n, m):
-    # Build lattice bgeneric case (m+n) × (m+n)
+    # Build lattice basis (m+n) × (m+n)
     dim = m + n
     B = IntegerMatrix(dim, dim)
 
@@ -580,7 +580,7 @@ def solve_lwe_cvp(A, b, q, n, m):
             B[m + j, i] = int(A[i][j])
         B[m + j, m + j] = 1
 
-    # LLL reduce the bgeneric case
+    # LLL reduce the basis
     LLL.reduction(B)
 
     # Target vector: (b | 0...0)
@@ -691,7 +691,7 @@ x = [crt2(x5[i], 5, x13[i], 13) for i in range(len(x5))]
 
 ## Introspective CRC via GF(2) Linear Algebra
 
-**Pattern:** Find an ASCII string whose CRC-N value epublic source the string itself (self-referential CRC). Model CRC as a linear function over GF(2) and solve the resulting system.
+**Pattern:** Find an ASCII string whose CRC-N value equals the string itself (self-referential CRC). Model CRC as a linear function over GF(2) and solve the resulting system.
 
 ```python
 # CRC is linear over GF(2): CRC(a XOR b) = CRC(a) XOR CRC(b)

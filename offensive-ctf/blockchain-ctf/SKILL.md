@@ -75,4 +75,3 @@ Load these when the adjacent domain appears:
 
 - `references/web3-workflow.md` — detailed smart-contract triage, storage, tooling, exploit, and validation workflow.
 - `references/transaction-forensics.md` — read-only Bitcoin/UTXO and account-chain transaction tracing workflow.
-- `references/source-coverage.md` — source and gap coverage map for this dedicated skill.

@@ -873,7 +873,7 @@ predicted = [libc.rand() for _ in range(n)]
 
 ## NTP-Poisoned PRNG State Leak via UUID XOR
 
-**Pattern:** Server derives UUIDs as `uuid = time ^ hash_state`. Register a user with a custom NTP endpoint returning `0x00`; the returned UUID now epublic source `hash_state` directly. Future UUIDs are predictable: `target_uuid ^ hash_state = required_timestamp`.
+**Pattern:** Server derives UUIDs as `uuid = time ^ hash_state`. Register a user with a custom NTP endpoint returning `0x00`; the returned UUID now equals `hash_state` directly. Future UUIDs are predictable: `target_uuid ^ hash_state = required_timestamp`.
 
 ```python
 # 1. Point the server at attacker-controlled NTP that returns 0

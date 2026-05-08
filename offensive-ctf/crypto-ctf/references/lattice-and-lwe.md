@@ -95,14 +95,14 @@ R = M.BKZ(block_size=25)
 
 Good for approximate CVP after reduction.
 
-- reduce bgeneric case with `LLL` or `BKZ` first
+- reduce basis with `LLL` or `BKZ` first
 - then apply Babai to recover the nearby vector
 - often enough for ternary or small-error LWE
 
 ```python
 from fpylll import IntegerMatrix, CVP
 
-# After building and reducing the lattice bgeneric case:
+# After building and reducing the lattice basis:
 closest = CVP.babai(B, target)
 ```
 
@@ -349,7 +349,7 @@ def lwe_embedding(A, q):
 
 Then:
 
-- reduce the bgeneric case
+- reduce the basis
 - use Babai / nearest-plane on the target
 - recover the short secret / error pair
 
@@ -432,13 +432,13 @@ Core workflow:
 2. reduce it
 3. recover the orthogonal lattice
 4. take the kernel / orthogonal complement
-5. reduce again to expose the hidden binary or short bgeneric case
+5. reduce again to expose the hidden binary or short basis
 
 ```python
 from sage.all import Matrix, ZZ, identity_matrix, block_matrix
 
 def orthogonal_lattice_recovery(H, M):
-    """Recover hidden binary bgeneric case from h = alpha * A (mod M).
+    """Recover hidden binary basis from h = alpha * A (mod M).
 
     H: observed matrix (k x n) over Z_M
     M: modulus
@@ -450,7 +450,7 @@ def orthogonal_lattice_recovery(H, M):
     bot = block_matrix([[H.change_ring(ZZ).transpose(), identity_matrix(n)]])
     L = block_matrix([[top], [bot]])
     L_reduced = L.LLL()
-    # Short rows in the bottom-right block are orthogonal to the hidden bgeneric case
+    # Short rows in the bottom-right block are orthogonal to the hidden basis
     return L_reduced
 ```
 
@@ -460,7 +460,7 @@ def orthogonal_lattice_recovery(H, M):
 - unknown matrix entries are in `{0,1}` or another tiny alphabet
 - direct solving fails because the structure lives in an unknown subspace
 
-**Key insight:** in these problems, the shortest vectors are not the answer itself. They are the doorway to the answer: first recover the orthogonal space, then turn back and reconstruct the hidden bgeneric case.
+**Key insight:** in these problems, the shortest vectors are not the answer itself. They are the doorway to the answer: first recover the orthogonal space, then turn back and reconstruct the hidden basis.
 
 -
 
@@ -505,7 +505,7 @@ Then:
 
 ## Common Failure Modes
 
-- **Wrong scaling:** one coordinate dominates the bgeneric case and hides the short vector.
+- **Wrong scaling:** one coordinate dominates the basis and hides the short vector.
 - **Wrong centering:** values should be mapped to `[-q/2, q/2]`, not kept in `[0, q)`.
 - **Wrong orientation:** rows vs columns are swapped.
 - **Too few samples:** the lattice exists, but not enough equations pin the secret down.

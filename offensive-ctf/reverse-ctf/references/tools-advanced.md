@@ -1,7 +1,3 @@
-# Preserved source: tools-advanced.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Reverse - Advanced Tools & Deobfuscation
 
 Canonical advanced-tooling reference for deobfuscation, packers/protectors, diffing, symbolic execution, advanced debugger automation, scripting, and binary patching.
@@ -11,10 +7,10 @@ Canonical advanced-tooling reference for deobfuscation, packers/protectors, diff
   - [Recognition](#recognition)
   - [Approach](#approach)
   - [Tools](#tools)
-  - [CTF Strategy]
+  - [CTF Strategy](#ctf-strategy)
 - [Themida / WinLicense Analysis](#themida-winlicense-analysis)
   - [Themida Recognition](#themida-recognition)
-  - [Approach for CTF]
+  - [Approach for CTF](#approach-for-ctf)
 - [Binary Diffing](#binary-diffing)
   - [BinDiff](#bindiff)
   - [Diaphora](#diaphora)
@@ -27,16 +23,14 @@ Canonical advanced-tooling reference for deobfuscation, packers/protectors, diff
 - [Manticore (Symbolic Execution)](#manticore-symbolic-execution)
 - [Rizin / Cutter](#rizin-cutter)
 - [RetDec (Retargetable Decompiler)](#retdec-retargetable-decompiler)
-- [Custom VM Bytecode Lifting to LLVM IR]
+- [Custom VM Bytecode Lifting to LLVM IR](#custom-vm-bytecode-lifting-to-llvm-ir)
 - [Advanced GDB Techniques](#advanced-gdb-techniques)
 - [Advanced Ghidra Scripting](#advanced-ghidra-scripting)
 - [Patching Strategies](#patching-strategies)
-- [GDB Constraint Extraction with ILP/LP Solver]
-- [GDB Position-Encoded Input with Zero Flag Monitoring]
-- [LD_PRELOAD to Dump Execute-Only Binary]
-- [PEDA current_inst Bit-by-Bit Flag Scraper]
-
--
+- [GDB Constraint Extraction with ILP/LP Solver](#gdb-constraint-extraction-with-ilplp-solver)
+- [GDB Position-Encoded Input with Zero Flag Monitoring](#gdb-position-encoded-input-with-zero-flag-monitoring)
+- [LD_PRELOAD to Dump Execute-Only Binary](#ld_preload-to-dump-execute-only-binary)
+- [PEDA current_inst Bit-by-Bit Flag Scraper](#peda-current_inst-bit-by-bit-flag-scraper)
 
 ## VMProtect Analysis
 

@@ -6,7 +6,7 @@
 - [FUSE/CUSE Character Device Exploitation](#fusecuse-character-device-exploitation)
 - [Busybox/Restricted Shell Escalation](#busyboxrestricted-shell-escalation)
 - [Shell Tricks](#shell-tricks)
-- [File Descriptor Inheritance via Missing `O_CLOEXEC`](#file-descriptor-inheritance-via-missing-ocloexec)
+- [File Descriptor Inheritance via Missing `O_CLOEXEC`](#file-descriptor-inheritance-via-missing-o_cloexec)
 - [Write-Anywhere via /proc/self/mem]
 - [process_vm_readv Failure as Sandbox Escape]
 - [Named Pipe mkfifo for File Size Check Bypass]
