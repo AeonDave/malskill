@@ -39,13 +39,13 @@ Load these when the adjacent domain appears:
 - `fuzzing-technique` for Echidna, Foundry fuzz, invariant testing, and state-machine exploration.
 - `crypto-technique` for signatures, ECDSA nonce issues, ZK proof mistakes, commitments, and randomness.
 - `reversing-technique` for bytecode-only targets, decompilation, metadata stripping, and function selector recovery.
-- `coding/python-patterns` for web3.py scripts and reproducible transaction orchestration.
+- `python-patterns` for web3.py scripts and reproducible transaction orchestration.
 
 ## Tool routing
 
-- Foundry: `cast call`, `cast send`, `cast storage`, `cast calldata`, `cast sig`, `forge test`, `forge create`, `anvil` forks.
-- Solidity toolchain: `solc`, `solc-select`, compiler metadata, Yul IR output, storage layout, and ABI generation.
-- Static and symbolic analysis: Slither for detectors and summaries, Mythril for path-sensitive issues, solc SMTChecker when source is available.
+- Foundry: `foundry-cast` for `cast call`, `cast send`, `cast storage`, `cast calldata`, `cast sig`, plus `forge test`, `forge create`, and `anvil` forks.
+- Solidity toolchain: `solc`, compiler metadata, Yul IR output, storage layout, and ABI generation.
+- Static and symbolic analysis: `slither` for detectors and summaries, `mythril` for path-sensitive issues, solc SMTChecker when source is available.
 - Fuzzing: Foundry fuzz/invariants and Echidna for stateful bugs, accounting violations, and unexpected reachability.
 - Automation: ethers.js, web3.py, Brownie-style scripts, RPC JSON calls, explorer APIs, and transaction receipt parsing.
 - Bytecode and storage: decompilers, selector databases, raw `eth_getStorageAt`, traces, debug RPC, and event topic decoding.
@@ -73,5 +73,5 @@ Load these when the adjacent domain appears:
 
 ## Resources
 
-- `references/web3-workflow.md` — detailed smart-contract triage, storage, tooling, exploit, and validation workflow.
-- `references/transaction-forensics.md` — read-only Bitcoin/UTXO and account-chain transaction tracing workflow.
+- [references/web3-workflow.md](references/web3-workflow.md) — detailed smart-contract triage, storage, tooling, exploit, and validation workflow.
+- [references/transaction-forensics.md](references/transaction-forensics.md) — read-only Bitcoin/UTXO and account-chain transaction tracing workflow.

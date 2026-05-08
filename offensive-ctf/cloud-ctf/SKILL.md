@@ -1,6 +1,6 @@
 ---
 name: cloud-ctf
-description: "Challenge-solving methodology for cloud security challenge solving across AWS, GCP, and Azure. Integrates cloud-security-technique with CTF-specific patterns: IAM enumeration from leaked credentials, unique ID resolution (AWS ARN prefix decoding), S3/GCS/Blob bucket enumeration, object versioning for deleted file recovery, metadata service exploitation (GCP setMetadata privilege escalation), KMS-encrypted file decryption via role pivoting, EC2 snapshot forensics (VHDX/SAM extraction), WorkDocs/Firestore/Secret Manager data exfiltration, TOTP bypass via recovered secrets, and multi-hop credential chains. Use for challenges involving leaked cloud credentials, cloud service misconfigurations, cloud workload privilege escalation, or cloud-native data recovery."
+description: "Challenge-solving methodology for cloud security CTF tasks across AWS, GCP, and Azure. Integrates cloud-security-technique with CTF-specific patterns: IAM enumeration from leaked credentials, unique ID resolution, S3/GCS/Blob bucket enumeration, object versioning for deleted file recovery, metadata-service pivots, KMS/Secret Manager/Key Vault recovery, EC2 snapshot forensics, Firestore/WorkDocs data extraction, TOTP bypass via recovered secrets, and multi-hop credential chains. Use for leaked cloud credentials, cloud service misconfigurations, cloud workload privilege escalation, or cloud-native data recovery."
 license: MIT
 compatibility: "AgentSkills-compatible agents; authorized training and lab environments; aws-cli, gcloud, gsutil required."
 metadata:
@@ -11,14 +11,14 @@ metadata:
 
 # Cloud CTF
 
-Goal: solve cloud security challenges by systematically enumerating the attack surface from a given entry point (leaked keys, unique IDs, service account credentials, or shell access) and following the shortest confirmed path to the objective.
+Goal: solve cloud security CTF tasks by enumerating from a known entry point, confirming identity and permissions at every hop, and following the shortest validated path to the objective.
 
 ## When this skill applies
 
 - Leaked AWS access key / secret key pair in a challenge description.
 - AWS ARN unique ID (AROA, AIDA, ASIA, AKIA prefix) to resolve.
 - GCP service account JSON key file provided.
-- Azure credentials or subscription context provided.
+- Azure credentials, tenant/subscription context, managed-identity shell, storage URL, SAS token, or Key Vault clue provided.
 - SSH access to a cloud VM instance.
 - Challenge involves S3/GCS/Blob buckets, IAM roles, KMS keys, EC2 snapshots, Firestore, WorkDocs, Secret Manager, or cloud metadata.
 
@@ -31,6 +31,7 @@ Entry point classification:
   C. GCP service account key JSON → gcloud auth → enumerate roles → pivot
   D. Shell on cloud VM → IMDS metadata → credentials → enumerate
   E. Leaked URL / bucket name → anonymous access → authenticated list → versions
+  F. Azure account/SAS/managed identity → az account show → role/scope/storage/key vault pivot
 
 Loop:
   1. Identify and classify the entry point.
@@ -94,6 +95,15 @@ gcloud auth activate-service-account --key-file=serviceaccount.json
 gcloud config set project <project-id>
 ```
 
+### Azure context setup
+
+```bash
+az account show
+az account list --output table
+az account set --subscription <subscription-id>
+az role assignment list --assignee <object-id> --all
+```
+
 ---
 
 ## Phase 1 — Permission enumeration
@@ -130,6 +140,17 @@ gcloud iam roles describe <RoleName> --project <project-id>
 ```
 
 Key permission to hunt for: `compute.instances.setMetadata` → privilege escalation.
+
+### Azure: enumerate role scope and data-plane access
+
+```bash
+az account show
+az role assignment list --assignee <object-id> --all --output table
+az storage account list --output table
+az keyvault list --output table
+```
+
+Separate management-plane roles from data-plane permissions. A principal that can see a storage account or vault may still need blob/key/secret-specific access to recover data.
 
 ---
 
@@ -324,6 +345,15 @@ python3 -c "import pyotp; print(pyotp.TOTP('<BASE32>').now())"
 
 Combine with password reuse — try every recovered Secret Manager version as a login password before attempting to crack the bcrypt hash.
 
+### Azure Storage and Key Vault pivots
+
+Use [references/azure-service-cheatsheet.md](references/azure-service-cheatsheet.md) for command details. In CTF tasks, prioritize:
+
+- Storage account/container listing, blob versions, soft-deleted blobs, snapshots, and SAS-token scope.
+- Key Vault secret/key/certificate listing and older secret versions.
+- Managed identity tokens from an isolated VM or container shell.
+- Role assignments at subscription, resource group, resource, and data-plane scopes.
+
 ---
 
 ## Phase 3 — Credential pivoting
@@ -365,11 +395,22 @@ ARN resolution:
 - **Multi-service chain**: draw the pivot graph before acting; document every identity and permission.
 - **Password reuse**: try all recovered secrets (all SM versions) as login passwords before cracking.
 - **TOTP**: any base32 string in recovered data is a TOTP seed — generate OTP immediately.
+- **Azure SAS token**: parse permissions, resource type, expiry, and signed resource before assuming it grants list or read access.
+- **Azure Key Vault**: check secret versions before treating the latest value as final.
 
 ## Technique integration
 
 Load for deep methodology:
 - `cloud-security-technique` — full enumeration workflows, IAM paths, detection-aware pivoting.
+
+## Tool routing
+
+- `aws-cli` for AWS identity, IAM, S3, KMS, Secrets Manager, EC2, DS, WorkDocs, and IMDS-assisted pivots.
+- `gcloud-cli` for GCP IAM, Storage, Compute metadata, Secret Manager, Firestore, Functions, and GKE pivots.
+- Azure CLI (`az`) for Azure account context, RBAC, Storage, Key Vault, and managed identity pivots.
+- `pacu` when an AWS task needs broader permission mapping in an isolated lab.
+- `gitleaks` and `trufflehog` when cloud credentials or service-account keys may be hidden in repositories or archives.
+- `john`, `hashcat`, and TOTP tooling only after recovered secrets and password reuse have been tested.
 
 ## Quality gates
 
@@ -392,3 +433,4 @@ Load for deep methodology:
 
 - [references/aws-service-cheatsheet.md](references/aws-service-cheatsheet.md) — quick CLI reference per AWS service (S3, KMS, STS, Secrets Manager, WorkDocs, EC2, DS).
 - [references/gcp-service-cheatsheet.md](references/gcp-service-cheatsheet.md) — quick CLI reference for GCP (gsutil, gcloud, Firestore SDK, metadata injection).
+- [references/azure-service-cheatsheet.md](references/azure-service-cheatsheet.md) — quick CLI reference for Azure identity, RBAC, Storage, Key Vault, and managed identity.

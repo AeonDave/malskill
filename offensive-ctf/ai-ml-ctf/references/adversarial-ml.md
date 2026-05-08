@@ -1,8 +1,4 @@
-# Preserved source: adversarial-ml.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
-# CTF AI/ML - Adversarial ML
+# AI/ML CTF - Adversarial ML
 
 Adversarial machine learning techniques: generating adversarial examples, physical-world patches, evasion attacks, data poisoning, and backdoor detection. For model weight manipulation and extraction attacks, see [model-attacks.md](model-attacks.md). For LLM-specific attacks, see [llm-attacks.md](llm-attacks.md).
 
