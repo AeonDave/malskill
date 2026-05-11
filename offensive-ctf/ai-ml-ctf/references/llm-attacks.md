@@ -1,8 +1,4 @@
-# Preserved source: llm-attacks.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
-# CTF AI/ML - LLM Attacks
+# AI/ML CTF - LLM Attacks
 
 LLM-specific attack techniques: prompt injection, jailbreaking, token smuggling, context window manipulation, and tool use exploitation. For model weight attacks and extraction, see [model-attacks.md](model-attacks.md). For adversarial ML on image/tabular models, see [adversarial-ml.md](adversarial-ml.md).
 

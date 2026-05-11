@@ -37,15 +37,15 @@ Load these as needed:
 - `reversing-technique` for firmware, bootloaders, microcontroller binaries, and custom parsers.
 - `wireless-technique` for RF/SDR, Bluetooth, Wi-Fi-derived, or radio telemetry tasks.
 - `network-technique` for USB/Bluetooth/CAN PCAPs and protocol captures.
-- `hardware/arduino/arduino` when a task requires real microcontroller wiring, sketches, Arduino CLI, PlatformIO, or board bring-up.
-- `coding/python-patterns` and `coding/systematic-debugging` for decoders, parsers, visualization, and reproducible notebooks/scripts.
+- `arduino` when a task requires real microcontroller wiring, sketches, Arduino CLI, PlatformIO, or board bring-up.
+- `python-patterns` and `systematic-debugging` for decoders, parsers, visualization, and reproducible notebooks/scripts.
 
 ## Tool routing
 
-- Logic/bus: Saleae Logic, sigrok/PulseView, sigrok-cli, logic2 automation, Python edge decoders, and protocol decoders.
-- Firmware: binwalk, file, strings, dd, unsquashfs, UEFITool, chipsec, flashrom, Ghidra, radare2, Binary Ninja, QEMU, and OpenOCD.
-- RF/SDR: GNU Radio, Universal Radio Hacker, rtl_433, inspectrum, Baudline-like spectrum tools, numpy/scipy, and custom demodulators.
-- Peripheral captures: Wireshark/tshark, usbmon, Bluetooth analyzers, HID report parsers, MIDI decoders, and image/path reconstruction scripts.
+- Logic/bus: `saleae-logic-2`, sigrok/PulseView, sigrok-cli, logic2 automation, Python edge decoders, and protocol decoders.
+- Firmware: `binwalk`, `strings`, dd, unsquashfs, UEFITool, chipsec, flashrom, `ghidra`, `radare2`, `binaryninja`, QEMU, and OpenOCD.
+- RF/SDR: GNU Radio, Universal Radio Hacker, rtl_433, inspectrum, spectrum tooling, numpy/scipy, and custom demodulators.
+- Peripheral captures: `wireshark`, `tcpdump`, usbmon, `bluez`, HID report parsers, MIDI decoders, and image/path reconstruction scripts.
 - Side-channel: numpy, scipy, pandas, matplotlib, correlation/DPA scripts, FFT/spectrogram tooling, and clustering/classification only after the signal is understood.
 - CAD/G-code: slicer-aware parsers, zlib/heatshrink/QOI decoders, mesh viewers, coordinate projection, and metadata extraction.
 
@@ -70,4 +70,4 @@ Load these as needed:
 
 ## Resources
 
-- `references/hardware-artifact-workflow.md` — detailed triage and workflows for captures, buses, firmware, RF, side-channel, and CAD/G-code.
+- [references/hardware-artifact-workflow.md](references/hardware-artifact-workflow.md) — detailed triage and workflows for captures, buses, firmware, RF, side-channel, and CAD/G-code.
