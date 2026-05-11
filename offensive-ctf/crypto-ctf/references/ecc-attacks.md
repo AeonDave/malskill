@@ -19,6 +19,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [DSA Key Recovery via MD5 Collision on k-Generation]
 - [Ed25519 Same-Nonce Key Recovery]
 - [Singular Curve ECDLP to Additive/Multiplicative Group]
+- [BLS Aggregate Signature Rogue-Key Attack]
 
 -
 
@@ -343,3 +344,75 @@ r = (f.derivative()).roots()[0][0]
 ```
 
 **Key insight:** Discriminant `-16(4a^3 + 27b^2)` zero means singular. Singular curves are either cusps (map to `(GF(p), +)`) or nodes (map to `GF(p)^*`) — both with polynomial-time DLP.
+
+---
+
+## BLS Aggregate Signature Rogue-Key Attack
+
+**Pattern:** A service accepts BLS12-381 public-key registrations, aggregates all member keys, then verifies one aggregate signature. If proof-of-possession (PoP) is missing, optional, or separated from aggregate verification, register a crafted rogue key so the aggregate collapses to a key the attacker controls.
+
+### Primitives
+
+- Minimal-pubkey-size BLS12-381: pubkeys ∈ G1 (48-byte compressed), signatures ∈ G2 (96-byte compressed).
+- `FastAggregateVerify(pks, msg, agg_sig)` checks `e(AggPk, H(msg)) == e(G1, agg_sig)` where `AggPk = Σ pk_i`.
+- PoP: before joining an aggregate, each key owner proves knowledge of the secret key by signing `pk` itself.
+- Without PoP, the rogue-key attack is trivial.
+
+### Attack math
+
+```
+S   = Σ pk_i          # sum of existing legitimate public keys
+T   = target point    # key the attacker can sign for (knows sk)
+R   = T − S           # rogue key to register
+```
+
+After the service includes `R`, the aggregate becomes `S + R = T`. The attacker then signs the message with their secret key `sk` and the service accepts it as a valid aggregate signature.
+
+### py_ecc implementation
+
+```python
+from py_ecc.bls import G2ProofOfPossession as bls
+from py_ecc.bls.g2_primitives import pubkey_to_G1, G1_to_pubkey
+from py_ecc.optimized_bls12_381 import add, neg
+
+# 1. Enumerate keys included in aggregate verification
+existing_pks_bytes = [pk1, pk2, pk3]          # raw 48-byte keys from service
+existing_pts = [pubkey_to_G1(pk) for pk in existing_pks_bytes]
+
+# 2. Choose a controlled key
+sk = 42
+pk_controlled = bls.SkToPk(sk)
+target_pt = pubkey_to_G1(pk_controlled)
+
+# 3. Compute S = sum of existing keys
+S = existing_pts[0]
+for p in existing_pts[1:]:
+    S = add(S, p)
+
+# 4. Compute rogue key R = target − S
+rogue_pt = add(target_pt, neg(S))
+rogue_pk = G1_to_pubkey(rogue_pt)        # register this with the service
+
+# 5. After registration: aggregate = S + R = target_pt
+#    Sign the message normally and submit
+message = b"the message all members sign"
+sig = bls.Sign(sk, message)
+```
+
+### Investigation checklist
+
+1. Which keys does the service include in `FastAggregateVerify`? (all / only-verified / only-active / cached snapshot)
+2. Is PoP required before joining the aggregate, optional, deferred to a separate endpoint, or interactive?
+3. Does `join`/`register` accept a key with no PoP?
+4. Are duplicate public keys allowed? (multiplicity shifts aggregate by a known amount)
+5. Is there a `list` vs `unveil`/`verify` asymmetry — unverified members appear in the roster but are excluded from the aggregate?
+6. Does the service use a fixed target message or one derived from state the attacker can observe?
+
+### Triage pivots
+
+- **Rogue key accepted, service still rejects:** wrong key-set in the aggregate — compare your local `FastAggregateVerify` call with the exact set and message bytes the server uses.
+- **PoP blocks registration:** check if PoP verification happens before or after the key is stored; a race or optional path may skip it.
+- **Duplicate keys accepted:** add `k` copies of a key you control to shift the aggregate by `k * pk`; combine with rogue math.
+- **Separate `list` and `aggregate` trust domains:** treat only the set actually passed to `FastAggregateVerify` as the target sum.
+
+**Key insight:** BLS aggregate security relies entirely on proof-of-possession. Any protocol that separates key registration from PoP, makes PoP optional, or caches a stale member set is vulnerable to rogue-key manipulation. The attack requires only one point subtraction — no DL computation.

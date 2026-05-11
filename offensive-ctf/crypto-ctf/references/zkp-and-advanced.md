@@ -20,6 +20,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [DV-SNARG Forgery via Verifier Oracle]
 - [KZG Pairing Oracle for Permutation Recovery]
 - [Shamir Secret Sharing with Reused Polynomial Coefficients]
+- [EC-LCG ZKP Branch Prediction]
 
 -
 
@@ -456,3 +457,41 @@ flag = ''.join(chr(shares[i] - shares[0] + ord('f')) for i in range(len(shares))
 ```
 
 **Key insight:** In correct Shamir SSS, each secret byte uses independent random coefficients. When coefficients are reused, subtracting any two shares at the same evaluation point cancels all randomness, leaving only the difference between the corresponding secret bytes.
+
+---
+
+## EC-LCG ZKP Branch Prediction
+
+**Pattern:** An interactive ZKP verifier derives challenge bits from `next(rng) & 1` (or a similar predicate) where `rng` is an additive or affine EC-LCG. The same session-local generator also produces observable IDs or tokens from point coordinates. Recovering the generator state from leaked outputs lets the attacker precompute the full challenge schedule and script both response branches.
+
+**Fingerprint signals:**
+- IDs/tokens come from `x(W_n) >> k` for consecutive generator outputs.
+- Verifier sends a challenge derived from `next(rng)` on the same object.
+- Both streams share one session-local state — new connection re-seeds.
+
+**Attack flow:**
+1. Collect ≥ 6 consecutive (x_high, y_high) ID pairs from one session.
+2. Recover generator state via bounded search or polynomial solving — see `prng.md` **EC-LCG State Recovery** section.
+3. Advance the recurrence locally to produce the future point sequence.
+4. Apply the same branch predicate the service uses (e.g., `(x >> k) & 1`) to get the complete challenge schedule.
+5. Prepare both response formulas before opening the final ZKP interaction; pick the correct one per predicted bit.
+
+**Response templates for Σ-protocol / DL-equality ZKP (challenge 0 = random commit, challenge 1 = relation-based response):**
+
+```python
+# challenge = 0 path: pick random x, send C = x*G, then reveal x
+x = random_scalar()
+C = x * G1
+send(C)
+send(x)
+
+# challenge = 1 path: embed the target key
+sk_x = random_scalar()
+C = sk_x * G1 - Pk_target      # shifted so relation holds
+send(C)
+send(sk_x)
+```
+
+**Key pitfall:** Verify that the verifier's branch predicate and the exact future state offset (how many advances happen inside the protocol before each branch is sampled) match before scripting the interaction.
+
+**See:** `prng.md` EC-LCG section for state recovery code · `zkp-and-advanced.md` ZKP Attacks section for general proof-cheat patterns.
