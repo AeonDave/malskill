@@ -1,4 +1,4 @@
-# malskill
+![MCPwn](assets/logo.png)
 
 Full-spectrum security skill collection for AI agents - built on the open [AgentSkills](https://agentskills.io) specification.
 
