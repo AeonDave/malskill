@@ -2,15 +2,16 @@
 name: bloodhound
 description: |
   Active Directory attack path visualization using graph theory. Finds shortest path to Domain Admin,
-  identifies Kerberoastable/AS-REP-roastable users, unconstrained delegation, ACL abuses, and lateral
-  movement vectors. Use after initial foothold in AD: collect data with SharpHound (Windows) or
-  bloodhound-python (Linux/remote), import to BloodHound GUI, run Cypher queries to build attack path.
+  identifies Kerberoastable/AS-REP-roastable users, unconstrained delegation, ACL abuses, ADCS ESC
+  vulnerabilities, and lateral movement vectors. Use after initial foothold in AD: collect data with
+  SharpHound (Windows) or bloodhound-python (Linux/remote), import to BloodHound CE GUI, run Cypher
+  queries to build and execute attack paths.
 license: GPL-3.0
 compatibility: "Collector: SharpHound on Windows or bloodhound-python (Linux/remote). GUI: BloodHound
   CE via Docker (recommended) or legacy BloodHound + Neo4j. CE available free at bloodhoundenterprise.io."
 metadata:
   author: AeonDave
-  version: "2.0"
+  version: "3.0"
 ---
 
 # BloodHound
@@ -99,6 +100,41 @@ bloodhound-python -u user -p pass -d DOMAIN.LOCAL -c ALL -dc DC_IP -ns DC_IP --z
 - Add DC IP to `/etc/hosts` as the FQDN (`10.0.0.1 dc.corp.local`) to avoid DNS issues
 - Use `-c DCOnly` first for stealth; add `Session` only when you need to track DA logins
 - `-ns DC_IP` sets nameserver — critical when DNS doesn't resolve domain properly
+
+### Option 3: RustHound (Rust — faster, cross-platform)
+
+```bash
+# Cross-compiled alternative to bloodhound-python, faster on large domains
+rusthound -d domain.local -u user@domain.local -p pass -i <dc_ip> --zip
+
+# LDAPS collection
+rusthound -d domain.local -u user@domain.local -p pass -i <dc_ip> --ldaps --zip
+```
+
+### Tiered Collection Strategy (OPSEC)
+
+```bash
+# Tier 1: DC-only (LDAP queries to DC, no endpoint contact)
+bloodhound-python -c DCOnly -u user -p pass -d DOMAIN.LOCAL -dc DC_IP -ns DC_IP --zip
+# SharpHound: SharpHound.exe -c DCOnly --throttle 2000 --jitter 25
+
+# Tier 2: Add ACL edges (still LDAP-only, no endpoint contact)
+bloodhound-python -c DCOnly,ACL -u user -p pass -d DOMAIN.LOCAL -dc DC_IP -ns DC_IP --zip
+
+# Tier 3: Session data (connects to ALL computers — HIGH noise)
+bloodhound-python -c Session -u user -p pass -d DOMAIN.LOCAL -dc DC_IP -ns DC_IP --zip
+# SharpHound: SharpHound.exe -c Session --throttle 5000 --jitter 50
+
+# Tier 4: Scope to specific OU (reduces footprint)
+SharpHound.exe -c All --ou "OU=Servers,DC=domain,DC=local" --throttle 3000 --jitter 30
+```
+
+| Tier | Collection | Noise | Detections |
+|------|-----------|-------|------------|
+| 1 | DCOnly | Minimal | Standard LDAP queries |
+| 2 | DCOnly+ACL | Low | Elevated LDAP query volume |
+| 3 | Session | HIGH | TCP 445 to every host, Event 4624 |
+| 4 | All (scoped OU) | Medium | Bounded scope limits log volume |
 
 ### Importing Data
 
@@ -235,7 +271,7 @@ WHERE NOT c.name CONTAINS "DC"
 RETURN u.name, c.name
 ```
 
-### Trust and Lateral Domain
+### Trust and Cross-Domain
 
 ```cypher
 // All domain trusts
@@ -246,6 +282,22 @@ RETURN d1.name, type(r), d2.name
 MATCH (u:User)-[r:MemberOf]->(g:Group {name:"DOMAIN ADMINS@CORP.LOCAL"})
 WHERE NOT u.domain = "CORP.LOCAL"
 RETURN u.name, u.domain
+
+// Foreign group members (any cross-domain membership)
+MATCH (n)-[:MemberOf]->(g:Group)
+WHERE n.domain <> g.domain
+RETURN n.name, n.domain AS from_domain, g.name, g.domain AS in_domain
+
+// Find users from child domain with paths to parent DA
+MATCH p=shortestPath(
+  (u:User {domain:"CHILD.CORP.LOCAL"})-[*1..]->(da:Group {name:"DOMAIN ADMINS@CORP.LOCAL"})
+)
+RETURN p
+
+// Cross-forest trust exploitation paths
+MATCH p=(d:Domain)-[:TrustedBy*1..]->(root:Domain)
+WHERE NOT (root)-[:TrustedBy]->()
+RETURN p
 ```
 
 ### Marking Owned Objects
@@ -312,7 +364,114 @@ bloodhound-python -u user -p pass -d DOMAIN.LOCAL -c ALL -dc DC_IP -ns DC_IP --z
 | GenericWrite on user | certipy | `shadow auto -account TARGET` |
 | WriteDacl on domain | dacledit.py | grant DCSync, then secretsdump |
 | AddMember on DA group | net rpc / PowerView | add self to Domain Admins |
-| ADCS template visible | certipy | `find -vulnerable` → ESC chain |
+| ADCSESC1 edge | certipy | `req -template <vuln> -upn administrator` |
+| ForceChangePassword | PowerView | `Set-DomainUserPassword -Identity target` |
+| CanPSRemote | evil-winrm | `evil-winrm -i TARGET -u user -p pass` |
+| SQLAdmin edge | mssqlclient.py / PowerUpSQL | `xp_cmdshell whoami` |
+
+---
+
+## ADCS Attack Paths (BloodHound CE)
+
+BloodHound CE natively detects ADCS misconfigurations via dedicated nodes and edges since v5.x.
+
+### ADCS Node Types
+
+| Node | Description |
+|------|-------------|
+| `EnterpriseCA` | Enterprise Certificate Authority |
+| `CertTemplate` | Certificate template |
+| `RootCA` | Root CA in the PKI hierarchy |
+| `NTAuthStore` | NTAuth certificate store |
+| `AIACA` | Authority Information Access CA |
+
+### ADCS Edge Types
+
+| Edge | Meaning |
+|------|---------|
+| `ADCSESC1` | ESC1 exploitable path (enrollee-supplied SAN) |
+| `ADCSESC2` | ESC2 (Any Purpose EKU) |
+| `ADCSESC3` | ESC3 (Certificate Request Agent) |
+| `ADCSESC4` | ESC4 (writable template ACL) |
+| `ADCSESC6a` / `ADCSESC6b` | ESC6 (EDITF_ATTRIBUTESUBJECTALTNAME2) |
+| `ADCSESC9a` / `ADCSESC9b` | ESC9 (No Security Extension) |
+| `ADCSESC10a` / `ADCSESC10b` | ESC10 (weak cert mapping) |
+| `ADCSESC13` | ESC13 (issuance policy OID group link) |
+| `Enroll` | Enrollment rights on CA or template |
+| `PublishedTo` | Template published to CA |
+| `IssuedSignedBy` | Certificate chain relationship |
+| `TrustedForNTAuth` | CA trusted for NT authentication |
+
+### ADCS Cypher Queries
+
+```cypher
+// Find all ESC1 exploitable paths
+MATCH p = ()-[:ADCSESC1]->()
+RETURN p
+
+// All principals with enrollment rights on Enterprise CAs
+MATCH p = ()-[:Enroll]->(eca:EnterpriseCA)
+RETURN p
+
+// Templates published to which CAs
+MATCH p = (ct:CertTemplate)-[:PublishedTo]->(eca:EnterpriseCA)
+RETURN ct.name AS template, eca.name AS ca
+
+// ESC4 — who can write to certificate templates?
+MATCH (n)-[r:GenericAll|GenericWrite|WriteDacl|WriteOwner]->(ct:CertTemplate)
+RETURN n.name, type(r), ct.name
+
+// Find any ADCS escalation path from owned principals
+MATCH p = (n {owned:true})-[:ADCSESC1|ADCSESC2|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC9a|ADCSESC10a|ADCSESC13]->()
+RETURN p
+
+// CAs trusted for NT authentication (required for cert-based auth)
+MATCH p = (eca:EnterpriseCA)-[:TrustedForNTAuth]->(ntas:NTAuthStore)
+RETURN eca.name
+```
+
+### ADCS Data Collection
+
+```bash
+# certipy collector outputs BloodHound-compatible data
+certipy find -u user@domain.local -p pass -dc-ip <dc_ip> -bloodhound -output bh_adcs
+
+# Import certipy BloodHound zip alongside SharpHound data in CE
+# Both can be uploaded to the same database for combined path analysis
+
+# CertiHound — dedicated Linux-native ADCS collector for BH CE v6+
+pip install certihound
+certihound -d domain.local -u user -p pass --dc <dc_ip> --format zip -o ./output
+```
+
+---
+
+## Privileged Access Queries (PSRemote, RDP, MSSQL)
+
+```cypher
+// Users who can PSRemote (WinRM) to computers
+MATCH p = (u:User)-[:CanPSRemote]->(c:Computer)
+RETURN u.name, c.name
+
+// CanPSRemote paths from group membership
+MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group))
+MATCH p2=(u1)-[:CanPSRemote*1..]->(c:Computer)
+RETURN p2
+
+// SQL Admin paths
+MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group))
+MATCH p2=(u1)-[:SQLAdmin*1..]->(c:Computer)
+RETURN p2
+
+// RDP access paths
+MATCH (u:User)-[:CanRDP]->(c:Computer)
+WHERE NOT u.admincount = true
+RETURN u.name, c.name
+
+// DCOM execution paths
+MATCH (u:User)-[:ExecuteDCOM]->(c:Computer)
+RETURN u.name, c.name
+```
 
 ---
 
@@ -324,9 +483,26 @@ bloodhound-python -u user -p pass -d DOMAIN.LOCAL -c ALL -dc DC_IP -ns DC_IP --z
 - GUI queries don't touch AD — analysis is local; safe once data is imported
 - Marking objects owned only changes local DB, no AD changes
 - BloodHound CE runs entirely local — no data leaves your machine
+- SharpHound creates a ZIP in the output directory — clean up after exfil
+- Session collection enumerates `NetSessionEnum` on every host — generates Event 4624 type 3 on each target
+- LDAP queries for ACLs (`nTSecurityDescriptor`) request `DACL_SECURITY_INFORMATION` — anomalous volume detectable
+- Repeated `1644` LDAP events (expensive queries) flag DCOnly runs on monitored DCs
+- Prefer `bloodhound-python` over SharpHound when EDR is present on hosts; it avoids endpoint tooling entirely
+
+### Detection Indicators (Defender Perspective)
+
+| Indicator | Source | Detects |
+|-----------|--------|---------|
+| High-volume LDAP queries from single source | DC LDAP logs / Event 1644 | bloodhound-python / SharpHound DCOnly |
+| NetSessionEnum calls to many hosts | Windows Security 4624 (type 3) | SharpHound Session collection |
+| SAM-R queries from non-DC | Windows Security 4661 | Local group enumeration |
+| SharpHound.exe on disk or in memory | EDR / Sysmon Event 1 | SharpHound execution |
+| Anomalous nTSecurityDescriptor reads | LDAP diagnostic logging | ACL collection phase |
+
+---
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/cypher-queries-and-api.md` | Full Cypher query library, CE API automation, mark-owned workflow, custom analysis patterns, noise reduction strategies |
+| `references/cypher-queries-and-api.md` | Full Cypher query library, CE API automation, mark-owned workflow, ADCS queries, custom analysis patterns, noise reduction strategies |

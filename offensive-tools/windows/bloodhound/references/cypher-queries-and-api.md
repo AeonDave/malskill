@@ -189,6 +189,99 @@ MATCH (c:Computer {isdc:true})<-[:AffectedBy*1..]-(gpo:GPO)<-[:GenericAll|WriteD
 RETURN u.name AS attacker, gpo.name AS via_gpo, c.name AS target_dc
 ```
 
+### Privileged Access Queries (PSRemote, SQLAdmin, RDP, DCOM)
+
+```cypher
+// Users who can PSRemote (WinRM) into computers
+MATCH (u:User)-[:CanPSRemote]->(c:Computer)
+RETURN u.name, c.name
+
+// CanPSRemote via group membership (indirect paths)
+MATCH p=(g:Group)-[:CanPSRemote]->(c:Computer)
+MATCH (u:User)-[:MemberOf*1..]->(g)
+RETURN u.name, g.name AS via_group, c.name
+
+// SQL Admin paths (MSSQL lateral movement)
+MATCH (u:User)-[:SQLAdmin]->(c:Computer)
+RETURN u.name, c.name
+
+// SQLAdmin via group membership
+MATCH p=(g:Group)-[:SQLAdmin]->(c:Computer)
+MATCH (u:User)-[:MemberOf*1..]->(g)
+RETURN u.name, g.name AS via_group, c.name
+
+// RDP access from non-privileged users
+MATCH (u:User)-[:CanRDP]->(c:Computer)
+WHERE NOT u.admincount = true
+RETURN u.name, c.name
+
+// DCOM execution paths
+MATCH (u:User)-[:ExecuteDCOM]->(c:Computer)
+RETURN u.name, c.name
+
+// All lateral movement edges from owned principals
+MATCH (u {owned:true})-[r:AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|SQLAdmin]->(c:Computer)
+RETURN u.name, type(r), c.name
+```
+
+### Foreign Group Members
+
+```cypher
+// Users from external/child domains in local groups
+MATCH (n)-[:MemberOf]->(g:Group)
+WHERE n.domain <> g.domain
+RETURN n.name, n.domain AS from_domain, g.name, g.domain AS in_domain
+
+// External principals with admin access
+MATCH (n)-[:AdminTo]->(c:Computer)
+WHERE n.domain <> c.domain
+RETURN n.name, n.domain, c.name, c.domain
+
+// SID History abuse paths (cross-domain)
+MATCH (u:User)
+WHERE u.sidhistory IS NOT NULL AND size(u.sidhistory) > 0
+RETURN u.name, u.domain, u.sidhistory
+```
+
+### ADCS Queries (BloodHound CE v5+)
+
+```cypher
+// Find all ESC1 exploitable paths (enrollee-supplied SAN)
+MATCH p = ()-[:ADCSESC1]->()
+RETURN p
+
+// All ADCS escalation paths (any ESC type)
+MATCH p = ()-[r:ADCSESC1|ADCSESC2|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13]->()
+RETURN p
+
+// Principals with enrollment rights on Enterprise CAs
+MATCH p = (n)-[:Enroll]->(eca:EnterpriseCA)
+RETURN n.name, labels(n), eca.name
+
+// Certificate templates published to CAs
+MATCH (ct:CertTemplate)-[:PublishedTo]->(eca:EnterpriseCA)
+RETURN ct.name AS template, eca.name AS enterprise_ca
+
+// ESC4 — who can modify certificate templates?
+MATCH (n)-[r:GenericAll|GenericWrite|WriteDacl|WriteOwner]->(ct:CertTemplate)
+RETURN n.name, type(r), ct.name AS vulnerable_template
+
+// ADCS paths from owned principals
+MATCH p = (n {owned:true})-[:ADCSESC1|ADCSESC2|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC9a|ADCSESC10a|ADCSESC13]->()
+RETURN p
+
+// CAs trusted for NT authentication
+MATCH (eca:EnterpriseCA)-[:TrustedForNTAuth]->(ntas:NTAuthStore)
+RETURN eca.name AS ca, ntas.name AS ntauth_store
+
+// Complete ADCS attack chain: principal → template → CA → domain
+MATCH p = (n)-[:Enroll]->(ct:CertTemplate)-[:PublishedTo]->(eca:EnterpriseCA)
+WHERE ct.enrolleesuppliessubject = true
+  AND ct.requiresmanagerapproval = false
+  AND ct.authenticationenabled = true
+RETURN n.name, ct.name, eca.name
+```
+
 ---
 
 ## BloodHound CE API Reference
@@ -206,26 +299,74 @@ curl -s -X POST http://localhost:8080/api/v2/graphs/cypher \
   -d '{"query":"MATCH (u:User {hasspn:true}) RETURN u.name, u.description LIMIT 20"}' \
   | jq '.data.nodes[].label'
 
-# Import zip from bloodhound-python
-curl -s -X POST http://localhost:8080/api/v2/file-upload/start \
-  -H "Authorization: Bearer $TOKEN" \
-  | jq -r '.data.id' > UPLOAD_ID.txt
+# Import zip from bloodhound-python / SharpHound
+UPLOAD_ID=$(curl -s -X POST http://localhost:8080/api/v2/file-upload/start \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.data.id')
 
-curl -s -X POST "http://localhost:8080/api/v2/file-upload/$(cat UPLOAD_ID.txt)" \
+curl -s -X POST "http://localhost:8080/api/v2/file-upload/$UPLOAD_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/zip" \
   --data-binary @bloodhound_data.zip
 
-curl -s -X POST "http://localhost:8080/api/v2/file-upload/$(cat UPLOAD_ID.txt)/end" \
+curl -s -X POST "http://localhost:8080/api/v2/file-upload/$UPLOAD_ID/end" \
   -H "Authorization: Bearer $TOKEN"
 
-# List all users
-curl -s "http://localhost:8080/api/v2/users?limit=100" \
-  -H "Authorization: Bearer $TOKEN" | jq '.data.users[].principal_name'
+# List all domains in the database
+curl -s "http://localhost:8080/api/v2/available-domains" \
+  -H "Authorization: Bearer $TOKEN" | jq '.data[].name'
 
 # Get attack paths to Domain Admins
 curl -s "http://localhost:8080/api/v2/attack-paths?finding_type=HAS_ATTACK_PATHS_TO_DOMAIN_ADMINS" \
   -H "Authorization: Bearer $TOKEN" | jq
+
+# Search for specific principal
+curl -s "http://localhost:8080/api/v2/search?q=admin&type=user" \
+  -H "Authorization: Bearer $TOKEN" | jq '.data[]'
+
+# Get details for a specific node by objectID
+curl -s "http://localhost:8080/api/v2/users/$OBJECT_ID" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# List computers with sessions
+curl -s "http://localhost:8080/api/v2/computers?has_sessions=true" \
+  -H "Authorization: Bearer $TOKEN" | jq '.data[].name'
+
+# Mark principal as owned via API
+curl -s -X PUT "http://localhost:8080/api/v2/asset-groups/owned" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"add_members":[{"object_id":"S-1-5-21-...-1234"}]}'
+```
+
+### API Automation Script (Python)
+
+```python
+import requests
+
+BH_URL = "http://localhost:8080"
+creds = {"login_name": "admin", "secret": "INITIAL_PASS"}
+
+# Authenticate
+session = requests.Session()
+r = session.post(f"{BH_URL}/api/v2/login", json=creds)
+token = r.json()["data"]["session_token"]
+session.headers["Authorization"] = f"Bearer {token}"
+
+# Run custom Cypher query
+query = """
+MATCH p=shortestPath((u:User {owned:true})-[*1..]->(g:Group))
+WHERE g.objectid ENDS WITH '-512'
+RETURN p
+"""
+r = session.post(f"{BH_URL}/api/v2/graphs/cypher", json={"query": query})
+paths = r.json()["data"]
+for node in paths.get("nodes", []):
+    print(f"  {node['label']} ({node['kind']})")
+
+# Batch mark owned
+owned_sids = ["S-1-5-21-...-1001", "S-1-5-21-...-1002"]
+session.put(f"{BH_URL}/api/v2/asset-groups/owned",
+    json={"add_members": [{"object_id": sid} for sid in owned_sids]})
 ```
 
 ---
@@ -304,4 +445,115 @@ SharpHound.exe -c Session --throttle 5000 --jitter 50 --outputdirectory C:\Windo
 
 # Limit scope to specific OU
 SharpHound.exe -c All --ou "OU=Servers,DC=corp,DC=local"
+
+# RustHound (faster alternative for large domains)
+rusthound -d corp.local -u user@corp.local -p pass -i DC_IP --zip
+```
+
+---
+
+## Operational Attack Path Workflow
+
+Step-by-step workflow integrating BloodHound into an AD engagement:
+
+### Phase 1 — Initial Collection and Import
+
+```bash
+# Collect DCOnly first (silent, LDAP-only)
+bloodhound-python -c DCOnly,ACL -u user -p pass -d CORP.LOCAL -dc DC_IP -ns DC_IP --zip
+
+# Import to BloodHound CE
+# Web UI: drag zip to http://localhost:8080
+# API: use file-upload workflow above
+```
+
+### Phase 2 — Mark Starting Position
+
+```cypher
+// Mark initial compromised user
+MATCH (u:User {name:"COMPROMISED_USER@CORP.LOCAL"})
+SET u.owned = true
+RETURN u.name
+
+// Mark initial compromised computer
+MATCH (c:Computer {name:"WORKSTATION01.CORP.LOCAL"})
+SET c.owned = true
+RETURN c.name
+```
+
+### Phase 3 — Identify Attack Paths
+
+```cypher
+// Priority 1: shortest path to DA from owned
+MATCH p=shortestPath((u {owned:true})-[*1..]->(g:Group))
+WHERE g.objectid ENDS WITH '-512'
+RETURN p
+
+// Priority 2: Kerberoastable with admin paths
+MATCH (u:User {hasspn:true})-[:MemberOf*1..]->(g:Group {admincount:true})
+WHERE NOT u.name STARTS WITH "KRBTGT"
+RETURN u.name, collect(g.name) AS admin_groups
+
+// Priority 3: ADCS escalation from owned
+MATCH p = (n {owned:true})-[:ADCSESC1|ADCSESC2|ADCSESC3|ADCSESC4]->()
+RETURN p
+
+// Priority 4: ACL-based paths (GenericAll, WriteDacl on high-value)
+MATCH p=(u {owned:true})-[:GenericAll|GenericWrite|WriteDacl|WriteOwner|AddMember]->(t {highvalue:true})
+RETURN p
+```
+
+### Phase 4 — Execute Chain, Mark New Owned, Repeat
+
+```cypher
+// After compromising next hop, mark new owned
+MATCH (u:User {name:"NEXT_USER@CORP.LOCAL"})
+SET u.owned = true
+
+// Re-run paths from new position
+MATCH p=shortestPath((u {owned:true})-[*1..]->(g:Group))
+WHERE g.objectid ENDS WITH '-512'
+RETURN p
+
+// Check for DA sessions on computers where you now have admin
+MATCH (owned {owned:true})-[:AdminTo]->(c:Computer)<-[:HasSession]-(da:User)
+MATCH (da)-[:MemberOf*1..]->(g:Group)
+WHERE g.objectid ENDS WITH '-512'
+RETURN owned.name AS from_user, c.name AS target_host, da.name AS da_session
+```
+
+### Phase 5 — Post-DA Verification
+
+```cypher
+// Confirm DA membership
+MATCH (g:Group)-[:MemberOf*0..]->(da:Group)
+WHERE da.objectid ENDS WITH '-512'
+RETURN g.name, da.name
+
+// Find DCSync rights (verify you can secretsdump)
+MATCH (n)-[:GetChanges]->(d:Domain)
+MATCH (n)-[:GetChangesAll]->(d)
+RETURN n.name
+
+// Find additional persistence paths
+MATCH (n)-[:GenericAll|WriteDacl]->(d:Domain)
+RETURN n.name, labels(n)
+```
+
+---
+
+## Engagement Cleanup
+
+```cypher
+// Remove all owned markers
+MATCH (n {owned:true})
+REMOVE n.owned
+
+// Remove custom high-value markers
+MATCH (n {highvalue:true})
+WHERE NOT n.isdc = true AND NOT n.objectid ENDS WITH '-512'
+REMOVE n.highvalue
+
+// Verify clean state
+MATCH (n {owned:true}) RETURN count(n) AS remaining_owned
 ```
