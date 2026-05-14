@@ -272,6 +272,14 @@ Invoke-Inveigh -NBNS Y -ConsoleOutput Y -FileOutput Y
 
 See `offensive-tools/network/responder/`, `offensive-tools/windows/inveigh/`.
 
+### AD-integrated DNS (ADIDNS) poisoning
+
+Unlike LLMNR/NBT-NS which are broadcast-based, ADIDNS targets unicast DNS by injecting records directly into AD-integrated zones via LDAP. Any Authenticated User can add new records (CreateChild on zone container).
+
+Use when: target service hostname does not exist in DNS yet, or you need targeted redirection (WSUS, SCCM, ADFS) without broadcast-level noise.
+
+→ Full technique, record format, and code: `references/ad-services-abuse.md §ADIDNS Record Injection`.
+
 ### Credential hunting (Snaffler)
 
 ```powershell
@@ -361,7 +369,9 @@ impacket-secretsdump -k -no-pass domain.local/dc$@<dc_ip>
 
 See `offensive-tools/windows/certipy/`.
 
-→ Full ESC1-13 chains, ADCS enumeration, Shadow Credentials, Golden Certificate: `references/certificate-abuse.md`.
+→ Full ESC1-14 chains, ADCS enumeration, Shadow Credentials, Golden Certificate: `references/certificate-abuse.md`.
+
+→ Server Auth EKU certs for TLS impersonation (rogue WSUS/SCCM/ADFS): `references/certificate-abuse.md §TLS Service Impersonation` + `references/ad-services-abuse.md §Rogue WSUS`.
 
 ---
 
@@ -707,7 +717,8 @@ MITRE ATT&CK primary mappings:
 - [references/ad-acl-abuse.md](references/ad-acl-abuse.md) — ACL abuse methodology: GenericAll, WriteDACL, WriteOwner, GenericWrite, shadow credentials, RBCD, and reversible proof paths.
 - [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), Diamond Ticket, NoPac/sAMAccountName spoofing, double-hop workarounds, ticket forgery.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
-- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-13 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate.
+- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-14 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
+- [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.
 - [references/lateral-movement-ad.md](references/lateral-movement-ad.md) — Protocol × credential type matrix, WMI/DCOM/RDP/WinRM/SMB patterns, detection signatures to avoid.
 - [references/domain-trust-attacks.md](references/domain-trust-attacks.md) — Child-to-parent escalation, cross-forest Kerberoasting, trust key abuse, SID history, Diamond Ticket with ExtraSID.
 - [references/domain-persistence.md](references/domain-persistence.md) — AdminSDHolder, Skeleton Key, SSP backdoor, DSRM abuse, DCShadow, Golden Certificate persistence.

