@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.5"
   category: ctf-solving
 ---
 
@@ -42,12 +42,17 @@ Load these as decision engines when their domain appears:
 
 Use tool families based on the evidence, not habit:
 
-- `wireshark`, `tcpdump`, and `zeek` for protocol carving, conversations, timing, and exported fields.
-- `pymodbus`, MQTT clients, OPC UA clients, Scapy, python-snap7, and can-utils for controlled parsing and replay.
-- CyberChef, jq, pandas, and Python scripts for endian, scaling, timestamp, and register-table transformations.
-- `nmap` OT NSE scripts only against authorized isolated labs; passive PCAP analysis is preferred when artifacts are enough.
+- `wireshark`, `tcpdump`, `tshark`, and `zeek` for protocol carving, conversations, timing, display filters (`modbus.func_code`, `s7comm`, `dnp3`, `bacapp`, `cip`, `opcua`, `mqtt`), and CSV/JSON field export.
+- `pymodbus`, `modbus-cli`, `mbtget`, `QModMaster`, and `ModbusPal` for Modbus read/write, function-code abuse (FC 1–6, 15, 16, 8, 43), coil/register sweeps, and lab simulation.
+- `python-snap7`, `snap7-server`, `plcscan`, and `s7scan` for Siemens S7 enumeration (rack/slot, SZL, DB reads) and lab targets.
+- `opcua-asyncio`, `FreeOpcUa`, and `OPCUaScanner` for OPC UA endpoint enumeration, anonymous-policy detection, node browse, and read/write.
+- `mosquitto_pub`/`mosquitto_sub`, `MQTT Explorer`, and Scapy MQTT layer for topic enumeration (`#`, `$SYS/#`), retained-message inspection, and broker-auth probing.
+- `can-utils` (`candump`, `cansniffer`, `cansend`, `cangen`) for CAN bus capture, periodic-frame analysis, and replay against virtual `vcan` interfaces.
+- CyberChef, `jq`, `pandas`, and Python scripts for endian, scaling, timestamp, register-table transformations, and CSV-from-pcap decoding pipelines.
+- `nmap` OT NSE scripts (`modbus-discover`, `s7-info`, `enip-info`, `bacnet-info`, `mqtt-subscribe`, `opcua-info`) only against authorized isolated labs; passive PCAP analysis is preferred when artifacts are enough.
 - `binwalk`, `ghidra`, `radare2`, and `strings` when the task includes PLC firmware, engineering-project exports, or custom protocol binaries.
 - `saleae-logic-2` when a capture includes serial, CAN, or fieldbus waveforms rather than decoded network traffic.
+- Known lab engineering-software (OpenPLC runtime/editor, Codesys, ScadaBR, Node-RED, ConPot honeypot, MiniCPS, ICSsim) often expose web panels and scripting hooks that pair with protocol access; treat them as separate pivot targets when ports such as 1880, 8080, 8443, 11502, or vendor-specific HTTP appear.
 
 ## Safety and scope gates
 
@@ -59,17 +64,37 @@ Use tool families based on the evidence, not habit:
 
 ## Quick pivots
 
-- Modbus: map unit IDs, function codes, coil/discrete/input/holding register ranges, write events, and byte order.
-- DNP3: inspect objects, variations, unsolicited responses, control relay outputs, and outstation/master roles.
-- BACnet: enumerate devices, objects, properties, write-property events, and broadcast discovery.
-- S7comm: identify rack/slot, SZL reads, data block accesses, and program/block transfer indicators.
-- EtherNet/IP/CIP: decode sessions, class/instance/attribute paths, tag names, and explicit messaging.
-- MQTT/OPC UA: reconstruct topics/nodes, publisher roles, credentials, retained messages, and process-state deltas.
-- CAN/CANopen: infer arbitration IDs, periodic frames, PDO/SDO patterns, endian, counters, and checksum bytes.
+- Modbus: map unit IDs, function codes (FC 1/2 read coils/discrete, FC 3/4 read holding/input, FC 5/6 single write, FC 15/16 multi write, FC 8 diagnostics, FC 43 device ID), coil/register ranges, write events, byte order, and byte-vs-word counts. Wireshark filter: `modbus.func_code == 16` for write-multiple-registers events. Check BOTH register/reference number AND register value fields — flag-style data is often hidden in the address, transaction ID, or unit ID instead of the value.
+- DNP3: inspect objects, variations, unsolicited responses, control relay outputs (group 12), and outstation/master roles. Filter: `dnp3`.
+- BACnet: enumerate devices, objects, properties, write-property events, and broadcast discovery (`Who-Is`/`I-Am`). Filter: `bacapp` plus service choice.
+- S7comm: identify rack/slot, SZL reads, data block accesses, and program/block transfer indicators. Filter: `s7comm` plus `s7comm.param.func`. Pair with `plcscan`/`s7scan` for lab enumeration and `python-snap7` for DB reads.
+- EtherNet/IP/CIP: decode sessions, class/instance/attribute paths, tag names, and explicit messaging. Filter: `enip` and `cip`.
+- OPC UA: walk endpoint discovery, security policies (note `None` policy = anonymous), node IDs, and Browse/Read/Write services. Filter: `opcua`.
+- MQTT: reconstruct topics/nodes, retained messages, client IDs, will payloads, and process-state deltas. Filter: `mqtt`. Try wildcard subscriptions `#` and `$SYS/#` when broker access is authorized.
+- CAN/CANopen: infer arbitration IDs, periodic frames, PDO/SDO patterns, endian, counters, and checksum bytes; use `candump`/`cansniffer` for live data.
 - Historian/log exports: normalize timestamps, recover tag/value/unit columns, identify sparse writes, and correlate alarm rows with process deltas.
 - Project exports/firmware: extract symbols, comments, ladder/ST strings, tag databases, constants, network configuration, and custom encoders before dynamic interaction.
 - Serial/fieldbus captures: identify baud/framing, address fields, checksums, counters, and periodic control loops before replaying frames.
+- Engineering-software pivot: when an OpenPLC/Codesys/ScadaBR/Node-RED web panel sits next to the PLC port, check default credentials, scripting hooks (OpenPLC PSM module, Node-RED function nodes), and known CVEs for that specific runtime before scripting writes against the protocol.
+- Process-state pivot: pressure/temperature/level registers near safety thresholds, coils tied to pumps/valves/cooling, and setpoint registers driving alarms are common objectives; correlate writes to expected physical effect and verify by read-back or HMI state, not by assumption.
+- Purdue-model pivot: map each host to L0 (sensors/actuators), L1 (PLC/RTU), L2 (HMI/SCADA), L3 (historian, engineering workstation, MES) before choosing a target; the shortest path to objective is often an L2/L3 host (HMI web, RDP, historian DB, project files) rather than direct L1 protocol abuse.
+- Engineering-workstation pivot: project files on the engineering workstation (`.acd`/`.l5x` RSLogix/Studio 5000, `.ap14`/`.zap14` TIA Portal, `.pro`/`.projectarchive` Codesys, `.s7p`/`.ap13` Step7) carry ladder/ST source, tag names, network configuration, and sometimes credentials — grab them before native protocol attacks when the workstation is in scope.
+- Race-condition / False Data Injection (FDI) pivot: when a master polls a PLC on a fixed cycle (e.g. every 1–3 s), writes inside the cycle window can flip coils/registers between the PLC update and the next master read; build the write loop tighter than the poll interval and verify the master observes the desynced state.
+- L2/MITM pivot in flat OT networks: ARP poisoning between HMI and PLC (or between two PLCs on a Device-Level Ring) lets you rewrite Modbus/EtherNet/IP/S7 in flight with `ettercap`/`bettercap` + `NetfilterQueue` + Scapy filters — useful when direct write is logged but rewrite-in-transit is not.
+- HMI-side pivot: HMI panels often expose VNC (5900) without auth, vendor web UIs with default credentials, or shared SMB folders containing PLC project archives, recipe files, and screenshots that label tag meanings.
+- Historian pivot: PI Server, FactoryTalk Historian, WinCC, and Wonderware historians (MSSQL/proprietary on 1433, 5450, 5460) carry long timeseries of every tag and often default/weak SQL credentials — they are an alternative to live PLC read for proving a process anomaly.
+- Scan-cycle awareness: writes to the output image (`%Q`/coils) are overwritten next PLC scan; setpoint writes (`%M`/holding registers consumed by ladder) persist. Forces override both regardless of ladder. Mode transitions (`STOP`/`RUN`/`PROG`/`FAULT`) are high-signal events — search PCAPs for them before chasing register writes.
+- Signal decoding pivot: raw register ≠ engineering value. Guess byte/word order (`ABCD`/`CDAB`/`BADC`/`DCBA`) by checking which order yields a plausible temperature/pressure/level, then solve `EU = raw*scale + offset` from two known HMI/historian points. Status registers pack 16 alarm bits — map each bit before claiming meaning.
+- Test-cycle discipline: every write goes through baseline (3+ snapshots, diff to identify live vs static registers) → minimal write (one bit/register, smallest FC) → read-back → side-channel verification (HMI/historian/oracle, not just read-back) → hold for ≥ N polling cycles → restore. Read-back alone is insufficient evidence.
+- IT→OT chain pivot: realistic OT compromise starts in IT (Responder/SMB-relay, AS-REP/Kerberoast, ADCS ESC1) → DA → OT-DMZ jump (backup script creds, KeePass dump CVE-2023-32784, reused local-admin) → engineering workstation (vendor IDE + project files + saved PLC creds) → PLC setpoint/logic. PLC default passwords often arrive via photos and panel stickers on file shares, not live enumeration. Budget ~60 % IT/AD, ~25 % DMZ pivot, ~15 % PLC interaction; never touch SIS (Triconex/HIMA/GuardLogix).
+- Priority frame: OT inverts CIA into Safety > Availability > Integrity > Confidentiality; reject findings/recommendations that raise confidentiality at the cost of safety or availability, and frame impact in operator-visible terms (alarm row, HMI banner, historian sample) rather than CVE wording.
+- TIA Portal project pivot: when given a `.zap1x`/`.ap1x`/`.s7p` archive, treat it like source code. Match TIA Portal major version + HSP to the CPU firmware, dump PLC + HMI tag tables to CSV, reverse OB1 networks in order, then load into PLCSim Advanced to drive inputs and watch DB/M evolution offline. The DB area is the cleanest write surface (setpoint changes leave no Q-image footprint); HMI buttons are usually thin proxies onto M bits. Basic/Comfort panels archive analog tags to internal SD and to the back-USB stick — pull both when you have physical access.
 
 ## Resources
 
-- [references/ot-protocol-workflow.md](references/ot-protocol-workflow.md) — detailed protocol triage, field extraction, anomaly workflow, and validation cues.
+- [references/ot-protocol-workflow.md](references/ot-protocol-workflow.md) — protocol triage, field extraction, anomaly workflow, and validation cues.
+- [references/plc-interaction-recipes.md](references/plc-interaction-recipes.md) — read-only-first interaction recipes for Modbus, S7, OPC UA, MQTT, and CAN against authorized lab targets, plus engineering-software pivot patterns.
+- [references/attack-patterns.md](references/attack-patterns.md) — Purdue-model mapping, engineering-workstation pivots, project-file formats, race-condition / FDI writes, L2 MITM in flat OT segments, HMI/historian pivots, and operational-impact reasoning.
+- [references/signal-decoding-and-testing.md](references/signal-decoding-and-testing.md) — PLC scan cycle and memory areas, Modbus/CIP/S7/DNP3/BACnet decoding cues, integer/float/BCD/string/time encodings, byte-and-word order resolution, CAN signal decoding, the baseline → write → verify → restore test cycle, and a final validation checklist.
+- [references/fundamentals-and-it-to-ot-chain.md](references/fundamentals-and-it-to-ot-chain.md) — OT vs IT priority model (Safety > A > I > C), asset taxonomy (PLC/HMI/SCADA/DCS/SIS/RTU/IED/historian/engineering workstation), Purdue recap, and the full realistic IT→OT kill chain (foothold → AD → ADCS → DMZ pivot → engineering workstation → PLC setpoint vs logic upload) with detection-vs-evasion model.
+- [references/tia-portal-and-plc-fundamentals.md](references/tia-portal-and-plc-fundamentals.md) — Siemens S7-1500 / TIA Portal toolchain (project archives, HSP versioning, PLCSim Advanced offline simulation), OB/FB/FC/DB block taxonomy, S7-1500 memory areas (I/Q/M/DB/L), HMI tag binding, PROFINET DCP cell layout, and a step-by-step workflow for analyzing a seized project archive.
