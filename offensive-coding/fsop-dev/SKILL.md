@@ -118,6 +118,7 @@ Load `references/hints-and-recognition.md` when triaging quickly. The shortest r
 - Re-check whether read/write helpers will clobber `_IO_read_*`, `_IO_write_*`, `_wide_data`, or adjacent bytes before dispatch.
 - Verify whether the chosen path expects byte-oriented, wide-oriented, or codecvt-backed state.
 - Prefer the stream whose normal use interferes least with your crafted layout.
+- If the chain rewrites a libc GOT/relocation target or relies on a low-byte pointer patch, load [`pwn-ctf` RELRO/ASLR relocation guidance](../../offensive-ctf/pwn-ctf/references/relro-aslr-relocations.md) and prove object-specific RELRO, page permissions, and ASLR invariance first.
 
 ## Anti-patterns
 

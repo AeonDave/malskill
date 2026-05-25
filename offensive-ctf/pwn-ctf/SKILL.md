@@ -22,7 +22,7 @@ Goal: solve binary-exploitation challenge solving tasks with professional offens
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Load the closest top-level reference for the dominant primitive (`overflow.md`, `rop.md`, `heap.md`, `heap-fsop.md`, `sandbox.md`, `kernel.md`, `exotic-arch.md`, `advanced-primitives.md`, `weird-machines.md`, `windows-pwn.md`).
+3. Load the closest top-level reference for the dominant primitive (`overflow.md`, `rop.md`, `heap.md`, `heap-fsop.md`, `relro-aslr-relocations.md`, `sandbox.md`, `kernel.md`, `exotic-arch.md`, `advanced-primitives.md`, `weird-machines.md`, `windows-pwn.md`).
 4. Load only top-level references in `references/`.
 5. Choose the smallest tool chain that can produce a validation signal.
 6. Record the exact proof path and stop once the objective is reproducible.
@@ -65,6 +65,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Triage binary and mitigations first; prove exact controlled primitive before payload engineering.
 - Build exploit in stages: local repro, info leak, base calculation, control-flow/data-only effect, remote adaptation.
 - Keep offsets, libc/loader assumptions, and environment drift explicit.
+- If RELRO, GOT/PLT, relocation tables, or leakless partial overwrites appear, load `references/relro-aslr-relocations.md` before deciding the final target.
 
 ## Quality gates
 
@@ -84,6 +85,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/heap-fsop.md](references/heap-fsop.md) — FSOP-focused heap chains and modern glibc stream abuse patterns.
 - [references/kernel.md](references/kernel.md) — kernel exploitation notes: primitives, mitigation-aware pivots, and practical escalation paths.
 - [references/overflow.md](references/overflow.md) — stack/global/OOB overflow patterns and mitigation-aware exploitation flow.
+- [references/relro-aslr-relocations.md](references/relro-aslr-relocations.md) — ELF RELRO, GOT/PLT, relocation addends, ASLR-invariant partial overwrites, and multi-run reliability gates.
 - [references/rop.md](references/rop.md) — x86-64 ROP and shellcode flow: leaks, pivots, chain assembly, and constrained environments.
 - [references/sandbox.md](references/sandbox.md) — restricted-environment escapes, proc-based pivots, and command-execution constraints.
 - [references/weird-machines.md](references/weird-machines.md) — emulator, interpreter, ML-dispatch, bit-flip, constrained-shellcode, and data-reinterpretation exploitation patterns.

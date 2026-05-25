@@ -516,8 +516,8 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 
 **Format supplements:**
 
-- [references/pe-rev.md](references/pe-rev.md) — PE-only pivots: TLS callbacks, `.rsrc`, overlay data, import reconstruction, and loader-aware unpacking.
-- [references/elf-rev.md](references/elf-rev.md) — ELF-only pivots: program headers, PLT/GOT, `init_array`, dynamic linker behavior, and Linux-specific runtime surfaces.
+- [references/pe-rev.md](references/pe-rev.md) — PE-only pivots: RVA/raw mapping, data directories, TLS/CRT pre-entry paths, IAT/EAT/delay imports, resources/overlay/Authenticode, unpacking, and mitigation handoff.
+- [references/elf-rev.md](references/elf-rev.md) — ELF-only pivots: program headers, dynamic entries, PLT/GOT/relocations, RELRO/ASLR, symbol versioning, IFUNC/constructors, loader instrumentation, and packer/runtime surfaces.
 - [references/dotnet-rev.md](references/dotnet-rev.md) — managed-assembly workflow: deobfuscation order, resource/config extraction, stage loading, and managed/native handoff.
 - [references/firmware-rev.md](references/firmware-rev.md) — firmware container workflow: recursive extraction, filesystem/control-plane mapping, startup review, and emulation handoff.
 
