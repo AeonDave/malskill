@@ -25,7 +25,7 @@
 ## Learning resources
 
 - **ROP Emporium guide**: Practical fundamentals, common pitfalls (`movaps` alignment), and challenge progression.
-- **pwn.college**: Structured modules for exploitation practice and tooling discipline.
+- **Hands-on lab practice**: Keep platform-specific learning paths in `offensive-ctf/pwn-ctf/references/practice-labs.md`; this file stays focused on ROP engineering resources.
 - **CS6265 Advanced ROP**: Leak-first two-stage flow, multi-call chains, alignment troubleshooting, and ifunc caveats.
 - **pwntools ROP docs**: Reproducible chain building APIs (`ROP`, `ret2csu`, SROP support).
 - **pwntools ret2dlresolve docs**: Automated payload generation and required staging (`read` to payload area).

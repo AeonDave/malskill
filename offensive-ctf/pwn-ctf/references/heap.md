@@ -6,6 +6,7 @@ Comprehensive reference covering glibc heap techniques, custom allocators, and a
 
 ### Fundamentals
 - [Heap Exploitation Basics](#heap-exploitation-basics)
+    - [Versioned Corpus Workflow](#versioned-corpus-workflow)
   - [Heap Grooming via Application Operations](#heap-grooming-via-application-operations)
 
 ### tcache Techniques
@@ -71,6 +72,18 @@ Comprehensive reference covering glibc heap techniques, custom allocators, and a
 - Create holes of specific sizes by allocating then freeing
 - Place target structures adjacent to overflow source
 - Use spray patterns with incremental offsets (e.g., 0x200 steps)
+
+### Versioned Corpus Workflow
+
+Use how2heap as a compatibility corpus before trusting a named glibc technique.
+
+1. Identify the exact allocator and libc version from the provided libc, loader, `ldd`, `strings`, or a runtime leak.
+2. Select the closest how2heap `glibc_<version>/technique.c` example for the primitive, not just the House name.
+3. Validate under a matching runtime: use a target-linked libc build, Docker, `glibc_run.sh`, or debug symbols from the same glibc family. Avoid blindly `LD_PRELOAD`ing an older libc into a host-built binary because symbol versioning can invalidate the test.
+4. Port the primitive, not the PoC choreography. Recompute size classes, tcache counts, bin transitions, safe-linking mangles, and trigger call sites for the challenge binary.
+5. Record the proof condition: expected bin state before the trigger, observed leak/write/allocation result, and any libc-build assumptions.
+
+Pay extra attention on glibc 2.42/2.43+: how2heap tracks tcache metadata placement changes, `tcache_metadata_hijacking`, and updated `tcache_perthread_struct` routes that can invalidate older largebin or metadata assumptions.
 
 ### Heap Grooming via Application Operations
 
