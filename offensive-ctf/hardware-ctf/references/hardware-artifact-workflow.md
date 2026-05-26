@@ -44,6 +44,15 @@ Use this reference when `hardware-ctf` is active and the task needs a deeper, ar
 5. Decode payloads only after the physical layer is stable.
 6. Validate by reproducing multiple frames, not a one-off lucky decode.
 
+## RF + application control-plane crossover
+
+1. Decode and validate the physical layer first. If the lab also exposes a web/API "transceiver", treat it as a shim around the decoded protocol, not as a substitute for RF analysis.
+2. Prime companion state before state-changing requests. Hybrid labs often seed session or UI state from the landing page; otherwise accepted frames can look invalid because the control plane is uninitialized.
+3. Use application-visible state as an oracle: status tables, mission text, download endpoints, client-visible session fields, or health indicators can classify packet families faster than page-diffing alone.
+4. Re-decode every fresh capture or service instance. Symbol timing and CRC may stay stable while preamble bytes, headers, addresses, or command families change between deployments.
+5. Test state-gated families under different prerequisite states. A packet family that causes alarms from baseline may correctly disable a component only after a separate suppress family has already changed the system state.
+6. Group results by resulting device or mission state, not just response status. Distinguish no-op, safe-progress, and fail-state tuples before widening search.
+
 ## Peripheral capture workflow
 
 - USB HID keyboard: parse report descriptors, modifiers, keycodes, rollover, and backspaces/arrows.
@@ -84,4 +93,6 @@ Use this reference when `hardware-ctf` is active and the task needs a deeper, ar
 - Ignoring chip-select in SPI captures.
 - Treating firmware compression as encryption without entropy and magic-byte evidence.
 - Using RF replay before understanding framing and legal/lab boundaries.
+- Reusing an earlier instance's exact packet bytes because the UI or service name looks the same.
+- Judging packet validity only by HTTP status or a static page diff instead of the resulting device or session state.
 - Forgetting that side-channel datasets may have axes in positions, guesses, traces, samples rather than traces, samples.

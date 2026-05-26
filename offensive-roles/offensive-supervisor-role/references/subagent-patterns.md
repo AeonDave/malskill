@@ -7,8 +7,10 @@ Use subagents for bounded research or implementation tasks where fresh context i
 Include:
 
 - objective: one sentence
+- mission mode and starting state: capability assessment, adversary emulation, objective-led operation, artifact triage, or skill/tool curation; scope only, credential/token, foothold/session, artifact, or objective-led chain
 - inputs: paths, URLs, artifacts, command outputs, assumptions already verified
-- boundaries: scope, destructive/noisy limits, files that may be changed, time budget
+- boundaries: scope, ROE, destructive/noisy limits, data-handling rules, files that may be changed, time budget, kill-switch
+- expected signal: what result would validate, disprove, or block the chain link
 - output format: bullets, table, patch summary, or evidence packet
 - stop rule: when to ask instead of guessing
 
@@ -27,6 +29,7 @@ Keep serial when:
 - one task may change target state
 - root cause is unknown and broad parallel fixes would hide evidence
 - two workers would race on the same branch or artifact
+- starting state is uncertain and one classification result changes all downstream routing
 
 ## Output synthesis
 

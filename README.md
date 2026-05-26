@@ -60,6 +60,24 @@ Example:
 
 These two layers are complementary and intentionally separate.
 
+### `offensive-roles/` - Supervisor and operator role skills
+
+Mission-focused role skills for supervising and delegating offensive work across precise vertical operators. Roles compose `*-technique` methodology skills with optimized tool skills; they do not replace either layer.
+
+| Skill | Role |
+|-------|------|
+| `offensive-supervisor-role` | Owns mission, scope, chain selection, delegation, evidence review, and synthesis |
+| `offensive-recon-role` | Produces scoped target packages, asset inventory, and first attack-path candidates |
+| `offensive-osint-role` | Performs passive public-source, identity, leak, supplier, and pretext-safe research |
+| `offensive-web-role` | Validates web, API, browser, auth-flow, and application-layer exploit paths |
+| `offensive-cloud-role` | Maps cloud/SaaS/IAM/storage/workload and hybrid identity attack paths |
+| `offensive-windows-ad-role` | Handles Windows, Active Directory, Kerberos, AD CS, relay, credentials, and lateral movement |
+| `offensive-linux-pivot-role` | Handles Linux footholds, privesc, secrets, tunnels, containers, and pivots |
+| `offensive-mobile-role` | Assesses Android/iOS apps, devices, storage, auth, traffic, instrumentation, and mobile APIs |
+| `offensive-reverse-role` | Extracts behavior, protocols, configs, patch deltas, and exploit-support facts from artifacts |
+| `offensive-crypto-role` | Handles cryptanalysis, hashes, tokens, signatures, oracles, keys, and cracking strategy |
+| `offensive-exploit-role` | Performs exploit research, PoC adaptation, fuzzing reproducers, and reliability work |
+
 ### `offensive-ctf/` - Private offensive CTF and lab-solving skills
 
 Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, offline target bundles, and private lab scenarios. This area is intentionally separate from field methodology in `offensive-techniques/`.
@@ -81,7 +99,7 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **Python** - patterns, async, pytest workflows
 - **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
 
-### `knowledge/` - Research and meta-skills (14 skills)
+### `knowledge/` and `behaviours/` - Research and meta-skills
 
 Skills that support the workflow itself: design, implementation planning, research, analysis, evidence quality, verification gates, orchestration, review triage, and documentation automation.
 
@@ -95,7 +113,6 @@ Skills that support the workflow itself: design, implementation planning, resear
 | `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
 | `verification-before-completion` | Require fresh verification before claiming work is done or fixed |
 | `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
-| `agentic-offensive-orchestration` | Split scoped offensive/research work across safe independent agent tasks |
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `cve-search` | CVE enumeration and public PoC collection |

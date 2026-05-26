@@ -20,15 +20,21 @@ Every attack chain is a sequence of these link types:
 10. **Exfiltration** — How you get data out (HTTP, DNS, cloud storage)
 11. **Impact** — What business impact you demonstrate (domain admin, data access, ransomware simulation)
 
-## Path scoring
+## Chain selection scoring
 
-| Factor | Weight | Description |
-|--------|--------|-------------|
-| Probability of success | 30% | How likely is each step to work based on confirmed findings? |
-| Stealth | 20% | How detectable is this path? Can it avoid EDR/SIEM? |
-| Business impact | 25% | What does successful completion demonstrate? |
-| Time to execute | 15% | How long does the full chain take? |
-| Skill required | 10% | Does the team have the skills and tools? |
+When more than one path is plausible, score the next chain on the mission rather than tool novelty.
+
+| Factor | Question |
+|--------|----------|
+| Objective alignment | Does this path directly advance the mission objective or proof requirement? |
+| Prerequisite confidence | How much of the path is already validated by local evidence? |
+| Evidence quality | Will the next step produce a decisive signal rather than another vague lead? |
+| Operational cost | What are the noise, time, coordination, and operator-complexity costs? |
+| Reversibility | Can proof be demonstrated without unnecessary target state change or data exposure? |
+| Dependency count | How many unvalidated hops must be true before the path works? |
+| Business impact | What material risk does successful completion demonstrate? |
+
+Prefer one primary chain and at most one backup chain. If three or more chains look equally good, the problem is under-framed; re-run threat modeling and starting-state classification instead of dispatching more operators.
 
 ## Confidence levels
 
@@ -139,12 +145,13 @@ Pivot Points:
 
 1. **Think in chains, not findings.** An individual medium-severity finding is low priority. That same finding as the first step in a domain admin chain is critical.
 2. **Validate before claiming.** Mark confidence levels honestly. A speculative chain that depends on three unverified assumptions is not the same as a confirmed chain.
-3. **Shortest path wins.** When multiple chains lead to the same objective, the shorter chain with fewer detection opportunities is usually the better option.
+3. **Shortest validated path wins.** When multiple chains lead to the same objective, prefer the path with fewer unvalidated dependencies, lower state change, and stronger proof.
 4. **Consider the defender.** For every chain, identify where a SOC analyst would catch it.
 5. **Prioritize business impact.** Domain admin is impressive, but accessing the crown jewels (financial data, customer PII, source code) demonstrates real business risk.
 6. **Update as findings come in.** Attack chains are living documents. As new scan results or credentials arrive, re-evaluate and update the chain analysis.
 7. **OPSEC planning.** For red team engagements, recommend the stealthiest viable path, not just the fastest one.
-8. **Map everything to ATT&CK.** Every step in every chain gets a MITRE ATT&CK technique ID.
+8. **Use ATT&CK as planning language.** Map steps to ATT&CK where it clarifies tactics and detection, but do not turn ATT&CK into a checklist.
+9. **Stop when proof is sufficient.** Do not continue to cooler techniques after the mission objective or evidence limit is met.
 
 ## Dual-perspective requirement
 

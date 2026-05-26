@@ -8,6 +8,8 @@ Include exactly what the worker needs:
 
 - **Objective**: one task, not a project.
 - **Full task text**: paste the task; do not require reading a plan file unless file reading is the task.
+- **Scope and ROE**: authorized targets/artifacts, out-of-scope items, allowed actions, prohibited actions, noise/destructive limits, data-handling rules, and kill-switch.
+- **Mission context**: mission mode, starting state, threat-model notes, current chain link, expected success signal.
 - **Context**: where this fits, constraints, relevant artifacts, and allowed paths/actions.
 - **Before starting**: ask about unclear requirements, dependencies, assumptions, or unsafe steps.
 - **Verification**: commands/artifacts the worker must produce or inspect.
@@ -39,3 +41,4 @@ Ask each worker to check before reporting:
 - Workers must not expand targets or credentials beyond the packet.
 - Workers should report uncertainty instead of “trying one more thing” on live targets.
 - Generated payloads, captures, dumps, and secrets stay out of tracked source unless explicitly requested.
+- Workers should stop when the expected signal is disproven, prerequisites are missing, or the next step would exceed scope.

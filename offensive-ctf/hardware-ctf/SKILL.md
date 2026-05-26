@@ -37,6 +37,7 @@ Load these as needed:
 - `reversing-technique` for firmware, bootloaders, microcontroller binaries, and custom parsers.
 - `wireless-technique` for RF/SDR, Bluetooth, Wi-Fi-derived, or radio telemetry tasks.
 - `network-technique` for USB/Bluetooth/CAN PCAPs and protocol captures.
+- `web-ctf` when a hardware challenge exposes an HTTP or browser-based transceiver, status panel, or session-backed control plane around the decoded protocol.
 - `arduino` when a task requires real microcontroller wiring, sketches, Arduino CLI, PlatformIO, or board bring-up.
 - `python-patterns` and `systematic-debugging` for decoders, parsers, visualization, and reproducible notebooks/scripts.
 
@@ -66,6 +67,7 @@ Load these as needed:
 - JTAG/SWD: identify pins non-destructively, confirm chain/device ID, then dump or halt only in lab scope.
 - Firmware: extract filesystem, identify architecture, search strings/configs, then reverse validation paths.
 - RF/SDR: identify sample format, center frequency, symbol rate, modulation, framing, whitening, and checksum.
+- Hybrid RF + web control plane: decode the burst offline first, then use UI state, session fields, or mission text as a control-plane oracle; re-decode each fresh capture instead of assuming a prior instance's exact bytes still apply.
 - Side-channel: align traces, average noise, find leakage point, then validate recovered key/material independently.
 
 ## Resources

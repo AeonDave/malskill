@@ -21,6 +21,7 @@
 - For every new skill, replacement skill, or major skill refactor, follow `knowledge/skill-creator/` guidance first and keep the resulting skill aligned with AgentSkills conventions.
 - Keep `offensive-tools/` and `offensive-techniques/` strictly separated: `offensive-tools/` is for tool-specific usage guides, while `offensive-techniques/` is for general methodology/tradecraft that may reference tools without becoming tool manuals.
 - When the same topic exists in both layers (for example fuzzing), keep the distinction explicit: tool flags/workflows belong in `offensive-tools/fuzzing/`; technique process and strategy belong in `offensive-techniques/fuzzing-technique/`.
+- Keep `offensive-roles/` as supervisor/operator routing guidance: role skills compose `*-technique` methodology and optimized tool skills, but they must not become tool manuals or replace the technique layer.
 - Keep `offensive-ctf/` separate from field offsec skills: it is for lab/challenge/flag-style workflows and may route into technique/tool skills only as support.
 
 ## Testing
@@ -40,6 +41,7 @@
 
 - `offensive-tools/` — category folders such as `recon/`, `fuzzing/`, `cryptography/`, `web/`, or `windows/`; each category contains one folder per tool skill.
 - `offensive-techniques/` — technique-first, tool-agnostic skills (for example `fuzzing-technique/`) describing how to execute an approach, choose tools, and run a methodology without turning into per-tool command guides.
+- `offensive-roles/` — supervisor and vertical operator role skills for mission routing, delegation packets, evidence expectations, and handoffs across technique/tool skills.
 - `offensive-coding/` — offensive development skills, including nested `bof-dev/` BOF skills plus workflow-focused skills like `edr-evasion-dev/`, `linux-internals-dev/`, and `windows-internals-dev/`.
 - `offensive-ctf/` — offensive CTF/lab-solving skills, including dispatcher and dedicated `*-ctf` category skills for ICS/OT, hardware/embedded, blockchain/Web3, web, crypto, pwn, reverse, forensics, misc, OSINT, AI/ML, malware, and writeup workflows.
 - `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, assembly, plus cross-cutting TDD, testing reliability, and systematic debugging guidance.
