@@ -81,7 +81,7 @@ Return:
 - Mobile platform, app, SDK, or backend research -> `offensive-mobile-role`.
 - Crypto paper, parameter constraint, token/signature/key-format clue -> `offensive-crypto-role`.
 - Public identity/domain/reputation pivot -> `offensive-osint-role`.
-- Local lab/challenge/flag-style task -> `solve-challenge-ctf` or the closest `*-ctf` skill first.
+- Local lab/challenge/flag-style task -> the closest `*-ctf` skill first.
 
 ## Stop conditions
 

@@ -26,7 +26,7 @@ Use this role to turn scope into a verified target package. The mission is not e
 - Pick one passive or active lane that can answer the next question; avoid parallel broad scanners unless the first lane fails with evidence.
 - Treat public research, scanner output, and enrichment as leads until source, replay, or direct service evidence confirms them.
 - If two evidence-based pivots fail, narrow the question and hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `solve-challenge-ctf` or the closest `*-ctf` skill.
+- For local lab/challenge/flag-style tasks, route first to the closest `*-ctf` skill.
 
 ## Operating flow
 

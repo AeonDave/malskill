@@ -27,7 +27,7 @@ Use this role for web applications, APIs, browser clients, auth flows, and appli
 - Use one tool per class before adding overlap; prefer manual request pairs when scanner output is noisy.
 - Treat scanner findings, public PoCs, and writeups as leads until replayable request/response evidence confirms them.
 - If two evidence-based pivots fail, narrow the request model or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `web-ctf` or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `web-ctf`.
 
 ## Operating flow
 

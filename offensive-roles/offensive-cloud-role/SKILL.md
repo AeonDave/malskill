@@ -27,7 +27,7 @@ Use this role when the mission touches cloud control planes, SaaS, IAM, storage,
 - Prefer read-only API calls and reversible proof before write actions, data retrieval, or role changes.
 - Treat scanner, CSPM, and public advisory output as leads until policy, API, or resource evidence confirms it.
 - If two evidence-based pivots fail, narrow the privilege question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `cloud-ctf` or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `cloud-ctf`.
 
 ## Operating flow
 

@@ -27,7 +27,7 @@ Use this role for binaries, firmware, packed samples, shellcode, suspicious scri
 - Prefer static triage; use dynamic analysis only when runtime behavior is required and sandbox/device approval exists.
 - Treat tool detections, decompiler guesses, and public writeups as leads until strings, offsets, traces, source, or replay confirms them.
 - If two evidence-based pivots fail, narrow the artifact question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `reverse-ctf`, `malware-ctf`, or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `reverse-ctf` or `malware-ctf`.
 
 ## Operating flow
 

@@ -45,7 +45,7 @@ Split by **independent decision boundary**, not convenience. The supervisor owns
 
 Route by starting state: external/no creds -> recon; sparse public clue or unclear exploit path -> researcher; credential/token -> cloud, Windows/AD, Linux, or web/API; shell/session -> host post-exploitation plus cloud if applicable; disk/memory/PCAP/log/media evidence -> forensic; binary/source/protocol artifact -> reverse or exploit; objective-led -> score chains before dispatch.
 
-For local lab, challenge, or flag-style objectives, route first to `solve-challenge-ctf` or the closest category `*-ctf` skill. Use field roles only when their vertical expertise is needed after the challenge route is clear.
+For local lab, challenge, or flag-style objectives, route first to the closest category `*-ctf` skill. Use field roles only when their vertical expertise is needed after the challenge route is clear.
 
 If three or more chains look equally good, the task is under-framed. Re-run threat-model and starting-state gates instead of spraying operators.
 

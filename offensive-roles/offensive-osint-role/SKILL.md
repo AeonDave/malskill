@@ -27,7 +27,7 @@ Use this role for passive public-source research that supports targeting, valida
 - Use public-safe queries and one source lane at a time; avoid collecting personal data that does not answer the mission.
 - Treat breach, secret, and reputation hits as leads until primary source, artifact, or approved validation confirms them.
 - If two evidence-based pivots fail, narrow the subject or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `osint-ctf` or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `osint-ctf`.
 
 ## Operating flow
 

@@ -79,7 +79,7 @@ Return:
 - Hashes, encrypted archives, key material, crypto artifacts, tokens, signatures -> `offensive-crypto-role`.
 - Public context, CVE/writeup/tool edge-case research, artifact-semantics hint -> `offensive-researcher-role`.
 - Public identity/domain context -> `offensive-osint-role`.
-- Local lab/challenge/flag-style artifact -> `forensics-ctf`, then `solve-challenge-ctf` if category is ambiguous.
+- Local lab/challenge/flag-style artifact -> `forensics-ctf`, or the closest category `*-ctf` if the bundle is mixed.
 - Report-ready reconstruction or client-facing narrative -> `offensive-supervisor-role`.
 
 ## Stop conditions

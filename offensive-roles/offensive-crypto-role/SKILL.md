@@ -27,7 +27,7 @@ Use this role when the decisive question involves ciphertext, keys, signatures, 
 - Test cheap breaks before heavy math, cracking, or oracle automation; define budget, rate, and success oracle before running work.
 - Treat hash guesses, paper matches, public writeups, and tool output as leads until a round trip, recovered secret, or reproducible script confirms them.
 - If two evidence-based pivots fail, narrow the primitive question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `crypto-ctf` or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `crypto-ctf`.
 
 ## Operating flow
 

@@ -26,7 +26,7 @@ Use this role for Windows hosts, Active Directory, Kerberos, AD CS, credential m
 - Prefer read-only enumeration, graph evidence, and lockout-safe checks before relay, spraying, dumping, remote execution, or directory writes.
 - Treat BloodHound paths, scanner output, public CVEs, and cracked material as leads until edge evidence and scope approval confirm them.
 - If two evidence-based pivots fail, narrow the identity question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `misc-ctf`, `forensics-ctf`, or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `misc-ctf` or `forensics-ctf`.
 
 ## Operating flow
 

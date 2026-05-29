@@ -82,9 +82,8 @@ Mission-focused role skills for supervising and delegating offensive work across
 
 Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, offline target bundles, and private lab scenarios. This area is intentionally separate from field methodology in `offensive-techniques/`.
 
-- Start with `solve-challenge-ctf` when the category is unclear.
-- Use `beginner-ctf` when the user needs first-step guidance or category selection.
 - Dedicated `*-ctf` skills cover web, crypto, pwn, reverse, forensics, OSINT, AI/ML, malware, misc, ICS/OT, hardware/embedded, blockchain/Web3, and writeup workflows.
+- Pick the category `*-ctf` that matches the dominant artifact; load multiple in parallel only when the bundle is genuinely cross-domain.
 
 CTF skills may reference technique and tool skills, but they stay optimized for controlled lab objectives rather than real-world engagement tradecraft.
 

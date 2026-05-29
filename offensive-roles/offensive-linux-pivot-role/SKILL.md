@@ -27,7 +27,7 @@ Use this role for Linux shells, SSH access, containers, Unix services, local pri
 - Prefer reversible privesc, credential, and tunnel paths before kernel exploits, persistence, or broad internal scanning.
 - Treat local enum scripts and exploit suggesters as leads until file permissions, version proof, or command evidence confirms them.
 - If two evidence-based pivots fail, narrow the host/path question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `pwn-ctf`, `misc-ctf`, or `solve-challenge-ctf`.
+- For local lab/challenge/flag-style tasks, route first to `pwn-ctf` or `misc-ctf`.
 
 ## Operating flow
 
