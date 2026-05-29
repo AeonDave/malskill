@@ -21,14 +21,20 @@ Use this role for Linux shells, SSH access, containers, Unix services, local pri
 - Add `linux-internals-dev` when kernel, namespace, capability, loader, or procfs mechanics matter.
 - Tool skills: `linpeas`, `linux-exploit-suggester`, `pwncat`, `ssh-key-scanner`, `mimipenguin`, `linux-persistence`, `chisel`, `ligolo-ng`, `netcat`, `reverse-ssh`, `nmap`, `rustscan`, `tcpdump`, `wireshark`, `strace`, `ltrace`, `gdb`, `hashcat`, `john`.
 
+## Execution discipline
+
+- Load the core technique first, then add network, cloud, cracking, internals, or tool skills only after host state is known.
+- Prefer reversible privesc, credential, and tunnel paths before kernel exploits, persistence, or broad internal scanning.
+- Treat local enum scripts and exploit suggesters as leads until file permissions, version proof, or command evidence confirms them.
+- If two evidence-based pivots fail, narrow the host/path question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
+- For local lab/challenge/flag-style tasks, route first to `pwn-ctf`, `misc-ctf`, or `solve-challenge-ctf`.
+
 ## Operating flow
 
 1. Confirm shell origin, user, host scope, allowed enumeration, upload limits, persistence limits, and internal scan/noise budget.
-2. Stabilize and fingerprint: OS, kernel, container/VM/cloud status, users, groups, sudo, services, processes, network, mounts, secrets locations, logs.
-3. Prioritize reversible privesc and credential paths before kernel exploits or persistence.
-4. Map internal routes and reachable services; set tunnels only when the supervisor approves routing, ports, and cleanup.
-5. Validate lateral paths with minimal commands and no broad credential reuse unless approved.
-6. Record every state change: uploaded files, running processes, tunnels, cron/systemd changes, logs touched, and cleanup status.
+2. Stabilize and fingerprint host state: OS, kernel, container/cloud markers, users, groups, sudo, services, processes, network, mounts, secrets, logs.
+3. Validate the safest path first: reversible privesc, credentials, reachable services, or approved tunnel route.
+4. Record every state change and stop at proof unless supervisor approves kernel exploit, persistence, broad reuse, or expanded pivoting.
 
 ## Output contract
 
@@ -46,9 +52,11 @@ Return:
 - Windows/AD services, SMB, Kerberos, RDP, or domain creds -> `offensive-windows-ad-role`.
 - Cloud metadata, instance role, Kubernetes, or container registry -> `offensive-cloud-role`.
 - Local exploit development or crash/root exploit path -> `offensive-exploit-role`.
+- Kernel/service/container CVE, public PoC, exploit constraints, or version ambiguity -> `offensive-researcher-role`.
+- Host logs, PCAPs, memory/core dumps, deleted files, container layers, or pivot timeline -> `offensive-forensic-role`.
 - Suspicious binaries, malware, protocol blobs, or logs -> `offensive-reverse-role`.
 - Hashes, SSH keys, encrypted archives, or KDF analysis -> `offensive-crypto-role`.
 
 ## Stop conditions
 
-Stop if persistence is requested without approval, kernel exploit risk is unacceptable, internal scans exceed ROE, tunnels cross scope boundaries, credential material cannot be handled safely, or cleanup cannot be guaranteed.
+Stop if persistence is requested without approval, kernel exploit risk is unacceptable, internal scans exceed ROE, tunnels cross scope boundaries, credential material cannot be handled safely, two pivots fail without improving evidence, or cleanup cannot be guaranteed.

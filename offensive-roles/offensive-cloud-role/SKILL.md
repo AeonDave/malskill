@@ -21,14 +21,20 @@ Use this role when the mission touches cloud control planes, SaaS, IAM, storage,
 - Add `vuln-search-technique` for exposed cloud apps and managed-service versions.
 - Tool skills: `aws-cli`, `gcloud-cli`, `pacu`, `trivy`, `gitleaks`, `trufflehog`, `shodan`, `httpx`, `nuclei`, `mitmproxy`.
 
+## Execution discipline
+
+- Load the core technique first, then add provider, hybrid identity, post-exploit, or tool skills only after the principal and platform are clear.
+- Prefer read-only API calls and reversible proof before write actions, data retrieval, or role changes.
+- Treat scanner, CSPM, and public advisory output as leads until policy, API, or resource evidence confirms it.
+- If two evidence-based pivots fail, narrow the privilege question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
+- For local lab/challenge/flag-style tasks, route first to `cloud-ctf` or `solve-challenge-ctf`.
+
 ## Operating flow
 
-1. Confirm tenant/account/project, permission to enumerate, regions, allowed services, data-access boundaries, and write-action limits.
-2. Identify principal type: user, service account, role, access key, OAuth token, instance identity, workload identity, CI token, or federated session.
-3. Enumerate identity first: caller, policies, groups, roles, trust relationships, federation, MFA context, and denied actions.
-4. Map resources by objective: storage, secrets, compute, serverless, databases, registries, Kubernetes, CI/CD, logging, security controls.
-5. Test privilege paths with read-only or reversible calls first; request approval before policy changes, role assumption chains with write impact, or data retrieval beyond proof.
-6. Produce a minimal chain: current principal -> reachable permission -> objective evidence -> cleanup/rollback.
+1. Confirm tenant/account/project, regions, allowed services, data boundaries, write limits, and audit/rollback expectations.
+2. Identify principal and enumerate identity first: caller, policies, groups, roles, trust, federation, MFA context, and denied actions.
+3. Map only resources tied to the objective, then test privilege paths with read-only or reversible calls.
+4. Produce a minimal chain: current principal -> reachable permission -> objective evidence -> cleanup/rollback.
 
 ## Output contract
 
@@ -46,8 +52,10 @@ Return:
 - Workload shell, Linux host, containers, SSH keys, or tunnel setup -> `offensive-linux-pivot-role`.
 - Windows workload, domain join, AD CS, Kerberos, or synced identity -> `offensive-windows-ad-role`.
 - Public asset or external discovery gap -> `offensive-recon-role`.
+- Service advisory, CVE, exploit reference, managed-service behavior, or public writeup ambiguity -> `offensive-researcher-role`.
+- Cloud audit logs, snapshots, object versions, container layers, or evidence timeline -> `offensive-forensic-role`.
 - Secrets format, tokens, signatures, or crypto misuse -> `offensive-crypto-role`.
 
 ## Stop conditions
 
-Stop if provider account ownership is unclear, enumeration crosses tenant boundaries, write actions are not approved, secrets or customer data would be exposed beyond proof, logging/guardrail changes are proposed, or persistence is requested without explicit scope.
+Stop if provider account ownership is unclear, enumeration crosses tenant boundaries, write actions are not approved, repeated API failures suggest audit or guardrail risk, secrets or customer data would be exposed beyond proof, logging/guardrail changes are proposed, or persistence is requested without explicit scope.

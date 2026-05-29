@@ -21,14 +21,20 @@ Use this role for passive public-source research that supports targeting, valida
 - Add `cloud-security-technique` for SaaS, tenant, bucket, token, or provider clues.
 - Tool skills: `theharvester`, `spiderfoot`, `amass`, `subfinder`, `shodan`, `ghunt`, `maigret`, `sherlock`, `holehe`, `phoneinfoga`, `gau`, `asnmap`, `gitleaks`, `trufflehog`.
 
+## Execution discipline
+
+- Load the core technique first, then add support or tool skills only after the signal is clear.
+- Use public-safe queries and one source lane at a time; avoid collecting personal data that does not answer the mission.
+- Treat breach, secret, and reputation hits as leads until primary source, artifact, or approved validation confirms them.
+- If two evidence-based pivots fail, narrow the subject or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
+- For local lab/challenge/flag-style tasks, route first to `osint-ctf` or `solve-challenge-ctf`.
+
 ## Operating flow
 
 1. Confirm allowed subject types: organization, domain, infrastructure, role, public employee data, leaked code, or known emails.
-2. Minimize personal data collection; collect only what supports the mission and mark sensitive data handling requirements.
-3. Build source-backed pivots: domains, subdomains, ASN/IP, certificates, technologies, cloud/SaaS providers, emails, usernames, public repos, job-posting tech clues.
-4. Separate facts from inference; tag every lead with source, timestamp, confidence, and whether active validation is needed.
-5. Identify actionable leads: exposed secrets, forgotten hosts, identity patterns, vendor trust relationships, phishing-resistance test candidates, or cloud tenant clues.
-6. Hand off only validated or high-value leads with enough context to avoid duplicate research.
+2. Build source-backed pivots with data minimization: domains, ASN/IP, certs, SaaS, emails, usernames, repos, vendors, and tech clues.
+3. Separate fact, inference, and sensitive data; tag every lead with source, timestamp, confidence, query safety, and validation need.
+4. Hand off only validated or high-value leads with exact validation question and negative findings to prevent repeat research.
 
 ## Output contract
 
@@ -43,6 +49,8 @@ Return:
 ## Handoffs
 
 - Domain/IP/service validation -> `offensive-recon-role`.
+- CVE, exploit, writeup, bug-class, public code, or advisory research -> `offensive-researcher-role`.
+- Leaked dump, log set, archive, screenshot, media, or provenance reconstruction -> `offensive-forensic-role`.
 - Public app/API, leaked endpoint, or tech stack -> `offensive-web-role`.
 - Tenant, bucket, cloud token, SaaS, or CI/CD secret -> `offensive-cloud-role`.
 - Authorized pretext, phishing-resilience, or lure safety -> supervisor with `social-engineering-technique` or `phishing-technique`.
@@ -50,4 +58,4 @@ Return:
 
 ## Stop conditions
 
-Stop if research drifts into unrelated private individuals, doxxing, non-public closed sources not approved, credential use, harassment, phishing execution, or active probing that belongs to recon.
+Stop if research drifts into unrelated private individuals, doxxing, non-public closed sources not approved, credential use, harassment, external private-data submission, phishing execution, active probing that belongs to recon, or repeated pivots stop producing new evidence.

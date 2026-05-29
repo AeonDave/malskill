@@ -1,6 +1,6 @@
 ---
 name: offensive-supervisor-role
-description: "Supervise scoped offensive-security work across agents, operators, or serial workstreams. Use for red-team/pentest planning, recon/vuln/exploit/reverse/cloud/mobile/OSINT/crypto routing, attack-chain design, task packets, evidence review, and large skill/tool curation. Avoid for simple one-step fixes or tool syntax questions where orchestration adds overhead."
+description: "Supervise scoped offensive-security work across agents, operators, or serial workstreams. Use for red-team/pentest planning, recon/research/forensic/vuln/exploit/reverse/cloud/mobile/OSINT/crypto routing, attack-chain design, task packets, evidence review, and large skill/tool curation. Avoid for simple one-step fixes or tool syntax questions where orchestration adds overhead."
 license: MIT
 compatibility: "Agent workflow guidance for security work. Optional: git worktrees for isolated branches."
 metadata:
@@ -43,18 +43,24 @@ Split by **independent decision boundary**, not convenience. The supervisor owns
 - **Artifact triage**: answer the decisive artifact question first, then hand off to reverse, mobile, crypto, forensics, malware, or OSINT as needed.
 - **Skill/tool curation**: compare local guidance with external evidence, remove overlap, patch gaps, and validate changed skills.
 
-Route by starting state: external/no creds -> recon; credential/token -> cloud, Windows/AD, Linux, or web/API; shell/session -> host post-exploitation plus cloud if applicable; artifact -> artifact domain; objective-led -> score chains before dispatch.
+Route by starting state: external/no creds -> recon; sparse public clue or unclear exploit path -> researcher; credential/token -> cloud, Windows/AD, Linux, or web/API; shell/session -> host post-exploitation plus cloud if applicable; disk/memory/PCAP/log/media evidence -> forensic; binary/source/protocol artifact -> reverse or exploit; objective-led -> score chains before dispatch.
+
+For local lab, challenge, or flag-style objectives, route first to `solve-challenge-ctf` or the closest category `*-ctf` skill. Use field roles only when their vertical expertise is needed after the challenge route is clear.
 
 If three or more chains look equally good, the task is under-framed. Re-run threat-model and starting-state gates instead of spraying operators.
 
+If two evidence-based pivots fail, stop local thrash. Re-score the chain, hand sparse unknowns to `offensive-researcher-role`, hand evidence reconstruction to `offensive-forensic-role`, or reduce the objective to the smallest resolving test.
+
 ## Operator squad
 
-Use the 10 role skills below as the default vertical squad. Route to one role unless the decision tree has safe independent branches.
+Use the 12 role skills below as the default vertical squad. Route to one role unless the decision tree has safe independent branches.
 
 | Role skill | Mission slice |
 |---|---|
 | `offensive-recon-role` | scope-to-target package, passive/active inventory, first attack-path candidates |
 | `offensive-osint-role` | public-source identity, domain, leak, supplier, and pretext-safe research |
+| `offensive-researcher-role` | CVE, exploit, bug, writeup, source, advisory, and unknown-solution research packages |
+| `offensive-forensic-role` | disk, memory, PCAP, log, media, cloud, mobile, and mixed evidence reconstruction |
 | `offensive-web-role` | web/API/browser/auth-flow validation and application-layer exploitation |
 | `offensive-cloud-role` | cloud/SaaS/IAM/storage/workload paths and hybrid identity clues |
 | `offensive-windows-ad-role` | Windows, Active Directory, Kerberos, AD CS, credentials, relay, lateral movement |
@@ -90,6 +96,7 @@ The supervisor keeps reporting, scope review, evidence review, and final chain s
 ## Delegation gates
 
 - Give workers full task text and context; do not make them reconstruct the plan from prior conversation.
+- Include a task packet with: scope, mission, starting state, artifacts, public-safe query boundary, allowed MCP/tools, prohibited external submissions, noise/data limits, stop condition, success signal, and expected evidence/source ledger.
 - Require explicit status: done, done with concerns, blocked, or needs context.
 - Review spec/scope compliance before code quality or polish.
 - Never treat a worker report as proof; inspect artifacts and run verification before merging conclusions.

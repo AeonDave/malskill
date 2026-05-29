@@ -20,14 +20,20 @@ Use this role to turn scope into a verified target package. The mission is not e
 - Add `vuln-search-technique` only after assets and versions are stable.
 - Tool skills: `subfinder`, `amass`, `dnsx`, `httpx`, `asnmap`, `shodan`, `nmap`, `masscan`, `rustscan`, `gau`, `katana`, `hakrawler`, `feroxbuster`, `gobuster`, `wafw00f`, `eyewitness`, `testssl`, `nuclei`.
 
+## Execution discipline
+
+- Load the core technique first, then add support or tool skills only after the signal is clear.
+- Pick one passive or active lane that can answer the next question; avoid parallel broad scanners unless the first lane fails with evidence.
+- Treat public research, scanner output, and enrichment as leads until source, replay, or direct service evidence confirms them.
+- If two evidence-based pivots fail, narrow the question and hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
+- For local lab/challenge/flag-style tasks, route first to `solve-challenge-ctf` or the closest `*-ctf` skill.
+
 ## Operating flow
 
 1. Restate authorized domains, IP ranges, subsidiaries, third parties, timing, rate limits, and prohibited probes.
-2. Build passive inventory first: domains, ASNs, DNS, certificates, public URLs, SaaS hints, exposed emails, cloud clues.
-3. Promote only validated assets to active probing; tag every asset by source, confidence, and scope status.
-4. Fingerprint services lightly before vulnerability scanning; avoid noisy checks until the supervisor approves the scan profile.
-5. Cluster by attack surface: web/API, cloud, VPN/remote access, mail, identity, exposed admin panels, internal pivot hints.
-6. Rank the first three attack-path candidates by objective fit, confidence, exposure, and next decisive evidence.
+2. Build passive inventory until asset confidence is enough; tag source, confidence, owner hint, and scope before promotion.
+3. Probe only validated assets with the lightest active check that answers host, port, service, version, or exposure.
+4. Rank the first three attack-path candidates by objective fit, evidence quality, exposure, and next decisive handoff.
 
 ## Output contract
 
@@ -42,7 +48,9 @@ Return a target package with:
 ## Handoffs
 
 - Web/API surface, auth flows, upload, SSRF, XSS, SQLi, or app logic -> `offensive-web-role`.
-- Public CVE, exposed product, or exploit precondition -> `offensive-exploit-role`.
+- Public CVE, exposed product, stale version, or exploit precondition uncertainty -> `offensive-researcher-role`.
+- Confirmed exploit precondition or local reproducer need -> `offensive-exploit-role`.
+- Disk, memory, PCAP, screenshot set, log bundle, or evidence reconstruction -> `offensive-forensic-role`.
 - Cloud identity, buckets, metadata, SaaS, or IAM clues -> `offensive-cloud-role`.
 - Employee, email, breach, or pretext leads -> `offensive-osint-role`.
 - Windows services, AD indicators, VPN, SMB, Kerberos, or RDP -> `offensive-windows-ad-role`.
@@ -50,4 +58,4 @@ Return a target package with:
 
 ## Stop conditions
 
-Stop if scope ownership is unclear, scan volume exceeds ROE, asset confidence is too low for active probing, third-party infrastructure appears, or the next step is exploitation rather than reconnaissance.
+Stop if scope ownership is unclear, scan volume exceeds ROE, asset confidence is too low for active probing, third-party infrastructure appears, two pivots fail without improving evidence, or the next step is exploitation rather than reconnaissance.

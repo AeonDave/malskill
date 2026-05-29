@@ -21,14 +21,20 @@ Use this role for binaries, firmware, packed samples, shellcode, suspicious scri
 - Add `mobile-technique` for APK/IPA app artifacts.
 - Tool skills: `strings`, `capa`, `yara`, `upx`, `binwalk`, `ghidra`, `radare2`, `binaryninja`, `gdb`, `windbg`, `x64dbg`, `frida`, `objdump`, `readelf`, `ltrace`, `strace`, `apktool`, `jadx`, `androguard`, `dex2jar`, `tcpdump`, `wireshark`, `zeek`.
 
+## Execution discipline
+
+- Load the core technique first, then add malware, forensic, crypto, mobile, or tool skills only after artifact type and decisive question are clear.
+- Prefer static triage; use dynamic analysis only when runtime behavior is required and sandbox/device approval exists.
+- Treat tool detections, decompiler guesses, and public writeups as leads until strings, offsets, traces, source, or replay confirms them.
+- If two evidence-based pivots fail, narrow the artifact question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
+- For local lab/challenge/flag-style tasks, route first to `reverse-ctf`, `malware-ctf`, or `solve-challenge-ctf`.
+
 ## Operating flow
 
-1. Hash, identify, and preserve the artifact; record architecture, format, packers, imports, strings, entropy, and execution risk.
+1. Hash, identify, and preserve the artifact; record architecture, format, packer, imports, strings, entropy, and execution risk.
 2. State the decisive question: algorithm, secret, C2/config, file format, protocol, exploit primitive, anti-analysis, or patch delta.
-3. Triage statically first; move to dynamic analysis only inside an approved sandbox or controlled device.
-4. Build hypotheses from cross-references, call graphs, data flows, and runtime traces; disprove cheap hypotheses before deep decompilation.
-5. Extract minimal proof: decoded config, key schedule, validation path, crash root cause, protocol grammar, or indicator set.
-6. Translate findings into a handoff: exploit precondition, crypto attack, detection evidence, mobile finding, or reportable risk.
+3. Triage statically first, then run only the minimal approved dynamic test needed to resolve the question.
+4. Extract minimal proof and translate it into a handoff: exploit precondition, crypto attack, forensic evidence, mobile finding, or reportable risk.
 
 ## Output contract
 
@@ -43,6 +49,8 @@ Return:
 ## Handoffs
 
 - Exploit primitive, crash root cause, or PoC adaptation -> `offensive-exploit-role`.
+- Public writeup, advisory, patch/source history, bug class, or missing external hint -> `offensive-researcher-role`.
+- Incident bundle, memory/disk/PCAP/log timeline, extracted evidence provenance -> `offensive-forensic-role`.
 - APK/IPA storage, auth, network, platform, or device testing -> `offensive-mobile-role`.
 - Cipher, key recovery, custom token, or oracle -> `offensive-crypto-role`.
 - Network service behavior or traffic reconstruction -> `offensive-recon-role` or `offensive-web-role`.
@@ -50,4 +58,4 @@ Return:
 
 ## Stop conditions
 
-Stop if live execution is not sandboxed, malware may touch real networks, the artifact contains sensitive data outside handling rules, the next step becomes exploit deployment, or the decisive question has enough evidence.
+Stop if live execution is not sandboxed, malware may touch real networks, the artifact contains sensitive data outside handling rules, two pivots fail without improving proof, the next step becomes exploit deployment, or the decisive question has enough evidence.
