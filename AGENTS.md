@@ -43,11 +43,12 @@
 - `offensive-techniques/` — technique-first, tool-agnostic skills (for example `fuzzing-technique/`) describing how to execute an approach, choose tools, and run a methodology without turning into per-tool command guides.
 - `offensive-roles/` — supervisor and vertical operator role skills for mission routing, delegation packets, evidence expectations, and handoffs across technique/tool skills.
 - `offensive-coding/` — offensive development skills, including nested `bof-dev/` BOF skills plus workflow-focused skills like `edr-evasion-dev/`, `linux-internals-dev/`, and `windows-internals-dev/`.
-- `offensive-ctf/` — offensive CTF/lab-solving skills, including dispatcher and dedicated `*-ctf` category skills for ICS/OT, hardware/embedded, blockchain/Web3, web, crypto, pwn, reverse, forensics, misc, OSINT, AI/ML, malware, and writeup workflows.
+- `offensive-ctf/` — offensive CTF/lab-solving skills, including dispatcher and dedicated `*-ctf` category skills for ICS/OT, hardware/embedded, game/GamePwn, blockchain/Web3, web, crypto, pwn, reverse, forensics, misc, OSINT, AI/ML, mobile, malware, and writeup workflows.
+- `offensive-hardware/` — hardware-focused offensive skills for real-world assessments: physical device compromise, serial console attacks, firmware extraction, peripheral protocol exploitation (PJL), and embedded OS post-exploitation.
 - `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, assembly, plus cross-cutting TDD, testing reliability, and systematic debugging guidance.
 - `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, design/planning workflows, deep-research skills, evidence/completion gates, feedback triage, and agentic orchestration workflows.
 - `ai/` — AI framework skills (for example `langchain-py/`).
-- `hardware/` — hardware-oriented skills and subdomains.
+- `hardware/` — hardware-oriented non-offensive skills and subdomains (for example `arduino/`).
 - `commands/` — agent behavior and command modes, controlling how the agent reasons and communicates.
 - `AGENTS.md` — root operational guidance for the whole repository.
 

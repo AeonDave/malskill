@@ -231,3 +231,36 @@ Companies suffer data breaches, insider leaks, email compromises.
 8. **Regulatory**: OFAC, sanctions, litigation (PACER).
 9. **Synthesis**: Org chart (officers, key employees), financial health, risk profile, infrastructure footprint.
 10. **Archive**: Everything via archive.today or screenshots; document sources.
+
+---
+
+## Non-EN registries — CN, RU
+
+English-language registries miss most CN/RU corporate intel. Use native portals + machine translation.
+
+### China
+
+- **USCC (Unified Social Credit Code):** 18-character identifier. Structure: `[registering-authority:1][category:1][admin-division:6][org-code:9][checksum:1]`. Knowing the USCC unlocks every CN registry.
+- **Tianyancha** (https://www.tianyancha.com) — most complete free CN company DB; officers, beneficial owners, litigation, branches. Login often required for deep fields.
+- **Qichacha** (https://www.qcc.com) — peer alternative; sometimes has fields Tianyancha redacts.
+- **GSXT (National Enterprise Credit Info Publicity System):** https://www.gsxt.gov.cn — authoritative gov registry; basic registration data.
+- **ICP Beian** (https://beian.miit.gov.cn) — every CN-hosted website must register ICP license; lookup ties domain ↔ legal-entity name ↔ admin contact.
+- **SAIC filings** (provincial) — annual reports, asset disclosures.
+
+**Workflow:** company name → Tianyancha (USCC + officers) → GSXT (validate) → ICP Beian (all owned domains) → enumerate adjacent subsidiaries → pivot officers to LinkedIn for cross-border identity.
+
+### Russia
+
+- **Rusprofile** (https://www.rusprofile.ru) — company by INN/OGRN; financials, contracts, litigation.
+- **ZA-CHESTNYIBIZNES** (https://zachestnyibiznes.ru) — alt source; deep officer history.
+- **FNS / EGRUL** (https://egrul.nalog.ru) — gov registry; download official PDF extract by INN.
+- **Контур.Фокус** (Kontur Focus) — paid but comprehensive; trial available.
+- **Arbitr.ru** (https://kad.arbitr.ru) — commercial litigation records.
+
+**Workflow:** name/INN → Rusprofile → FNS extract for legal proof → Arbitr for disputes (reveals counterparties + grievances) → officer pivot.
+
+### OpenCorporates power-use
+
+- API: https://api.opencorporates.com/v0.4/companies/search — JSON, free-tier rate-limited.
+- `?q={name}&jurisdiction_code=us_de` — Delaware shell-company lookup.
+- Cross-jurisdiction officer search: https://opencorporates.com/officers — same person across multiple jurisdictions exposes corporate networks.

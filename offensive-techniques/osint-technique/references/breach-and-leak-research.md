@@ -210,3 +210,40 @@ Threat actors publish breach data on "leak sites" to pressure victims into payin
 - **Ignoring dark web**: Public databases capture 10-20% of total breach data; critical intelligence often exists only on darknet.
 - **Over-reliance on HIBP**: Large, recent breaches (2024) may not yet be in HIBP; check Dehashed + IntelX.
 - **Not archiving links**: Breach databases and pastes disappear; screenshot and archive everything.
+
+---
+
+## Hudson Rock Cavalier — free API recipe
+
+Free tier (no auth) returns sanitized counts + partial domains for stealer-log corroboration. Critical for confirming infostealer exposure without paid Dehashed/IntelX.
+
+```bash
+DOMAIN=target.tld
+curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-domain?domain=${DOMAIN}"
+curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-email?email=user@${DOMAIN}"
+curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-url?url=https://app.${DOMAIN}/login"
+```
+
+Response top-level fields: `total_corporate_services`, `total_user_services`, `total_stealers`, `employees_urls[]`, `clients_urls[]`. Subdomains in free tier are asterisk-redacted (`*.app.target.tld`). Rate-limit ~1 req/s.
+
+**Pivot logic:**
+- `total_stealers > 0` → query Dehashed/IntelX for exact corpus.
+- `employees_urls[]` contains internal SSO/VPN URLs → mark as INTERNAL_LEAK; correlate with [identity-fabric-enumeration.md](identity-fabric-enumeration.md) for SSO targets.
+- `clients_urls[]` reveals customer-facing apps not in CT logs → feed to recon.
+
+## SSO_EXPOSURE — legacy-mail-decommissioned pattern
+
+CRITICAL severity scenario: organization migrated mail to M365/Workspace but legacy SSO/IdP entries for old mail platform are still active and route to a system that was decommissioned (or worse, repurposed by another tenant).
+
+**Triggers (all 3 must hit):**
+1. `dig +short MX target.tld` → returns M365 (`*.mail.protection.outlook.com`) or Workspace (`*.google.com`) — proves current MX migrated.
+2. Stealer corpus (Cavalier, Dehashed) contains URLs like `legacy.target.tld`, `webmail.target.tld`, `mail-old.target.tld`, `zimbra.target.tld`, `exchange.target.tld` — proves users authenticated there in the past.
+3. `dig +short <legacy-host>` → NXDOMAIN, parked NS, dangling CNAME, or IP belonging to cloud range not owned by target.
+
+**Impact:** stealer-captured creds for `<legacy-host>` may still authenticate to a now-third-party endpoint; or attacker registers the lapsed DNS to harvest stale auth attempts.
+
+**Severity tiering** (do not auto-assign CRITICAL):
+- **HIGH** — default when triggers 1+2+3 hold (legacy SSO surface + stealer evidence + dead DNS). Indicates abandoned auth surface worth investigating; hijackability not yet proven.
+- **CRITICAL** — escalate only if a 4th confirmation holds: dangling CNAME points to a cloud service whose target name is currently registrable (e.g. S3 bucket NoSuchBucket, Heroku app `no such app`, Azure cloudapp NXDOMAIN), or an IP in an unallocated cloud pool. Document the takeover precondition explicitly.
+
+Report as `SSO_EXPOSURE: legacy-mail-decommissioned` per [attack-path-and-severity.md](attack-path-and-severity.md).

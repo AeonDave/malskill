@@ -22,8 +22,9 @@ Goal: systematically identify security weaknesses in Android and iOS application
 
 ## Boundary
 
+- **CTF mobile tasks**: flag-extraction from APK/IPA/backup → `mobile-ctf` (faster, CTF-specific patterns including .ab, Unity/IL2CPP, asset stego).
 - **Input from `web-exploit-technique`**: API-level findings from mobile app traffic.
-- **Deep binary analysis**: `reversing-technique` for obfuscated native libraries.
+- **Deep binary analysis**: `reversing-technique` for obfuscated native libraries and IL2CPP binaries.
 - **Tool skills**: `offensive-tools/rev/jadx/`, `offensive-tools/rev/apktool/`, `offensive-tools/rev/dex2jar/`, `offensive-tools/rev/androguard/`, `offensive-tools/rev/frida/`.
 
 ## Initial triage
@@ -53,19 +54,30 @@ Per mobile application:
 ### Static analysis
 
 ```bash
+# Quick win: strings on the raw APK first
+strings target.apk | grep -iE "api[_-]?key|secret|password|token|HTB\{"
+
 # Decompile
 jadx -d output_dir target.apk
-apktool d target.apk -o output_dir
+apktool d target.apk -o output_dir   # smali + decoded manifest + resources
 
-# Manifest analysis
-# Check: exported components, debuggable, allowBackup, permissions
+# Manifest analysis: exported components, debuggable, allowBackup, permissions
 aapt dump badging target.apk
 
-# Hardcoded secrets
-grep -rEi "(api[_-]?key|secret|password|token|firebase)" output_dir/
+# Hardcoded crypto (SecretKeySpec, Cipher.getInstance — common leak point)
+grep -r "SecretKeySpec\|Cipher\|AES\|DES\|encrypt\|decrypt\|base64" output_dir/ | grep -v "^Binary"
+# Look for the hardcoded key argument passed to SecretKeySpec(key, "AES")
+
+# Firebase and remote config leaks
+cat output_dir/res/values/google-services.json 2>/dev/null
+cat output_dir/assets/google-services.json 2>/dev/null
 
 # Certificate analysis
 apksigner verify --print-certs target.apk
+
+# Asset inspection (images, data files bundled with APK)
+find output_dir/assets/ -type f | xargs file
+# Large images → potential steganography (zsteg, steghide, visual inspection)
 ```
 
 ### Dynamic analysis
@@ -97,6 +109,50 @@ dz> run app.provider.query content://com.target.app.provider/
 adb shell cat /data/data/com.target.app/shared_prefs/*.xml
 adb pull /data/data/com.target.app/databases/
 adb shell ls /data/data/com.target.app/files/
+```
+
+### Android backup (.ab) analysis
+
+Android backup files are unencrypted by default and contain full app data + shared storage.
+
+```bash
+# Header: "ANDROID BACKUP\n<ver>\n<compressed>\n<encryption>\n"
+# Measure header length exactly before extracting
+python3 -c "
+with open('backup.ab','rb') as f: h=f.read(60)
+print(repr(h))
+idx = h.find(b'x\xda') or h.find(b'x\x9c')  # zlib magic
+print('zlib starts at byte', idx)
+"
+
+# Extract (adjust skip= to header byte count)
+dd if=backup.ab bs=24 skip=1 2>/dev/null \
+  | python3 -c "import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))" \
+  > backup.tar && tar xf backup.tar -C extracted/
+
+# Triage extracted content
+grep -r "password\|token\|secret\|key" extracted/ 2>/dev/null
+find extracted/ -name "*.db" | xargs -I{} sqlite3 {} ".tables" 2>/dev/null
+find extracted/ -name "*.jpg" -o -name "*.png" | sort   # inspect visually
+```
+
+### Unity / IL2CPP APK
+
+Unity games compile C# to native ARM via IL2CPP. jadx shows only stubs — reverse `libil2cpp.so` with metadata.
+
+```bash
+# Verify IL2CPP
+ls apk_unzip/lib/arm64-v8a/   # → libil2cpp.so, libmain.so, libunity.so
+
+# Il2CppDumper: recovers full class/method/field names from binary + metadata
+# https://github.com/Perfare/Il2CppDumper
+# Input: libil2cpp.so + assets/global-metadata.dat
+# Output: dump.cs (all C# stubs with offsets), script.py (Ghidra import)
+
+grep -i "flag\|key\|secret\|password\|cheat\|unlock" dump.cs
+strings libil2cpp.so | grep -i "flag{"
+
+# Load into Ghidra with Il2CppDumper's script.py for guided reversing
 ```
 
 ## iOS testing
@@ -137,8 +193,3 @@ ls /var/mobile/Containers/Data/Application/<UUID>/Library/
 | MASVS-NETWORK | SSL pinning, certificate validation, proxy detection |
 | MASVS-PLATFORM | Exported components, intent handling, WebView |
 | MASVS-CODE | Code tampering, debugging, root/jailbreak detection |
-
-## Resources
-
-- `references/android-testing.md` — detailed Frida scripts, Drozer commands, and storage analysis patterns.
-- `references/ios-testing.md` — iOS-specific tooling, keychain analysis, and binary decryption workflow.

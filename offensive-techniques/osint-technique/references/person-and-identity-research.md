@@ -196,3 +196,46 @@ Each platform has different visibility and archival challenges.
 5. **Archive everything**: Screenshots, URLs, timestamps.
 6. **Validate**: Does the person exist at this employment? LinkedIn/company website match?
 7. **Report**: Profile summary, breach exposure, linked identities, confidence notes.
+
+---
+
+## Email-harvest stack — 6-source parallel pipeline
+
+No single source is complete. Run all 6 in parallel, dedup, then derive the pattern.
+
+| # | Source | Method | Auth | Yield |
+|---|---|---|---|---|
+| 1 | Hunter.io | `https://api.hunter.io/v2/domain-search?domain={d}&api_key=K` | paid key | high (verified pattern + 10-50 emails free tier) |
+| 2 | crt.sh + SAN scrape | `curl 'https://crt.sh/?q=%25.{d}&output=json'` → extract SANs → grep `@{d}` | none | medium (rare but pure email-in-cert) |
+| 3 | theHarvester | `theHarvester -d {d} -b all -l 500` | none | medium (aggregates many engines) |
+| 4 | GitHub commits | `curl 'https://api.github.com/search/commits?q=author-email:@{d}' -H 'Accept: application/vnd.github.cloak-preview' -H 'Authorization: token T'` | PAT | high for tech orgs |
+| 5 | Google/Bing dorks | `"@{d}" site:linkedin.com`, `"@{d}" -site:{d}`, `"@{d}" filetype:pdf` | none | medium |
+| 6 | h8mail / IntelX / breach corpus | breach-DB queries | varies | high but stale |
+
+**Pipeline:**
+```bash
+D=target.tld
+mkdir harvest && cd harvest
+# 1. Hunter (if key set)
+curl -s "https://api.hunter.io/v2/domain-search?domain=${D}&api_key=${HUNTER_KEY}" | jq -r '.data.emails[].value' > h1.txt
+# 2. crt.sh SAN scrape
+curl -s "https://crt.sh/?q=%25.${D}&output=json" | jq -r '.[].name_value' | tr ',' '\n' | grep -E "@${D}$" | sort -u > h2.txt
+# 3. theHarvester
+theHarvester -d ${D} -b all -l 500 -f h3.json && jq -r '.emails[]' h3.json > h3.txt
+# 4. GitHub commits
+curl -s -H "Accept: application/vnd.github.cloak-preview" -H "Authorization: token ${GH_PAT}" \
+  "https://api.github.com/search/commits?q=author-email:@${D}&per_page=100" \
+  | jq -r '.items[].commit.author.email' | sort -u > h4.txt
+# 5. dork results: manual paste
+# 6. h8mail / breach: out-of-band
+# dedup
+cat h*.txt | tr 'A-Z' 'a-z' | sort -u > all_emails.txt
+wc -l all_emails.txt
+```
+
+**Pattern derivation:** once `all_emails.txt` has ≥10 entries, regex-classify:
+- `^([a-z])([a-z]+)@` ≥60% → `{first-initial}{last}@`
+- `^([a-z]+)\.([a-z]+)@` ≥60% → `{first}.{last}@`
+- `^([a-z]+)([a-z])@` ≥60% → `{first}{last-initial}@`
+
+Feed pattern + LinkedIn employee names to derive missing emails. For passive deliverability scoring use Hunter Email Verifier, MailTester, or M365 GetCredentialType (passive endpoint check) from [identity-fabric-enumeration.md](identity-fabric-enumeration.md). Active SMTP probing (`VRFY`, `RCPT TO`, callback verification) is out of OSINT scope — escalate to [recon-technique](../../recon-technique/) under explicit RoE.

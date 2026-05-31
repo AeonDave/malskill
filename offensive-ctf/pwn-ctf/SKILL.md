@@ -66,6 +66,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Build exploit in stages: local repro, info leak, base calculation, control-flow/data-only effect, remote adaptation.
 - Keep offsets, libc/loader assumptions, and environment drift explicit.
 - If RELRO, GOT/PLT, relocation tables, or leakless partial overwrites appear, load `references/relro-aslr-relocations.md` before deciding the final target.
+- If shellcode has a byte blacklist (filter function rejecting specific bytes), load `references/shellcode-filtering.md` first — decode the blacklist semantics, find safe XOR/ADD encoding, use register-based string construction to avoid blocked opcodes and string literals.
 - If the task is practice-path or lab-study guidance instead of solving one concrete binary, load `references/practice-labs.md` and keep platform-specific solution details out of generated notes.
 
 ## Quality gates
@@ -90,6 +91,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/relro-aslr-relocations.md](references/relro-aslr-relocations.md) — ELF RELRO, GOT/PLT, relocation addends, ASLR-invariant partial overwrites, and multi-run reliability gates.
 - [references/rop.md](references/rop.md) — x86-64 ROP and shellcode flow: leaks, pivots, chain assembly, and constrained environments.
 - [references/sandbox.md](references/sandbox.md) — restricted-environment escapes, proc-based pivots, and command-execution constraints.
+- [references/shellcode-filtering.md](references/shellcode-filtering.md) — byte-blacklist bypass: blacklist semantic analysis, XOR/ADD register-based encoding, alternative syscall construction, blocked instruction substitutions, and ORW shellcode template for filtered execve.
 - [references/weird-machines.md](references/weird-machines.md) — emulator, interpreter, ML-dispatch, bit-flip, constrained-shellcode, and data-reinterpretation exploitation patterns.
 - [references/windows-pwn.md](references/windows-pwn.md) — Windows-native exploitation notes: SEH/DEP bypass, CFG-aware call-target hijacks, PEB-walk shellcode, and privilege-abuse pivots after code execution.
 - [references/wasm-pwn.md](references/wasm-pwn.md) — WASM binary exploitation under wasmtime/wasmer: linear memory OOB, shadow stack overflow, function table index overwrite.
