@@ -55,7 +55,7 @@
 ## Conventions
 
 - Every skill root must contain `SKILL.md` with valid YAML frontmatter; `name` must match the folder name and use lowercase hyphens.
-- Keep `SKILL.md` under 500 lines; move deep dives, long examples, and reference material to `references/`.
+- Aim to keep the substantive body of `SKILL.md` around 500 lines as a soft target (not validator-enforced); move deep dives, long examples, and reference material to `references/`. Link/index sections like `## Reference Files` or `## Resources` do not count toward this target.
 - Use `scripts/` for deterministic helpers the agent can run and `assets/` for templates or static supporting files.
 - Each skill folder is independent; read the local `SKILL.md` before editing resources under that skill.
 - Prefer qualitative comments over verbose narration; document intent, constraints, and non-obvious tradeoffs.

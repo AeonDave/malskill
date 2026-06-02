@@ -45,10 +45,12 @@ The context window is shared. Every token in a skill competes with the user's re
 Design for staged loading:
 
 - **Discovery**: `name` + `description` only
-- **Activation**: full `SKILL.md` body (keep under **600 lines**)
+- **Activation**: full `SKILL.md` body (soft target: ~500 lines of substantive content)
 - **On demand**: files in `scripts/`, `references/`, `assets/`
 
 Move detail to `references/` so the agent loads only what it needs.
+
+The line target is a guideline, not a hard limit and not enforced by the validator. Count only substantive prose, examples, and tables — exclude link-only sections such as `## Reference Files`, `## Scripts`, `## Assets`, and the trailing `## Resources` index. A skill with 30 reference links does not need to be split just because its file length grows; what matters is that the agent's working context stays focused. Split only when the body itself becomes hard to navigate or repeats material that belongs in a reference.
 
 ### 3. Agent-Neutral Language
 
@@ -242,7 +244,7 @@ After real usage, revisit:
 
 1. Did the agent trigger the skill when it should have? → Improve `description`
 2. Did the agent struggle with any step? → Add clarity or a script
-3. Did `SKILL.md` exceed 600 lines? → Move content to `references/`
+3. Is the substantive body of `SKILL.md` getting hard to navigate (ignoring link/index sections)? → Move detail into `references/`
 4. Are there new usage patterns? → Add examples or a new reference file
 5. Did every test run recreate the same helper script? → Bundle it in `scripts/`
 6. Did a section not improve any output? → Remove it

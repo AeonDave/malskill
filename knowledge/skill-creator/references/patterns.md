@@ -14,7 +14,7 @@ Reference for structuring skills efficiently. Load this file when designing a sk
 
 ## Pattern 1: High-level guide with references
 
-Use when the skill body would exceed 500 lines without splitting, or when some features are rarely needed.
+Use when the substantive body of the skill (excluding link/index sections) starts to exceed ~500 lines or becomes hard to navigate, or when some features are rarely needed.
 
 ```markdown
 # PDF Processing

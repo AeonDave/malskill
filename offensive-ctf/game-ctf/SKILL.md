@@ -282,3 +282,4 @@ EOF
 ## Resources
 
 - [references/unity-game-analysis.md](references/unity-game-analysis.md) — Il2CppDumper workflow, Mono vs IL2CPP identification, asset extraction, dnSpy patching patterns.
+- [references/native-game-reversing.md](references/native-game-reversing.md) — native game binary patterns: score/win-condition patching, puzzle-derived crypto keys (XTEA variants), embedded level data, Frida hooks for runtime flag capture.

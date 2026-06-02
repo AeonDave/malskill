@@ -47,7 +47,7 @@ description: "[TODO: What this skill does and WHEN to activate it — mention fi
 **Capabilities-based** (interrelated features):
 - ## Overview → ## Capabilities → ### 1. Feature → ### 2. Feature
 
-Patterns can be mixed. Keep the total under 500 lines — move details to references/.]
+Patterns can be mixed. Soft target: keep substantive content around 500 lines — move details to references/. Link/index sections (Reference Files, Resources) do not count.]
 
 ## [TODO: First main section]
 

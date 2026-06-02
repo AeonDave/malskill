@@ -132,3 +132,7 @@ Each reference file is scoped to one reversing lane. Load the specific file that
 ### Quick Reference
 
 - [references/field-notes.md](references/field-notes.md) — quick triage checklist and cross-links for common reverse-CTF patterns and decision trees.
+
+### Study and Training
+
+- [references/external-study.md](references/external-study.md) — curated external study and training resources: OST2 Arch1001/2001, guyinatuxedo nightmare, syscall tables, and supporting talks and indexes.

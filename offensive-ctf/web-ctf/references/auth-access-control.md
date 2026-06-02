@@ -102,6 +102,8 @@ High-yield patterns:
 - account-linking CSRF
 - SAML response replay or digest smuggling
 - email subaddressing or normalization mismatches during identity linking
+- authorization-code dirty-dancing: prefix/`HasPrefix` path validation accepts `…/callback/../../page`, landing the victim `code` on a **same-origin** page; leak it with a client-side primitive (see `browser-attacks.md`), then replay
+- token endpoint not binding `redirect_uri` (omitted check, or an ORM `WHERE` with more args than placeholders): a code minted for one `redirect_uri` exchanges under another → replay a stolen code through the confidential client's own callback to get a victim session
 
 ## Infrastructure and identity-admin pivots
 

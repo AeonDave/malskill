@@ -136,6 +136,27 @@ for entry in data:
 # If found, flag is at GameAssembly.dll + RVA offset in read-only data section
 ```
 
+### Flag is not a literal — obfuscated string table
+
+When `stringliteral.json` and asset/metadata strings hold no flag, the flag is decoded at runtime. A common IL2CPP obfuscator (Eazfuscator-style) keeps an internal class (often single-letter names like `a`) with:
+- a static `byte[]` initialized from a `private struct` blob (the field-default-value data lives in `global-metadata.dat`, referenced by `RuntimeHelpers.InitializeArray`);
+- a `.cctor` that decodes it in place with a per-index transform such as `b[i] ^= (i & 0xFF) ^ K`;
+- lazy getters `a()`,`b()`,… returning slices of the decoded buffer.
+
+Recover it offline: read the blob bytes at the metadata offset, apply the same loop, then scan the decoded buffer for printable strings. The "flag" is often not text but a **base64 image** (`iVBOR…` PNG / `/9j/…` JPEG) that `Start()` passes through `Convert.FromBase64String` → `Texture2D.LoadImage` → a `SpriteRenderer`. Decode the base64 to a PNG and read the rendered flag.
+
+```python
+meta = open("global-metadata.dat","rb").read()
+off, n = 0x1609CB, 0x4E18          # struct offset + byte[] length from the .cctor / dump.cs
+dec = bytes((meta[off+i] ^ (i & 0xFF) ^ 0xAA) for i in range(n))
+i = dec.find(b"iVBOR")             # base64 PNG start
+import re, base64
+b64 = re.match(rb"[A-Za-z0-9+/]+={0,2}", dec[i:]).group(0)
+open("flag.png","wb").write(base64.b64decode(b64))   # open image → flag
+```
+
+Map the helper VAs (`Convert.FromBase64String`, `ImageConversion.LoadImage`, `Texture2D..ctor`) via Il2CppDumper's `dump.cs`/`script.json` to confirm the pipeline before reversing the decoder by hand.
+
 ---
 
 ## Unity Asset extraction

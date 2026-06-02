@@ -63,7 +63,7 @@ Stage 2 — Trigger:   Full SKILL.md body  (< 5 000 tokens recommended)
 Stage 3 — On demand: scripts/, references/, assets/ (unlimited, loaded when needed)
 ```
 
-Keep `SKILL.md` under **500 lines**. Reference files are loaded individually, so keep each focused.
+Aim to keep the substantive body of `SKILL.md` around **500 lines** as a soft target — this is a guideline, not a validator rule. Exclude link/index sections (e.g. `## Reference Files`, `## Resources`) from the count; long reference lists are fine. Reference files are loaded individually, so keep each focused.
 
 ## File Reference Syntax
 

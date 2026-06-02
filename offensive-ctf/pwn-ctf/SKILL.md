@@ -95,3 +95,4 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/weird-machines.md](references/weird-machines.md) — emulator, interpreter, ML-dispatch, bit-flip, constrained-shellcode, and data-reinterpretation exploitation patterns.
 - [references/windows-pwn.md](references/windows-pwn.md) — Windows-native exploitation notes: SEH/DEP bypass, CFG-aware call-target hijacks, PEB-walk shellcode, and privilege-abuse pivots after code execution.
 - [references/wasm-pwn.md](references/wasm-pwn.md) — WASM binary exploitation under wasmtime/wasmer: linear memory OOB, shadow stack overflow, function table index overwrite.
+- [references/external-study.md](references/external-study.md) — curated external study and training resources: Linux/Windows user-land and kernel pwn references, heap and ARM heap material, training platforms (pwn.college, nightmare, OST2, ret2 wargames), and syscall tables.
