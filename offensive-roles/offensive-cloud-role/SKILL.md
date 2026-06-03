@@ -49,8 +49,8 @@ Return:
 ## Handoffs
 
 - Exposed web app, SSRF, API auth, or request smuggling into cloud -> `offensive-web-role`.
-- Workload shell, Linux host, containers, SSH keys, or tunnel setup -> `offensive-linux-pivot-role`.
-- Windows workload, domain join, AD CS, Kerberos, or synced identity -> `offensive-windows-ad-role`.
+- Linux workload, host, containers, SSH keys, or network path -> `offensive-linux-role`.
+- Windows workload, domain join, AD CS, Kerberos, or synced identity -> `offensive-windows-role`.
 - Public asset or external discovery gap -> `offensive-recon-role`.
 - Service advisory, CVE, exploit reference, managed-service behavior, or public writeup ambiguity -> `offensive-researcher-role`.
 - Cloud audit logs, snapshots, object versions, container layers, or evidence timeline -> `offensive-forensic-role`.

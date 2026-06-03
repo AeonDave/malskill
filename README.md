@@ -71,8 +71,8 @@ Mission-focused role skills for supervising and delegating offensive work across
 | `offensive-osint-role` | Performs passive public-source, identity, leak, supplier, and pretext-safe research |
 | `offensive-web-role` | Validates web, API, browser, auth-flow, and application-layer exploit paths |
 | `offensive-cloud-role` | Maps cloud/SaaS/IAM/storage/workload and hybrid identity attack paths |
-| `offensive-windows-ad-role` | Handles Windows, Active Directory, Kerberos, AD CS, relay, credentials, and lateral movement |
-| `offensive-linux-pivot-role` | Handles Linux footholds, privesc, secrets, tunnels, containers, and pivots |
+| `offensive-windows-role` | Handles Windows hosts, accounts, services, SMB shares, WinRM/RDP, Active Directory, Kerberos, and AD CS |
+| `offensive-linux-role` | Handles Linux hosts, sessions, users, services, packages, logs, containers, SSH, and network paths |
 | `offensive-mobile-role` | Assesses Android/iOS apps, devices, storage, auth, traffic, instrumentation, and mobile APIs |
 | `offensive-reverse-role` | Extracts behavior, protocols, configs, patch deltas, and exploit-support facts from artifacts |
 | `offensive-crypto-role` | Handles cryptanalysis, hashes, tokens, signatures, oracles, keys, and cracking strategy |

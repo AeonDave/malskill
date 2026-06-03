@@ -27,8 +27,8 @@ For public research tasks, include a public-safe query boundary. Do not let work
 - Unknown local challenge or flag-style artifact -> inspect the artifact briefly, then load the closest category `*-ctf`.
 - Web/API/browser/auth -> `offensive-web-role`.
 - Cloud/SaaS/IAM/storage/workload -> `offensive-cloud-role`.
-- Windows/AD/Kerberos/AD CS -> `offensive-windows-ad-role`.
-- Linux shell/container/tunnel/internal pivot -> `offensive-linux-pivot-role`.
+- Windows host/AD/Kerberos/AD CS/SMB/shares/accounts -> `offensive-windows-role`.
+- Linux host/session/container/SSH/services/network paths -> `offensive-linux-role`.
 - Binary/malware/firmware/protocol -> `offensive-reverse-role` or `offensive-exploit-role` depending on whether the question is understanding or exploitability.
 - Crypto/hash/token/oracle -> `offensive-crypto-role`.
 - Public identity/domain/supplier/reputation -> `offensive-osint-role`.

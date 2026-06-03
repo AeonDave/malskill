@@ -26,8 +26,8 @@ Route to the narrowest available role skill, domain skill, or serial workstream:
 | `offensive-osint-role` | passive public-source research, leaks, identity patterns, supplier and pretext-safe pivots |
 | `offensive-web-role` | web app, API, auth flow, browser, upload, SSRF, XSS, SQLi, SSTI, deserialization |
 | `offensive-cloud-role` | cloud identity, metadata, storage, workloads, SaaS, cross-account or hybrid identity paths |
-| `offensive-windows-ad-role` | Windows, Active Directory, Kerberos, AD CS, credentials, relay, lateral movement |
-| `offensive-linux-pivot-role` | Linux post-exploitation, privilege escalation, credentials, tunnels, containers, pivoting |
+| `offensive-windows-role` | Windows hosts, accounts, services, SMB shares, WinRM/RDP, Active Directory, Kerberos, AD CS |
+| `offensive-linux-role` | Linux hosts, sessions, users, services, packages, logs, containers, SSH, network paths |
 | `offensive-mobile-role` | Android APK/device or iOS IPA/device assessment, mobile APIs, instrumentation |
 | `offensive-reverse-role` | binaries, firmware, PCAPs, dumps, config extraction, protocol analysis, patch deltas |
 | `offensive-crypto-role` | cryptanalysis, hashes, tokens, oracle interaction, key recovery, protocol math |
@@ -52,8 +52,8 @@ If mission is unclear, decide whether the user needs a vulnerability list, a ful
 | Starting state | First route |
 |---|---|
 | External scope, no foothold, no credentials | `offensive-recon-role` first; promote to web, exploit, cloud, or OSINT only after validation |
-| Valid credential or token, no host control | `offensive-cloud-role`, `offensive-windows-ad-role`, `offensive-linux-pivot-role`, or `offensive-web-role` based on where the credential applies |
-| Shell or session on a host | `offensive-windows-ad-role` or `offensive-linux-pivot-role`; add `offensive-cloud-role` if the host is a cloud workload |
+| Valid credential or token, no host control | `offensive-cloud-role`, `offensive-windows-role`, `offensive-linux-role`, or `offensive-web-role` based on where the credential applies |
+| Shell or session on a host | `offensive-windows-role` or `offensive-linux-role`; add `offensive-cloud-role` if the host is a cloud workload |
 | Offline artifact | `offensive-reverse-role`, `offensive-mobile-role`, `offensive-crypto-role`, or `offensive-osint-role` based on artifact type |
 | Objective-led with multiple possible paths | Score candidate chains; pick the path with fewest unvalidated dependencies |
 

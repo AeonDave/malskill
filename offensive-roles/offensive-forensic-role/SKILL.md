@@ -73,8 +73,8 @@ Return:
 - Crash primitive, exploitability question, CVE validation, PoC adaptation, or fuzzing follow-up -> `offensive-exploit-role`.
 - Web logs, request chains, SSRF/auth/session evidence, browser-backed app findings -> `offensive-web-role`.
 - Cloud audit logs, object storage versions, snapshots, workload identity, SaaS evidence -> `offensive-cloud-role`.
-- Windows/AD/Kerberos/AD CS events, domain movement, credential-use timeline -> `offensive-windows-ad-role`.
-- Linux host logs, container traces, service evidence, pivot timeline -> `offensive-linux-pivot-role`.
+- Windows/AD/Kerberos/AD CS events, host/account timeline, share evidence -> `offensive-windows-role`.
+- Linux host logs, container traces, service evidence, network-path timeline -> `offensive-linux-role`.
 - Mobile app backup, device logs, app storage, mobile network capture -> `offensive-mobile-role`.
 - Hashes, encrypted archives, key material, crypto artifacts, tokens, signatures -> `offensive-crypto-role`.
 - Public context, CVE/writeup/tool edge-case research, artifact-semantics hint -> `offensive-researcher-role`.

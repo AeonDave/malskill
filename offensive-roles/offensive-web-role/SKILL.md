@@ -52,8 +52,8 @@ Return:
 - Framework CVE, public exploit, parser behavior, writeup ambiguity, or source-code prior art -> `offensive-researcher-role`.
 - Web logs, HAR files, PCAPs, browser artifacts, screenshots, or incident reconstruction -> `offensive-forensic-role`.
 - RCE, command execution, native service exploit, or payload engineering -> `offensive-exploit-role`.
-- Stolen session, SSO, Kerberos, Windows backend, or AD-backed auth -> `offensive-windows-ad-role`.
-- Linux shell, containers, SSH keys, or internal pivoting -> `offensive-linux-pivot-role`.
+- SSO, Kerberos, Windows backend, SMB, or AD-backed auth -> `offensive-windows-role`.
+- Linux host/session, containers, SSH keys, or internal network path -> `offensive-linux-role`.
 - Mobile API or app traffic issue -> `offensive-mobile-role`.
 - Crypto, JWT signing weakness, oracle, or custom token math -> `offensive-crypto-role`.
 

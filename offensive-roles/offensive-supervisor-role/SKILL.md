@@ -1,6 +1,6 @@
 ---
 name: offensive-supervisor-role
-description: "Scoped routing: supervisor for authorized security work; decompose recon/research/forensic/web/cloud/mobile/AD/crypto tasks and evidence gates."
+description: "Scoped routing: supervisor for authorized security work; decompose recon/research/forensic/web/cloud/Windows/Linux/mobile/crypto tasks and evidence gates."
 license: MIT
 compatibility: "Agent workflow guidance for security work; Optional: git worktrees for isolated branches."
 metadata:
@@ -43,7 +43,7 @@ Split by **independent decision boundary**, not convenience. The supervisor owns
 - **Artifact triage**: answer the decisive artifact question first, then hand off to reverse, mobile, crypto, forensics, malware, or OSINT as needed.
 - **Skill/tool curation**: compare local guidance with external evidence, remove overlap, patch gaps, and validate changed skills.
 
-Route by starting state: external/no creds -> recon; sparse public clue or unclear exploit path -> researcher; credential/token -> cloud, Windows/AD, Linux, or web/API; shell/session -> host post-exploitation plus cloud if applicable; disk/memory/PCAP/log/media evidence -> forensic; binary/source/protocol artifact -> reverse or exploit; objective-led -> score chains before dispatch.
+Route by starting state: external/no creds -> recon; sparse public clue or unclear exploit path -> researcher; credential/token -> cloud, Windows, Linux, or web/API; shell/session -> host post-exploitation plus cloud if applicable; disk/memory/PCAP/log/media evidence -> forensic; binary/source/protocol artifact -> reverse or exploit; objective-led -> score chains before dispatch.
 
 For local lab, challenge, or flag-style objectives, route first to the closest category `*-ctf` skill. Use field roles only when their vertical expertise is needed after the challenge route is clear.
 
@@ -63,8 +63,8 @@ Use the 12 role skills below as the default vertical squad. Route to one role un
 | `offensive-forensic-role` | disk, memory, PCAP, log, media, cloud, mobile, and mixed evidence reconstruction |
 | `offensive-web-role` | web/API/browser/auth-flow validation and application-layer exploitation |
 | `offensive-cloud-role` | cloud/SaaS/IAM/storage/workload paths and hybrid identity clues |
-| `offensive-windows-ad-role` | Windows, Active Directory, Kerberos, AD CS, credentials, relay, lateral movement |
-| `offensive-linux-pivot-role` | Linux footholds, local privesc, secrets, tunnels, containers, internal movement |
+| `offensive-windows-role` | Windows hosts, accounts, services, SMB shares, WinRM/RDP, Active Directory, Kerberos, AD CS |
+| `offensive-linux-role` | Linux hosts, sessions, users, services, packages, logs, containers, SSH, network paths |
 | `offensive-mobile-role` | Android/iOS apps, devices, storage, auth, traffic, instrumentation, mobile APIs |
 | `offensive-reverse-role` | binaries, malware/config, firmware, protocols, patch deltas, artifact-led proof |
 | `offensive-crypto-role` | crypto, hashes, tokens, signatures, oracles, key recovery, cracking strategy |

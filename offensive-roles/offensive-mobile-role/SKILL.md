@@ -54,7 +54,7 @@ Return:
 - Native binary logic, anti-debug, packing, or protocol extraction -> `offensive-reverse-role`.
 - Key recovery, encryption weakness, or token math -> `offensive-crypto-role`.
 - Cloud endpoint, mobile backend, storage bucket, or IAM token -> `offensive-cloud-role`.
-- Device shell or local host pivot beyond app scope -> `offensive-linux-pivot-role` only if explicitly scoped.
+- Device shell or local Linux host work beyond app scope -> `offensive-linux-role` only if explicitly scoped.
 
 ## Stop conditions
 

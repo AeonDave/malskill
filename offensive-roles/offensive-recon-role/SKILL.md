@@ -53,8 +53,8 @@ Return a target package with:
 - Disk, memory, PCAP, screenshot set, log bundle, or evidence reconstruction -> `offensive-forensic-role`.
 - Cloud identity, buckets, metadata, SaaS, or IAM clues -> `offensive-cloud-role`.
 - Employee, email, breach, or pretext leads -> `offensive-osint-role`.
-- Windows services, AD indicators, VPN, SMB, Kerberos, or RDP -> `offensive-windows-ad-role`.
-- Linux services, SSH, containers, or pivotable infrastructure -> `offensive-linux-pivot-role`.
+- Windows services, AD indicators, VPN, SMB, shares, Kerberos, or RDP -> `offensive-windows-role`.
+- Linux services, SSH, containers, Unix daemons, or routable infrastructure -> `offensive-linux-role`.
 
 ## Stop conditions
 

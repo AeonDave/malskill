@@ -52,7 +52,7 @@ Return:
 - Paper, writeup, parameter edge case, public code, or prior-art research -> `offensive-researcher-role`.
 - Evidence timeline, encrypted archive provenance, recovered artifact context, or PCAP/log correlation -> `offensive-forensic-role`.
 - Hardcoded keys or crypto code in binaries/mobile apps -> `offensive-reverse-role` or `offensive-mobile-role`.
-- Credential reuse, password spraying, Kerberos/NTLM material -> `offensive-windows-ad-role`.
+- Account reuse, password policy, Kerberos/NTLM material -> `offensive-windows-role`.
 - Cloud tokens, signed URLs, KMS, or secret stores -> `offensive-cloud-role`.
 - Exploit scripting around an oracle or service -> `offensive-exploit-role`.
 

@@ -76,8 +76,8 @@ Return:
 - Web framework, request chain, auth, SSRF, parser, deserialization, XSS, SQLi, or API exploit research -> `offensive-web-role`.
 - Public exposure or stack/version discovery gap -> `offensive-recon-role`.
 - Cloud/SaaS/IAM/metadata/service advisory -> `offensive-cloud-role`.
-- Windows/AD/Kerberos/AD CS CVE or escalation chain -> `offensive-windows-ad-role`.
-- Linux kernel, service, container, privesc, or pivot CVE -> `offensive-linux-pivot-role`.
+- Windows/AD/Kerberos/AD CS CVE, account/share issue, or host-path ambiguity -> `offensive-windows-role`.
+- Linux kernel, service, package, container, privilege-path, or network-path CVE -> `offensive-linux-role`.
 - Mobile platform, app, SDK, or backend research -> `offensive-mobile-role`.
 - Crypto paper, parameter constraint, token/signature/key-format clue -> `offensive-crypto-role`.
 - Public identity/domain/reputation pivot -> `offensive-osint-role`.
