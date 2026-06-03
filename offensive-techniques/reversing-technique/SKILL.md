@@ -1,8 +1,8 @@
 ---
 name: reversing-technique
-description: "Objective-driven reverse engineering methodology: structured workflows for malware analysis, software protection analysis, patch diffing, firmware, protocol RE, and memory-corruption exploitation handoff. Covers triage, static/dynamic analysis patterns, anti-reversing bypass, exploitability assessment, and tool selection. Use when you need to understand unknown code, bypass protections, extract secrets, validate exploitability, or analyze threats based on a specific goal."
+description: "Auth/lab: reverse engineering methodology; malware triage, patch diffing, firmware/protocol RE, protections, exploitability handoff evidence."
 license: MIT
-compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images, .NET assemblies, network captures. User-mode focus; kernel RE referenced but not detailed."
+compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images,.NET assemblies, network captures; User-mode focus; kernel RE referenced but not detailed."
 metadata:
   author: AeonDave
   version: "1.2"

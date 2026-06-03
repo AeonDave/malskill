@@ -1,12 +1,8 @@
 ---
 name: tcpdump
-description: |
-  CLI packet capture and BPF filter tool. Use to capture network traffic to .pcap files, filter
-  existing PCAPs for specific hosts/ports/protocols, extract payloads as ASCII/hex, and quickly
-  triage network activity from the command line. Pairs with Wireshark/tshark for deep analysis
-  and Zeek for structured log extraction. Essential for network forensics and PCAP investigation.
+description: "Auth/lab ref: CLI packet capture and BPF filter tool."
 license: BSD-3-Clause
-compatibility: "Linux/macOS/*BSD/Windows (Npcap). apt install tcpdump. tcpdump.org"
+compatibility: "Linux/macOS/*BSD/Windows (Npcap); tcpdump.org."
 metadata:
   author: AeonDave
   version: "2.0"

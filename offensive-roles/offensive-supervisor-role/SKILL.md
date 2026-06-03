@@ -1,8 +1,8 @@
 ---
 name: offensive-supervisor-role
-description: "Supervise scoped offensive-security work across agents, operators, or serial workstreams. Use for red-team/pentest planning, recon/research/forensic/vuln/exploit/reverse/cloud/mobile/OSINT/crypto routing, attack-chain design, task packets, evidence review, and large skill/tool curation. Avoid for simple one-step fixes or tool syntax questions where orchestration adds overhead."
+description: "Scoped routing: supervisor for authorized security work; decompose recon/research/forensic/web/cloud/mobile/AD/crypto tasks and evidence gates."
 license: MIT
-compatibility: "Agent workflow guidance for security work. Optional: git worktrees for isolated branches."
+compatibility: "Agent workflow guidance for security work; Optional: git worktrees for isolated branches."
 metadata:
   author: AeonDave
   version: "1.2"

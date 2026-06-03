@@ -1,8 +1,8 @@
 ---
 name: wifite
-description: "Automated Wi‑Fi auditing wrapper for WEP/WPA/WPA2/PMKID workflows with minimal operator input. Use when rapidly triaging or attacking multiple Wi‑Fi targets from Linux without manually orchestrating each aircrack-ng step."
+description: "Auth/lab ref: Automated Wi-Fi auditing wrapper for WEP/WPA/WPA2/PMKID workflows with minimal operator input."
 license: MIT
-compatibility: "Python 3; Linux; pip install wifite; requires aircrack-ng suite + monitor mode adapter"
+compatibility: "Python 3; Linux."
 metadata:
   author: AeonDave
   version: "1.0"

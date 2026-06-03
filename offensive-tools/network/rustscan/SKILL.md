@@ -1,12 +1,8 @@
 ---
 name: rustscan
-description: |
-  Ultra-fast port scanner that finds open ports in seconds then auto-pipes into nmap for service/version
-  detection. Use for initial port discovery on individual hosts or small ranges where speed matters.
-  Complements masscan (broad range) and nmap (deep single-host). Best for: CTF initial recon,
-  quick service fingerprint after foothold, fast validation before exploitation.
+description: "Auth/lab ref: Ultra-fast port scanner that finds open ports in seconds then auto-pipes into nmap for service/version detection."
 license: MIT
-compatibility: "Linux/macOS/Windows. Install: cargo install rustscan, apt, or Docker. Requires nmap."
+compatibility: "Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "2.0"

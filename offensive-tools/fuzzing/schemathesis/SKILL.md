@@ -1,6 +1,6 @@
 ---
 name: schemathesis
-description: "OpenAPI/GraphQL property-based API fuzzer. Use to auto-generate API tests, catch schema violations, triage failures systematically, and run high-coverage stateful campaigns in REST/GraphQL services."
+description: "Auth/lab ref: OpenAPI/GraphQL property-based API fuzzer. Use to auto-generate API tests, catch schema violations, triage failures systematically, and run high-coverage stateful campaigns in REST/GraphQL services."
 license: MIT
 compatibility: "Python CLI/library; CI-friendly."
 metadata:

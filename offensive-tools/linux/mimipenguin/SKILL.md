@@ -1,8 +1,8 @@
 ---
 name: mimipenguin
-description: "Dump credentials from memory on Linux systems (GNOME Keyring, VSFTPd, Apache, SSH). Use when you have root on a Linux target to extract plaintext passwords from running processes and memory."
+description: "Auth/lab ref: Linux secret-exposure audit; process/memory artifact review for authorized recovery and defensive validation."
 license: MIT
-compatibility: "Python 3 / Bash; Linux; requires root; github.com/huntergregal/mimipenguin"
+compatibility: "Python 3 / Bash; Linux; requires root."
 metadata:
   author: AeonDave
   version: "1.0"

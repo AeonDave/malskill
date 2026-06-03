@@ -1,8 +1,8 @@
 ---
 name: fsop-dev
-description: "Develop, review, and operationalize File Stream Oriented Programming (FSOP) exploits against glibc/libio `FILE` structures across classic, vtable-check, and post-hook eras. Covers `_IO_FILE` / `_IO_FILE_plus` / `_IO_wide_data` / `_IO_codecvt` / `_IO_cookie_file` modeling, `_IO_list_all`, stdout/stderr/custom-`FILE *` overlap, vtable-misalignment, House of Apple 2/3, House of Emma, leak-oriented stream abuse, obstack and codecvt call paths, trigger selection (`fputs`, `puts`, `printf`, `fflush`, `exit`, abort/assert), and mitigation-aware endgames such as `system`, `setcontext`, ORW, and pointer-guard-adjacent pivots. Use when exploit development depends on corrupting or overlapping `FILE` objects, choosing a valid libio dispatch path, or recognizing modern FSOP opportunities after hooks disappear."
+description: "Auth/lab dev: glibc FILE/FSOP exploitability research; libio structures, vtables, wide data, trigger paths, mitigation-aware modeling."
 license: MIT
-compatibility: "glibc/libio-focused Linux user-mode exploit development. Primarily relevant to glibc 2.23 through current post-hook builds. musl, Windows CRT internals, kernel file structures, and generic C++ vtables are out of scope."
+compatibility: "glibc/libio-focused Linux user-mode exploitability research; Primarily relevant to glibc 2.23 through current post-hook builds."
 metadata:
   author: AeonDave
   version: "1.0"

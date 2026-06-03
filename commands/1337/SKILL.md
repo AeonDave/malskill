@@ -1,8 +1,8 @@
 ---
 name: "1337"
-description: "Compressed operator mode for /1337, no-fluff execution, and offensive-security workflows. Keeps output terse while preserving exact terms, evidence, warnings, and verification."
+description: "Mode: /1337 compressed output; exact terms, evidence, warnings, verification. Use for no-fluff terse replies; not a security bypass."
 license: MIT
-compatibility: "Cross-domain skill behavior mode for offensive-security workflows."
+compatibility: "Cross-domain behavior mode; no tool or target access required."
 metadata:
    author: AeonDave
    version: "2.4"

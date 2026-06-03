@@ -1,6 +1,6 @@
 ---
 name: jazzer
-description: "Coverage-guided in-process fuzzing for JVM (Java/Kotlin/etc), based on libFuzzer concepts. Use for JVM API/parser fuzzing with JUnit integration, sanitizer-like bug detectors, and reproducible regression corpora."
+description: "Auth/lab ref: Coverage-guided in-process fuzzing for JVM (Java/Kotlin/etc), based on libFuzzer concepts."
 license: Apache-2.0
 compatibility: "Linux/macOS/Windows x64 JVM workflows; Maven/Gradle/Bazel supported."
 metadata:

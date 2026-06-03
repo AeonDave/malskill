@@ -1,8 +1,8 @@
 ---
 name: dnsx
-description: "Fast DNS resolution and brute-force tool from ProjectDiscovery. Use when asked to resolve a list of subdomains, perform DNS brute-force, extract DNS records (A, CNAME, MX, TXT, NS), or validate live DNS entries from a large list."
+description: "Auth/lab ref: Fast DNS resolution and brute-force tool from ProjectDiscovery."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest or download binary."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

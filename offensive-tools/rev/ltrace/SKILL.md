@@ -1,7 +1,7 @@
 ---
 name: ltrace
-description: "ltrace: Linux library-call tracer for glibc and dynamically linked userspace APIs. Use when you need to watch `malloc`, `strcmp`, crypto helpers, networking wrappers, or other imported functions at a level above raw syscalls during reverse engineering or runtime triage."
-compatibility: "Linux primary; best with dynamically linked binaries; not reliable for static or heavily obfuscated targets"
+description: "Auth/lab ref: Linux library-call tracer for glibc and dynamically linked userspace APIs."
+compatibility: "Linux primary; best with dynamically linked binaries."
 metadata:
   author: AeonDave
   version: "1.0"

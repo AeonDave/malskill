@@ -1,8 +1,8 @@
 ---
 name: pinggy
-description: "Pinggy localhost tunneling service for HTTP(S), TCP, UDP, TLS, and TLSTCP tunnels over SSH, Pinggy CLI, Docker, GUI app, Node.js SDK, or Python SDK. Use when exposing authorized local services, receiving webhooks, debugging requests, sharing files, testing callbacks, remote-accessing IoT/dev devices, routing custom domains, or comparing with ngrok/cloudflared/chisel/ligolo-ng. Not for covert persistence or unapproved third-party access."
+description: "Auth/lab ref: Pinggy localhost tunneling service for HTTP(S), TCP, UDP, TLS, and TLSTCP tunnels over SSH, Pinggy CLI, Docker, GUI app, Node.js SDK, or Python SDK."
 license: MIT
-compatibility: "OpenSSH client, Pinggy CLI, Docker image, Windows/macOS/Linux; some features require Pinggy Pro or Enterprise."
+compatibility: "some features require Pinggy Pro or Enterprise."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,7 +1,7 @@
 ---
 name: exiftool
-description: "exiftool: metadata extraction, copy, conversion, and editing utility for images, video, documents, archives, executables, and many other file types. Use when investigating EXIF, GPS, XMP, IPTC, embedded previews, sidecar metadata, or batch metadata manipulation in forensic, OSINT, or content-processing workflows."
-compatibility: "Windows, Linux, macOS; Perl-based tool with packaged binaries; extremely broad file-format support"
+description: "Auth/lab ref: metadata extraction, copy, conversion, and editing utility for images, video, documents, archives, executables, and many other file types."
+compatibility: "Windows, Linux, macOS; Perl-based tool with packaged binaries; extremely broad file-format support."
 metadata:
   author: AeonDave
   version: "1.0"

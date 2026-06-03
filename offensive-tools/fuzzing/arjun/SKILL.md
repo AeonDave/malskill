@@ -1,8 +1,8 @@
 ---
 name: arjun
-description: "Arjun: HTTP parameter discovery fuzzer with a large curated parameter dictionary. Use when hunting hidden GET/POST/JSON/XML parameters on web apps and APIs before SQLi/XSS/IDOR testing. Designed for fast attack-surface expansion and easy handoff into ffuf, dalfox, sqlmap, and custom replay pipelines."
+description: "Auth/lab ref: HTTP parameter discovery fuzzer with a large curated parameter dictionary. For fast testing-surface expansion and easy handoff into ffuf, dalfox, sqlmap, and custom replay pipelines."
 license: GNU GPL v3
-compatibility: "Linux / macOS / Windows. Python 3. pip3 install arjun or git clone https://github.com/s0md3v/Arjun"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
     author: AeonDave
     version: "1.2"

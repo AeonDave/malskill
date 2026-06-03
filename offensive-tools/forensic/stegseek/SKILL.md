@@ -1,7 +1,7 @@
 ---
 name: stegseek
-description: "Stegseek: high-speed wordlist attacker for steghide-protected files. Use when you suspect a JPEG/BMP/WAV/AU artifact contains steghide data but extraction is blocked by a passphrase."
-compatibility: "Linux primary; optimized for steghide-compatible files"
+description: "Auth/lab ref: high-speed wordlist attacker for steghide-protected files. For you suspect a JPEG/BMP/WAV/AU artifact contains steghide data but extraction is blocked by a passphrase."
+compatibility: "Linux primary; optimized for steghide-compatible files."
 metadata:
   author: AeonDave
   version: "1.0"

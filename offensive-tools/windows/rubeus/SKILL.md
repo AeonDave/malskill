@@ -1,8 +1,8 @@
 ---
 name: rubeus
-description: "Kerberos attack toolkit for TGT/TGS requests, AS-REP roasting, Kerberoasting, pass-the-ticket, overpass-the-hash, and S4U delegation abuse. Use when asked to perform Kerberos attacks, request tickets, roast service accounts, extract TGTs, or abuse Kerberos delegation in Active Directory."
+description: "Auth/lab ref: Kerberos testing toolkit for TGT/TGS requests, AS-REP roasting, Kerberoasting, pass-the-ticket, overpass-the-hash, and S4U delegation misuse."
 license: BSD-3-Clause
-compatibility: "Windows only. Compile from source with Visual Studio or download precompiled binary. Run from cmd.exe, PowerShell, or inject via BOF/Cobalt Strike."
+compatibility: "Windows only."
 metadata:
   author: AeonDave
   version: "1.0"

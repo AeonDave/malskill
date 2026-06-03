@@ -1,8 +1,8 @@
 ---
 name: netcat
-description: "Netcat (nc/ncat): TCP/UDP Swiss Army knife for reverse shells, bind shells, port checks, banner grabbing, file transfer, port forwarding, and listener setup. Use when catching reverse shells, sending bind shells, testing port connectivity, grabbing service banners, or transferring files without SCP/FTP."
+description: "Auth/lab ref: Netcat (nc/ncat): TCP/UDP Swiss Army knife for callback-shell lab, bind-shell lab, port checks, banner grabbing, file transfer, port forwarding, and listener setup."
 license: GPL-2.0
-compatibility: "Linux, macOS, Windows. Pre-installed on Linux/macOS. Windows: use ncat (from nmap package) or nc64.exe. ncat (Nmap's version) adds SSL support and is preferred."
+compatibility: "Linux, macOS, Windows; Pre-installed on Linux/macOS; Windows: use ncat (from nmap package) or nc64.exe."
 metadata:
   author: AeonDave
   version: "1.0"

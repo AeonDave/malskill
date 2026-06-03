@@ -1,8 +1,8 @@
 ---
 name: chainsaw
-description: "Fast DFIR triage for Windows forensic artifacts (EVTX, MFT, registry, ESE/SRUM) with Sigma and built-in detection logic. Use when analyzing exported Windows event logs, performing first-response hunting, detecting log tampering gaps, or producing CSV/JSON findings quickly without full SIEM infrastructure."
+description: "Auth/lab ref: Fast DFIR triage for Windows forensic artifacts (EVTX, MFT, registry, ESE/SRUM) with Sigma and built-in detection logic."
 license: GPL-3.0
-compatibility: "Windows/Linux/macOS; standalone binary from GitHub releases"
+compatibility: "Windows/Linux/macOS; standalone binary from GitHub releases."
 metadata:
   author: AeonDave
   version: "1.1"

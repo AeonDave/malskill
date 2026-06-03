@@ -1,8 +1,8 @@
 ---
 name: osint-technique
-description: "Open-source intelligence (OSINT) methodology bridging systematic research workflow with online tool discovery and API leverage. Covers target definition, source prioritization, online research across people/identity, infrastructure, breach data, geospatial/media analysis, and threat actor tracking. Use when conducting reconnaissance against a target person/organization/domain/infrastructure, investigating breach impacts, tracing cryptocurrency flows, geolocating events, or mapping an attack surface using only public online sources. Methodology-first: what to research first, which online sources answer that question, and how to synthesize findings rather than tool recipes."
+description: "Public-source research: target definition, source priority, identity/infra/breach/media/geospatial pivots, evidence synthesis."
 license: MIT
-compatibility: "Online research; any OS with browser. No live network scanning — passive sources only."
+compatibility: "Online research; any OS with browser; No live network scanning - passive sources only."
 metadata:
   author: AeonDave
   version: "1.1"

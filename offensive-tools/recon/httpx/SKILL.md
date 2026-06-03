@@ -1,8 +1,8 @@
 ---
 name: httpx
-description: "Fast HTTP probing tool for bulk URL processing, status codes, title extraction, tech detection, and web fingerprinting. Use when asked to probe a list of hosts/URLs for live web servers, find HTTP services, check status codes, extract page titles, or fingerprint web technologies."
+description: "Auth/lab ref: Fast HTTP probing tool for bulk URL processing, status codes, title extraction, tech detection, and web fingerprinting."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest or download binary. Pre-installed on Kali."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

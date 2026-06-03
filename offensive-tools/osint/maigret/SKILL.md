@@ -1,8 +1,8 @@
 ---
 name: maigret
-description: "Build a dossier on a person from a single username: searches 2800+ sites, extracts profile data (name, bio, location, linked accounts), and generates HTML/PDF/CSV reports. Use for deep-dive personal OSINT when you need more than a URL list — extracts actual profile content, detects linked usernames, and correlates identity across platforms."
+description: "Auth/lab ref: Build a dossier on a person from a single username: searches 2800+ sites, extracts profile data (name, bio, location, linked accounts), and generates HTML/PDF/CSV reports."
 license: MIT
-compatibility: "Python 3.8+; pip install maigret; Linux/macOS/Windows; github.com/soxoj/maigret"
+compatibility: "Python 3.8+; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

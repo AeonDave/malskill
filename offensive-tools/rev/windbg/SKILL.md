@@ -1,8 +1,8 @@
 ---
 name: windbg
-description: "Microsoft's debugger for user-mode and kernel-mode Windows debugging, crash dump analysis, driver reversing, and rootkit analysis. Use when analyzing Windows kernel drivers, BSOD crash dumps, kernel-mode malware, process memory at system level, or when x64dbg is insufficient."
+description: "Auth/lab ref: Microsoft's debugger for user-mode and kernel-mode Windows debugging, crash dump analysis, driver reversing, and rootkit analysis."
 license: MIT
-compatibility: "Windows; Microsoft Store (WinDbg Preview) or Windows SDK; supports x86/x64/ARM64"
+compatibility: "Windows; Microsoft Store (WinDbg Preview) or Windows SDK; supports x86/x64/ARM64."
 metadata:
   author: AeonDave
   version: "1.1"

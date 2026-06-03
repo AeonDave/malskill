@@ -1,8 +1,8 @@
 ---
 name: katana
-description: "ProjectDiscovery web crawler for endpoint and JS-endpoint discovery. Handles modern JS-heavy apps via headless browser mode, extracts endpoints from JavaScript files (JSLuice/regex), follows XHR/fetch calls, and integrates with the ProjectDiscovery pipeline (httpx, dnsx, subfinder). Use during active recon to enumerate all reachable endpoints, crawl APIs, extract hidden JS paths, and feed results into parameter discovery or vuln scanning."
+description: "Auth/lab ref: ProjectDiscovery web crawler for endpoint and JS-endpoint discovery."
 license: MIT
-compatibility: "Linux/macOS/Windows; Go binary. Targets: HTTP/HTTPS web applications."
+compatibility: "Linux/macOS/Windows; Go binary; Targets: HTTP/HTTPS web applications."
 metadata:
   author: AeonDave
   version: "1.0"

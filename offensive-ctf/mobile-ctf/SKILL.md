@@ -1,6 +1,6 @@
 ---
 name: mobile-ctf
-description: "Challenge-solving methodology for mobile CTF tasks involving Android APKs, Android backups (.ab), iOS IPAs, Unity/IL2CPP games, and mobile-adjacent forensics. Use when artifacts are APK files, AAB bundles, Android backup archives, IPA files, DEX/smali code, mobile SQLite databases, SharedPreferences XML, Keystore files, or mobile game binaries. Covers: static DEX analysis and jadx decompilation, hardcoded secret extraction (AES keys, tokens, credentials), Android backup extraction and forensics, steganography in APK assets, Unity IL2CPP binary dumping, native library reversing, Frida hooking for runtime flag capture, and visual/metadata analysis of images extracted from device backups. Routes deep binary reversing to reversing-technique and dynamic instrumentation details to mobile-technique."
+description: "Lab/CTF: mobile challenges; APK/AAB/IPA, Android backups, DEX/smali, SQLite/XML/keystore, Unity/IL2CPP, mobile forensics."
 license: MIT
 compatibility: "Linux/macOS; APK/IPA/AB artifacts; jadx, apktool, Python 3, optional frida/objection for dynamic tasks."
 metadata:

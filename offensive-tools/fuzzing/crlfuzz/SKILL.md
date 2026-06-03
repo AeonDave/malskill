@@ -1,8 +1,8 @@
 ---
 name: crlfuzz
-description: "Specialized web fuzzing tool for CRLF injection and HTTP response splitting detection. Use when validating header injection, cookie injection, cache poisoning, and response-splitting vectors by mutating URL/query/header inputs with CR/LF payload families at scale."
+description: "Auth/lab ref: Specialized web fuzzing tool for CRLF injection and HTTP response splitting detection."
 license: MIT
-compatibility: "Linux / macOS / Windows. go install github.com/dwisiswant0/crlfuzz/cmd/crlfuzz@latest or apt install crlfuzz (Kali). Docker: dw1/crlfuzz."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.1"

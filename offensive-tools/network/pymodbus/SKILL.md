@@ -1,7 +1,7 @@
 ---
 name: pymodbus
-description: "PyModbus: Python library for Modbus TCP and serial communication. Use when you need to read or write coils and registers programmatically, automate ICS/OT lab interactions, or build repeatable Modbus probes instead of relying on one-off manual clients."
-compatibility: "Linux, Windows, macOS; Python 3; pip install pymodbus"
+description: "Auth/lab ref: Python library for Modbus TCP and serial communication."
+compatibility: "Linux, Windows, macOS; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

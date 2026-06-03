@@ -1,7 +1,7 @@
 ---
 name: steghide
-description: "steghide: steganography tool for embedding and extracting payloads from JPEG, BMP, WAV, and AU files. Use when investigating passphrase-protected hidden content, validating steg findings from a challenge artifact, or creating controlled stego test data."
-compatibility: "Linux, macOS, WSL; package-manager friendly; classic steghide-supported formats"
+description: "Auth/lab ref: steghide JPEG/BMP/WAV/AU hidden-data workflows; embed/extract tests, passphrase handling, challenge evidence."
+compatibility: "Linux, macOS, WSL; package-manager friendly; classic steghide-supported formats."
 metadata:
   author: AeonDave
   version: "1.0"

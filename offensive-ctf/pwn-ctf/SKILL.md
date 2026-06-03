@@ -1,6 +1,6 @@
 ---
 name: pwn-ctf
-description: "Challenge-solving methodology for binary-exploitation challenge solving. Integrates reversing-technique, vuln-exploit-technique, fuzzing-technique, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on binary-exploitation challenge solving tasks involving native binaries, remote services, memory corruption, format strings, heap bugs, ROP/SROP, shellcode, seccomp, kernel primitives, or sandbox escapes."
+description: "Lab/CTF: pwn/binary challenges; native binaries, memory corruption, format strings, heap/ROP/SROP, shellcode artifacts, seccomp, kernel labs."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

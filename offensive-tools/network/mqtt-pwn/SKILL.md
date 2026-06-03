@@ -1,7 +1,7 @@
 ---
 name: mqtt-pwn
-description: "MQTT-PWN: interactive `cmd2`-based shell for IoT MQTT broker pentesting — connect, topic/message discovery, credential brute-force, broker fingerprinting ($SYS), Sonoff/Owntracks exploitation, and a publish/subscribe C2. Use when assessing exposed MQTT brokers (1883/8883), enumerating IoT topics, recovering broker credentials, or chaining MQTT to smart-home/ICS/IoT-device abuse in authorized engagements."
-compatibility: "Linux, macOS, Windows (via Docker recommended); Python 3.x + PostgreSQL backend"
+description: "Auth/lab ref: MQTT-PWN broker assessment; connect, topics/messages, $SYS fingerprinting, weak-auth checks, IoT evidence workflow."
+compatibility: "Python 3.x + PostgreSQL backend."
 metadata:
   author: AeonDave
   version: "1.0"

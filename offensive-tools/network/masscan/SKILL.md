@@ -1,8 +1,8 @@
 ---
 name: masscan
-description: "Masscan: ultra-fast async TCP SYN port scanner capable of scanning the entire IPv4 internet in minutes. Use when performing wide-area network sweeps, identifying open ports across large CIDR ranges, or as a first-pass discovery step before nmap service scanning."
+description: "Auth/lab ref: ultra-fast async TCP SYN port scanner capable of scanning the entire IPv4 internet in minutes."
 license: MIT
-compatibility: "Linux / macOS / Windows (WSL). Build from source or package manager."
+compatibility: "Linux / macOS / Windows (WSL); Build from source or package manager."
 metadata:
   author: AeonDave
   version: "1.1"

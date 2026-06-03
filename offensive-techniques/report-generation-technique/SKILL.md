@@ -1,8 +1,8 @@
 ---
 name: report-generation-technique
-description: "Penetration test report generation methodology: executive summaries, detailed findings with CVSS scoring, attack narratives, MITRE ATT&CK mapping, and remediation guidance. Use when writing penetration test reports, compiling findings into professional documentation, or creating executive summaries for security assessment deliverables."
+description: "Assessment reporting: exec summaries, CVSS findings, evidence chains, MITRE ATT&CK mapping, remediation, review-ready structure."
 license: MIT
-compatibility: "Markdown, PDF, DOCX output; PTES, OWASP, and SANS reporting standards"
+compatibility: "Markdown, PDF, DOCX output; PTES, OWASP, and SANS reporting standards."
 metadata:
   author: AeonDave
   version: "1.0"

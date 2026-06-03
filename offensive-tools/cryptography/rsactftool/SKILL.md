@@ -1,8 +1,8 @@
 ---
 name: rsactftool
-description: "RSA attack automation tool for weak public keys. Use when targeting RSA key recovery or plaintext recovery from public data (n, e, ciphertext, partial leaks). Covers attack triage, selective attack execution (Wiener, Hastad, Boneh-Durfee, factorization families), and result validation workflows."
+description: "Auth/lab ref: RSA testing automation tool for weak public keys. For targeting RSA key recovery or plaintext recovery from public data (n, e, ciphertext, partial leaks)."
 license: MIT
-compatibility: "Python 3.9+; Linux/macOS/WSL recommended; SageMath optional but strongly recommended for lattice-heavy attacks."
+compatibility: "Python 3.9+; Linux/macOS/WSL recommended."
 metadata:
   author: AeonDave
   version: "1.0"

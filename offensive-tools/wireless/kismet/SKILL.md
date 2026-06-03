@@ -1,8 +1,8 @@
 ---
 name: kismet
-description: "Passive wireless sniffer, WIDS, and wardriving platform for Wi‑Fi, Bluetooth, Zigbee, and other RF sources. Use when performing passive wireless reconnaissance, multi-sensor collection, distributed capture, long-running logging, or API-driven RF monitoring without active injection."
+description: "Auth/lab ref: Passive wireless sniffer, WIDS, and wardriving platform for Wi-Fi, Bluetooth, Zigbee, and other RF sources."
 license: MIT
-compatibility: "Linux/macOS; apt install kismet; requires compatible wireless adapter"
+compatibility: "Linux/macOS; requires compatible wireless adapter."
 metadata:
   author: AeonDave
   version: "1.0"

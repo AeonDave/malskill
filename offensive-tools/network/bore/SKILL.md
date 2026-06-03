@@ -1,8 +1,8 @@
 ---
 name: bore
-description: "ekzhang/bore: minimal Rust-based reverse TCP tunnel exposing a local port through a public relay (default bore.pub) or a self-hosted server, with optional HMAC `--secret` auth. Use when you need a fast, raw TCP ingress endpoint for callback listeners, payload hosting on arbitrary ports, reverse shell handlers, OAST collectors, C2 staging, or pivoting into NAT'd lab environments during authorized red-team or pentest engagements. Not for covert persistence, unauthorized exposure of third-party services, or HTTP/TLS termination — for HTTPS with debugger features use pinggy/ngrok/cloudflared, for SOCKS pivoting over a compromised host use chisel/ligolo-ng."
+description: "Auth/lab ref: ekzhang/bore: minimal Rust-based reverse TCP tunnel exposing a local port through a public relay (default bore.pub) or a self-hosted server, with optional HMAC `--secret` auth."
 license: MIT
-compatibility: "Rust 1.70+ via `cargo install bore-cli`, prebuilt binaries, or `ekzhang/bore` Docker image; Linux/macOS/Windows."
+compatibility: "Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

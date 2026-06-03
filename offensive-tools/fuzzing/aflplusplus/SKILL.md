@@ -1,8 +1,8 @@
 ---
 name: aflplusplus
-description: "Coverage-guided fuzzing framework for source and binary targets. Use when fuzzing C/C++ projects, parsers, CLI tools, or emulated binaries with high throughput, sanitizer-driven triage, and mature campaign orchestration."
+description: "Auth/lab ref: Coverage-guided fuzzing framework for source and binary targets."
 license: Apache-2.0
-compatibility: "Linux, macOS, Windows (WSL/Cygwin paths vary). Install from source, package manager, or Docker aflplusplus/aflplusplus."
+compatibility: "Linux, macOS, Windows (WSL/Cygwin paths vary)."
 metadata:
   author: GitHub Copilot
   version: "1.1"

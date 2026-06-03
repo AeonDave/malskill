@@ -1,7 +1,7 @@
 ---
 name: readelf
-description: "readelf: ELF metadata inspection utility for headers, sections, program headers, symbols, notes, relocations, and dynamic entries. Use when you need ground-truth ELF structure for reverse engineering, exploit setup, loader debugging, or runtime-linking investigation."
-compatibility: "Linux, macOS, WSL; part of GNU binutils; ELF-only by design"
+description: "Auth/lab ref: ELF metadata inspection utility for headers, sections, program headers, symbols, notes, relocations, and dynamic entries."
+compatibility: "Linux, macOS, WSL; part of GNU binutils; ELF-only by design."
 metadata:
   author: AeonDave
   version: "1.0"

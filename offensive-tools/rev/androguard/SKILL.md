@@ -1,8 +1,8 @@
 ---
 name: androguard
-description: "androguard: Python toolkit for Android APK, DEX, resources, manifest, and certificate analysis. Use when you want scriptable extraction of package metadata, permissions, activities, strings, resources, classes, or basic code analysis from Android apps instead of only manual GUI decompilation."
+description: "Auth/lab ref: Python toolkit for Android APK, DEX, resources, manifest, and certificate analysis."
 license: Apache-2.0
-compatibility: "Linux, macOS, Windows; Python 3; pip install androguard"
+compatibility: "Linux, macOS, Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

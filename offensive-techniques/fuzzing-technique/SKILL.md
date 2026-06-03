@@ -1,8 +1,8 @@
 ---
 name: fuzzing-technique
-description: "Technique-first fuzzing methodology for AI agents to discover vulnerabilities across file parsers, binaries, network protocols, and web APIs. Focuses on target modeling, oracle design, harness/request-model quality, corpus engineering, campaign orchestration, and reproducible triage. Use when you need a complete fuzzing flow and decision logic, while keeping tool commands in offensive-tools skills."
+description: "Auth/lab: fuzzing methodology; target model, oracle, harness quality, corpus, campaign triage for parsers, binaries, protocols, APIs."
 license: MIT
-compatibility: "Linux/Windows/macOS; source-available and binary-only targets; local and remote environments"
+compatibility: "Linux/Windows/macOS; source-available and binary-only targets; local and remote environments."
 metadata:
   author: AeonDave
   version: "1.2"

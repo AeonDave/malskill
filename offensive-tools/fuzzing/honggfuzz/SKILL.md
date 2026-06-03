@@ -1,6 +1,6 @@
 ---
 name: honggfuzz
-description: "Feedback-driven, high-speed fuzzer with multi-process/thread execution and persistent fuzzing. Use for local binary fuzzing, instrumentation-guided campaigns, sanitizer-assisted triage, and corpus minimization workflows."
+description: "Auth/lab ref: Feedback-driven, high-speed fuzzer with multi-process/thread execution and persistent fuzzing."
 license: Apache-2.0
 compatibility: "Linux, macOS, Android, BSD, Windows via Cygwin."
 metadata:

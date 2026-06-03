@@ -1,6 +1,6 @@
 ---
 name: crypto-ctf
-description: "Challenge-solving methodology for cryptography challenge solving. Integrates crypto-technique, cracking-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on cryptography challenge solving tasks involving ciphertexts, keys, signatures, oracles, transcripts, proofs, PRNG outputs, or mathematical protocol code."
+description: "Lab/CTF: crypto challenges; ciphertexts, keys, signatures, oracles, transcripts, PRNG, RSA/ECC/lattice/math protocol code."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

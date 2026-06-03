@@ -1,8 +1,8 @@
 ---
 name: sqlmap
-description: "sqlmap: automated SQL injection detection and exploitation tool. Use when testing web applications for SQLi vulnerabilities to enumerate databases, extract data, read/write files, or escalate to OS shell. Handles GET/POST/cookie/header injection points. Supports MySQL, MSSQL, PostgreSQL, Oracle, SQLite, and more."
+description: "Auth/lab ref: automated SQL injection detection and exploitation tool. For testing web applications for SQLi vulnerabilities to enumerate databases, extract data, read/write files, or escalate to OS shell."
 license: GPL-2.0
-compatibility: "Linux / macOS / Windows. Python 3.x. pip install sqlmap or download from github.com/sqlmapproject/sqlmap. Pre-installed on Kali."
+compatibility: "Linux / macOS / Windows; Python 3.x."
 metadata:
   author: AeonDave
   version: "1.1"

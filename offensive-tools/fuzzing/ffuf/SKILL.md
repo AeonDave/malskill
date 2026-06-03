@@ -1,8 +1,8 @@
 ---
 name: ffuf
-description: "High-speed HTTP fuzzing engine for endpoint discovery and input mutation on web/API targets. Use for directory/file discovery, parameter name fuzzing, vhost discovery, header/body fuzzing, and recursive content mapping when the task needs FUZZ-token wordlist workflows with strong response filtering/calibration."
+description: "Auth/lab ref: High-speed HTTP fuzzing engine for endpoint discovery and input mutation on web/API targets."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install github.com/ffuf/ffuf/v2@latest or download binary from GitHub releases. Pre-installed on Kali."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.2"

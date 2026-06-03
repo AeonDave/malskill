@@ -1,8 +1,8 @@
 ---
 name: john
-description: "CPU-based password cracker supporting hundreds of hash formats with wordlist, rules, and incremental modes. Use when cracking hashes offline with CPU resources, applying mangling rules, or when GPUs are unavailable."
+description: "Auth/lab ref: CPU-based password cracker supporting hundreds of hash formats with wordlist, rules, and incremental modes."
 license: MIT
-compatibility: "Linux/macOS/Windows; apt install john or build from source (Openwall)"
+compatibility: "Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

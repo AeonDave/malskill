@@ -1,8 +1,8 @@
 ---
 name: evidence-before-claims
-description: "Evidence gate for security research, offensive workflows, exploit development, scanner triage, and technical reporting. Use before claiming a vulnerability, exploit, credential, bypass, persistence, clean result, or root cause is confirmed. Does not perform exploitation; it forces claim quality, reproducibility, and honest uncertainty handling."
+description: "Evidence gate for security research, scanner triage, code review, and reporting. Use before confirming vulnerability impact, auth material, control results, cleanup, or root cause."
 license: MIT
-compatibility: "AgentSkills-compatible workflow guidance. Applies to code review, offensive testing, research, forensics, and reporting."
+compatibility: "AgentSkills-compatible workflow guidance for code review, security testing, research, forensics, and reporting."
 metadata:
   author: AeonDave
   version: "1.0"

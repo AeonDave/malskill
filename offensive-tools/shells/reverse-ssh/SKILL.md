@@ -1,8 +1,8 @@
 ---
 name: reverse-ssh
-description: "Establish reverse SSH tunnels from victim to attacker for interactive shell access behind NAT/firewall. Use when target is not directly reachable and you need a stable SSH shell through outbound-only connections."
+description: "Auth/lab ref: Establish reverse SSH tunnels from victim to attacker for interactive shell access behind NAT/firewall."
 license: MIT
-compatibility: "Go binary; Linux/macOS/Windows; github.com/Fahrj/reverse-ssh"
+compatibility: "Go binary; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

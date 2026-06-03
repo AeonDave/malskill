@@ -1,8 +1,8 @@
 ---
 name: revshells
-description: "Reverse shell one-liner generator (web UI and CLI) supporting 50+ shells. Use when quickly generating encoded reverse shell payloads for bash, Python, PowerShell, PHP, and other languages during exploitation."
+description: "Auth/lab ref: callback-shell lab one-liner generator (web UI and CLI) supporting 50+ shells."
 license: MIT
-compatibility: "Web: revshells.com; CLI: github.com/0dayCTF/reverse-shell-generator"
+compatibility: "Web: revshells.com."
 metadata:
   author: AeonDave
   version: "1.0"

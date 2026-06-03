@@ -1,6 +1,6 @@
 ---
 name: ics-ctf
-description: "Challenge-solving methodology for industrial control, SCADA, and OT protocol lab tasks. Use when artifacts or services involve Modbus, DNP3, BACnet, S7comm, EtherNet/IP, OPC UA, MQTT, Profinet, CAN/CANopen, PLCs, HMIs, RTUs, process historians, register maps, coils, setpoints, polling baselines, or process-state anomalies. Focuses on read-only evidence, protocol decoding, physics-aware reasoning, and safe validation in authorized isolated environments."
+description: "Lab/CTF: ICS/OT protocol challenges; Modbus, DNP3, BACnet, S7, OPC UA, MQTT, PLC/HMI data, registers/coils, safe read-only reasoning."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
 metadata:

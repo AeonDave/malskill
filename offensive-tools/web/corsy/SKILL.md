@@ -1,8 +1,8 @@
 ---
 name: corsy
-description: "Corsy: lightweight CORS misconfiguration scanner detecting 10+ vulnerability types including origin reflection, null origin, pre/post-domain bypass, regex bypass, and wildcard. Use when auditing CORS policies on web APIs and SPAs to find cross-origin data theft vectors."
+description: "Auth/lab ref: Corsy CORS policy scanner; origin reflection, null origin, wildcard, regex/prefix edge cases, API evidence."
 license: MIT
-compatibility: "Linux / macOS / Windows. Python 3 + requests. git clone https://github.com/s0md3v/Corsy && pip3 install requests"
+compatibility: "Linux / macOS / Windows; Python 3 + requests."
 metadata:
   author: AeonDave
   version: "1.1"

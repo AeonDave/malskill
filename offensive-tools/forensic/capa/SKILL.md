@@ -1,13 +1,8 @@
 ---
 name: capa
-description: |
-  Mandiant capa: capability detection for executables, shellcode, and sandbox reports. Identifies
-  what a binary can do — persistence, credential access, C2, discovery, defense evasion — mapped
-  to MITRE ATT&CK and MBC without running the file. Use to triage unknown binaries before RE,
-  understand malware behavior for AV/EDR evasion research, classify dropper vs payload vs loader,
-  and prioritize which functions to analyze in Ghidra/radare2.
+description: "Auth/lab ref: capa capability detection; executable/sandbox triage, MITRE/MBC mapping, behavior summary, static review prioritization."
 license: Apache-2.0
-compatibility: "Windows/Linux/macOS; standalone binary or Python. pip install capa. github.com/mandiant/capa"
+compatibility: "Windows/Linux/macOS; standalone binary or Python."
 metadata:
   author: AeonDave
   version: "2.0"

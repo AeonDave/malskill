@@ -1,8 +1,8 @@
 ---
 name: rop-development-dev
-description: "Build, debug, and harden practical Return-Oriented Programming chains for x86-64 Linux and Windows targets: gadget discovery, calling-convention-correct chain construction, stack pivoting, leak-first ASLR bypass workflows, NX/DEP bypass via ret2libc/ret2syscall/VirtualProtect-NtProtectVirtualMemory, and mitigations-aware reliability tuning (PIE, RELRO, CET/Shadow Stack, CFG). Use when triaging crashes into exploitability, assembling first-stage infoleaks, selecting between ROP/JOP/SROP, validating gadget quality with Ropper/ROPgadget/pwntools, or porting chains across binaries/builds. Includes reliability-focused guidance on unwind-aware gadget vetting, deterministic selection over random gadget lottery, safety floors for stack math, and fallback cascades when ideal gadgets are absent."
+description: "Auth/lab dev: ROP chain research; gadget quality, calling conventions, pivots, leak-first ASLR labs, NX/DEP modeling, reliability."
 license: MIT
-compatibility: "x86-64 Linux (glibc) and x86-64 Windows user-mode. ARM64, kernel ROP, and browser JIT-ROP are out of scope."
+compatibility: "x86-64 Linux (glibc) and x86-64 Windows user-mode; ARM64, kernel ROP, and browser JIT-ROP are out of scope."
 metadata:
   author: AeonDave
   version: "1.0"

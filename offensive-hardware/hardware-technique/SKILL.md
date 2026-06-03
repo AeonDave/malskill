@@ -1,6 +1,6 @@
 ---
 name: hardware-technique
-description: "Offensive hardware assessment methodology for physical device compromise, embedded system exploitation, and peripheral attack surfaces in authorized penetration testing and red team operations. Use when targeting routers, IoT devices, printers, PLCs, industrial panels, embedded Linux systems, or custom PCBs via serial console (UART/RS-232), debug interfaces (JTAG/SWD), flash memory buses (SPI/I2C), or network-exposed management protocols (PJL, Telnet, SSH, HTTP). Covers UART console access, JTAG debug exploitation, SPI/NAND flash dumping, firmware extraction and analysis, bootloader bypass, secure boot bypass, embedded OS post-exploitation, and printer/peripheral protocol attacks (PJL filesystem traversal, job extraction). Does not cover: RF/wireless attacks (wireless-technique), ICS field protocol exploitation (ics-technique), CTF lab tasks (hardware-ctf), or passive bus capture analysis (forensic-technique)."
+description: "Auth assessment: hardware/embedded methodology; UART/JTAG/SWD/SPI/I2C, firmware extraction, boot/debug paths, embedded OS evidence."
 license: MIT
 compatibility: "Linux; hardware tools optional (USB-UART adapter, JTAG probe, ch341a programmer); firmware analysis requires binwalk, strings, ghidra or equivalent."
 metadata:

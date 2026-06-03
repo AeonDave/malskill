@@ -1,8 +1,8 @@
 ---
 name: smuggler
-description: "smuggler: HTTP/1.1 request smuggling and desync detection tool testing CL.TE, TE.CL, and TE.TE variants. Use when testing reverse proxies, load balancers, or CDN-backed web apps for request desynchronization vulnerabilities that enable cache poisoning, authentication bypass, or request hijacking."
+description: "Auth/lab ref: HTTP/1.1 request smuggling and desync detection tool testing CL.TE, TE.CL, and TE.TE variants."
 license: MIT
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/defparam/smuggler && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

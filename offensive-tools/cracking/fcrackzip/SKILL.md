@@ -1,7 +1,7 @@
 ---
 name: fcrackzip
-description: "fcrackzip: ZIP password-cracking utility for dictionary and brute-force attacks. Use when you need a focused CLI workflow against password-protected ZIP archives before escalating to heavier cracking stacks."
-compatibility: "Linux, macOS, WSL; package-manager friendly; ZIP archives only"
+description: "Auth/lab ref: ZIP password-cracking utility for dictionary and brute-force testing. For you need a focused CLI workflow against password-protected ZIP archives before escalating to heavier cracking stacks."
+compatibility: "Linux, macOS, WSL; package-manager friendly; ZIP archives only."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: cracking-technique
-description: "Technique-first password/hash cracking methodology for AI agents. Covers triage, target modeling, strategy selection (dictionary/rules/hybrid), corpus and candidate engineering, campaign orchestration, and reproducible result analysis for audits, breach analysis, and credential recovery. Use when you need the right cracking flow without turning the skill into a per-tool command manual."
+description: "Auth/lab: password/hash recovery methodology; hash triage, candidate design, rules/masks, campaign evidence, audit-safe reporting."
 license: MIT
-compatibility: "Linux/Windows/macOS; local CPU/GPU cracking environments"
+compatibility: "Linux/Windows/macOS; local CPU/GPU cracking environments."
 metadata:
   author: AeonDave
   version: "2.0"

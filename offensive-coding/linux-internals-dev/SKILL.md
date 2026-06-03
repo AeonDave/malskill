@@ -1,9 +1,8 @@
 ---
 name: linux-internals-dev
-description: |
-  Linux internals knowledge base for offensive and defensive programming: ELF loading and relocation behavior, procfs and process metadata semantics, namespace lifecycle and capability boundaries, eBPF verifier and map and attachment mechanics, and LSM hook and policy surfaces. Use when writing implants, loaders, syscall-level tooling, container escape research, eBPF probes, or hardening and telemetry logic that needs kernel-level mechanics beyond userland APIs.
+description: "Auth/lab dev: Linux internals; ELF loader, procfs, namespaces/caps, eBPF verifier/maps, LSM hooks for tooling/telemetry design."
 license: MIT
-compatibility: Linux kernels 5.4 through 6.x on x86-64 and ARM64. Interfaces and struct layouts can vary by kernel version and distro patches, so verify against running kernel docs and headers before production use.
+compatibility: "Linux kernels 5.4 through 6.x on x86-64 and ARM64; Interfaces and struct layouts can vary by kernel version and distro patches, so verify against running kernel docs and headers before production use."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,6 +1,6 @@
 ---
 name: misc-ctf
-description: "Challenge-solving methodology for miscellaneous multi-domain challenge solving. Integrates crypto-technique, reversing-technique, forensic-technique, network-technique, wireless-technique, and post-exploit-technique with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use for jails, encodings, esolangs, games, VMs, DNS oddities, Linux privilege escalation puzzles, unicode tricks, QR/audio artifacts, or multi-stage puzzles."
+description: "Lab/CTF: misc challenges; jails, encodings, esolangs, VMs, DNS oddities, Linux puzzles, Unicode, QR/audio, multi-stage artifacts."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

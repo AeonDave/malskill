@@ -1,8 +1,8 @@
 ---
 name: network-technique
-description: "Technique-first network investigation methodology for incident-driven triage, service exposure mapping, traffic analysis, and pivoting across scan, packet, and protocol logs. Use when you need to choose the right network tool family per case, reconstruct attacker movement, and produce evidence-backed conclusions without turning the skill into a per-tool command manual."
+description: "Auth/IR: network investigation; service exposure, traffic, PCAP/protocol logs, pivots, scan evidence, incident reconstruction."
 license: MIT
-compatibility: "Linux/Windows/macOS; internal/external networks; PCAP and live traffic"
+compatibility: "Linux/Windows/macOS; internal/external networks; PCAP and live traffic."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,7 +1,7 @@
 ---
 name: tesseract
-description: "Tesseract OCR engine for extracting text from images and scanned documents. Use when a challenge artifact, screenshot, photo, or scan may contain readable text, flags, serials, or labels that need machine-readable extraction."
-compatibility: "Linux, Windows, macOS; language packs installed as needed"
+description: "Auth/lab ref: Tesseract OCR engine for extracting text from images and scanned documents."
+compatibility: "Linux, Windows, macOS; language packs installed as needed."
 metadata:
   author: AeonDave
   version: "1.0"

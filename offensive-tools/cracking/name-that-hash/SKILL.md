@@ -1,7 +1,7 @@
 ---
 name: name-that-hash
-description: "Name-That-Hash: hash-identification helper for narrowing candidate algorithms before cracking. Use when you have unknown hash strings and need fast guesses, likely modes, or follow-on direction into `john`, `hashcat`, or archive-password workflows."
-compatibility: "Linux, macOS, Windows; Python 3; pip install name-that-hash"
+description: "Auth/lab ref: hash-identification helper for narrowing candidate algorithms before cracking."
+compatibility: "Linux, macOS, Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

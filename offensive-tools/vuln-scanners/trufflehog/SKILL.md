@@ -1,8 +1,8 @@
 ---
 name: trufflehog
-description: "trufflehog: secrets scanner that finds AND verifies leaked credentials via live API calls. Use when you need to confirm if exposed secrets are still valid, scan beyond git repos (S3, Docker, cloud, CI/CD), or run comprehensive organization-wide audits. 800+ secret types, 700+ with live verification."
+description: "Auth/lab ref: TruffleHog secret scanning; verified secret types, git/cloud/CI sources, validation evidence, remediation workflow."
 license: AGPL-3.0
-compatibility: "Linux / macOS / Windows. Download binary from github.com/trufflesecurity/trufflehog/releases or brew install trufflesecurity/trufflehog/trufflehog. Docker: ghcr.io/trufflesecurity/trufflehog."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

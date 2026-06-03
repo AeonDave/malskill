@@ -1,8 +1,8 @@
 ---
 name: dotdotpwn
-description: "DotDotPwn: directory traversal fuzzer for HTTP, FTP, and TFTP with built-in encoding variants (null byte, URL, double-URL, unicode). Use for path traversal fuzzing, LFI-oriented payload generation, and protocol-specific traversal checks where generic HTTP fuzzers are weaker. Strong companion to ffuf when you need traversal-specialized payload mutation."
+description: "Auth/lab ref: directory traversal fuzzer for HTTP, FTP, and TFTP with built-in encoding variants (null byte, URL, double-URL, unicode)."
 license: MIT
-compatibility: "Linux / macOS. Perl + modules. apt install dotdotpwn or git clone https://github.com/wireghoul/dotdotpwn"
+compatibility: "Linux / macOS; Perl + modules."
 metadata:
     author: AeonDave
     version: "1.3"

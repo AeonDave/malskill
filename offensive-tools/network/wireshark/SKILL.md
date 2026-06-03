@@ -1,8 +1,8 @@
 ---
 name: wireshark
-description: "Wireshark: network and wireless protocol analyzer for capturing and inspecting packets. Use when analysing pcap files, triaging network-forensics evidence, capturing live traffic, following streams, extracting files or credentials from captures, inspecting 802.11 management/data traffic, reviewing EAPOL or WPA-Enterprise handshakes, or investigating network anomalies during red team operations. CLI equivalent: tshark."
+description: "Auth/lab ref: network and wireless protocol analyzer for capturing and inspecting packets."
 license: GPL-2.0
-compatibility: "Linux / macOS / Windows. Official installer at wireshark.org. tshark included."
+compatibility: "Linux / macOS / Windows; Official installer at wireshark.org; tshark included."
 metadata:
   author: AeonDave
   version: "1.1"

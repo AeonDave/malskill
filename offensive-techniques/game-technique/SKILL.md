@@ -1,6 +1,6 @@
 ---
 name: game-technique
-description: "Offensive methodology for authorized game security assessments, game client security research, and game-adjacent penetration testing in real-world engagements. Use when assessing game clients for cheating vulnerabilities, testing anti-cheat effectiveness, auditing game server protocols for score manipulation or economic fraud, reverse engineering game DRM or license validation, analyzing game save file protection, or assessing game mod/plugin security. Covers: process memory scanning and manipulation (Cheat Engine methodology), game binary reversing for license and DRM bypass, game network protocol analysis and packet replay, anti-cheat mechanism analysis, save file format reversing and tampering, speed hack and value injection techniques. Does NOT cover: CTF game challenges (game-ctf), game engine source code auditing (web-exploit-technique or vuln-search-technique for the backend), or general binary exploitation (pwn-ctf or reversing-technique)."
+description: "Auth assessment: game security methodology; client integrity, anti-cheat, protocol replay, save formats, DRM/license checks, memory analysis."
 license: MIT
 compatibility: "Linux/Windows; Cheat Engine (Windows), scanmem (Linux), Python 3, Ghidra/radare2, Wireshark; authorized isolated game environments required."
 metadata:

@@ -1,8 +1,8 @@
 ---
 name: snaffler
-description: "Active Directory share enumeration and credential hunting tool. Scans domain-joined hosts for accessible shares and identifies files containing credentials, secrets, and sensitive data using configurable rule sets. Use when performing credential harvesting across domain shares, hunting for passwords in scripts/configs, or mapping accessible file shares in AD environments."
+description: "Auth/lab ref: Snaffler AD share audit; accessible shares, sensitive file patterns, secret-risk indicators, evidence reporting."
 license: MIT
-compatibility: "Windows (.NET). Run from domain-joined host or with domain credentials. Requires SMB access to target hosts."
+compatibility: "Windows .NET; domain SMB access required."
 metadata:
   author: AeonDave
   version: "1.0"

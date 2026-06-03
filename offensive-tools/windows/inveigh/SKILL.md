@@ -1,8 +1,8 @@
 ---
 name: inveigh
-description: "Windows .NET LLMNR/NBT-NS/mDNS/DNS poisoner and NTLM credential capture tool. Performs man-in-the-middle attacks by responding to broadcast name resolution requests and capturing NTLMv1/v2 hashes. Use when operating from a Windows host without access to Responder, when needing to capture NTLM hashes from network traffic, or when performing LLMNR/NBT-NS poisoning in AD environments."
+description: "Auth/lab ref: Inveigh Windows name-resolution assessment; LLMNR/NBT-NS/mDNS/DNS exposure, NTLM evidence, relay-risk notes."
 license: BSD-3-Clause
-compatibility: "Windows (.NET 4.6.2+ for C# version, PowerShell 2.0+ for PS version). Run from domain-joined or non-domain host on the target network. Requires local admin for raw socket access."
+compatibility: "Windows (.NET 4.6.2+ for C# version, PowerShell 2.0+ for PS version); Requires local admin for raw socket access."
 metadata:
   author: AeonDave
   version: "1.0"

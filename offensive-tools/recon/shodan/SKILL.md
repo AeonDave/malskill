@@ -1,8 +1,8 @@
 ---
 name: shodan
-description: "Shodan CLI for passive internet-wide host and service discovery. Use when asked to search Shodan, find internet-exposed services, discover infrastructure passively, look up an IP or org, query specific banners or CVEs, or enumerate assets without touching the target."
+description: "Auth/lab ref: Shodan CLI for passive internet-wide host and service discovery."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: pip install shodan. Requires a Shodan API key (free tier available; paid for full access)."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

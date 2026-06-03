@@ -1,8 +1,8 @@
 ---
 name: offensive-crypto-role
-description: "Vertical operator role for scoped cryptanalysis, token/key triage, hash recovery, oracle workflows, protocol math, weak RNG, RSA/ECC issues, mobile/web crypto mistakes, and password-cracking campaign design. Use when a supervisor has ciphertexts, keys, signatures, tokens, hashes, or crypto code. Loads crypto-technique, cracking-technique, reversing-technique, web-exploit-technique, and crypto tool skills."
+description: "Scoped routing: crypto operator; ciphertexts, keys, signatures, tokens, hashes, weak RNG, protocol math, recovery/audit evidence."
 license: MIT
-compatibility: "Authorized cryptanalysis, recovery, and security assessment workflows"
+compatibility: "Authorized cryptanalysis, recovery, and security assessment workflows."
 metadata:
   author: AeonDave
   version: "1.0"

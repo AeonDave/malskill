@@ -1,8 +1,8 @@
 ---
 name: ghidra
-description: "NSA's open-source reverse engineering suite with disassembler, decompiler, P-Code IL, and Ghidra/Python scripting. Use when statically analyzing malware, firmware, or binaries to understand logic, recover algorithms, apply type information, diff binaries, or run headless batch analysis."
+description: "Auth/lab ref: NSA's open-source reverse engineering suite with disassembler, decompiler, P-Code IL, and Ghidra/Python scripting."
 license: MIT
-compatibility: "Java 17+; Linux/macOS/Windows; GUI + headless; github.com/NationalSecurityAgency/ghidra"
+compatibility: "Java 17+; Linux/macOS/Windows; GUI + headless."
 metadata:
   author: AeonDave
   version: "1.1"

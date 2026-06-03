@@ -1,6 +1,6 @@
 ---
 name: vuln-search-technique
-description: "Active vulnerability discovery methodology for AI agents. Covers the full find loop: service version fingerprinting, CVE correlation and prioritization, automated scanner orchestration (nuclei/nikto/openvas), nmap NSE script probing, targeted tool scanning (testssl/wpscan/sqlmap probe), fuzzing integration, and manual logic review. Use when you have a scoped target inventory from recon and need to systematically identify exploitable vulnerabilities before attempting initial access."
+description: "Auth assessment: vulnerability discovery methodology; fingerprinting, CVE correlation, scanner orchestration, NSE/probes, fuzz/manual review."
 license: MIT
 compatibility: "Linux/Windows/macOS; web apps, network services, APIs, infrastructure targets."
 metadata:

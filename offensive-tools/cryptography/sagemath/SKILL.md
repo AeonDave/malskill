@@ -1,8 +1,8 @@
 ---
 name: sagemath
-description: "Computer algebra and number-theory environment for cryptanalysis scripting. Use when crypto tasks require finite fields, polynomial rings, elliptic curves, lattice reduction (LLL), small-roots methods, symbolic algebra, or direct Sage-powered Python scripts (.sage / sage.all)."
+description: "Auth/lab ref: Computer algebra and number-theory environment for cryptanalysis scripting."
 license: GPL-3.0
-compatibility: "Linux/macOS/WSL recommended; works via native install, conda, Docker, Jupyter kernel, or cloud runtimes (SageCell/CoCalc)."
+compatibility: "Linux/macOS/WSL recommended."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,6 +1,6 @@
 ---
 name: ai-ml-ctf
-description: "Challenge-solving methodology for AI and machine-learning CTF tasks. Integrates model artifact triage, adversarial ML, model extraction/inversion, LLM application testing, web/API pivots, reversing, and reproducible proof workflows. Use when tasks involve model files, checkpoints, embeddings, LoRA adapters, classifiers, serialized pipelines, model APIs, prompt-injection surfaces, RAG/tool-use flows, or ML-backed web services."
+description: "Lab/CTF: AI/ML challenges; model artifacts, checkpoints, embeddings, LoRA, classifiers, model APIs, RAG/tool-use, adversarial ML."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

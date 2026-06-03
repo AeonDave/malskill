@@ -1,8 +1,8 @@
 ---
 name: powerview
-description: "PowerView: PowerShell Active Directory reconnaissance tool for mapping domain structure, finding privilege escalation paths, and enumerating security controls. Use when performing AD enumeration, identifying admin accounts, finding unconstrained delegation, searching for misconfigurations, or building attack surface maps in Active Directory environments."
+description: "Auth/lab ref: PowerView AD reconnaissance; users/groups/computers, ACL/delegation paths, policy checks, domain evidence workflow."
 license: BSD-3-Clause
-compatibility: "Windows (PowerShell 3.0+). Run as domain user or with -Credential. Works from non-domain-joined systems if you provide credentials and target DC."
+compatibility: "Windows PowerShell 3.0+; domain context or supplied auth material."
 metadata:
   author: AeonDave
   version: "1.0"

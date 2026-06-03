@@ -1,8 +1,8 @@
 ---
 name: llm-technique
-description: "LLM application red-teaming methodology: prompt injection (direct and indirect), jailbreaks, system prompt extraction, tool/function-call abuse, RAG poisoning, training-data exfiltration probes, output-handling vulnerabilities (XSS via LLM output, SQL via generated queries), agent loops, and cost/DoS attacks. Use when testing LLM-powered applications (chatbots, RAG, copilots, autonomous agents) during authorized security assessments."
+description: "Auth assessment: LLM app security; prompt injection, tool/RAG misuse, output handling, data exposure, loops/DoS, chatbot/agent scope gates."
 license: MIT
-compatibility: "LLM applications (OpenAI, Anthropic, local models), RAG pipelines, agent frameworks (LangChain, AutoGen, CrewAI), copilot-style integrations"
+compatibility: "LLM applications (OpenAI, Anthropic, local models), RAG pipelines, agent frameworks (LangChain, AutoGen, CrewAI), copilot-style integrations."
 metadata:
   author: AeonDave
   version: "1.0"

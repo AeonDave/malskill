@@ -1,8 +1,8 @@
 ---
 name: hydra
-description: "Online brute-force and password spraying tool supporting 50+ protocols (SSH, HTTP, FTP, SMB, RDP, WinRM, and more). Use when asked to brute-force logins, perform password spraying, test default credentials, or attack authentication on any network service."
+description: "Auth/lab ref: Online brute-force and password spraying tool supporting 50+ protocols (SSH, HTTP, FTP, SMB, RDP, WinRM, and more)."
 license: AGPL-3.0
-compatibility: "Linux, Windows, macOS. Install: apt install hydra (Kali pre-installed) or build from source. Windows: use Kali WSL."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

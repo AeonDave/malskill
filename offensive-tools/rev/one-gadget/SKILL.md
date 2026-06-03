@@ -1,7 +1,7 @@
 ---
 name: one-gadget
-description: "one-gadget: libc gadget finder for `execve`-style code execution opportunities under known register and stack constraints. Use when you already have a libc leak or version match and want candidate single-shot RCE offsets to test before building a longer ROP chain."
-compatibility: "Linux and macOS host; Ruby gem; targets glibc-style libc binaries"
+description: "Auth/lab ref: libc gadget finder for `execve`-style code execution opportunities under known register and stack constraints."
+compatibility: "Linux and macOS host; Ruby gem; targets glibc-style libc binaries."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: wafw00f
-description: "WAF detection tool. Fingerprints Web Application Firewalls by analyzing HTTP responses to crafted requests. Identifies vendor and product (Cloudflare, AWS WAF, ModSecurity, Akamai, F5, Imperva, etc.) to inform bypass strategy selection."
+description: "Auth/lab ref: WAF detection tool. Fingerprints Web Application Firewalls by analyzing HTTP responses to crafted requests."
 license: MIT
-compatibility: "Linux/macOS/Windows; Python 3; targets any HTTP/HTTPS service"
+compatibility: "Linux/macOS/Windows; Python 3; targets any HTTP/HTTPS service."
 metadata:
   author: AeonDave
   version: "1.0"

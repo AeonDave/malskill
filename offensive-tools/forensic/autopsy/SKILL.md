@@ -1,12 +1,8 @@
 ---
 name: autopsy
-description: |
-  GUI digital forensics platform built on The Sleuth Kit. Use to investigate disk images (.dd/.E01/.img/.vmdk)
-  for deleted files, browser history, registry artifacts, keyword matches, file carving, and timeline analysis.
-  Fastest way to visually triage a disk image: open image, run ingest modules, search artifacts.
-  Supports NTFS, FAT, ext2/3/4, HFS+, APFS. Works on Windows natively; Linux via CLI build.
+description: "Auth/lab ref: GUI digital forensics platform built on The Sleuth Kit. For visually triage a disk image: open image, run ingest modules, search artifacts."
 license: Apache-2.0
-compatibility: "Windows (primary GUI). Linux: autopsy-core via apt or build from source. autopsy.com"
+compatibility: "Windows (primary GUI); Linux: autopsy-core via apt or build from source; autopsy.com."
 metadata:
   author: AeonDave
   version: "2.0"

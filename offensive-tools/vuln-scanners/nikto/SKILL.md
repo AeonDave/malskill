@@ -1,8 +1,8 @@
 ---
 name: nikto
-description: "Nikto: open-source web server scanner checking for 6700+ known vulnerabilities, outdated software, misconfigurations, and dangerous CGI/default files. Use when performing quick web server reconnaissance to identify low-hanging fruit, server banners, default content, and misconfigs before deeper manual testing. Fast, noisy — good for CTF/authorized pentests."
+description: "Auth/lab ref: open-source web server scanner checking for 6700+ known vulnerabilities, outdated software, misconfigurations, and dangerous CGI/default files."
 license: GPL-2.0
-compatibility: "Linux / macOS / Windows (Perl 5). Pre-installed on Kali. Install: apt install nikto / brew install nikto."
+compatibility: "Linux / macOS / Windows (Perl 5); Pre-installed on Kali."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,8 +1,8 @@
 ---
 name: psexec
-description: "Impacket psexec for remote SYSTEM-level shell execution on Windows hosts via SMB. Use when asked to execute commands remotely on a Windows host, get a SYSTEM shell via SMB, perform pass-the-hash for remote execution, or run commands on a Windows machine using impacket tools."
+description: "Auth/lab ref: Impacket psexec for remote SYSTEM-level shell execution on Windows hosts via SMB."
 license: Apache-2.0
-compatibility: "Linux, macOS, Windows. Install: pip install impacket or apt install python3-impacket (Kali). Part of the impacket suite."
+compatibility: "Linux, macOS, Windows."
 metadata:
   author: AeonDave
   version: "1.0"

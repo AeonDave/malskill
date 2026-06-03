@@ -1,8 +1,8 @@
 ---
 name: offensive-mobile-role
-description: "Vertical operator role for scoped Android and iOS mobile app assessment across static analysis, dynamic instrumentation, storage, auth, network, platform interaction, crypto, privacy, and resilience. Use when a supervisor has APK, IPA, device, emulator, app traffic, or mobile API evidence. Loads mobile-technique, reversing-technique, web-exploit-technique, crypto-technique, and mobile/reverse tool skills."
+description: "Scoped routing: mobile operator; APK/IPA, device/emulator, storage, auth, traffic, crypto, privacy, static/dynamic evidence."
 license: MIT
-compatibility: "Authorized mobile application security assessments"
+compatibility: "Authorized mobile application security assessments."
 metadata:
   author: AeonDave
   version: "1.0"

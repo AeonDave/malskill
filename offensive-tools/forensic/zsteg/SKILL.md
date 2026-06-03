@@ -1,7 +1,7 @@
 ---
 name: zsteg
-description: "zsteg: PNG and BMP steganography analyzer for bit-plane, color-channel, and payload extraction. Use when hunting LSB-style hidden data in images, especially after basic metadata and strings checks show nothing useful."
-compatibility: "Linux, macOS, WSL; Ruby gem; strongest on PNG and BMP"
+description: "Auth/lab ref: zsteg PNG/BMP steganography; LSB, bit-plane, color-channel, hidden-data extraction after metadata/strings checks."
+compatibility: "Linux, macOS, WSL; Ruby gem; strongest on PNG and BMP."
 metadata:
   author: AeonDave
   version: "1.0"

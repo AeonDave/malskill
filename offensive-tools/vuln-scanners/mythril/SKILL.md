@@ -1,8 +1,8 @@
 ---
 name: mythril
-description: "mythril: symbolic-execution-based security analyzer for Solidity and EVM bytecode. Use when you need deeper path exploration, transaction-sequence findings, or SWC-oriented vulnerability reports for Ethereum and EVM-compatible contracts beyond what static lint-style analysis alone can provide."
+description: "Auth/lab ref: symbolic-execution-based security analyzer for Solidity and EVM bytecode."
 license: MIT
-compatibility: "Linux, macOS, WSL; Docker recommended; upstream pip install supports the classic Python workflow"
+compatibility: "Linux, macOS, WSL."
 metadata:
   author: AeonDave
   version: "1.0"

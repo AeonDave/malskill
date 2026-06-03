@@ -1,8 +1,8 @@
 ---
 name: feroxbuster
-description: "Fast, recursive web content discovery tool written in Rust. Use when asked to enumerate web directories recursively, find hidden files/endpoints, fuzz a web application, or when a deep recursive scan is needed that gobuster doesn't handle natively."
+description: "Auth/lab ref: Fast, recursive web content discovery tool written in Rust."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: cargo install feroxbuster or download binary from GitHub releases. Pre-installed on Kali."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

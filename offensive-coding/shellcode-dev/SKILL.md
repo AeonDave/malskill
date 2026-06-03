@@ -1,8 +1,8 @@
 ---
 name: shellcode-dev
-description: "Design, build, test, and harden cross-platform shellcode workflows for Windows, Linux, and macOS across x64 and ARM64, with C/ASM/Python toolchains. Use when creating or reviewing shellcode stagers/loaders, PIC payloads, syscall-only routines, encoder/decoder stages, memory-permission transitions (mmap/mprotect/VirtualAlloc/Nt*), reflective loading paths, and emulator-based validation (Capstone/Keystone/Unicorn). Covers ABI constraints, calling conventions, bad-byte handling, staged execution, and practical debugging loops for exploit-dev and red-team R&D."
+description: "Auth/lab dev: shellcode-format engineering; PIC, ABI, syscalls, encoders, memory permissions, reflective-loader labs, emulator validation."
 license: MIT
-compatibility: "Windows 10/11 x64, Linux x64/aarch64, macOS x64/arm64. Architecture-specific syscall and ABI differences are mandatory."
+compatibility: "Windows 10/11 x64, Linux x64/aarch64, macOS x64/arm64; Architecture-specific syscall and ABI differences are mandatory."
 metadata:
   author: malskill
   version: "1.0"

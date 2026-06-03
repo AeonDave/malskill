@@ -1,8 +1,8 @@
 ---
 name: forensic-technique
-description: "Technique-first digital forensics methodology for incident-driven investigations across disk images (E01/DD/RAW), ISO media, memory captures, and network PCAP evidence. Focuses on preservation, triage, timeline reconstruction, artifact correlation, and report-ready findings while mapping each phase to the right forensic tool family without becoming a per-tool command manual."
+description: "Incident forensics: preservation, triage, timelines, artifact correlation, reporting across disk (E01/DD/RAW), memory, PCAP."
 license: MIT
-compatibility: "Linux/Windows/macOS; E01/RAW/DD/ISO/PCAP/memory evidence"
+compatibility: "Linux/Windows/macOS; E01/RAW/DD/ISO/PCAP/memory evidence."
 metadata:
   author: AeonDave
   version: "1.2"

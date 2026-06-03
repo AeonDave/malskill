@@ -1,8 +1,8 @@
 ---
 name: dnspy
-description: ".NET assembly decompiler, debugger, and editor for reverse engineering managed binaries. Use when analyzing .NET malware (C#/VB.NET), decompiling managed executables, debugging without source code, patching .NET assemblies, or extracting configs from obfuscated .NET samples."
+description: "Auth/lab ref:NET assembly decompiler, debugger, and editor for reverse engineering managed binaries."
 license: MIT
-compatibility: "Windows; .NET Framework/.NET Core; github.com/dnSpyEx/dnSpy"
+compatibility: "Windows; NET Framework/.NET Core."
 metadata:
   author: AeonDave
   version: "1.1"

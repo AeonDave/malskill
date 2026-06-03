@@ -1,8 +1,8 @@
 ---
 name: gau
-description: "Passive URL mining tool that fetches known URLs from Wayback Machine, Common Crawl, URLScan, and OTX. Use when asked to discover historical URLs, find old endpoints, mine parameters, or gather URLs passively without touching the target."
+description: "Auth/lab ref: Passive URL mining tool that fetches known URLs from Wayback Machine, Common Crawl, URLScan, and OTX."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install github.com/lc/gau/v2/cmd/gau@latest or download binary from GitHub releases."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

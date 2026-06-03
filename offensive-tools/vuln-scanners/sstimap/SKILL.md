@@ -1,8 +1,8 @@
 ---
 name: sstimap
-description: "SSTImap: actively maintained SSTI detection and exploitation tool with interactive and predetermined modes across Jinja2, Twig, Smarty, Freemarker, Velocity, ERB, Pug, Nunjucks, and more. Use when testing for server-side template injection and escalating from expression evaluation to file read or OS command execution."
+description: "Auth/lab ref: actively maintained SSTI detection and exploitation tool with interactive and predetermined modes across Jinja2, Twig, Smarty, Freemarker, Velocity, ERB, Pug, Nunjucks, and more."
 license: GPL-3.0
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/vladko312/SSTImap && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

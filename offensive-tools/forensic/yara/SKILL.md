@@ -1,12 +1,8 @@
 ---
 name: yara
-description: |
-  Pattern-matching engine for identifying files, binaries, memory dumps, and artifacts by byte sequences,
-  strings, regex, or structural properties. Use to scan extracted files for known malware families,
-  find flags/hidden strings in binaries, classify suspicious artifacts, validate file content,
-  and scan memory dumps for injected code. Rules are readable, shareable, and composable.
+description: "Auth/lab ref: YARA pattern matching; files, binaries, memory images, strings/regex/byte rules, malware/stego/IOC classification."
 license: BSD-3-Clause
-compatibility: "Windows/Linux/macOS CLI + yara-python. apt install yara. github.com/VirusTotal/yara"
+compatibility: "Windows/Linux/macOS CLI + yara-python."
 metadata:
   author: AeonDave
   version: "2.0"

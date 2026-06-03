@@ -1,8 +1,8 @@
 ---
 name: binwalk
-description: "Firmware analysis and extraction tool for identifying and extracting embedded file systems, compressed archives, executable code, and crypto keys from binary blobs. Use when reversing IoT firmware, embedded devices, router images, or analyzing binary blobs for hidden content during hardware/firmware security assessments."
+description: "Auth/lab ref: Firmware analysis and extraction tool for identifying and extracting embedded file systems, compressed archives, executable code, and crypto keys from binary blobs."
 license: MIT
-compatibility: "Python 3; pip install binwalk or apt install binwalk; Linux/macOS/WSL"
+compatibility: "Python 3; Linux/macOS/WSL."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,8 +1,8 @@
 ---
 name: restler
-description: "Stateful REST API fuzzer from OpenAPI specs. Use when testing complex API dependency chains, producer-consumer request sequencing, and replayable bug-bucket workflows for API reliability/security testing."
+description: "Auth/lab ref: Stateful REST API fuzzer from OpenAPI specs. For testing complex API dependency chains, producer-consumer request sequencing, and replayable bug-bucket workflows for API reliability/security testing."
 license: MIT
-compatibility: "Windows/Linux (64-bit primary), Python + .NET build/runtime."
+compatibility: "Windows/Linux (64-bit primary), Python +.NET build/runtime."
 metadata:
   author: GitHub Copilot
   version: "1.1"

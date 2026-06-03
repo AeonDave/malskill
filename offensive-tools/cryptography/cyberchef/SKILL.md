@@ -1,8 +1,8 @@
 ---
 name: cyberchef
-description: "Web-based data transformation and crypto analysis workbench. Use when rapidly decoding layered encodings, transforming binary/text formats, prototyping crypto/decode pipelines, or sharing reproducible recipes. Covers browser workflow, deep-link recipes, Magic heuristics, and Node API automation handoff."
+description: "Auth/lab ref: Web-based data transformation and crypto analysis workbench. For rapidly decoding layered encodings, transforming binary/text formats, prototyping crypto/decode pipelines, or sharing reproducible recipes."
 license: Apache-2.0
-compatibility: "Browser (client-side processing), optional local Docker deployment, optional Node.js API for automation."
+compatibility: "Authorized/lab use only; see body for platform and setup constraints."
 metadata:
   author: AeonDave
   version: "1.0"

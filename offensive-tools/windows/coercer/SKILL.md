@@ -1,8 +1,8 @@
 ---
 name: coercer
-description: "Coercer forces Windows servers to authenticate to a controlled host by abusing MS-RPRN, MS-EFSR, MS-DFSNM, and other RPC protocols, enabling NTLM relay or hash capture. Use when asked to coerce NTLM authentication from a Windows server, set up an NTLM relay via Responder, or exploit printspooler/PetitPotam-style auth coercion."
+description: "Auth/lab ref: Coercer forces Windows servers to authenticate to a controlled host by abusing MS-RPRN, MS-EFSR, MS-DFSNM, and other RPC protocols, enabling NTLM relay or hash capture."
 license: MIT
-compatibility: "Linux. Install: pip install coercer or git clone + pip install -r requirements.txt."
+compatibility: "Linux."
 metadata:
   author: AeonDave
   version: "1.0"

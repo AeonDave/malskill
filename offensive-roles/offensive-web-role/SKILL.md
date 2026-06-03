@@ -1,8 +1,8 @@
 ---
 name: offensive-web-role
-description: "Vertical operator role for scoped web, API, browser, and application exploitation. Use when a supervisor needs authenticated app mapping, request replay, vulnerability validation, exploit chain design, or evidence-backed impact for OWASP-style issues. Loads web-exploit-technique, vuln-search-technique, vuln-exploit-technique, and precise web tool skills."
+description: "Scoped routing: web/API/browser operator; app mapping, request replay, vuln validation, impact evidence, OWASP issue handoff."
 license: MIT
-compatibility: "Authorized security assessments and red-team operations"
+compatibility: "Authorized security assessments and red-team operations."
 metadata:
   author: AeonDave
   version: "1.0"

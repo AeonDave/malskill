@@ -1,7 +1,7 @@
 ---
 name: aws-cli
-description: "AWS CLI v2 for interacting with AWS services from the terminal. Use when enumerating identities, S3 buckets, IAM data, EC2 inventory, or other control-plane resources in authorized cloud assessments, or when scripting repeatable AWS recon and verification workflows."
-compatibility: "Linux, Windows, macOS; AWS CLI version 2 recommended"
+description: "Auth/lab ref: AWS CLI v2 for interacting with AWS services from the terminal."
+compatibility: "Linux, Windows, macOS; AWS CLI version 2 recommended."
 metadata:
   author: AeonDave
   version: "1.0"

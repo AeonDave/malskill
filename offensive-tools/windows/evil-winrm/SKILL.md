@@ -1,8 +1,8 @@
 ---
 name: evil-winrm
-description: "Interactive WinRM shell for Windows remote management with support for pass-the-hash, pass-the-ticket, SSL, file upload/download, and PowerShell scripts. Use when asked to get a shell on a Windows host via WinRM, use pass-the-hash over WinRM, upload tools, or run PowerShell remotely."
+description: "Auth/lab ref: Interactive WinRM shell for Windows remote management with support for pass-the-hash, pass-the-ticket, SSL, file upload/download, and PowerShell scripts."
 license: GPL-3.0
-compatibility: "Linux, macOS. Install: gem install evil-winrm or apt install evil-winrm (Kali). Requires WinRM enabled on target (port 5985/5986)."
+compatibility: "Linux, macOS."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: shellerator
-description: "CLI reverse/bind shell generator supporting 20+ languages with optional encoding. Use when generating customized shell payloads for specific languages and encodings during exploitation."
+description: "Auth/lab ref: CLI reverse/bind-shell lab generator supporting 20+ languages with optional encoding."
 license: MIT
-compatibility: "Python 3; install via pipx/uv from GitHub; Linux/macOS/Windows; github.com/ShutdownRepo/shellerator"
+compatibility: "Python 3; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

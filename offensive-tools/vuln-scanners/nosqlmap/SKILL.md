@@ -1,8 +1,8 @@
 ---
 name: nosqlmap
-description: "NoSQLMap: automated NoSQL injection detection and exploitation tool targeting MongoDB, CouchDB, and other NoSQL databases. Use when testing web apps backed by MongoDB for authentication bypass, data extraction, server-side JS injection, or exploiting unauthenticated database access. Conceptually similar to sqlmap but for NoSQL."
+description: "Auth/lab ref: automated NoSQL injection detection and exploitation tool targeting MongoDB, CouchDB, and other NoSQL databases."
 license: GPL-2.0
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/codingo/NoSQLMap && python3 setup.py install"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

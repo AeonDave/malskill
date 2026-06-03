@@ -1,6 +1,6 @@
 ---
 name: winafl
-description: "Coverage-guided fuzzing framework for Windows binaries. Use when fuzzing desktop apps, DLL harnesses, or Windows services with DynamoRIO/TinyInst/Intel PT instrumentation and persistent-loop target functions."
+description: "Auth/lab ref: Coverage-guided fuzzing framework for Windows binaries. For fuzzing desktop apps, DLL harnesses, or Windows services with DynamoRIO/TinyInst/Intel PT instrumentation and persistent-loop target functions."
 license: Apache-2.0
 compatibility: "Windows (primary), Visual Studio toolchain; supports DynamoRIO/TinyInst/Intel PT modes."
 metadata:

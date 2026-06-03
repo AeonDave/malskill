@@ -1,8 +1,8 @@
 ---
 name: wireless-technique
-description: "Wireless attack methodology for 802.11 (Wi-Fi) and Bluetooth/BLE environments. Covers passive survey, WPA2/WPA3 handshake capture, PMKID attack, deauthentication, evil twin / captive portal attacks, WPS exploitation, BLE enumeration, and credential handoff to cracking or post-exploitation. Use when assessing wireless network security or gaining initial access via RF attack surface."
+description: "Auth assessment: wireless methodology; Wi-Fi/BLE survey, WPA/WPA3 handshake/PMKID labs, WPS, rogue-AP simulation, auth-material handoff."
 license: MIT
-compatibility: "Linux; requires compatible wireless adapter (monitor mode + packet injection). Tested with Alfa AWUS036ACH, TP-Link Archer T4U."
+compatibility: "Linux; compatible wireless adapter for monitor-mode lab work."
 metadata:
   author: AeonDave
   version: "1.0"

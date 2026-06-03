@@ -1,7 +1,7 @@
 ---
 name: saleae-logic-2
-description: "Saleae Logic 2 capture and export workflow for `.sal` traces, raw CSV export, analyzer-table export, and automation API control. Use when you need to inspect or convert Saleae captures, script analyzer exports, or bridge hardware traces into text or CSV for later protocol analysis."
-compatibility: "Windows, macOS, Linux; Saleae Logic 2 application; optional Python automation API"
+description: "Auth/lab ref: Saleae Logic 2 capture and export workflow: `.sal` traces, raw CSV export, analyzer-table export, and automation API control."
+compatibility: "Windows, macOS, Linux; Saleae Logic 2 application; optional Python automation API."
 metadata:
   author: AeonDave
   version: "1.0"

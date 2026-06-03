@@ -1,8 +1,8 @@
 ---
 name: nmap
-description: "Network port scanner for host discovery, port scanning, service/version detection, OS fingerprinting, and NSE script execution. Use when asked to scan a target, find open ports, enumerate services, identify OS, run vuln scripts, or perform network reconnaissance on an IP, range, or domain."
+description: "Auth/lab ref: Network port scanner for host discovery, port scanning, service/version detection, OS fingerprinting, and NSE script execution."
 license: GPL-2.0
-compatibility: "Linux, Windows, macOS. Pre-installed on Kali/Parrot. Windows: download installer from nmap.org. Requires raw socket access (root/admin for SYN scans)."
+compatibility: "Linux, Windows, macOS; Pre-installed on Kali/Parrot."
 metadata:
   author: AeonDave
   version: "1.1"

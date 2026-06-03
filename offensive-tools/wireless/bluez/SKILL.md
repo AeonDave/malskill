@@ -1,8 +1,8 @@
 ---
 name: bluez
-description: "BlueZ Bluetooth stack and CLI workflow for Linux, covering bluetoothctl-driven discovery, pairing, BLE inspection, and low-level troubleshooting utilities. Use when scanning Bluetooth Classic or BLE devices, validating adapter state, enumerating services/characteristics, or building Bluetooth reconnaissance workflows on Linux."
+description: "Auth/lab ref: BlueZ Bluetooth stack and CLI workflow: Linux, covering bluetoothctl-driven discovery, pairing, BLE inspection, and low-level troubleshooting utilities."
 license: GPL-2.0 / LGPL-2.1
-compatibility: "Linux. Core Bluetooth stack on Linux; recent upstream release 5.86. Includes tools and client workflows such as bluetoothctl and monitor utilities."
+compatibility: "Linux; Core Bluetooth stack on Linux; recent upstream release 5.86."
 metadata:
   author: AeonDave
   version: "1.0"

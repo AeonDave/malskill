@@ -1,6 +1,6 @@
 ---
 name: hardware-ctf
-description: "Challenge-solving methodology for hardware, embedded, RF, firmware, peripheral, and signal lab tasks. Use when artifacts involve logic analyzer captures, Saleae or sigrok traces, UART, I2C, SPI, CAN, JTAG, SWD, USB HID, Bluetooth, RF/SDR IQ samples, GNU Radio, Universal Radio Hacker, firmware or SPI dumps, UEFI blobs, microcontroller projects, side-channel traces, display signals, CAD files, G-code, or 3D-printing metadata."
+description: "Lab/CTF: hardware/embedded/RF challenges; Saleae/sigrok traces, UART/I2C/SPI/CAN/JTAG/SWD/USB/BLE/RF, firmware, side-channel data."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
 metadata:

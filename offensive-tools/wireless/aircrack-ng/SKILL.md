@@ -1,8 +1,8 @@
 ---
 name: aircrack-ng
-description: "802.11 auditing suite for monitor-mode Wi‑Fi assessment, including handshake capture, deauthentication-assisted testing, WEP workflows, injection checks, precomputed PMK cracking, and offline traffic decryption. Use when performing Linux-based wireless assessments that require precise control over monitor mode, captures, and classic aircrack-ng attack chains."
+description: "Auth/lab ref: 802.11 auditing suite for monitor-mode Wi-Fi assessment, including handshake capture, deauthentication-assisted testing, WEP workflows, injection checks, precomputed PMK cracking, and offline traffic."
 license: MIT
-compatibility: "C; Linux; apt install aircrack-ng; requires wireless adapter with monitor mode"
+compatibility: "C; Linux."
 metadata:
   author: AeonDave
   version: "1.0"

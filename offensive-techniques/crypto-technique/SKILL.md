@@ -1,8 +1,8 @@
 ---
 name: crypto-technique
-description: "Cryptanalysis methodology for problem diagnosis, attack selection, and exploitation workflow. Covers RSA weak-key attacks, ECC singular curves, lattice-based attacks, PRNG state recovery, padding oracles, symmetric cipher weaknesses, and mathematical shortcuts in cryptographic implementations. Use when analyzing encrypted data, server oracles, key material, or cryptographic protocols to identify exploitable weaknesses and recover secrets."
+description: "Auth/lab: cryptanalysis methodology; RSA/ECC, PRNG, padding/oracle, symmetric issues, key/ciphertext/signature triage, proof workflow."
 license: MIT
-compatibility: "Linux/macOS/WSL recommended; Python 3.9+; SageMath for advanced techniques; pwntools for oracle interaction."
+compatibility: "Linux/macOS/WSL recommended; Python 3.9+; SageMath for advanced techniques."
 metadata:
   author: AeonDave
   version: "1.0"

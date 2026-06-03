@@ -1,8 +1,8 @@
 ---
 name: nuclei
-description: "Template-based vulnerability and exposure scanner from ProjectDiscovery. Use when asked to scan a host or list for known vulnerabilities, misconfigurations, exposed panels, CVEs, default credentials, or security issues using community-maintained templates."
+description: "Auth/lab ref: Template-based vulnerability and exposure scanner from ProjectDiscovery."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest or download binary. Pre-installed on Kali."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

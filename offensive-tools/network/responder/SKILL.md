@@ -1,8 +1,8 @@
 ---
 name: responder
-description: "NBT-NS, LLMNR, and mDNS poisoner that captures Net-NTLMv2 hashes from Windows hosts on the local network. Use when asked to capture NTLM hashes, poison name resolution, perform NTLM relay attacks, set up a rogue SMB/HTTP server for credential capture, or collect hashes for offline cracking."
+description: "Auth/lab ref: Responder LLMNR/NBT-NS/mDNS assessment; name-resolution exposure, NTLM relay-risk evidence, lab-safe validation."
 license: GPL-3.0
-compatibility: "Linux. Install: git clone https://github.com/lgandx/Responder (apt install responder on Kali). Must be on same network segment as targets. Requires root."
+compatibility: "Linux."
 metadata:
   author: AeonDave
   version: "1.1"

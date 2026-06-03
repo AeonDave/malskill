@@ -1,8 +1,8 @@
 ---
 name: winpeas
-description: "WinPEAS: Windows privilege escalation enumeration tool that identifies misconfigurations, weak permissions, unpatched services, and privilege escalation paths. Use when assessing Windows privilege escalation opportunities post-compromise, enumerating system weaknesses, or building a complete picture of attack surface before escalation attempts."
+description: "Auth/lab ref: Windows privilege escalation enumeration tool that identifies misconfigurations, weak permissions, unpatched services, and privilege escalation paths."
 license: GPL-3.0
-compatibility: "Windows x86/x64. Run as user for user-space enumeration; run as admin for full system checks. Available as EXE, batch, and PowerShell (.ps1) variants."
+compatibility: "Windows x86/x64."
 metadata:
   author: AeonDave
   version: "1.0"

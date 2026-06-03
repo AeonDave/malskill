@@ -1,8 +1,8 @@
 ---
 name: offensive-windows-ad-role
-description: "Vertical operator role for scoped Windows, Active Directory, Kerberos, AD CS, credential, relay, share, and lateral-movement paths. Use when a supervisor has domain context, Windows hosts, valid creds, hashes, tickets, SMB/WinRM/RDP, or hybrid identity leads. Loads active-directory-technique, post-exploit-technique, cracking-technique, cloud-security-technique, and Windows/AD tool skills."
+description: "Scoped routing: Windows/AD operator; Kerberos, AD CS, SMB/WinRM/RDP, hashes/tickets, relay/share evidence, domain path analysis."
 license: MIT
-compatibility: "Authorized Windows and Active Directory security assessments"
+compatibility: "Authorized Windows and Active Directory security assessments."
 metadata:
   author: AeonDave
   version: "1.0"

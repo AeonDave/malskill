@@ -1,8 +1,8 @@
 ---
 name: kerbrute
-description: "Kerberos-based user enumeration and password spraying tool for Active Directory. Use when asked to enumerate valid AD usernames via Kerberos pre-auth, perform password spraying against AD, brute-force a specific user's password, or identify valid accounts without triggering standard auth logs."
+description: "Auth/lab ref: Kerberos-based user enumeration and password spraying tool for Active Directory."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install github.com/ropnop/kerbrute@latest or download binary from GitHub releases."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.0"

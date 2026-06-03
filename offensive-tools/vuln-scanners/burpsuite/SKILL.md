@@ -1,8 +1,8 @@
 ---
 name: burpsuite
-description: "Burp Suite: integrated web application security testing platform with proxy, scanner, intruder, and repeater. Use when testing web apps by intercepting/modifying HTTP traffic, fuzzing endpoints, exploiting SQLi/XSS/IDOR manually, or running automated active scans. Community free; Pro required for scanner and Turbo Intruder."
+description: "Auth/lab ref: Burp Suite: integrated web application security testing platform with proxy, scanner, intruder, and repeater."
 license: Commercial (Pro) / Free (Community)
-compatibility: "Windows / macOS / Linux. Java 11+. Download from portswigger.net/burp."
+compatibility: "Windows / macOS / Linux; Java 11+."
 metadata:
   author: AeonDave
   version: "1.1"

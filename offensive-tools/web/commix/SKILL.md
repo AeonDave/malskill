@@ -1,8 +1,8 @@
 ---
 name: commix
-description: "commix: automated OS command injection detection and exploitation tool. Use when testing web parameters, cookies, or headers for command injection vulnerabilities and escalating to an interactive OS shell. Supports classic, time-based blind, file-based, and semi-blind techniques with tamper scripts for WAF bypass."
+description: "Auth/lab ref: automated OS command injection detection and exploitation tool. For testing web parameters, cookies, or headers for command injection vulnerabilities and escalating to an interactive OS shell."
 license: GPL-3.0
-compatibility: "Linux / macOS / Windows. Python 3. Pre-installed on Kali. git clone https://github.com/commixproject/commix && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3; Pre-installed on Kali."
 metadata:
   author: AeonDave
   version: "1.1"

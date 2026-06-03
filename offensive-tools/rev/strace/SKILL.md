@@ -1,7 +1,7 @@
 ---
 name: strace
-description: "strace: Linux syscall tracer for observing file, process, network, memory, and signal behavior at runtime. Use when you need to understand what a binary really does under execution, debug loader failures, trace sandboxed challenges, or triage malware and exploit behavior from the kernel boundary."
-compatibility: "Linux primary; requires ptrace capability; not a native Windows tool"
+description: "Auth/lab ref: Linux syscall tracer for observing file, process, network, memory, and signal behavior at runtime."
+compatibility: "Linux primary; requires ptrace capability; not a native Windows tool."
 metadata:
   author: AeonDave
   version: "1.0"

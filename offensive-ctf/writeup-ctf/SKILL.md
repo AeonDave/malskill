@@ -1,6 +1,6 @@
 ---
 name: writeup-ctf
-description: "Challenge-solving methodology for reproducible challenge writeup generation. Integrates forensic-technique, evidence-before-claims, verification-before-completion with preserved imported CTF techniques, generic writeup-derived patterns, and tool-routing for agentic AI. Use when working on reproducible challenge writeup generation tasks involving solved challenge notes, command logs, artifacts, proof output, exploit scripts, or final reports."
+description: "Lab/CTF: reproducible writeups; solved notes, command logs, artifacts, proof output, solver scripts, final reports, evidence checks."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

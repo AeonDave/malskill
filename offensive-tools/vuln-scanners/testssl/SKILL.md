@@ -1,8 +1,8 @@
 ---
 name: testssl
-description: "testssl.sh: comprehensive TLS/SSL testing script checking protocol support, cipher suites, vulnerabilities (BEAST, POODLE, Heartbleed, ROBOT, DROWN, etc.), and certificate issues. Use when assessing TLS configuration of any HTTPS service — web servers, mail servers, VPNs, or any TLS endpoint."
+description: "Auth/lab ref: testssl.sh: broad TLS/SSL testing script checking protocol support, cipher suites, vulnerabilities (BEAST, POODLE, Heartbleed, ROBOT, DROWN, etc.), and certificate issues."
 license: GPL-2.0
-compatibility: "Linux / macOS / Windows (WSL/Cygwin). Bash 3.2+, OpenSSL or LibreSSL. git clone https://github.com/drwetter/testssl.sh.git or brew install testssl."
+compatibility: "Linux / macOS / Windows (WSL/Cygwin); Bash 3.2+, OpenSSL or LibreSSL."
 metadata:
   author: AeonDave
   version: "1.0"

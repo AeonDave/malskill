@@ -1,8 +1,8 @@
 ---
 name: offensive-reverse-role
-description: "Vertical operator role for reverse engineering, malware/config triage, firmware or binary analysis, protocol extraction, and artifact-led exploit support. Use when a supervisor needs algorithms, indicators, protections, patch deltas, file formats, or behavior from compiled or obfuscated artifacts. Loads reversing-technique, malware-analysis, forensic-technique, crypto-technique, and reverse tool skills."
+description: "Scoped routing: reverse operator; binaries, malware/config triage, firmware/protocol formats, patch deltas, behavior and IOC evidence."
 license: MIT
-compatibility: "Authorized security research, malware triage, and artifact analysis"
+compatibility: "Authorized security research, malware triage, and artifact analysis."
 metadata:
   author: AeonDave
   version: "1.0"

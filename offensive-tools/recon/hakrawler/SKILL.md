@@ -1,8 +1,8 @@
 ---
 name: hakrawler
-description: "Fast Go web crawler for discovering URLs, endpoints, and JavaScript files. Use when crawling web applications to build a URL inventory before fuzzing or during OSINT on web infrastructure."
+description: "Auth/lab ref: Fast Go web crawler for discovering URLs, endpoints, and JavaScript files. For crawling web applications to build a URL inventory before fuzzing or during OSINT on web infrastructure."
 license: MIT
-compatibility: "Go; go install github.com/hakluke/hakrawler@latest; Linux/macOS/Windows"
+compatibility: "Go; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,8 +1,8 @@
 ---
 name: patchelf
-description: "patchelf: ELF patching utility for changing interpreters, RPATH/RUNPATH, DT_NEEDED entries, and SONAME fields. Use when redirecting a binary to a custom loader or libc, fixing packaged ELF dependencies, or preparing local exploit environments that must run against a specific runtime."
+description: "Auth/lab ref: ELF patching utility for changing interpreters, RPATH/RUNPATH, DT_NEEDED entries, and SONAME fields."
 license: GPL-3.0
-compatibility: "Linux primary; ELF binaries and shared libraries only"
+compatibility: "Linux primary; ELF binaries and shared libraries only."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: binaryninja
-description: "Commercial reverse engineering platform with decompiler, multi-architecture IL system (LLIL/MLIL/HLIL), and Python scripting API. Use when performing static analysis with decompilation, writing automated RE scripts, analyzing firmware or multi-arch binaries, or when a programmable disassembler with type recovery is needed."
+description: "Auth/lab ref: Commercial reverse engineering platform with decompiler, multi-architecture IL system (LLIL/MLIL/HLIL), and Python scripting API."
 license: MIT
-compatibility: "Windows/Linux/macOS; x86/x64/ARM/MIPS/PPC/RISC-V; binary.ninja"
+compatibility: "Windows/Linux/macOS; x86/x64/ARM/MIPS/PPC/RISC-V; binary.ninja."
 metadata:
   author: AeonDave
   version: "1.1"

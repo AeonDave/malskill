@@ -1,8 +1,8 @@
 ---
 name: trivy
-description: "trivy: comprehensive vulnerability scanner for containers, filesystems, repos, IaC, and SBOMs. Use when assessing Docker images, Kubernetes manifests, or code repositories for CVEs, misconfigurations, secrets, and license issues. Fast, low false positives, integrates into CI/CD."
+description: "Auth/lab ref: broad vulnerability scanner for containers, filesystems, repos, IaC, and SBOMs."
 license: Apache-2.0
-compatibility: "Linux / macOS / Windows. Download binary from github.com/aquasecurity/trivy or brew install trivy / apt install trivy. Docker: aquasec/trivy."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

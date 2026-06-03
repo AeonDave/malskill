@@ -1,12 +1,8 @@
 ---
 name: sleuth-kit
-description: |
-  CLI file-system forensics toolkit for analyzing disk images (.dd/.img/.E01/.vmdk). Enumerates
-  partitions, walks file systems, recovers deleted files, extracts inodes, builds MACB timelines,
-  and carves data — all scriptable from the command line. Use on any raw disk image to find files,
-  recover deleted content, analyze NTFS/ext4/FAT structures, and build investigation timelines.
+description: "Auth/lab ref: CLI file-system forensics toolkit for analyzing disk images (.dd/.img/.E01/.vmdk)."
 license: IPL-1.0
-compatibility: "Linux/macOS/Windows. apt install sleuthkit. sleuthkit.org"
+compatibility: "Linux/macOS/Windows; sleuthkit.org."
 metadata:
   author: AeonDave
   version: "2.0"

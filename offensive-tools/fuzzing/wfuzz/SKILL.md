@@ -1,8 +1,8 @@
 ---
 name: wfuzz
-description: "Classic web application fuzzer using FUZZ placeholders across URL, headers, forms, auth, and request components. Use for endpoint discovery, payload injection workflows, and advanced response-filter triage."
+description: "Auth/lab ref: Classic web application fuzzer using FUZZ placeholders across URL, headers, forms, auth, and request components."
 license: GPL-2.0
-compatibility: "Python on Linux/Windows/macOS; also Docker image."
+compatibility: "Python on Linux/Windows/macOS."
 metadata:
   author: GitHub Copilot
   version: "1.1"

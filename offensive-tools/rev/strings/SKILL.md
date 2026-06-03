@@ -1,7 +1,7 @@
 ---
 name: strings
-description: "strings: printable-string extractor for binaries, libraries, firmware blobs, and files of unknown type. Use when you need a fast first pass for URLs, paths, flags, format strings, compiler banners, crypto material, or embedded configuration before deeper reversing."
-compatibility: "Linux, macOS, WSL; GNU binutils or BSD variant available on most systems"
+description: "Auth/lab ref: printable-string extractor for binaries, libraries, firmware blobs, and files of unknown type."
+compatibility: "Linux, macOS, WSL; GNU binutils or BSD variant available on most systems."
 metadata:
   author: AeonDave
   version: "1.0"

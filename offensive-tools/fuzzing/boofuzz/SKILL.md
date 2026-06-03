@@ -1,6 +1,6 @@
 ---
 name: boofuzz
-description: "Python network protocol fuzzing framework (Sulley successor). Use for stateful TCP/UDP protocol fuzzing, request-graph modeling, monitor-driven crash detection, and reproducible protocol campaign workflows."
+description: "Auth/lab ref: Python network protocol fuzzing framework (Sulley successor). For stateful TCP/UDP protocol fuzzing, request-graph modeling, monitor-driven crash detection, and reproducible protocol campaign workflows."
 license: GPL-2.0
 compatibility: "Python 3 on Linux/Windows/macOS."
 metadata:

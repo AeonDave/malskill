@@ -1,8 +1,8 @@
 ---
 name: ics-technique
-description: "Offensive methodology for ICS/OT/SCADA environments in authorized industrial penetration testing and red team operations. Use when assessing PLCs, RTUs, HMIs, engineering workstations, historians, or field devices running Modbus, DNP3, EtherNet/IP, S7comm/S7+, Profinet, IEC 60870-5-104, BACnet, or OPC-UA. Covers passive OT network enumeration, protocol-level device interrogation, PLC coil/register read-write attacks, HMI session exploitation, historian and engineering workstation compromise, and safe escalation rules for critical infrastructure scope. Does not cover: general IT network exploitation (network-technique), physical hardware interfaces UART/JTAG/SPI (hardware-technique), wireless sensor network attacks (wireless-technique), RF/SDR signal analysis (hardware-ctf or wireless-technique), or CTF-framed ICS lab tasks (ics-ctf)."
+description: "Auth assessment: ICS/OT methodology; passive-first Modbus, DNP3, S7, BACnet, OPC UA, PLC/HMI evidence, safety gates."
 license: MIT
-compatibility: "Linux/Windows; Python 3.8+; pymodbus, python-snap7, or equivalent ICS libraries; authorized OT lab or isolated network segment required."
+compatibility: "Linux/Windows; Python 3.8+; pymodbus, python-snap7, or equivalent ICS libraries."
 metadata:
   author: AeonDave
   version: "1.0"

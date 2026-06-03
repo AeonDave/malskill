@@ -1,8 +1,8 @@
 ---
 name: asnmap
-description: "ProjectDiscovery tool for mapping IP ranges from ASN data. Given a domain, IP, organization name, or ASN number, returns all associated CIDR ranges. Use during passive recon to discover the full IP space owned by a target organization before port sweeping, and to identify cloud vs. on-prem allocation."
+description: "Auth/lab ref: ProjectDiscovery tool for mapping IP ranges from ASN data. For passive recon to discover the full IP space owned by a target organization before port sweeping, and to identify cloud vs."
 license: MIT
-compatibility: "Linux/macOS/Windows; Go binary. Requires network access for ASN API queries."
+compatibility: "Linux/macOS/Windows; Go binary; Requires network access for ASN API queries."
 metadata:
   author: AeonDave
   version: "1.0"

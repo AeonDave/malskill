@@ -1,8 +1,8 @@
 ---
 name: sharphound
-description: "SharpHound: BloodHound data collector that gathers Active Directory domain structure, users, groups, computers, ACLs, and attack paths. Use when enumerating Active Directory for BloodHound visualization, mapping privilege escalation paths, identifying misconfigurations, or collecting comprehensive domain intelligence."
+description: "Auth/lab ref: BloodHound data collector that gathers Active Directory domain structure, users, groups, computers, ACLs, and testing paths."
 license: GPL-3.0
-compatibility: "Windows. Compiled .NET binary (C#). Run as domain user for basic enumeration; run as admin/DA for full access. SharpHound3 latest version."
+compatibility: "Windows."
 metadata:
   author: AeonDave
   version: "1.1"

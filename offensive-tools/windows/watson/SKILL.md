@@ -1,8 +1,8 @@
 ---
 name: watson
-description: "Watson: Windows patch vulnerability analyzer that identifies missing KB patches and maps to known exploitable CVEs. Use when assessing local privilege escalation vectors via kernel exploits, determining patchability before attacking, or prioritizing which unpatched systems are vulnerable to public CVE exploits."
+description: "Auth/lab ref: Windows patch vulnerability analyzer that identifies missing KB patches and maps to known exploitable CVEs."
 license: BSD-3-Clause
-compatibility: "Windows x86/x64. Compiled .NET binary. Run as user (user-mode checks) or admin (full system visibility). No admin required for basic checks."
+compatibility: "Windows x86/x64."
 metadata:
   author: AeonDave
   version: "1.1"

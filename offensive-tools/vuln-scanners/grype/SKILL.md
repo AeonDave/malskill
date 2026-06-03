@@ -1,8 +1,8 @@
 ---
 name: grype
-description: "grype: fast vulnerability scanner for container images, filesystems, SBOMs, and directories. Use when you need CVE scanning with composite risk scoring (CVSS + EPSS + KEV), clean ignore rules, and tight syft/SBOM integration. Lower false positives than trivy for pure vulnerability scanning."
+description: "Auth/lab ref: fast vulnerability scanner for container images, filesystems, SBOMs, and directories."
 license: Apache-2.0
-compatibility: "Linux / macOS / Windows. Download binary from github.com/anchore/grype/releases or brew install anchore/grype/grype. Docker: anchore/grype."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

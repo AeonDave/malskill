@@ -1,8 +1,8 @@
 ---
 name: pwntools
-description: "Python CTF/exploitation framework for interacting with remote services, local processes, and binary exploitation. Core use case: scripting interactive protocols over TCP/process tubes — recv/send loops, oracle interactions, multi-round crypto challenges, and shell exploitation. Use when writing a CTF solver that talks to a service, automating a multi-step protocol, or building binary exploitation payloads."
+description: "Auth/lab ref: Python CTF/exploitation framework for interacting with remote services, local processes, and binary exploitation."
 license: MIT
-compatibility: "Python 3.8+; Linux primary (full feature set); macOS partial; Windows limited."
+compatibility: "Python 3.8+; Linux primary (full feature set); macOS partial."
 metadata:
   author: AeonDave
   version: "1.0"

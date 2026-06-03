@@ -1,8 +1,8 @@
 ---
 name: evtxecmd
-description: "Windows EVTX parsing and timeline extraction with EvtxECmd. Use when investigating PowerShell activity, process execution traces, account events, and security-control tampering from exported event logs, with deterministic CSV/JSON output for incident reconstruction."
+description: "Auth/lab ref: Windows EVTX parsing and timeline extraction with EvtxECmd."
 license: Apache-2.0
-compatibility: "Windows primary (.NET); output consumable cross-platform"
+compatibility: "Windows primary (.NET); output consumable cross-platform."
 metadata:
   author: AeonDave
   version: "1.0"

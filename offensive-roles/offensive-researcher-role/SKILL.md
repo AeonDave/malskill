@@ -1,8 +1,8 @@
 ---
 name: offensive-researcher-role
-description: "Vertical operator role for scoped offensive research on CVEs, exploits, bugs, writeups, advisories, articles, commits, GitHub code, and unknown-solution hints. Use when a supervisor has only sparse clues and needs a source-backed research package, applicability judgment, candidate path, or negative finding. Loads deep-research-offensive, known-problem-hint-research, cve-search, vuln-research, evidence gates, and precise domain/tool skills."
+description: "Scoped routing: research operator; CVEs, advisories, PoCs, commits, writeups, applicability judgment, negative findings, source evidence."
 license: MIT
-compatibility: "Authorized offensive security research, pentest support, and lab analysis"
+compatibility: "Authorized authorized security research, authorized Authorized authorized Authorized authorized Authorized authorized Authorized pentest support, and lab analysis."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: xsstrike
-description: "XSStrike: advanced XSS detection suite with context-aware payload generation, DOM XSS analysis, site crawler, WAF detection, and blind XSS mode. Use when testing for reflected/stored/DOM XSS on WAF-protected targets or complex filter scenarios. Preferred over dalfox when deep filter analysis and WAF evasion matter; use dalfox for speed."
+description: "Auth/lab ref: XSStrike XSS validation; context analysis, DOM checks, crawler, blind callback workflow, WAF-aware evidence."
 license: GPL-3.0
-compatibility: "Linux / macOS / Windows. Python 3.6+. git clone https://github.com/s0md3v/XSStrike && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3.6+."
 metadata:
   author: AeonDave
   version: "1.1"

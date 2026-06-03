@@ -1,8 +1,8 @@
 ---
 name: cloud-security-technique
-description: "Cloud security assessment methodology for AWS, Azure, and GCP environments. Covers IAM enumeration and privilege escalation (31+ paths), storage bucket discovery and abuse, metadata service exploitation (IMDSv1/v2), container/Kubernetes escape and pivot, serverless and managed-service abuse (Lambda, Glue, CodeBuild, SageMaker, Automation Accounts), OIDC/workload identity federation abuse, Service Principal and Managed Identity escalation, secrets and environment variable harvesting. Use when you have cloud credentials, a cloud account ID, or shell access in a cloud workload and need to enumerate, escalate, or pivot within the cloud environment."
+description: "Auth assessment: cloud security methodology; AWS/Azure/GCP IAM, storage, metadata, containers, serverless, workload identity, evidence routing."
 license: MIT
-compatibility: "AWS, Azure, GCP cloud environments; authorized engagements only. Requires provider CLI tools (aws-cli, az, gcloud) or in-workload shell access."
+compatibility: "AWS, Azure, GCP cloud environments; authorized engagements only; Requires provider CLI tools (aws-cli, az, gcloud) or in-workload shell access."
 metadata:
   author: AeonDave
   version: "1.1"

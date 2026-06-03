@@ -1,6 +1,6 @@
 ---
 name: recon-technique
-description: "Technique-first reconnaissance methodology for mapping an attack surface before active testing. Covers passive collection (zero target contact), active enumeration (controlled probing), the iterative transition between phases, and how to produce a prioritized attack plan for vulnerability scanning. Use when you need to scope a target, identify high-value entry points, and decide where to invest deeper analysis."
+description: "Auth assessment: recon methodology; passive collection, active probing, DNS/host/service mapping, priority surface, handoff evidence."
 license: MIT
 compatibility: "Any OS; external network perimeter, web applications, domain/IP scope."
 metadata:

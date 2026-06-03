@@ -1,8 +1,8 @@
 ---
 name: sherlock
-description: "Hunt username presence across 400+ social networks and output found profile URLs. Use when pivoting on a discovered username during OSINT to map a target's digital footprint, build a list of active platforms, and feed results into further profiling. Complement with maigret for dossier building."
+description: "Auth/lab ref: Hunt username presence across 400+ social networks and output found profile URLs."
 license: MIT
-compatibility: "Python 3; pip install sherlock-project; Linux/macOS/Windows; github.com/sherlock-project/sherlock"
+compatibility: "Python 3; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

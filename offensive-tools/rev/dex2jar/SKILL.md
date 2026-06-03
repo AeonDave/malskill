@@ -1,7 +1,7 @@
 ---
 name: dex2jar
-description: "dex2jar: Android DEX-to-JAR conversion toolkit for feeding Java bytecode into desktop decompilers and analysis tools. Use when you want a `.jar` or `.class`-oriented workflow from an APK or DEX file, especially when comparing output across `jadx`, CFR, JD-GUI, or custom JVM tooling."
-compatibility: "Linux, macOS, Windows; Java runtime required; shell and batch launchers included"
+description: "Auth/lab ref: Android DEX-to-JAR conversion toolkit for feeding Java bytecode into desktop decompilers and analysis tools."
+compatibility: "Linux, macOS, Windows; Java runtime required; shell and batch launchers included."
 metadata:
   author: AeonDave
   version: "1.0"

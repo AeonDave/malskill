@@ -1,8 +1,8 @@
 ---
 name: crackmapexec
-description: "Swiss-army knife for Active Directory environments — SMB/WinRM/LDAP lateral movement, credential spraying, share enumeration, and remote code execution. Use when asked to spray credentials against AD, enumerate SMB shares, execute commands remotely, dump SAM/LSA/NTDS, or map an Active Directory environment."
+description: "Auth/lab ref: CrackMapExec AD/SMB/WinRM/LDAP assessment; auth validation, share/user inventory, policy checks, evidence workflow."
 license: BSD-2-Clause
-compatibility: "Linux (primary). Install: pip install crackmapexec or use nxc (NetExec, the maintained fork). Also available as Docker. Pre-installed on Kali."
+compatibility: "Linux (primary)."
 metadata:
   author: AeonDave
   version: "1.0"

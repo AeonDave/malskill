@@ -1,8 +1,8 @@
 ---
 name: spiderfoot
-description: "Automated OSINT platform with 200+ modules for target profiling: DNS, email, username, IP, ASN, breach data, dark web, social media, threat intel. Use when you need automated multi-source OSINT on a domain, IP, email, or username — runs all relevant modules and correlates results. CLI for scripting; web UI for interactive investigation."
+description: "Auth/lab ref: Automated OSINT platform with 200+ modules for target profiling: DNS, email, username, IP, ASN, breach data, dark web, social media, threat intel."
 license: MIT
-compatibility: "Python 3.7+; pip install spiderfoot OR git clone github.com/smicallef/spiderfoot; Linux/macOS/Windows"
+compatibility: "Python 3.7+; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

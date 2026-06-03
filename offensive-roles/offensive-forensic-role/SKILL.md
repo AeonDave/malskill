@@ -1,8 +1,8 @@
 ---
 name: offensive-forensic-role
-description: "Vertical operator role for scoped offensive forensics across disk images, memory captures, PCAPs, event logs, archives, media/stego artifacts, mobile backups, cloud snapshots, malware-adjacent evidence, and mixed incident bundles. Use when a supervisor needs preservation, reconstruction, timeline, artifact correlation, or evidence handoff. Loads forensic-technique, forensics-ctf for local labs, network/reverse/cloud/mobile support, and forensic tool skills."
+description: "Scoped routing: forensic operator; disk, memory, PCAP, logs, archives, media/stego, mobile/cloud snapshots, timeline/evidence handoff."
 license: MIT
-compatibility: "Authorized forensic analysis, red-team evidence review, and lab artifact reconstruction"
+compatibility: "Authorized forensic analysis, red-team evidence review, and lab artifact reconstruction."
 metadata:
   author: AeonDave
   version: "1.0"

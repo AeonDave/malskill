@@ -1,7 +1,7 @@
 ---
 name: foremost
-description: "Foremost: file-carving utility for recovering files from disk images, raw dumps, and corrupted media based on headers and footers. Use when you need quick recovery of documents, archives, images, or executables from unstructured forensic data."
-compatibility: "Linux, macOS, WSL; CLI-focused; works on raw files and images"
+description: "Auth/lab ref: file carving from disk images, raw media, and damaged data; headers/footers, recovery workflow, evidence handling."
+compatibility: "Linux, macOS, WSL; CLI-focused; works on raw files and images."
 metadata:
   author: AeonDave
   version: "1.0"

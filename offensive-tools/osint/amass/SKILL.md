@@ -1,8 +1,8 @@
 ---
 name: amass
-description: "OWASP attack surface mapping tool for subdomain enumeration, DNS brute-forcing, and infrastructure discovery using 50+ data sources. Use when performing thorough subdomain enumeration, mapping an organization's full internet-facing attack surface, tracking asset changes over time, or feeding a list of hosts into web app testing."
+description: "Auth/lab ref: OWASP testing surface mapping tool for subdomain enumeration, DNS brute-forcing, and infrastructure discovery using 50+ data sources."
 license: Apache-2.0
-compatibility: "Go binary; Linux/macOS/Windows; apt install amass (Kali) or download from github.com/owasp-amass/amass/releases"
+compatibility: "Go binary; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

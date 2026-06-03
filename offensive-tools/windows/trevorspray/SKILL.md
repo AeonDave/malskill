@@ -1,8 +1,8 @@
 ---
 name: trevorspray
-description: "Threaded password spraying tool targeting Microsoft 365, Azure AD, ADFS, and on-prem Active Directory. Use when asked to perform password spraying against Office 365, Azure, or AD environments, enumerate valid usernames, or test lockout-safe spraying with jitter and delay controls."
+description: "Auth/lab ref: Threaded password spraying tool targeting Microsoft 365, Azure AD, ADFS, and on-prem Active Directory."
 license: GPL-3.0
-compatibility: "Linux, macOS. Install: pip install trevorspray or git clone + pip install -e ."
+compatibility: "Linux, macOS."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,7 +1,7 @@
 ---
 name: factordb
-description: "FactorDB: public factorization database and simple JSON API for checking whether integers are prime, composite, or already factored. Use when triaging RSA moduli, large composites, or challenge numbers before spending local compute on factoring."
-compatibility: "Web service with browser and JSON API access; internet required"
+description: "Auth/lab ref: public factorization database and simple JSON API for checking whether integers are prime, composite, or already factored."
+compatibility: "Web service with browser and JSON API access; internet required."
 metadata:
   author: AeonDave
   version: "1.0"

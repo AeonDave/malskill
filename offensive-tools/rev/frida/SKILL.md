@@ -1,8 +1,8 @@
 ---
 name: frida
-description: "Dynamic instrumentation toolkit for hooking functions, tracing APIs, and manipulating running processes across Windows, Linux, macOS, Android, and iOS. Use when performing runtime analysis, bypassing protections, intercepting crypto/network calls, or building custom instrumentation scripts."
+description: "Auth/lab ref: Dynamic instrumentation toolkit for hooking functions, tracing APIs, and manipulating running processes across Windows, Linux, macOS, Android, and iOS."
 license: MIT
-compatibility: "Python/JS; Windows/Linux/macOS/Android/iOS; pip install frida-tools"
+compatibility: "Python/JS; Windows/Linux/macOS/Android/iOS."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,12 +1,8 @@
 ---
 name: certipy
-description: |
-  Python-based AD Certificate Services attack tool. Enumerate ADCS misconfigurations (ESC1-ESC13),
-  request certificates for privilege escalation (ESC1/ESC2/ESC3/ESC6), relay NTLM to ADCS HTTP/RPC
-  (ESC8/ESC11), abuse template ACLs (ESC4), set shadow credentials, authenticate via PKINIT to
-  retrieve NTLM hashes. Cross-platform alternative to Certify + Rubeus. Use whenever ADCS is present.
+description: "Auth/lab ref: Python-based AD Certificate Services testing tool."
 license: MIT
-compatibility: "Linux/macOS/Windows; Python 3.9+. Install: pipx install certipy-ad"
+compatibility: "Linux/macOS/Windows; Python 3.9+."
 metadata:
   author: AeonDave
   version: "1.0"

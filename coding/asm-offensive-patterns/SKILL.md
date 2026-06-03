@@ -1,8 +1,8 @@
 ---
 name: asm-offensive-patterns
-description: "Offensive x86-64 (and ARM64/x86) assembly patterns for red team, malware development, and evasion engineering. Covers direct/indirect syscalls; SSN resolution (Hell's Gate, Halo's Gate, Tartarus' Gate, FreshyCalls, DWhisper/RecycleGate); call-stack spoofing (Draugr, SilentMoonwalk DESYNC, Eclipse bypass); vDSO/libc dispatching on Linux; Heaven's Gate WoW64; PEB-walk IAT-free API resolution; metamorphic encoders (ADFL, XorMeta, Morph, MBA-XOR); PIC shellcode (CALL-POP, RIP-relative); ETW/AMSI patching; Gargoyle sleep obfuscation; VEH+HWBP HWBP abuse; fiber/threadless injection; ARM64 macOS syscalls. Use when writing, reviewing, or generating offensive .asm/.s/.S files; building stealth payloads, loaders, or BOFs; or selecting the right evasion primitive for Windows/Linux/macOS."
+description: "Auth/lab ASM patterns; x86-64/ARM64, syscalls, SSN resolution, stack traces, PEB/IAT-free lookup, PIC data access, ETW/AMSI telemetry, BOF/loader review."
 license: MIT
-compatibility: "NASM >= 2.15 / GAS / Go Plan9 ASM. x86-64 Windows/Linux/macOS, ARM64 macOS/Linux, x86 WoW64."
+compatibility: "NASM >= 2.15, GAS, Go Plan9 ASM; x86-64 Windows/Linux/macOS, ARM64 macOS/Linux, x86 WoW64."
 metadata:
   author: AeonDave
   version: "1.1"

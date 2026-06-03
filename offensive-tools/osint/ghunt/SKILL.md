@@ -1,8 +1,8 @@
 ---
 name: ghunt
-description: "Google account OSINT tool — enumerate Google profile data, linked services, Calendar events, Maps reviews, YouTube activity, and photo metadata from an email address or Gaia ID. Use when you have a Gmail address and need to map the target's Google footprint: profile photo, account creation hints, linked Android apps, location history artifacts, and public activity."
+description: "Auth/lab ref: Google account OSINT tool - enumerate Google profile data, linked services, Calendar events, Maps reviews, YouTube activity, and photo metadata from an email address or Gaia ID."
 license: MIT
-compatibility: "Python 3.10+; pip install ghunt; Linux/macOS/Windows; requires Google auth cookies; github.com/mxrch/GHunt"
+compatibility: "Python 3.10+; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"

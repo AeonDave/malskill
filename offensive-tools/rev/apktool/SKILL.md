@@ -1,8 +1,8 @@
 ---
 name: apktool
-description: "Apktool: decode and rebuild Android APK resources and smali for patching, manifest edits, resource inspection, and repackaging. Use when reversing or modifying third-party Android apps, changing permissions or resources, editing smali, or preparing an APK for reinstall after static patches."
+description: "Auth/lab ref: decode and rebuild Android APK resources and smali for patching, manifest edits, resource inspection, and repackaging."
 license: Apache-2.0
-compatibility: "Linux, macOS, Windows; Java 11+; package manager or release download from apktool.org"
+compatibility: "Linux, macOS, Windows; Java 11+."
 metadata:
   author: AeonDave
   version: "1.0"

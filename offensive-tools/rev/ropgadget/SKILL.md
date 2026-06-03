@@ -1,7 +1,7 @@
 ---
 name: ropgadget
-description: "ROPgadget: gadget discovery utility for ELF, PE, Mach-O, and raw binaries. Use when you need to find ROP, JOP, or syscall gadgets, filter candidates by instruction pattern or bad bytes, generate a first-pass chain, or support exploit-development triage after `checksec` and debugger work."
-compatibility: "Linux, macOS, Windows; Python 3; pip install ROPGadget; Capstone-backed"
+description: "Auth/lab ref: gadget discovery utility for ELF, PE, Mach-O, and raw binaries."
+compatibility: "Linux, macOS, Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: offensive-linux-pivot-role
-description: "Vertical operator role for scoped Linux footholds, local privilege escalation, credential/key discovery, service discovery, tunneling, pivoting, containers, and internal movement. Use when a supervisor has a Linux shell, SSH access, container workload, internal subnet, or Unix service path. Loads post-exploit-technique, network-technique, cloud-security-technique, cracking-technique, and Linux/pivot tool skills."
+description: "Scoped routing: Linux post-compromise operator; shell state, privesc triage, service discovery, tunnels, containers, internal path evidence."
 license: MIT
-compatibility: "Authorized Linux post-exploitation and internal assessment workflows"
+compatibility: "Authorized Linux post-compromise and internal assessment workflows."
 metadata:
   author: AeonDave
   version: "1.0"

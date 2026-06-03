@@ -1,8 +1,8 @@
 ---
 name: zap
-description: "OWASP ZAP: free open-source web application scanner and intercepting proxy. Use for automated DAST scanning in CI/CD pipelines, API security testing (OpenAPI/GraphQL/SOAP), passive/active vulnerability scanning, and headless scanning with Docker. Best free alternative to Burp Suite Pro for automated workflows."
+description: "Auth/lab ref: OWASP ZAP: free open-source web application scanner and intercepting proxy."
 license: Apache-2.0
-compatibility: "Linux / macOS / Windows. Java 11+. Docker: zaproxy/zap-stable. Download from zaproxy.org. Pre-installed on Kali."
+compatibility: "Linux / macOS / Windows; Java 11+."
 metadata:
   author: AeonDave
   version: "1.1"

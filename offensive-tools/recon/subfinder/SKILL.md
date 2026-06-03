@@ -1,8 +1,8 @@
 ---
 name: subfinder
-description: "Passive subdomain enumeration tool using 40+ OSINT sources. Use when asked to find subdomains, enumerate attack surface, discover hidden hosts, or map a target domain's infrastructure passively without touching the target."
+description: "Auth/lab ref: Passive subdomain enumeration tool using 40+ OSINT sources."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest or download binary from projectdiscovery releases."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

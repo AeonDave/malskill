@@ -1,8 +1,8 @@
 ---
 name: wpscan
-description: "WPScan: WordPress vulnerability and enumeration scanner. Use when targeting WordPress installations to find outdated/vulnerable plugins and themes with CVEs, enumerate valid usernames for password attacks, verify xmlrpc.php/REST API exposure, check for default configurations, or brute-force credentials. Requires free API token from wpscan.com for CVE data."
+description: "Auth/lab ref: WordPress vulnerability and enumeration scanner."
 license: WPScan License (free non-commercial)
-compatibility: "Linux / macOS / Windows. gem install wpscan. Ruby 2.5+. Docker: wpscanteam/wpscan. Pre-installed on Kali."
+compatibility: "Linux / macOS / Windows; Ruby 2.5+."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,17 +1,6 @@
 ---
 name: edr-evasion-dev
-description: |
-  Universal patterns, constraints, and trade-offs for Windows EDR evasion in
-  offensive tooling (verified against S1, Defender, CrowdStrike — 2026). Covers
-  syscall dispatch (indirect, SSN, NtContinue), stack spoofing (SilentMoonwalk),
-  sleep obfuscation (unmap/remap, XOR+NOACCESS), memory strategies (module stomp,
-  private RWX, dual-view W^X), ETW/AMSI bypass, HWBP/VEH, PIC execution, API
-  resolution, payload encryption, and PE section ratios. Use when implementing,
-  reviewing, or hardening evasion in any Windows implant, loader, beacon, BOF, or
-  shellcode runner. Activate for: call stack spoofing, sleep encryption, ntdll
-  unhooking, direct/indirect syscalls, module stomping, ETW/AMSI bypass,
-  Fritter/Donut constraints, AES vs. XOR detection, or deciding which evasion
-  features to add vs. cut.
+description: "Auth/lab dev: Windows detection-resilience research; syscall dispatch, stack traces, sleep-state, memory permissions, ETW/AMSI telemetry tradeoffs."
 license: MIT
 metadata:
   author: kRustyLoader

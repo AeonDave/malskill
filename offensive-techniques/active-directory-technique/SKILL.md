@@ -1,8 +1,8 @@
 ---
 name: active-directory-technique
-description: "Active Directory attack methodology for AI agents. Covers domain enumeration (BloodHound, PowerView), credential attacks (Kerberoasting, AS-REP, password spray), NTLM relay chains (Coercer + Responder + ntlmrelayx), certificate abuse (ESC1-13 via Certipy), lateral movement (crackmapexec, evil-winrm, impacket), domain trust escalation (child-to-parent, cross-forest), and domain dominance (DCSync, Golden/Silver/Diamond ticket, persistence). Use after post-exploit-technique delivers a domain-joined foothold or domain credential."
+description: "Auth assessment: AD decision support; LDAP/SMB/Kerberos, BloodHound graph, ADCS, NTLM relay risk, ACL/trust paths, evidence-first routing."
 license: MIT
-compatibility: "Windows Active Directory environments; Linux attack host; domain-joined or credential-in-hand required for most phases"
+compatibility: "Windows Active Directory environments; domain auth context required for most phases."
 metadata:
   author: AeonDave
   version: "2.0"

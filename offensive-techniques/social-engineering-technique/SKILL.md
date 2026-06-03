@@ -1,8 +1,8 @@
 ---
 name: social-engineering-technique
-description: "Social engineering methodology for authorized red team engagements: pretext development, phishing campaign design, vishing, physical social engineering, target research, and security awareness metrics. Use when planning social engineering campaigns, designing pretexts, or assessing human-factor security controls during authorized engagements."
+description: "Authorized simulation: social-engineering methodology; pretexts, email/voice/physical exercises, target research, metrics, scope controls."
 license: MIT
-compatibility: "Authorized social engineering engagements only; signed ROE required"
+compatibility: "Authorized social engineering engagements only; signed ROE required."
 metadata:
   author: AeonDave
   version: "1.0"

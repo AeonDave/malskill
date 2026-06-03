@@ -1,8 +1,8 @@
 ---
 name: osv-scanner
-description: "osv-scanner: Google's dependency vulnerability scanner using the OSV.dev database (30+ ecosystem sources). Use when scanning lockfiles and dependency manifests for CVEs with minimal false positives. Supports 19+ lockfile formats across 11+ languages. Best choice for PR gates on dependency changes."
+description: "Auth/lab ref: Google's dependency vulnerability scanner using the OSV.dev database (30+ ecosystem sources)."
 license: Apache-2.0
-compatibility: "Linux / macOS / Windows. Download binary from github.com/google/osv-scanner/releases or go install github.com/google/osv-scanner/cmd/osv-scanner@latest. brew install osv-scanner."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: nanodump
-description: "Stealthy LSASS memory dumper using syscalls, handle duplication, and fork-based techniques to evade EDR and AV. Use when asked to dump LSASS memory for credential extraction, create a minidump of LSASS without triggering EDR, extract NTLM hashes and Kerberos tickets from memory, or perform a stealthy credential dump on a Windows host."
+description: "Auth/lab ref: NanoDump LSASS acquisition research; handle, fork, minidump, BOF/DLL formats, Windows lab validation and detection evidence."
 license: MIT
-compatibility: "Windows x64 only. Compile with Visual Studio or precompile. Available as EXE, BOF (Beacon Object File), and reflective DLL."
+compatibility: "Windows x64; EXE/BOF/DLL formats."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,6 +1,6 @@
 ---
 name: oss-fuzz
-description: "Google-hosted continuous fuzzing service for open-source projects. Use for long-running, scalable fuzz campaigns, sanitizer-backed triage, and continuous bug reporting with reproducible local workflows."
+description: "Auth/lab ref: Google-hosted continuous fuzzing service for open-source projects. For long-running, scalable fuzz campaigns, sanitizer-backed triage, and continuous bug reporting with reproducible local workflows."
 license: Apache-2.0
 compatibility: "Service model for eligible OSS projects; local workflows via oss-fuzz repo + ClusterFuzz variants."
 metadata:

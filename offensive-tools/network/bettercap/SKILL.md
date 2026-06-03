@@ -1,8 +1,8 @@
 ---
 name: bettercap
-description: "Bettercap: Swiss Army knife for WiFi, Bluetooth, HID, and Ethernet network attacks including ARP spoofing, MITM, traffic sniffing, and credential harvesting. Use when performing LAN MITM, WiFi deauth/probe attacks, BLE reconnaissance, or HTTPS SSL stripping."
+description: "Auth/lab ref: Bettercap network lab tooling; Wi-Fi/BLE/HID/Ethernet modules, traffic observation, MITM simulation, auth-exposure checks."
 license: GPL-3.0
-compatibility: "Linux / macOS. Install via package manager or Go build. Requires root/sudo."
+compatibility: "Linux/macOS; root/sudo often required for network interfaces."
 metadata:
   author: AeonDave
   version: "1.1"

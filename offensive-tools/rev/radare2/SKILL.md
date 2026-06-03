@@ -1,8 +1,8 @@
 ---
 name: radare2
-description: "CLI reverse engineering framework with disassembly, decompilation (r2ghidra/r2dec), debugging, ESIL emulation, scripting, and binary patching. Use when analyzing binaries headlessly, scripting RE tasks via r2pipe, patching executables, diffing firmware, emulating code, or working in resource-constrained/headless environments."
+description: "Auth/lab ref: CLI reverse engineering framework with disassembly, decompilation (r2ghidra/r2dec), debugging, ESIL emulation, scripting, and binary patching."
 license: MIT
-compatibility: "C; Linux/macOS/Windows; apt install radare2 or github.com/radareorg/radare2"
+compatibility: "C; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

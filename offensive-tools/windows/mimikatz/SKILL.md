@@ -1,13 +1,8 @@
 ---
 name: mimikatz
-description: |
-  Windows credential extraction: dump NTLM hashes from LSASS/SAM/NTDS, extract plaintext passwords
-  (WDigest), Kerberos tickets, DPAPI secrets (browser creds, vault, wifi, RDP), and perform
-  Pass-the-Hash, Pass-the-Ticket, Golden/Silver Ticket, and token impersonation attacks.
-  Also runs in-memory via Invoke-Mimikatz, SafetyKatz BOF, or C# reflective loader when EDR is active.
+description: "Auth/lab ref: Mimikatz secret-exposure audit; LSASS, DPAPI, Kerberos tickets/keys, token/ticket artifacts, Windows lab validation."
 license: CC-BY-4.0
-compatibility: "Windows x86/x64. Requires SeDebugPrivilege (standard as local admin). Modern EDR
-  signatures target it — prefer in-memory execution, obfuscated variants, or BOF-based alternatives."
+compatibility: "Windows x86/x64; Requires SeDebugPrivilege (standard as local admin)."
 metadata:
   author: AeonDave
   version: "2.0"

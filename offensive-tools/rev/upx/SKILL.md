@@ -1,7 +1,7 @@
 ---
 name: upx
-description: "UPX: executable packer and unpacker for PE, ELF, Mach-O, and several embedded formats. Use when you need to unpack a UPX-packed sample for analysis, verify whether a binary is compressed, or repack a controlled payload for lab use and size reduction."
-compatibility: "Linux, Windows, macOS; standalone binary; supports many executable formats"
+description: "Auth/lab ref: executable packer and unpacker for PE, ELF, Mach-O, and several embedded formats."
+compatibility: "Linux, Windows, macOS; standalone binary; supports many executable formats."
 metadata:
   author: AeonDave
   version: "1.0"

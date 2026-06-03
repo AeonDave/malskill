@@ -1,8 +1,8 @@
 ---
 name: c-bof
-description: "Generate, compile, and harden Beacon Object Files (BOF) in C for Cobalt Strike and compatible C2 frameworks. Use when creating a BOF, converting a C PoC into a BOF, resolving BOF linking/entrypoint errors, or needing patterns for DFR, heap management, injection, key-value state, multi-mode BOFs, embedded payloads, indirect syscalls, module stomping, or OPSEC hardening."
+description: "Auth/lab dev: C BOF engineering; entrypoint/linking, DFR, heap/state, multi-mode design, embedded data, build/test constraints."
 license: MIT
-compatibility: "Requires x86_64-w64-mingw32-gcc (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
+compatibility: "Requires x86_64-w64-mingw32-gcc (mingw-w64), python3; Scripts tested on Linux/WSL; BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
 metadata:
   author: AeonDave
   version: "3.0"

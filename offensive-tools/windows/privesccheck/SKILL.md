@@ -1,8 +1,8 @@
 ---
 name: privesccheck
-description: "PrivescCheck: pure PowerShell Windows privilege escalation enumeration focused on services, scheduled tasks, registry policy, DLL/COM hijacking, and stored credentials. Use when winPEAS is blocked, when a PS1-only workflow is safer, or when you need readable findings and optional HTML reporting from a low-privileged Windows foothold."
+description: "Auth/lab ref: PrivescCheck Windows privilege review; services, tasks, registry policy, DLL/COM paths, stored-secret indicators."
 license: MIT
-compatibility: "Windows. PowerShell 2.0+. No admin required for baseline checks. Pure PS1 enumeration; useful when compiled tooling is blocked or heavily monitored."
+compatibility: "Windows; PowerShell 2.0+; No admin required for baseline checks."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: gobuster
-description: "Directory, DNS subdomain, and vhost brute-forcer written in Go. Use when asked to enumerate web directories, find hidden paths, brute-force subdomains via DNS, or discover virtual hosts on a web server."
+description: "Auth/lab ref: Directory, DNS subdomain, and vhost brute-forcer written in Go. For enumerate web directories, find hidden paths, brute-force subdomains via DNS, or discover virtual hosts on a web server."
 license: Apache-2.0
-compatibility: "Linux, Windows, macOS. Install: go install github.com/OJ/gobuster/v3@latest or download binary from GitHub releases. Pre-installed on Kali."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,8 +1,8 @@
 ---
 name: semgrep
-description: "semgrep: fast static analysis tool for finding security vulnerabilities, misconfigurations, and secrets in source code. Use when reviewing code for injection patterns, hardcoded credentials, insecure configurations, or OWASP Top 10 issues. Supports 30+ languages. Community rules cover OWASP, secrets, supply chain, and more."
+description: "Auth/lab ref: fast static analysis tool for finding security vulnerabilities, misconfigurations, and secrets in source code."
 license: LGPL-2.1
-compatibility: "Linux / macOS / Windows. pip install semgrep or brew install semgrep. Docker: semgrep/semgrep. github.com/semgrep/semgrep."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

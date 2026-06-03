@@ -1,8 +1,8 @@
 ---
 name: holehe
-description: "Check if an email address is registered on 120+ websites using account-recovery probes (not login attempts). Use during OSINT to enumerate a target's active accounts from a known email, confirm email validity, or map digital footprint before phishing/social engineering."
+description: "Auth/lab ref: Check if an email address is registered on 120+ websites using account-recovery probes (not login attempts)."
 license: MIT
-compatibility: "Python 3; pip install holehe; Linux/macOS/Windows; github.com/megadose/holehe"
+compatibility: "Python 3; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,8 +1,8 @@
 ---
 name: gitleaks
-description: "gitleaks: fast git secrets scanner detecting hardcoded credentials, API keys, tokens, and passwords in git repositories, directories, and stdin. Use when auditing code for leaked secrets, blocking commits via pre-commit hooks, or integrating secret detection into CI/CD pipelines. Regex + entropy based, highly configurable."
+description: "Auth/lab ref: Gitleaks secret scanning; repo/directory/stdin checks, regex+entropy rules, pre-commit/CI evidence, remediation workflow."
 license: MIT
-compatibility: "Linux / macOS / Windows. Download binary from github.com/gitleaks/gitleaks/releases or brew install gitleaks. Docker: ghcr.io/gitleaks/gitleaks. Pre-installed on many CI runners."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.0"

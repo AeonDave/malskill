@@ -1,8 +1,8 @@
 ---
 name: phoneinfoga
-description: "Phone number OSINT tool — gather carrier, location, and online presence data for phone numbers. Use when pivoting on phone numbers during target profiling or social engineering preparation."
+description: "Auth/lab ref: Phone number OSINT tool - gather carrier, location, and online presence data for phone numbers."
 license: MIT
-compatibility: "Go binary; Linux/macOS/Windows; github.com/sundowndev/phoneinfoga"
+compatibility: "Go binary; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.1"

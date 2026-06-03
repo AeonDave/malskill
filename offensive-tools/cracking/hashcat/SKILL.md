@@ -1,8 +1,8 @@
 ---
 name: hashcat
-description: "GPU-accelerated offline password cracking tool supporting 300+ hash types. Use when asked to crack password hashes, recover passwords from NTLM/Net-NTLMv2/Kerberos/bcrypt/MD5/SHA hashes, perform wordlist or rule-based attacks, or conduct mask brute-force against any captured hash."
+description: "Auth/lab ref: GPU-accelerated offline password cracking tool supporting 300+ hash types."
 license: MIT
-compatibility: "Linux, Windows, macOS. Install: apt install hashcat (Kali) or download from hashcat.net. Requires GPU (NVIDIA CUDA or AMD OpenCL) for performance; CPU mode available."
+compatibility: "Linux, Windows, macOS."
 metadata:
   author: AeonDave
   version: "1.1"

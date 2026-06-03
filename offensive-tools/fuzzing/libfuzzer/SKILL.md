@@ -1,6 +1,6 @@
 ---
 name: libfuzzer
-description: "In-process, coverage-guided fuzzing engine integrated with Clang/LLVM. Use for fast unit-level fuzz targets, parser hardening, sanitizer-first bug discovery, and corpus-driven regression loops in C/C++ code."
+description: "Auth/lab ref: In-process, coverage-guided fuzzing engine integrated with Clang/LLVM. For fast unit-level fuzz targets, parser hardening, sanitizer-first bug discovery, and corpus-driven regression loops in C/C++ code."
 license: NCSA
 compatibility: "Clang/LLVM toolchains on Linux/macOS/Windows."
 metadata:

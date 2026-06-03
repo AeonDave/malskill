@@ -1,8 +1,8 @@
 ---
 name: eyewitness
-description: "Web screenshotting and reporting tool that captures screenshots of web services and generates an HTML report. Use when asked to visually enumerate web services, screenshot a list of URLs/hosts, generate visual web inventory, or create a report of discovered web interfaces."
+description: "Auth/lab ref: Web screenshotting and reporting tool that captures screenshots of web services and generates an HTML report."
 license: Apache-2.0
-compatibility: "Linux, macOS (limited). Install: git clone + pip install -r requirements.txt. Docker image available. Pre-installed on Kali."
+compatibility: "Linux, macOS (limited)."
 metadata:
   author: AeonDave
   version: "1.1"

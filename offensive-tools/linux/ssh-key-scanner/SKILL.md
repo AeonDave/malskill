@@ -1,8 +1,8 @@
 ---
 name: ssh-key-scanner
-description: "SSH key scanner for Linux post-exploitation: hunts SSH private keys, authorized_keys, cloud credentials, and SSH config files for lateral movement. Use when enumerating compromised Linux hosts for SSH key material, extracting credentials for pivoting, or identifying users with SSH access to other systems."
+description: "Auth/lab ref: SSH key exposure audit; private keys, authorized_keys, cloud config, host/user access evidence and remediation."
 license: MIT
-compatibility: "Linux. Bash shell script. No dependencies. Run as compromised user for user-space keys; run as root for full system enumeration."
+compatibility: "Linux; Bash shell script; No dependencies."
 metadata:
   author: AeonDave
   version: "1.0"

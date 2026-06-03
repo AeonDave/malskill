@@ -1,7 +1,7 @@
 ---
 name: adb
-description: "adb: Android Debug Bridge CLI for device discovery, shell access, file transfer, package install, port forwarding, and log collection. Use when validating static Android findings on a real device or emulator, pulling app data, installing patched APKs, or bridging dynamic tooling such as Frida."
-compatibility: "Linux, macOS, Windows; Android platform-tools; works with emulators and USB/TCP devices"
+description: "Auth/lab ref: Android Debug Bridge CLI for device discovery, shell access, file transfer, package install, port forwarding, and log collection."
+compatibility: "Linux, macOS, Windows; Android platform-tools; works with emulators and USB/TCP devices."
 metadata:
   author: AeonDave
   version: "1.0"

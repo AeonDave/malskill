@@ -1,8 +1,8 @@
 ---
 name: mobile-technique
-description: "Mobile application security testing methodology for Android and iOS: static analysis (decompilation, manifest review, hardcoded secrets), dynamic analysis (Frida hooking, objection, traffic interception, SSL pinning bypass), storage analysis, root/jailbreak detection bypass, and API testing. Use when testing mobile applications during authorized security assessments."
+description: "Auth assessment: mobile app security; Android/iOS static, storage, Frida/runtime, traffic, pinning, platform, API and crypto checks."
 license: MIT
-compatibility: "Android (APK, AAB), iOS (IPA); physical devices or emulators; Burp Suite / mitmproxy for traffic interception"
+compatibility: "Android (APK, AAB), iOS (IPA); physical devices or emulators; Burp Suite / mitmproxy for traffic interception."
 metadata:
   author: AeonDave
   version: "1.0"

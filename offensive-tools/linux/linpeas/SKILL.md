@@ -1,8 +1,8 @@
 ---
 name: linpeas
-description: "LinPEAS: Linux privilege escalation enumeration tool that audits system for privesc vectors, weak permissions, unpatched services, and credential exposure. Use when assessing Linux privilege escalation opportunities post-compromise, building a privesc roadmap, or identifying misconfigurations before exploitation attempts."
+description: "Auth/lab ref: LinPEAS Linux privilege review; weak permissions, services, env/config exposure, kernel hints, report triage."
 license: GPL-3.0
-compatibility: "Linux (any distro). Bash script; no dependencies. Run as user for user-space checks; run as root for full system audit. Easily portable via curl."
+compatibility: "Linux (any distro); Bash script; no dependencies."
 metadata:
   author: AeonDave
   version: "1.0"

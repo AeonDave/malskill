@@ -1,8 +1,8 @@
 ---
 name: mitmproxy
-description: "mitmproxy: interactive TLS-capable HTTP/HTTPS proxy for intercepting, inspecting, modifying, and replaying web traffic. Use when proxying application traffic during web app tests, modifying requests/responses on the fly, or scripting request interception with Python addons."
+description: "Auth/lab ref: interactive TLS-capable HTTP/HTTPS proxy for intercepting, inspecting, modifying, and replaying web traffic."
 license: MIT
-compatibility: "Linux / macOS / Windows. pip install mitmproxy. Python 3.8+."
+compatibility: "Linux / macOS / Windows; Python 3.8+."
 metadata:
   author: AeonDave
   version: "1.1"

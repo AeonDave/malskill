@@ -1,8 +1,8 @@
 ---
 name: massdns
-description: "High-performance DNS resolver for bulk subdomain resolution. Use when you have a large subdomain list and need to resolve all entries quickly using public resolvers."
+description: "Auth/lab ref: High-performance DNS resolver for bulk subdomain resolution. For you have a large subdomain list and need to resolve all entries quickly using public resolvers."
 license: MIT
-compatibility: "C; Linux/macOS; build from source; github.com/blechschmidt/massdns"
+compatibility: "C; Linux/macOS; build from source."
 metadata:
   author: AeonDave
   version: "1.1"

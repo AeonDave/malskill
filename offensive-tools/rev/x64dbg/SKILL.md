@@ -1,8 +1,8 @@
 ---
 name: x64dbg
-description: "User-mode debugger for Windows x64/x86 with plugin ecosystem for malware analysis, unpacking, API tracing, and anti-anti-debug. Use when dynamically analyzing PE malware, unpacking obfuscated executables, tracing Windows API calls, scripting conditional breakpoints, or performing live memory patching."
+description: "Auth/lab ref: User-mode debugger for Windows x64/x86 with plugin ecosystem for malware analysis, unpacking, API tracing, and anti-anti-debug."
 license: MIT
-compatibility: "Windows x86/x64; GUI; x64dbg.com"
+compatibility: "Windows x86/x64; GUI; x64dbg.com."
 metadata:
   author: AeonDave
   version: "1.1"

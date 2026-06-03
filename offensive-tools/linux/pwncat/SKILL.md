@@ -1,8 +1,8 @@
 ---
 name: pwncat
-description: "pwncat-cs post-exploitation framework for Linux: catches reverse shells, connects to bind/SSH channels, runs module-driven enumeration/privilege escalation, and manages persistence implants with reconnect support. Use when stabilizing shells, automating escalation, installing/removing implants, or orchestrating Linux post-exploitation through run/use/search workflows."
+description: "Auth/lab ref: pwncat-cs Linux session management; listener/connect modes, shell stabilization, module enum, tunnel and cleanup workflow."
 license: MIT
-compatibility: "Attacker: Linux/macOS with Python 3.9+. Target: primarily Linux (Windows support exists but this skill is Linux-focused). Install with pip install pwncat-cs."
+compatibility: "Target: primarily Linux (Windows support exists but this skill is Linux-focused)."
 metadata:
   author: AeonDave
   version: "1.0"

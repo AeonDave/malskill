@@ -1,8 +1,8 @@
 ---
 name: lswifi
-description: "CLI-centric Windows Wi‑Fi scanning tool exposing richer nearby-network data than built-in commands, including RSSI, security details, information elements, 6 GHz Reduced Neighbor Reports, JSON/CSV export, and event watching. Use when auditing nearby Wi‑Fi networks from Windows, exporting scan data, or scripting Windows-native wireless analysis without monitor-mode tooling."
+description: "Auth/lab ref: CLI-centric Windows Wi-Fi scanning tool exposing richer nearby-network data than built-in commands, including RSSI, security details, information elements, 6 GHz Reduced Neighbor Reports, JSON/CSV export."
 license: BSD-3-Clause
-compatibility: "Windows 10+; Python 3.9+; pip install lswifi. Uses Native Wi‑Fi APIs, not raw monitor-mode capture."
+compatibility: "Windows 10+; Python 3.9+."
 metadata:
   author: AeonDave
   version: "1.0"

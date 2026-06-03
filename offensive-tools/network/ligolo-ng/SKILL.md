@@ -1,8 +1,8 @@
 ---
 name: ligolo-ng
-description: "Reverse tunneling tool that creates a TUN interface on the attacker machine to route traffic into internal networks via a compromised pivot host. Use when asked to pivot into an internal network, tunnel traffic through a compromised host, access internal subnets, or set up a network tunnel without SOCKS proxychains."
+description: "Auth/lab ref: Reverse tunneling tool that creates a TUN interface on the attacker machine to route traffic into internal networks via a compromised pivot host."
 license: GPL-3.0
-compatibility: "Linux (proxy), Linux/Windows/macOS (agent). Download prebuilt binaries from GitHub releases. Requires TUN interface support (root on Linux)."
+compatibility: "Linux (proxy), Linux/Windows/macOS (agent); Requires TUN interface support (root on Linux)."
 metadata:
   author: AeonDave
   version: "1.1"

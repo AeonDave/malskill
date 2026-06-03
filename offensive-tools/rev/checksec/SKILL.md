@@ -1,7 +1,7 @@
 ---
 name: checksec
-description: "checksec: Linux binary and kernel hardening inspection tool for RELRO, canary, NX, PIE, RPATH, RUNPATH, symbols, fortify, and kernel config checks. Use when triaging ELF targets for exploitability, verifying compiler hardening, or auditing Linux systems and offline root filesystems."
-compatibility: "Linux primary; macOS can inspect Linux files with limits; Go-based releases plus historical bash usage"
+description: "Auth/lab ref: Linux binary and kernel hardening inspection tool for RELRO, canary, NX, PIE, RPATH, RUNPATH, symbols, fortify, and kernel config checks."
+compatibility: "Linux primary; macOS can inspect Linux files with limits; Go-based releases plus historical bash usage."
 metadata:
   author: AeonDave
   version: "1.0"

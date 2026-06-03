@@ -1,8 +1,8 @@
 ---
 name: tplmap
-description: "tplmap: classic server-side template injection and code injection detection/exploitation tool for black-box web testing. Use when an input parameter appears SSTI-prone and you want engine fingerprinting plus file read, command execution, upload/download, or shell primitives across Jinja2, Mako, Twig, Smarty, Freemarker, Velocity, Pug, Nunjucks, and similar engines."
+description: "Auth/lab ref: classic server-side template injection and code injection detection/exploitation tool for black-box web testing."
 license: GPL-3.0
-compatibility: "Linux, macOS, WSL; Python environment from repo clone; legacy project with old dependency assumptions"
+compatibility: "Linux, macOS, WSL; Python environment from repo clone; legacy project with old dependency assumptions."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: jwt-tool
-description: "jwt-tool: comprehensive JWT testing and exploitation toolkit. Use when testing JWT authentication — alg:none bypass, RS256→HS256 algorithm confusion, secret brute-force, KID path traversal/SQLi, JKU/X5U header injection, claim tampering. Runs automated playbook for full JWT audit."
+description: "Auth/lab ref: broad JWT testing and exploitation toolkit."
 license: GNU GPL v3
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/ticarpi/jwt_tool && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

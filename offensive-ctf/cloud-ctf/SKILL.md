@@ -1,6 +1,6 @@
 ---
 name: cloud-ctf
-description: "Challenge-solving methodology for cloud security CTF tasks across AWS, GCP, and Azure. Integrates cloud-security-technique with CTF-specific patterns: IAM enumeration from leaked credentials, unique ID resolution, S3/GCS/Blob bucket enumeration, object versioning for deleted file recovery, metadata-service pivots, KMS/Secret Manager/Key Vault recovery, EC2 snapshot forensics, Firestore/WorkDocs data extraction, TOTP bypass via recovered secrets, and multi-hop credential chains. Use for leaked cloud credentials, cloud service misconfigurations, cloud workload privilege escalation, or cloud-native data recovery."
+description: "Lab/CTF: cloud security challenges; AWS/GCP/Azure creds, buckets, IAM, metadata, KMS/secrets, snapshots, object versions, identity chains."
 license: MIT
 compatibility: "AgentSkills-compatible agents; authorized training and lab environments; aws-cli, gcloud, gsutil required."
 metadata:

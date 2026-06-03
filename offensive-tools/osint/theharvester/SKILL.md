@@ -1,8 +1,8 @@
 ---
 name: theharvester
-description: "Harvest emails, subdomains, hostnames, employee names, open ports, and banners for a target domain from public sources. Use at the start of recon to build an attack surface map: enumerate email addresses for phishing, discover subdomains for web app testing, and identify infrastructure from passive sources."
+description: "Auth/lab ref: Harvest emails, subdomains, hostnames, employee names, open ports, and banners for a target domain from public sources."
 license: GPL-2.0
-compatibility: "Python 3; pip install theHarvester OR pre-installed on Kali; github.com/laramies/theHarvester"
+compatibility: "Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,8 +1,8 @@
 ---
 name: jadx
-description: "jadx: Android Dex-to-Java decompiler with CLI and GUI support. Use when you need readable Java/Kotlin-like output from APK, DEX, AAB, or JAR files, want fast static triage of Android apps, need deobfuscation support, or want to export a Gradle-like project for analysis."
+description: "Auth/lab ref: Android Dex-to-Java decompiler with CLI and GUI support."
 license: Apache-2.0
-compatibility: "Linux, macOS, Windows; Java 11+ 64-bit; release zip or package manager install"
+compatibility: "Linux, macOS, Windows; Java 11+ 64-bit; release zip or package manager install."
 metadata:
   author: AeonDave
   version: "1.0"

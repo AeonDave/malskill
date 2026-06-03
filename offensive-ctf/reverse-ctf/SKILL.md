@@ -1,6 +1,6 @@
 ---
 name: reverse-ctf
-description: "Challenge-solving methodology for reverse-engineering CTF tasks. Integrates reversing-technique, crypto-technique, forensic-technique, curated CTF reversing patterns, and tool-routing for agentic AI. Use when working on reverse-engineering challenge solving tasks involving compiled binaries, bytecode, mobile apps, firmware blobs, custom VMs, packed samples, obfuscated scripts, anti-debug logic, or validation algorithms."
+description: "Lab/CTF: reverse challenges; compiled binaries, bytecode, mobile/firmware, custom VMs, packed samples, anti-debug, validators."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:

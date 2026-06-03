@@ -1,8 +1,8 @@
 ---
 name: lazagne
-description: "Post-exploitation credential recovery tool that extracts saved passwords from browsers, mail clients, databases, Git, WiFi, and other installed applications. Use when asked to dump saved credentials from a compromised host, extract browser passwords, recover application credentials, or collect all local credentials for lateral movement."
+description: "Auth/lab ref: LaZagne secret-exposure audit; browser/app/Wi-Fi/Git artifacts, user/admin context, defensive validation evidence."
 license: MIT
-compatibility: "Windows (primary), Linux, macOS. Run as the targeted user for user-space creds, or as admin/SYSTEM for wider coverage. Download prebuilt EXE or run as Python script."
+compatibility: "Windows primary; Linux/macOS support; privilege scope affects artifact visibility."
 metadata:
   author: AeonDave
   version: "1.0"

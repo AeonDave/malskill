@@ -1,8 +1,8 @@
 ---
 name: offensive-osint-role
-description: "Vertical operator role for scoped public-source intelligence supporting offensive missions: domains, identities, emails, breaches, code leaks, cloud hints, social footprint, supplier pivots, and pretext-safe research. Use when a supervisor needs passive evidence before recon, social, cloud, or credential-risk decisions. Loads osint-technique, recon-technique, social-engineering-technique, phishing-technique, and OSINT tool skills."
+description: "Scoped routing: OSINT operator; domains, identities, email, breach/code/cloud hints, social footprint, passive evidence packages."
 license: MIT
-compatibility: "Authorized OSINT, red-team preparation, and security assessments"
+compatibility: "Authorized OSINT, red-team preparation, and security assessments."
 metadata:
   author: AeonDave
   version: "1.0"

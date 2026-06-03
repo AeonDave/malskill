@@ -1,8 +1,8 @@
 ---
 name: offensive-cloud-role
-description: "Vertical operator role for scoped cloud, SaaS, IAM, identity federation, storage, metadata, container, and workload attack paths. Use when a supervisor has cloud credentials, tokens, exposed buckets, cloud-hosted apps, or hybrid identity leads. Loads cloud-security-technique, recon-technique, post-exploit-technique, active-directory-technique, and cloud tool skills."
+description: "Scoped routing: cloud/SaaS/IAM operator for authorized assessments; auth material, buckets, metadata, containers, workload identity, evidence handoff."
 license: MIT
-compatibility: "Authorized cloud security assessments and red-team operations"
+compatibility: "Authorized cloud security assessments and red-team operations."
 metadata:
   author: AeonDave
   version: "1.0"

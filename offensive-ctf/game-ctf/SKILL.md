@@ -1,6 +1,6 @@
 ---
 name: game-ctf
-description: "Challenge-solving methodology for GamePwn and game-cracking CTF tasks involving Unity games (Mono and IL2CPP), native game binaries (ELF/PE, SDL, OpenGL), game asset bundles, and network-based game protocols. Use when artifacts are game executables (.exe, ELF), Unity builds (GameAssembly.dll, Assembly-CSharp.dll, *.assets, global-metadata.dat), game memory dumps (*.dmp), save files, or game network captures. Covers: Unity Mono decompilation and patching with dnSpy, Unity IL2CPP reversing with Il2CppDumper and Ghidra, game asset extraction (UABE, AssetRipper, strings), native game binary analysis for win-condition bypass, memory manipulation with Cheat Engine or Python, save file tampering, and game network protocol replay. Routes deep binary exploitation to pwn-ctf and static reversing depth to reverse-ctf and reversing-technique."
+description: "Lab/CTF: game/GamePwn challenges; Unity Mono/IL2CPP, native game binaries, assets, save files, memory dumps, game network captures."
 license: MIT
 compatibility: "Linux/Windows; Unity (Mono/IL2CPP), native ELF/PE; tools: dnSpy, Il2CppDumper, Ghidra, UABE, Cheat Engine, Python."
 metadata:

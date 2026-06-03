@@ -1,12 +1,8 @@
 ---
 name: volatility3
-description: |
-  Memory forensics framework for analyzing RAM dumps. Extracts running processes, injected code,
-  network connections, registry hives, credentials, files, and malware artifacts from memory images.
-  Use on any .raw/.dmp/.mem/.vmem file to investigate what was running at capture time:
-  processes, DLLs, network state, user activity, credentials in memory, and hidden/injected code.
+description: "Auth/lab ref: Volatility3 memory forensics; process, module, network, registry, file, and suspicious-artifact triage from RAM images."
 license: VSL-1.0
-compatibility: "Python 3.6+; Linux/macOS/Windows. pip install volatility3. github.com/volatilityfoundation/volatility3"
+compatibility: "Python 3.6+; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "2.1"

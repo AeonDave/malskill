@@ -1,8 +1,8 @@
 ---
 name: revshellgen
-description: "Interactive Python reverse-shell generator with auto listener setup, encoding support, and shell-type selection. Use when generating modern reverse shell payloads from CLI, choosing payloads by runtime availability, and speeding up operator workflows without manual one-liner editing."
+description: "Auth/lab ref: Interactive Python reverse-shell generator with auto listener setup, encoding support, and shell-type selection."
 license: GPL-3.0
-compatibility: "Python 3.6+; Linux/macOS; pip install revshellgen; github.com/t0thkr1s/revshellgen"
+compatibility: "Python 3.6+; Linux/macOS."
 metadata:
   author: AeonDave
   version: "1.0"

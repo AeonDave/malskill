@@ -1,8 +1,8 @@
 ---
 name: weevely3
-description: "Stealth PHP webshell with 30+ post-exploitation modules for file ops, pivoting, and persistence. Use after file upload or RFI vulnerabilities to get an interactive PHP shell with built-in post-ex modules."
+description: "Auth/lab ref: Weevely3 PHP web-shell artifact analysis; file ops, module inventory, pivot-risk review, containment and cleanup notes."
 license: MIT
-compatibility: "Python 3; Linux/macOS; github.com/epinna/weevely3"
+compatibility: "Python 3; Linux/macOS."
 metadata:
   author: AeonDave
   version: "1.0"

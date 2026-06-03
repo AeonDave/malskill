@@ -1,8 +1,8 @@
 ---
 name: cpp-bof
-description: "Generate, compile, and harden Beacon Object Files (BOF) in C++ for Cobalt Strike and compatible C2 frameworks. Use when creating a C++ BOF, leveraging RAII/templates/classes without runtime dependencies, using typedef+GetProcAddress DFR, integrating COM/GDI+, implementing dual-build (BOF+EXE), and improving structure, quality, and stealth posture."
+description: "Auth/lab dev: C++ BOF engineering; RAII/templates, DFR, COM/GDI+, dual-build layouts, runtime constraints, build/test workflow."
 license: MIT
-compatibility: "Requires x86_64-w64-mingw32-g++ (mingw-w64), python3. Scripts tested on Linux/WSL. BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
+compatibility: "Requires x86_64-w64-mingw32-g++ (mingw-w64), python3; Scripts tested on Linux/WSL; BOF testing requires a COFF loader (COFFLoader, RunOF, or framework-specific loader)."
 metadata:
   author: AeonDave
   version: "3.0"

@@ -1,7 +1,7 @@
 ---
 name: openssl
-description: "OpenSSL CLI for encryption, decryption, digesting, certificate inspection, and key handling. Use when working with PEM/DER material, password-based symmetric crypto, TLS certificates, RSA key sanity checks, or quick cryptographic transformations from the shell."
-compatibility: "Linux, macOS, Windows; OpenSSL CLI installed"
+description: "Auth/lab ref: OpenSSL CLI for encryption, decryption, digesting, certificate inspection, and key handling."
+compatibility: "Linux, macOS, Windows; OpenSSL CLI installed."
 metadata:
   author: AeonDave
   version: "1.0"

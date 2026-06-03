@@ -1,8 +1,8 @@
 ---
 name: ssrfmap
-description: "SSRFmap: automated SSRF (Server-Side Request Forgery) exploitation tool using Burp-style request files. Use when you have confirmed or suspected SSRF to read local files, enumerate internal ports, extract cloud metadata (AWS/GCP/Azure), or pivot to internal services (Redis, SMTP, memcached). Supports 10+ exploitation modules."
+description: "Auth/lab ref: automated SSRF (Server-Side Request Forgery) exploitation tool using Burp-style request files."
 license: MIT
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/swisskyrepo/SSRFmap && pip3 install -r requirements.txt"
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

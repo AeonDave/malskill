@@ -1,14 +1,8 @@
 ---
 name: bloodhound
-description: |
-  Active Directory attack path visualization using graph theory. Finds shortest path to Domain Admin,
-  identifies Kerberoastable/AS-REP-roastable users, unconstrained delegation, ACL abuses, ADCS ESC
-  vulnerabilities, and lateral movement vectors. Use after initial foothold in AD: collect data with
-  SharpHound (Windows) or bloodhound-python (Linux/remote), import to BloodHound CE GUI, run Cypher
-  queries to build and execute attack paths.
+description: "Auth/lab ref: Active Directory testing path visualization using graph theory."
 license: GPL-3.0
-compatibility: "Collector: SharpHound on Windows or bloodhound-python (Linux/remote). GUI: BloodHound
-  CE via Docker (recommended) or legacy BloodHound + Neo4j. CE available free at bloodhoundenterprise.io."
+compatibility: "Collector: SharpHound on Windows or bloodhound-python (Linux/remote); CE available free at bloodhoundenterprise.io."
 metadata:
   author: AeonDave
   version: "3.0"

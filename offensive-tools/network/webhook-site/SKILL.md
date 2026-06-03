@@ -1,8 +1,8 @@
 ---
 name: webhook-site
-description: "webhook.site: hosted out-of-band application security testing (OAST) collector — instantly generates a unique HTTPS URL plus DNSHook subdomain that records every HTTP request and DNS query, with a Web UI, JSON API, and the `whcli` Node/Docker companion for `forward` (relay captured traffic to a local target) and `exec` (run a local command per request). Use during authorized testing for blind SSRF, blind XXE, blind XSS, blind RCE / DNS exfil, OAuth/SAML redirect inspection, webhook integration debugging, phishing-callback validation, supply-chain template injection, and any callback channel that needs a public HTTPS endpoint with full request introspection. Not for unauthorized data interception, third-party traffic relay, or covert long-term C2 — for raw TCP use bore, for HTTPS tunnels to a local app use pinggy/ngrok, for self-hosted OAST use interactsh."
+description: "Auth/lab ref: webhook.site: hosted out-of-band application security testing (OAST) collector - instantly generates a unique HTTPS URL plus DNSHook subdomain that records every HTTP request and DNS query, with a Web UI."
 license: "Web UI free tier; whcli MIT; commercial paid plans"
-compatibility: "Web UI in any browser; whcli requires Node.js 18+ or Docker; HTTP/JSON API with `Api-Key` header for programmatic access."
+compatibility: "Web UI in any browser; HTTP/JSON API with `Api-Key` header for programmatic access."
 metadata:
   author: AeonDave
   version: "1.0"

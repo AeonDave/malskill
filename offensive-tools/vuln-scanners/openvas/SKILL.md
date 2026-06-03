@@ -1,8 +1,8 @@
 ---
 name: openvas
-description: "OpenVAS / Greenbone Community Edition: comprehensive network vulnerability scanner checking 90,000+ NVTs across hosts, services, and web apps. Use when performing infrastructure-level vulnerability assessments — CVE scanning, service enumeration, misconfiguration detection, and compliance checks across subnets or single hosts. CLI via gvm-cli; web UI via GSA."
+description: "Auth/lab ref: OpenVAS / Greenbone Community Edition: broad network vulnerability scanner checking 90,000+ NVTs across hosts, services, and web apps."
 license: GPL-2.0
-compatibility: "Linux (recommended). Deploy via Docker Compose (Greenbone Community Edition). gvm-tools for CLI: pip install gvm-tools. gvm-cli requires access to /run/gvmd/gvmd.sock."
+compatibility: "Linux (recommended)."
 metadata:
   author: AeonDave
   version: "1.0"

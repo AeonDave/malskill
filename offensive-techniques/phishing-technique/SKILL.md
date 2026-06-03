@@ -1,8 +1,8 @@
 ---
 name: phishing-technique
-description: "Phishing infrastructure and campaign methodology for authorized red team engagements: domain reconnaissance (dnstwist), GoPhish campaign management, Evilginx2 adversary-in-the-middle setup, email authentication (SPF/DKIM/DMARC), template design, pretext development, and campaign metrics. Use when setting up phishing infrastructure, configuring Evilginx2 or GoPhish, or building phishing campaigns during authorized social engineering assessments."
+description: "Authorized simulation: email/social campaign infrastructure; domain hygiene, SPF/DKIM/DMARC, GoPhish/Evilginx planning, metrics."
 license: MIT
-compatibility: "Linux attack host; GoPhish, Evilginx2, Modlishka; authorized phishing simulations only"
+compatibility: "GoPhish/Evilginx2/Modlishka planning context; authorized email/social simulations only."
 metadata:
   author: AeonDave
   version: "1.0"

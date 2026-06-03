@@ -1,8 +1,8 @@
 ---
 name: sleep-masking-dev
-description: "Design, implement, review, and debug sleep-masking workflows for Windows x64 implants/loaders: timer-queue, APC, waitable-timer, and hook-driven sleep cycles; memory encryption-at-rest; permission transitions; thread-state control; key lifecycle and rotation; and mitigation-aware reliability (CET shadow stack, CFG, modern EDR timer/APC heuristics). Use when building or evaluating encrypted-sleep behavior, selecting between Ekko/Foliage/Cronos-style flows, or reducing crash/detection risk in repeated sleep cycles."
+description: "Auth/lab dev: sleep-state research; timers/APC/waitable timers, memory-at-rest, permission transitions, key lifecycle, reliability checks."
 license: MIT
-compatibility: "Windows x64 user-mode. Linux/macOS and kernel-mode sleep masking are out of scope."
+compatibility: "Windows x64 user-mode; Linux/macOS and kernel-mode sleep masking are out of scope."
 metadata:
   author: AeonDave
   version: "1.0"

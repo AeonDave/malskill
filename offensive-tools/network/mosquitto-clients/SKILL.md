@@ -1,7 +1,7 @@
 ---
 name: mosquitto-clients
-description: "Mosquitto client tools, primarily `mosquitto_pub` and `mosquitto_sub`, for interacting with MQTT brokers. Use when subscribing to topics, publishing test messages, validating credentials, or observing IoT message flow in authorized environments."
-compatibility: "Linux, Windows, macOS; mosquitto client package installed"
+description: "Auth/lab ref: Mosquitto client tools, primarily `mosquitto_pub` and `mosquitto_sub`, for interacting with MQTT brokers."
+compatibility: "Linux, Windows, macOS; mosquitto client package installed."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,13 +1,8 @@
 ---
 name: zeek
-description: |
-  Protocol-aware network analysis engine that converts raw PCAP or live traffic into structured logs
-  (conn.log, dns.log, http.log, ssl.log, files.log, etc.). Use on any .pcap/.pcapng file to extract
-  DNS queries, HTTP requests/responses, TLS certificates, file transfers, connection summaries, and
-  anomalies. Faster and more structured than Wireshark for scripted analysis. Integrates with zeek-cut
-  and standard UNIX tools for rapid investigation.
+description: "Auth/lab ref: Protocol-aware network analysis engine that converts raw PCAP or live traffic into structured logs (conn.log, dns.log, http.log, ssl.log, files.log, etc.)."
 license: BSD-3-Clause
-compatibility: "Linux/macOS primary. apt install zeek. zeek.org. Also available via Docker."
+compatibility: "Linux/macOS primary; zeek.org."
 metadata:
   author: AeonDave
   version: "2.1"

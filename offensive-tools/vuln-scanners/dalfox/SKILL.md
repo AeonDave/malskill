@@ -1,8 +1,8 @@
 ---
 name: dalfox
-description: "dalfox: fast Go-based XSS scanner for parameter analysis and DOM-based XSS detection. Use when scanning web applications for reflected/stored/DOM XSS vulnerabilities, testing individual URLs or bulk lists, or setting up blind XSS callbacks. Integrates cleanly into recon pipelines."
+description: "Auth/lab ref: fast Go-based XSS scanner for parameter analysis and DOM-based XSS detection."
 license: MIT
-compatibility: "Linux / macOS / Windows. go install github.com/hahwul/dalfox/v2@latest or download binary from github.com/hahwul/dalfox. Docker: hahwul/dalfox."
+compatibility: "Linux / macOS / Windows."
 metadata:
   author: AeonDave
   version: "1.1"

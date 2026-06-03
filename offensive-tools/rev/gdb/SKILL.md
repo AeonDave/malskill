@@ -1,8 +1,8 @@
 ---
 name: gdb
-description: "GDB with pwndbg/GEF for dynamic binary analysis, malware debugging, exploit development, and reverse engineering on Linux/WSL. Use when debugging ELF binaries, tracing syscalls, unpacking Linux malware, bypassing anti-debug, or scripting automated analysis with Python."
+description: "Auth/lab ref: GDB with pwndbg/GEF for dynamic binary analysis, malware debugging, exploitability research, and reverse engineering on Linux/WSL."
 license: MIT
-compatibility: "C; Linux/WSL/macOS; apt install gdb + pwndbg or gef"
+compatibility: "C; Linux/WSL/macOS."
 metadata:
   author: AeonDave
   version: "1.1"

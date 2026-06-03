@@ -1,7 +1,7 @@
 ---
 name: gcloud-cli
-description: "Google Cloud CLI for authenticating, configuring projects, and enumerating GCP resources from the terminal. Use when verifying active identity and project scope, listing compute or storage resources, or scripting repeatable GCP recon in authorized environments."
-compatibility: "Linux, Windows, macOS; Google Cloud CLI installed"
+description: "Auth/lab ref: Google Cloud CLI for authenticating, configuring projects, and enumerating GCP resources from the terminal."
+compatibility: "Linux, Windows, macOS; Google Cloud CLI installed."
 metadata:
   author: AeonDave
   version: "1.0"

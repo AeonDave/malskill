@@ -1,6 +1,6 @@
 ---
 name: radamsa
-description: "General-purpose mutation engine for generating malformed test inputs. Use as a payload mutator feeding other fuzzers, API testers, parsers, protocol harnesses, or custom replay scripts."
+description: "Auth/lab ref: General-purpose mutation engine for generating malformed test inputs."
 license: MIT
 compatibility: "Cross-platform builds; canonical source is GitLab."
 metadata:

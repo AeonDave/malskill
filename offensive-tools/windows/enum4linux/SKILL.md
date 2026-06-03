@@ -1,8 +1,8 @@
 ---
 name: enum4linux
-description: "SMB and Windows/Samba enumeration tool that extracts users, shares, groups, OS info, and password policies via null sessions or with credentials. Use when asked to enumerate a Windows host or Samba share, find users via SMB, extract domain info, or check for null session access."
+description: "Auth/lab ref: enum4linux SMB/Samba enumeration; users, shares, groups, OS info, password policy, null-session evidence."
 license: GPL-2.0
-compatibility: "Linux. Install: apt install enum4linux or use enum4linux-ng (Python rewrite). Pre-installed on Kali/Parrot."
+compatibility: "Linux."
 metadata:
   author: AeonDave
   version: "1.0"

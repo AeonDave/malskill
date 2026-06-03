@@ -1,8 +1,8 @@
 ---
 name: offensive-recon-role
-description: "Vertical operator role for scoped offensive reconnaissance and attack-surface packaging. Use when a supervisor needs passive or active recon, host/service inventory, exposed web/cloud/email/DNS mapping, or a prioritized target package. Loads recon-technique, osint-technique, network-technique, vuln-search-technique, and focused recon tool skills."
+description: "Scoped routing: recon operator; passive/active asset mapping, hosts/services, web/cloud/email/DNS exposure, prioritized target package."
 license: MIT
-compatibility: "Authorized security assessments and red-team operations"
+compatibility: "Authorized security assessments and red-team operations."
 metadata:
   author: AeonDave
   version: "1.0"

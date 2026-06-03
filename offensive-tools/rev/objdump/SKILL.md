@@ -1,7 +1,7 @@
 ---
 name: objdump
-description: "objdump: binutils inspection and disassembly tool for ELF and many other object formats. Use when you need fast CLI disassembly, section dumps, symbol views, or mixed source and assembly output during reverse engineering, exploit triage, or binary diffing."
-compatibility: "Linux, macOS, WSL; part of GNU binutils; strongest on ELF workflows"
+description: "Auth/lab ref: binutils inspection and disassembly tool for ELF and many other object formats."
+compatibility: "Linux, macOS, WSL; part of GNU binutils; strongest on ELF workflows."
 metadata:
   author: AeonDave
   version: "1.0"

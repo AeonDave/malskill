@@ -1,6 +1,6 @@
 ---
 name: adaptixc2-dev
-description: "Develop, extend, and maintain AdaptixC2 extenders (agents, listeners, services) and their template generators. Use when creating new plugins, adding commands, building beacon/listener/service implementations, writing AxScript UI, designing wire protocols, or using the Template-Generators scaffold system. Covers the full plugin lifecycle: Go plugin API (axc2 v1.2.0), AxScript forms/commands/events/menus, config.yaml wiring, Teamserver interface, protocol overlays, multi-language implant builds (Go/C++/Rust), evasion gates, and validation workflows."
+description: "Auth/lab dev: AdaptixC2 extenders; agents, listeners, services, AxScript UI, configs, protocols, templates, build/validation workflows."
 license: MIT
 metadata:
   author: AeonDave

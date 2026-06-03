@@ -1,6 +1,6 @@
 ---
 name: blockchain-ctf
-description: "Challenge-solving methodology for blockchain, Web3 smart-contract, and on-chain transaction-forensics lab tasks. Use when artifacts involve Solidity, Vyper, EVM bytecode, ABI files, deployed addresses, RPC endpoints, transaction traces, Bitcoin or UTXO transaction IDs, wallet signatures, factory instances, proxies, delegatecall, storage slots, calldata, reentrancy, oracle or governance logic, ZK verifier contracts, token standards, Foundry, Hardhat, cast, forge, Slither, Mythril, Echidna, ethers.js, or web3.py."
+description: "Lab/CTF: blockchain/Web3 challenges; Solidity/Vyper/EVM, ABI, storage, calldata, proxies, delegatecall, tx traces, Foundry/Hardhat."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab and testnet environments."
 metadata:

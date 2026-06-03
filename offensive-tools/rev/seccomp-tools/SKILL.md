@@ -1,7 +1,7 @@
 ---
 name: seccomp-tools
-description: "seccomp-tools: seccomp BPF inspection toolkit for dumping, disassembling, assembling, and emulating Linux syscall filters. Use when reversing sandboxed binaries, understanding allowed syscalls, or planning exploit payloads under seccomp constraints."
-compatibility: "Linux primary; Ruby gem; targets seccomp-bpf workflows"
+description: "Auth/lab ref: seccomp BPF inspection toolkit for dumping, disassembling, assembling, and emulating Linux syscall filters."
+compatibility: "Linux primary; Ruby gem; targets seccomp-bpf workflows."
 metadata:
   author: AeonDave
   version: "1.0"

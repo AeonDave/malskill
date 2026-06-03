@@ -1,8 +1,8 @@
 ---
 name: slither
-description: "slither: smart contract static analyzer for Solidity and Vyper with detectors, printers, and custom analysis APIs. Use when auditing Foundry, Hardhat, Brownie, or standalone contracts for reentrancy, unsafe delegatecall, tx.origin misuse, upgradeability mistakes, weak randomness, and other EVM security issues."
+description: "Auth/lab ref: smart contract static analyzer for Solidity and Vyper with detectors, printers, and custom analysis APIs."
 license: AGPL-3.0
-compatibility: "Linux, macOS, WSL; Python 3.10+; solc or framework compilation required"
+compatibility: "Linux, macOS, WSL; Python 3.10+; solc or framework compilation required."
 metadata:
   author: AeonDave
   version: "1.0"

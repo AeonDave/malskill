@@ -1,8 +1,8 @@
 ---
 name: mftecmd
-description: "NTFS metadata triage with MFTECmd for $MFT/$J/$I30/$Boot artifacts. Use when reconstructing file timelines, finding deleted/hidden files, checking entry-number-based questions, and extracting deterministic metadata from Windows disk artifacts for incident reconstruction."
+description: "Auth/lab ref: NTFS metadata triage with MFTECmd for $MFT/$J/$I30/$Boot artifacts."
 license: Apache-2.0
-compatibility: "Windows primary (.NET); output consumable cross-platform"
+compatibility: "Windows primary (.NET); output consumable cross-platform."
 metadata:
   author: AeonDave
   version: "1.1"

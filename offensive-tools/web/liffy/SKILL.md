@@ -1,8 +1,8 @@
 ---
 name: liffy
-description: "liffy: modern Python 3 Local File Inclusion exploitation tool with wrapper payloads, WAF bypasses, log poisoning, /proc tricks, and automated file read workflows. Use when exploiting confirmed LFI or path traversal issues, especially on PHP targets where wrappers and poisoning can turn file read into RCE."
+description: "Auth/lab ref: Liffy LFI/path traversal validation; wrappers, /proc, log artifacts, file-read evidence, WAF-aware replay notes."
 license: MIT
-compatibility: "Linux / macOS / Windows. Python 3. git clone https://github.com/mzfr/liffy or pip install from source when available."
+compatibility: "Linux / macOS / Windows; Python 3."
 metadata:
   author: AeonDave
   version: "1.0"

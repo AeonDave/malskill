@@ -1,8 +1,8 @@
 ---
 name: chisel
-description: "HTTP-based TCP/UDP tunneling tool for port forwarding and SOCKS5 proxying through firewalls. Use when pivoting into internal networks without root/TUN interface, tunneling traffic over HTTP/HTTPS to bypass firewalls, or creating a SOCKS5 proxy through a compromised host. Complements ligolo-ng when TUN interfaces are unavailable."
+description: "Auth/lab ref: HTTP-based TCP/UDP tunneling tool for port forwarding and SOCKS5 proxying through firewalls."
 license: MIT
-compatibility: "Linux, Windows, macOS. Single binary, no dependencies. Download prebuilt from github.com/jpillora/chisel/releases."
+compatibility: "Linux, Windows, macOS; Single binary, no dependencies."
 metadata:
   author: AeonDave
   version: "1.0"

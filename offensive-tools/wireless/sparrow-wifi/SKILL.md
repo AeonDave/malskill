@@ -1,8 +1,8 @@
 ---
 name: sparrow-wifi
-description: "Linux Wi‑Fi and Bluetooth analyzer with GPS, remote agent, JSON API, and SDR integrations including HackRF One and Ubertooth. Use when you need combined Wi‑Fi/Bluetooth situational awareness, remote wireless sensors, spectrum overlays, Bluetooth visibility, or HackRF-assisted spectrum workflows beyond simple CLI capture."
+description: "Auth/lab ref: Linux Wi-Fi and Bluetooth analyzer with GPS, remote agent, JSON API, and SDR integrations including HackRF One and Ubertooth."
 license: GPL-3.0
-compatibility: "Linux; Python 3.8+; desktop GUI and headless agent modes. Supports Wi‑Fi, Bluetooth, GPS, HackRF One, Ubertooth One, and optional RemoteID workflows depending on hardware."
+compatibility: "Linux; Python 3.8+; desktop GUI and headless agent modes."
 metadata:
   author: AeonDave
   version: "1.0"

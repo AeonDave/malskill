@@ -1,8 +1,8 @@
 ---
 name: linux-persistence
-description: "Linux post-exploitation persistence mechanisms: cron jobs, systemd services, SSH backdoors, LD_PRELOAD rootkits, PAM hijacking. Use when establishing long-term access post-privilege escalation, creating resilient backdoors across system restarts, or hiding malicious activity from process monitoring."
+description: "Auth/lab ref: Linux durability-risk audit; cron/systemd/SSH/PAM/LD_PRELOAD indicators, validation, cleanup and remediation notes."
 license: MIT
-compatibility: "Linux. Bash shell scripts. Requires root for system-wide persistence; user-level techniques available for regular users. Works on modern systemd-based distributions (RHEL 7+, Ubuntu 18.04+, Debian 10+)."
+compatibility: "Linux; Bash/system-service context; root required for system-wide changes."
 metadata:
   author: AeonDave
   version: "1.0"

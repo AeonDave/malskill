@@ -1,8 +1,8 @@
 ---
 name: networkminer
-description: "Network artifact extraction from PCAP files with NetworkMiner. Use when reconstructing sessions, extracting transferred files, parsing credentials/metadata, and accelerating incident investigations where packet-level context must be converted into host, protocol, and object-level evidence."
+description: "Auth/lab ref: Network artifact extraction from PCAP files with NetworkMiner."
 license: Freeware
-compatibility: "Windows/Linux (via Mono in many setups); GUI-first workflow"
+compatibility: "Windows/Linux (via Mono in many setups); GUI-first workflow."
 metadata:
   author: AeonDave
   version: "1.0"

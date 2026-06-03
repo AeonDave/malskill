@@ -1,12 +1,8 @@
 ---
 name: ftk-imager
-description: |
-  FTK Imager: forensic acquisition and image viewing tool for disk images, logical files, and memory.
-  Use to open and browse .dd/.E01/.img/.vmdk disk images without Autopsy, acquire memory dumps,
-  convert image formats, export specific files from images, and verify integrity with hash verification.
-  Also provides a free CLI version (ftkimager) for scriptable acquisition.
+description: "Auth/lab ref: forensic acquisition and image viewing tool for disk images, logical files, and memory."
 license: Proprietary (free core edition)
-compatibility: "Windows primary GUI. CLI (ftkimager) also available for Linux. exterro.com/ftk-imager"
+compatibility: "Windows primary GUI; CLI (ftkimager) also available for Linux; exterro.com/ftk-imager."
 metadata:
   author: AeonDave
   version: "2.0"

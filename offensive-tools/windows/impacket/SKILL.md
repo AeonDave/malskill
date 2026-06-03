@@ -1,13 +1,8 @@
 ---
 name: impacket
-description: |
-  Python toolkit for SMB/Kerberos/NTLM/LDAP protocol attacks in Active Directory. Core scripts:
-  secretsdump (cred dump), ntlmrelayx (relay), psexec/wmiexec/smbexec/dcomexec (lateral movement),
-  GetNPUsers (AS-REP roast), GetUserSPNs (Kerberoast), ticketer (Golden/Silver tickets),
-  rbcd/addcomputer (delegation abuse), dacledit/owneredit (ACL abuse), smbclient (file ops).
-  Use when attacking AD from Linux or when Python-based tooling is preferred over .NET binaries.
+description: "Auth/lab ref: Python toolkit for SMB/Kerberos/NTLM/LDAP protocol testing in Active Directory."
 license: Apache-2.0
-compatibility: "Linux/macOS/Windows; Python 3.8+. Install: pipx install impacket. Kali: preinstalled."
+compatibility: "Linux/macOS/Windows; Python 3.8+."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -1,6 +1,6 @@
 ---
 name: osint-ctf
-description: "Challenge-solving methodology for OSINT CTF tasks. Integrates osint-technique, recon-technique, media/geolocation workflows, web/DNS pivots, social-account correlation, and tool-routing for agentic AI. Use when tasks involve people, usernames, emails, domains, infrastructure, images, videos, geolocation, social-media clues, DNS history, archives, public records, or public-source evidence chains."
+description: "Lab/CTF: OSINT challenges; people/usernames/email, domains/infra, images/video/geolocation, DNS/archive/social/public records."
 license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
