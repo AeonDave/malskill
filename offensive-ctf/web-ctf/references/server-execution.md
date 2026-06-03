@@ -61,12 +61,22 @@ Check language first, then gadget ecosystem.
 
 Common classes:
 - Java serialized objects and ysoserial chains
+- Java JNDI injection (Log4Shell, Spring, Shiro) via LDAP/RMI references
 - Python pickle abuse
 - PHP object injection in cookies/sessions
 - unsafe JSON-to-object binders with magic methods
 
+### JNDI vs classic deserialization
+
+JNDI injection (e.g., Log4Shell) is distinct from classic `readObject()` deserialization:
+- **Classic deserialization**: attacker controls serialized bytes → gadget chain executes in `readObject()`. Use ysoserial.
+- **JNDI Reference attack**: attacker controls LDAP/RMI lookup URL → response delivers factory class invocation via `NamingManager.getObjectInstance()`. Does NOT require deserialization gadgets — needs factory on local classpath (e.g., Tomcat's `BeanFactory`).
+
+Key rule: if target makes LDAP callback but shell doesn't pop, check whether you're sending `javaSerializedData` (wrong for BeanFactory) vs `javaReferenceAddress` (correct for BeanFactory). These are fundamentally different execution paths.
+
 Minimal approach:
 - start with blind DNS or timing gadget if execution proof is noisy,
+- for JNDI: confirm callback first (LDAP/DNS), then iterate payload type,
 - move to file read or command exec only when gadget compatibility is proven.
 
 ## Framework and product chains
