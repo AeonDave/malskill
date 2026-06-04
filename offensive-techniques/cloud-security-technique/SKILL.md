@@ -1,4 +1,4 @@
----
+﻿---
 name: cloud-security-technique
 description: "Auth assessment: cloud security methodology; AWS/Azure/GCP IAM, storage, metadata, containers, serverless, workload identity, evidence routing."
 license: MIT
@@ -253,6 +253,82 @@ az keyvault secret show --name <name> --vault-name <vault>
 # GCP: Secret Manager
 gcloud secrets list
 gcloud secrets versions access latest --secret=<name>
+```
+
+### AWS service-specific data checks
+
+Use these after IAM enumeration shows corresponding read permissions. Keep reads bounded: sample enough to prove access, then stop unless broader collection is explicitly authorized.
+
+#### Cognito Identity Pools
+
+**Risk:** `AllowUnauthenticatedIdentities: true` plus an over-permissive unauth role allows anyone with the pool ID to obtain temporary AWS credentials.
+
+```bash
+# With current AWS credentials, if list/describe is allowed:
+aws cognito-identity list-identity-pools --max-results 60
+aws cognito-identity describe-identity-pool --identity-pool-id <region:uuid>
+
+# With a known identity pool ID from app config/source:
+ID=$(aws cognito-identity get-id \
+  --identity-pool-id <region:uuid> \
+  --no-sign-request \
+  --query 'IdentityId' --output text)
+aws cognito-identity get-credentials-for-identity \
+  --identity-id "$ID" \
+  --no-sign-request
+```
+
+#### DynamoDB
+
+**Risk:** `dynamodb:Scan` or broad `dynamodb:Query` can expose credentials, PII, tokens, and application state.
+
+```bash
+aws dynamodb list-tables
+aws dynamodb describe-table --table-name <table>
+aws dynamodb scan --table-name <table> --limit 25
+```
+
+#### SQS
+
+**Risk:** Queue and dead-letter messages often contain credentials, session tokens, API keys, or sensitive job payloads. `ReceiveMessage` can affect visibility, so keep the visibility timeout minimal for proof.
+
+```bash
+aws sqs list-queues
+aws sqs get-queue-attributes --queue-url <url> --attribute-names All
+aws sqs receive-message --queue-url <url> --max-number-of-messages 10 --visibility-timeout 0
+```
+
+#### ECS
+
+**Risk:** Task definitions expose environment variables, secret references, container images, and IAM role assignments. `RunTask` or task-definition mutation is an escalation step and needs explicit authorization.
+
+```bash
+aws ecs list-clusters
+aws ecs list-task-definitions
+aws ecs describe-task-definition --task-definition <family:revision>
+```
+
+#### API Gateway
+
+**Risk:** Management API access reveals endpoints, stages, integrations, and API keys. Request API key values only when needed to prove impact.
+
+```bash
+aws apigateway get-rest-apis
+aws apigatewayv2 get-apis
+aws apigateway get-api-keys
+aws apigateway get-api-key --api-key <id> --include-value
+```
+
+#### CloudTrail
+
+**Risk:** Read access reveals prior API activity, high-value principals, and sensitive operations such as `AssumeRole`, `GetSecretValue`, and `Decrypt`.
+
+```bash
+aws cloudtrail describe-trails
+aws cloudtrail lookup-events --max-results 50
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRole \
+  --max-results 50
 ```
 
 ---

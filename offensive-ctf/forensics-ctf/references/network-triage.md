@@ -12,6 +12,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [Gateway/Device via MAC OUI](#gatewaydevice-via-mac-oui)
 - [WordPress Reconnaissance](#wordpress-reconnaissance)
 - [Post-Exploitation Traffic](#post-exploitation-traffic)
+- [HTTP HTML-Controlled C2 and Form Feedback](#http-html-controlled-c2-and-form-feedback)
 - [Credential Extraction](#credential-extraction)
 - [SMB3 Encrypted Traffic](#smb3-encrypted-traffic)
 - [5G/NR Protocol Analysis](#5gnr-protocol-analysis)
@@ -219,6 +220,30 @@ tshark -r capture.pcap -q -z "follow,tcp,ascii,<stream_number>"
 - `bash: cannot set terminal process group`
 - `bash: no job control in this shell`
 - Shell prompts like `www-data@hostname:/path$`
+
+-
+
+## HTTP HTML-Controlled C2 and Form Feedback
+
+When a PCAP includes a companion client binary, correlate the binary's parser with HTTP bodies before treating HTML as normal page content. Managed clients may encode commands in structural choices rather than visible text.
+
+**Triage pattern:**
+1. Reassemble TCP streams and isolate HTTP response bodies plus POST form fields.
+2. Reverse the client-side parser enough to identify any lookup tables, tag maps, delimiters, or line-splitting behavior.
+3. Apply that parser to the captured responses; HTML tag sequences can encode hex/base64 commands even when rendered text looks benign.
+4. Decode form feedback from the client. If output is hidden in natural-language filler, test deterministic projections such as first letters, last letters, fixed token positions, or one-character tokens before brute force.
+5. Validate by matching decoded commands to decoded feedback timing and by reproducing extraction from the original PCAP only.
+
+**Minimal script skeleton:**
+```python
+tag_hex = {"cite": "0", "h1": "1", "p": "2", "a": "3"}
+hex_stream = "".join(tag_hex[t] for t in tags_from_http_body if t in tag_hex)
+command = bytes.fromhex(hex_stream).decode()
+feedback_b64 = "".join(token[0] for token in feedback_text.split())
+output = base64.b64decode(feedback_b64 + "=" * (-len(feedback_b64) % 4))
+```
+
+**Key insight:** For HTTP malware-like CTF traffic, the shortest path is often "PCAP stream reconstruction + small parser emulator" rather than full dynamic malware execution. The validation signal is a decoded command/output pair that cleanly reproduces from the capture.
 
 -
 

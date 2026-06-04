@@ -1,14 +1,13 @@
----
+﻿---
 name: cloud-ctf
 description: "Lab/CTF: cloud security challenges; AWS/GCP/Azure creds, buckets, IAM, metadata, KMS/secrets, snapshots, object versions, identity chains."
 license: MIT
 compatibility: "AgentSkills-compatible agents; authorized training and lab environments; aws-cli, gcloud, gsutil required."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
-
 # Cloud CTF
 
 Goal: solve cloud security CTF tasks by enumerating from a known entry point, confirming identity and permissions at every hop, and following the shortest validated path to the objective.
@@ -127,6 +126,12 @@ Focus on `[INFO]` lines with `worked!`. High-value discoveries to act on immedia
 | `ec2.describe_instances` | Running VMs, instance profiles |
 | `kms.list_keys` | KMS decryption |
 | `secretsmanager.list_secrets` | Direct credential access |
+| `cognito-identity.list_identity_pools` | Unauthenticated AWS credentials |
+| `dynamodb.list_tables` | DynamoDB data enumeration |
+| `sqs.list_queues` | Message queue access |
+| `ecs.list_clusters` | Container task/credential access |
+| `apigateway.get_rest_apis` | API discovery and API key extraction |
+| `cloudtrail.describe_trails` | Activity log access |
 
 ### GCP: enumerate roles and permissions
 
@@ -155,6 +160,81 @@ Separate management-plane roles from data-plane permissions. A principal that ca
 ---
 
 ## Phase 2 — Service-specific exploitation
+
+### AWS Cognito Identity Pools — unauthenticated credentials
+
+Cognito Identity Pools issue temporary AWS credentials. If a pool allows unauthenticated identities, the pool ID itself can become the next credential source.
+
+```bash
+# With current AWS credentials, if permission enumeration found list/describe access:
+aws cognito-identity list-identity-pools --max-results 60
+aws cognito-identity describe-identity-pool --identity-pool-id <region:uuid>
+
+# With a known identity pool ID from app config or source code:
+IDENTITY_ID=$(aws cognito-identity get-id \
+  --identity-pool-id <region:uuid> \
+  --no-sign-request \
+  --query 'IdentityId' --output text)
+aws cognito-identity get-credentials-for-identity \
+  --identity-id "$IDENTITY_ID" \
+  --no-sign-request
+```
+
+**CTF pattern:** `AllowUnauthenticatedIdentities: true` plus an over-permissive unauth role gives a fresh AWS credential set.
+
+### AWS DynamoDB — table enumeration and scanning
+
+```bash
+aws dynamodb list-tables
+aws dynamodb describe-table --table-name <table>
+aws dynamodb scan --table-name <table> --limit 25
+```
+
+**CTF pattern:** Tables often contain credentials, Lambda configuration data, user records, or flag fragments.
+
+### AWS SQS — queue enumeration and message retrieval
+
+```bash
+aws sqs list-queues
+aws sqs get-queue-attributes --queue-url <url> --attribute-names All
+aws sqs receive-message --queue-url <url> --max-number-of-messages 10 --visibility-timeout 0
+```
+
+**CTF pattern:** Queues and dead-letter queues often contain service-to-service tokens, job payloads, or flag fragments.
+
+### AWS ECS — task definition secrets
+
+```bash
+aws ecs list-clusters
+aws ecs list-task-definitions
+aws ecs describe-task-definition --task-definition <family:revision>
+```
+
+**CTF pattern:** Task definitions expose environment variables, Secrets Manager references, image names, and IAM role assignments.
+
+### AWS API Gateway — API and key discovery
+
+```bash
+aws apigateway get-rest-apis
+aws apigatewayv2 get-apis
+aws apigateway get-api-keys
+aws apigateway get-api-key --api-key <id> --include-value
+```
+
+**CTF pattern:** API names, stages, Lambda integrations, and leaked API key values often identify the next web/API target.
+
+### AWS CloudTrail — activity-log pivots
+
+```bash
+aws cloudtrail describe-trails
+aws cloudtrail lookup-events --max-results 50
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRole \
+  --max-results 50
+```
+
+**CTF pattern:** Activity logs reveal prior `AssumeRole`, `GetSecretValue`, `Decrypt`, and service-discovery calls that point to the intended chain.
+
 
 ### AWS S3 — versioning and deleted file recovery
 
