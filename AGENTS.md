@@ -46,7 +46,7 @@
 - `offensive-ctf/` — offensive CTF/lab-solving skills, including dispatcher and dedicated `*-ctf` category skills for ICS/OT, hardware/embedded, game/GamePwn, blockchain/Web3, web, crypto, pwn, reverse, forensics, misc, OSINT, AI/ML, mobile, malware, and writeup workflows.
 - `offensive-hardware/` — hardware-focused offensive skills for real-world assessments: physical device compromise, serial console attacks, firmware extraction, peripheral protocol exploitation (PJL), and embedded OS post-exploitation.
 - `coding/` — language and pattern skills such as C/C++, Go, Python, Rust, assembly, plus cross-cutting TDD, testing reliability, and systematic debugging guidance.
-- `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, design/planning workflows, deep-research skills, evidence/completion gates, feedback triage, and agentic orchestration workflows.
+- `knowledge/` — meta-skills and research helpers, including `skill-creator/`, `agent-md-creator/`, `opencode-agent-creator/` (OpenCode CLI agent/subagent team builder), design/planning workflows, deep-research skills, evidence/completion gates, feedback triage, and agentic orchestration workflows.
 - `ai/` — AI framework skills (for example `langchain-py/`).
 - `hardware/` — hardware-oriented non-offensive skills and subdomains (for example `arduino/`).
 - `commands/` — agent behavior and command modes, controlling how the agent reasons and communicates.
