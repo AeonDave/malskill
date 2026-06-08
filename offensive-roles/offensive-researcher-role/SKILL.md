@@ -2,7 +2,7 @@
 name: offensive-researcher-role
 description: "Scoped routing: research operator; CVEs, advisories, PoCs, commits, writeups, applicability judgment, negative findings, source evidence."
 license: MIT
-compatibility: "Authorized authorized security research, authorized Authorized authorized Authorized authorized Authorized authorized Authorized pentest support, and lab analysis."
+compatibility: "Authorized security research, pentest support, and lab analysis."
 metadata:
   author: AeonDave
   version: "1.0"

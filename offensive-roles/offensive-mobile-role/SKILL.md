@@ -27,7 +27,7 @@ Use this role for APKs, IPAs, devices, emulators, app traffic, mobile APIs, deep
 - Triage statically before dynamic hooks; use rooted/jailbroken access, repackaging, or pinning bypass only when approved.
 - Treat decompiler output, scanner hits, and traffic captures as leads until paired static/dynamic evidence confirms them.
 - If two evidence-based pivots fail, narrow the app/backend question or hand off to `offensive-researcher-role`, `offensive-forensic-role`, or supervisor chain re-score.
-- For local lab/challenge/flag-style tasks, route first to `mobile-technique` plus the closest `*-ctf` skill when challenge framing is explicit.
+- For local lab/challenge/flag-style tasks, route first to `mobile-ctf`.
 
 ## Operating flow
 

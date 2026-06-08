@@ -19,6 +19,7 @@ Split by **independent decision boundary**, not convenience. The supervisor owns
 ## Supervisor stance
 
 - Route to the narrowest specialist, domain skill, or serial workstream; do not turn every task into a broad tool checklist.
+- Match worker weight to task difficulty: push trivial, bulk, or token-heavy work (summarizing, parsing, public lookup, boilerplate) to the lightest capable worker, and reserve scarce high-capability workers for genuinely hard, narrow sub-problems. Keep planning, hypothesis selection, and scope decisions yourself; delegate only the bounded execution step whose outcome you can already interpret.
 - Treat ATT&CK, PTES, OWASP, and NIST-style lifecycles as planning language, not checklists to mechanically exhaust.
 - Prefer the shortest validated chain that matches the mission, produces decisive evidence, and minimizes state change.
 - Do not present worker output as proof until artifacts are inspected and claim quality is confirmed.
