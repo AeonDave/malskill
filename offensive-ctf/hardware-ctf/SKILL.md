@@ -73,3 +73,5 @@ Load these as needed:
 ## Resources
 
 - [references/hardware-artifact-workflow.md](references/hardware-artifact-workflow.md) — detailed triage and workflows for captures, buses, firmware, RF, side-channel, and CAD/G-code.
+- [references/debug-ports-and-firmware-extraction.md](references/debug-ports-and-firmware-extraction.md) — load for UART/JTAG/SWD/SPI/eMMC pivots, bootloader access, flash dumping, and recovery-first extraction.
+- [references/rf-and-sdr-decoding.md](references/rf-and-sdr-decoding.md) — load for IQ captures, SDR demodulation, BLE hopping analysis, and physical-layer validation before payload interpretation.

@@ -75,3 +75,5 @@ Load these when the adjacent domain appears:
 
 - [references/web3-workflow.md](references/web3-workflow.md) — detailed smart-contract triage, storage, tooling, exploit, and validation workflow.
 - [references/transaction-forensics.md](references/transaction-forensics.md) — read-only Bitcoin/UTXO and account-chain transaction tracing workflow.
+- [references/proxies-storage-and-upgrades.md](references/proxies-storage-and-upgrades.md) — load when a proxy, `delegatecall`, initializer, or upgrade path controls the real state.
+- [references/foundry-forks-traces-and-proofs.md](references/foundry-forks-traces-and-proofs.md) — load when proving a smart-contract bug locally with forks, traces, cheatcodes, and minimal transaction sequences.

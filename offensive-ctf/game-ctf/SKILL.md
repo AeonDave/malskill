@@ -283,3 +283,4 @@ EOF
 
 - [references/unity-game-analysis.md](references/unity-game-analysis.md) — Il2CppDumper workflow, Mono vs IL2CPP identification, asset extraction, dnSpy patching patterns.
 - [references/native-game-reversing.md](references/native-game-reversing.md) — native game binary patterns: score/win-condition patching, puzzle-derived crypto keys (XTEA variants), embedded level data, Frida hooks for runtime flag capture.
+- [references/unity-il2cpp-and-managed-reversing.md](references/unity-il2cpp-and-managed-reversing.md) — Load for Unity Mono (.NET decompile + patch) or IL2CPP (Il2CppDumper, Cpp2IL, BepInEx injection) workflows and Godot PCK extraction.

@@ -1,4 +1,4 @@
-﻿---
+---
 name: cloud-ctf
 description: "Lab/CTF: cloud security challenges; AWS/GCP/Azure creds, buckets, IAM, metadata, KMS/secrets, snapshots, object versions, identity chains."
 license: MIT
@@ -514,3 +514,4 @@ Load for deep methodology:
 - [references/aws-service-cheatsheet.md](references/aws-service-cheatsheet.md) — quick CLI reference per AWS service (S3, KMS, STS, Secrets Manager, WorkDocs, EC2, DS).
 - [references/gcp-service-cheatsheet.md](references/gcp-service-cheatsheet.md) — quick CLI reference for GCP (gsutil, gcloud, Firestore SDK, metadata injection).
 - [references/azure-service-cheatsheet.md](references/azure-service-cheatsheet.md) — quick CLI reference for Azure identity, RBAC, Storage, Key Vault, and managed identity.
+- [references/iam-escalation-and-ssrf-chains.md](references/iam-escalation-and-ssrf-chains.md) — Load when you have a low-privilege identity or SSRF and need to chain IAM actions, assume roles, or reach secrets/buckets via IMDS or service pivots.

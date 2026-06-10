@@ -95,3 +95,4 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/geolocation-and-media.md](references/geolocation-and-media.md) — media triage, metadata, reverse image search, maps, coordinates, street-view, OSM, and visual-geolocation pivots.
 - [references/social-media.md](references/social-media.md) — username reuse, account IDs, archived profiles, social-platform clues, gaming/fitness traces, and public API pivots.
 - [references/web-and-dns.md](references/web-and-dns.md) — dorking, DNS/WHOIS/RDAP, archives, repositories, banners, CT/passive infrastructure, and public-record pivots.
+- [references/image-geolocation-and-media-triage.md](references/image-geolocation-and-media-triage.md) — Load for image/video artifact challenges: metadata extraction, reverse image search, visual anchor analysis, shadow-based orientation, satellite/Street View verification workflow.
