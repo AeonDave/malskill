@@ -1,4 +1,4 @@
-﻿---
+---
 name: cloud-security-technique
 description: "Auth assessment: cloud security methodology; AWS/Azure/GCP IAM, storage, metadata, containers, serverless, workload identity, evidence routing."
 license: MIT
