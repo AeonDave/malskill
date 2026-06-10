@@ -300,4 +300,4 @@ objection -g <package_name> explore
 
 - [references/android-backup-forensics.md](references/android-backup-forensics.md) — Full .ab extraction workflow, header format variants, SQLite triage, photo inspection patterns.
 - [references/apk-crypto-patterns.md](references/apk-crypto-patterns.md) — AES/DES/RSA hardcoded key patterns, SecretKeySpec extraction, common CTF crypto idioms, Python decrypt templates.
-- [references/unity-il2cpp-reversing.md](references/unity-il2cpp-reversing.md) — Il2CppDumper workflow, dump.cs interpretation, Ghidra IL2CPP analysis, game-flag extraction patterns.
+- [references/ios-ipa-triage.md](references/ios-ipa-triage.md) — Load for IPA/`.app`/Mach-O artifacts: bundle structure, plist/keychain/SQLite extraction, Mach-O static analysis, FairPlay decryption, and Frida/objection dynamic recovery.

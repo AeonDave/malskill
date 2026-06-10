@@ -10,6 +10,18 @@
 - Install skills interactively (Bash): `./install.sh` (supports `folder|skill|zip` with `flat|group` layouts)
 - For multi-skill validation, run `quick_validate.py <skill-dir>` once per skill; if a broader sweep is needed, use `python knowledge/skill-creator/scripts/validate_all.py`
 
+## Skill change workflow
+
+Follow this for any request to add or update a skill or reference.
+
+1. Hold the mantra: **brief, clear, specific, useful**. Every skill must help an agent act on its task. Every addition or edit must add concrete value — otherwise drop it. No justification, storytelling, statistics, or filler. References are deep-dives that specialize the parent skill and load only for a specific subtask; they must not fill context with non-actionable material.
+2. Pick the smallest change that delivers the value:
+   - **new skill** — the capability has no existing home;
+   - **enrich an existing skill** — the parent `SKILL.md` is the right place for the value;
+   - **new reference** — a distinct subtask needs its own on-demand deep-dive;
+   - **enrich an existing reference** — the deep-dive exists but has a real gap.
+3. Load `knowledge/skill-creator/` guidance, apply the change, then validate the touched skill(s) with `quick_validate.py` and run `check_changed_files.py` before finishing.
+
 ## Active user decisions
 
 - Keep `Project structure` sections folder-level only; do not turn them into file inventories.
@@ -20,7 +32,6 @@
 - Code comments must be in English, technical, precise, and brief; explain intent or non-obvious behavior, not obvious syntax.
 - When improving or curating tool skills, use external research (`fetch_webpage` plus Tavily/web search) for important, missing, disputed, or potentially outdated tools instead of relying only on local repo context.
 - Tool skills clearly covered by stronger existing tools, duplicated elsewhere in the repo, or materially worse than modern alternatives may be removed unless the user explicitly asks to keep them.
-- For every new skill, replacement skill, or major skill refactor, follow `knowledge/skill-creator/` guidance first and keep the resulting skill aligned with AgentSkills conventions.
 - Keep `offensive-tools/` and `offensive-techniques/` strictly separated: `offensive-tools/` is for tool-specific usage guides, while `offensive-techniques/` is for general methodology/tradecraft that may reference tools without becoming tool manuals.
 - When the same topic exists in both layers (for example fuzzing), keep the distinction explicit: tool flags/workflows belong in `offensive-tools/fuzzing/`; technique process and strategy belong in `offensive-techniques/fuzzing-technique/`.
 - Keep `offensive-roles/` as supervisor/operator routing guidance: role skills compose `*-technique` methodology and optimized tool skills, but they must not become tool manuals or replace the technique layer.

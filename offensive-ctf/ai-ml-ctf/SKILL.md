@@ -90,3 +90,4 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/adversarial-ml.md](references/adversarial-ml.md) — adversarial examples, patch attacks, evasion, poisoning, and backdoor detection workflows.
 - [references/llm-attacks.md](references/llm-attacks.md) — prompt injection, jailbreaks, token smuggling, context manipulation, tool-use, and RAG/task-flow attacks.
 - [references/model-attacks.md](references/model-attacks.md) — model inversion, extraction, membership inference, LoRA merging, checkpoint arithmetic, and encoder collisions.
+- [references/model-file-forensics-and-deserialization.md](references/model-file-forensics-and-deserialization.md) — Load for model-file artifacts: format triage, safe pickle/opcode inspection, deserialization RCE sinks (pickle, Keras Lambda, GGUF SSTI, ONNX), and secret recovery from weights/metadata.
