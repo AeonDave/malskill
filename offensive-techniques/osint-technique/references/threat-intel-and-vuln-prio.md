@@ -1,6 +1,6 @@
 # Threat Intel Sources & Vulnerability Prioritization
 
-Reference for: (a) authoritative threat-intel feeds, (b) bulk CVE prioritization with EPSS + KEV, (c) HackerOne disclosed-report mining via `scripts/h1_reference.py`. Methodology link: `osint-technique/SKILL.md` §29 + companion `vuln-research` skill.
+Load when you need threat-intel feeds, bulk CVE prioritization, or disclosed-report mining.
 
 ---
 

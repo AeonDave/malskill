@@ -133,8 +133,8 @@ Use context-first strategy.
 
 ## Resources
 
-- [references/wordlist-strategy.md](references/wordlist-strategy.md)
-- [references/seclists-categories.md](references/seclists-categories.md)
-- [references/mask-generation.md](references/mask-generation.md)
-- [references/rule-chaining.md](references/rule-chaining.md)
-- [references/progressive-cracking.md](references/progressive-cracking.md)
+- [references/wordlist-strategy.md](references/wordlist-strategy.md) — Load when selecting or building contextual wordlists from target behavior and objective.
+- [references/seclists-categories.md](references/seclists-categories.md) — Load when choosing the right SecLists subsets instead of throwing the full corpus at the problem.
+- [references/mask-generation.md](references/mask-generation.md) — Load when password policy or recovered structure suggests mask-based attacks.
+- [references/rule-chaining.md](references/rule-chaining.md) — Load when designing layered rule passes to expand candidates without losing attribution.
+- [references/progressive-cracking.md](references/progressive-cracking.md) — Load when staging multi-pass campaigns, setting stop criteria, and feeding recovered patterns forward.

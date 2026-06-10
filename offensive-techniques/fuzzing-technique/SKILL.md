@@ -184,12 +184,12 @@ When using this skill, the agent should output:
 
 ## References
 
-- [references/harness-writing.md](references/harness-writing.md)
-- [references/binary-fuzzing.md](references/binary-fuzzing.md)
-- [references/file-format-fuzzing.md](references/file-format-fuzzing.md)
-- [references/network-remote-fuzzing.md](references/network-remote-fuzzing.md)
-- [references/web-api-fuzzing.md](references/web-api-fuzzing.md)
-- [references/oracle-and-signal-design.md](references/oracle-and-signal-design.md)
-- [references/campaign-orchestration.md](references/campaign-orchestration.md)
-- [references/corpus-management.md](references/corpus-management.md)
-- [references/crash-triage-and-reproducibility.md](references/crash-triage-and-reproducibility.md)
+- [references/harness-writing.md](references/harness-writing.md) — Load when building or repairing deterministic harnesses or request models before scaling a campaign.
+- [references/binary-fuzzing.md](references/binary-fuzzing.md) — Load for binary-only targets, instrumentation choices, and persistent/coverage workflows without source.
+- [references/file-format-fuzzing.md](references/file-format-fuzzing.md) — Load for parser/container targets, structural seeds, dictionaries, and parser-depth tactics.
+- [references/network-remote-fuzzing.md](references/network-remote-fuzzing.md) — Load for stateful protocol targets, remote monitors, and recovery strategy over sockets or services.
+- [references/web-api-fuzzing.md](references/web-api-fuzzing.md) — Load for schema-aware or stateful API fuzzing, producer-consumer chains, and response triage.
+- [references/oracle-and-signal-design.md](references/oracle-and-signal-design.md) — Load when choosing crash, sanitizer, timeout, invariant, or differential signals and reducing false positives.
+- [references/campaign-orchestration.md](references/campaign-orchestration.md) — Load for parallel campaign profiles, plateau handling, and execution control across runs.
+- [references/corpus-management.md](references/corpus-management.md) — Load when maintaining seed, minimized, crash, and regression corpora across versions or harnesses.
+- [references/crash-triage-and-reproducibility.md](references/crash-triage-and-reproducibility.md) — Load to bucket, minimize, replay, and confirm target-originated crashes.

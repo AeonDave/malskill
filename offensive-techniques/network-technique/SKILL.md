@@ -186,9 +186,9 @@ Tool families:
 
 ## Resources
 
-- [references/triage-and-flow.md](references/triage-and-flow.md)
-- [references/tool-selection-cases.md](references/tool-selection-cases.md)
-- [references/network-evidence-correlation.md](references/network-evidence-correlation.md)
-- [references/scenario-playbooks.md](references/scenario-playbooks.md)
-- [references/encrypted-traffic-and-c2-profiling.md](references/encrypted-traffic-and-c2-profiling.md)
-- [references/log-aggregation.md](references/log-aggregation.md)
+- [references/triage-and-flow.md](references/triage-and-flow.md) — Load for first-pass case classification and minimum evidence collection flow.
+- [references/tool-selection-cases.md](references/tool-selection-cases.md) — Load when choosing the right tool family for exposure, traffic, interception, pivot, auth-abuse, or wireless cases.
+- [references/network-evidence-correlation.md](references/network-evidence-correlation.md) — Load when joining scan, log, packet, endpoint, and identity evidence into one pivot chain.
+- [references/scenario-playbooks.md](references/scenario-playbooks.md) — Load for common investigation playbooks such as DNS exfiltration, beaconing, tunneling, and relay paths.
+- [references/encrypted-traffic-and-c2-profiling.md](references/encrypted-traffic-and-c2-profiling.md) — Load for metadata-only C2 profiling, JA3/JA4 analysis, jitter, and confidence gates.
+- [references/log-aggregation.md](references/log-aggregation.md) — Load when evidence spans Zeek, firewall, proxy, DNS, endpoint, and packet sources that need one schema.

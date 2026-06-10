@@ -1,6 +1,6 @@
 # C++ BOF — Reference Guide
 
-Reference for writing Beacon Object Files in C++ with safe patterns.
+Load when writing or debugging C++ BOFs, especially around entrypoint rules, Beacon interop, and safe wrapper usage.
 
 ---
 

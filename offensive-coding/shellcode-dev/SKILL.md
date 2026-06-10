@@ -119,14 +119,4 @@ If the task is specifically about BOFs, prefer `bof/c-bof` or `bof/cpp-bof` firs
 - [references/tooling-and-labs.md](references/tooling-and-labs.md) — practical usage of pwntools, Capstone, Keystone, Unicorn, debugger loops, and test harness patterns
 - [references/encoders-and-stagers.md](references/encoders-and-stagers.md) — staged payload patterns, bad-byte encoders, polymorphism trade-offs, and failure modes
 - [references/evasion-patterns-from-projects.md](references/evasion-patterns-from-projects.md) — transferable shellcode-dev engineering patterns from real implementations (runtime SSN mapping, recycled syscall gates, DESYNC readiness checks, sleep masking pipelines, CFG-aware gadget handling)
-
-### External references
-
-- Microsoft x64 calling convention: `learn.microsoft.com/en-us/cpp/build/x64-calling-convention`
-- Microsoft PE format: `learn.microsoft.com/en-us/windows/win32/debug/pe-format`
-- ReflectiveDLLInjection: `github.com/stephenfewer/ReflectiveDLLInjection`
-- Linux man-pages (`syscall`, `mmap`, `mprotect`, `vdso`): `man7.org`
-- Apple XNU syscall source: `github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/syscalls.master`
-- Pwntools docs: `docs.pwntools.com`
-- Capstone/Keystone/Unicorn official docs and repos
-- MITRE ATT&CK T1027.014 (Polymorphic Code)
+- Start with `references/platform-workflows.md`; wrong platform assumptions break payloads faster than bad-byte or evasion mistakes.

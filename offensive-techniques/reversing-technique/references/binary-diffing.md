@@ -1,6 +1,6 @@
 # Binary Diffing and Symbol Recovery
 
-Reference for finding what changed between two binary versions (patch analysis, CVE reconstruction) and for recovering symbols in stripped libraries using FLIRT signatures and Ghidra Function ID. Load after `triage.md` when you have two versions of the same binary, or a stripped binary whose library origin is unknown.
+Load after `triage.md` when comparing two versions of the same binary or recovering symbols in stripped libraries.
 
 ---
 

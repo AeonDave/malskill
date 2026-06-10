@@ -107,7 +107,7 @@ If any transition fails, fail closed with deterministic rollback (restore permis
 
 ## Resources
 
-- [references/flows-and-modes.md](references/flows-and-modes.md)
-- [references/reliability-and-safety.md](references/reliability-and-safety.md)
-- [references/patterns.md](references/patterns.md)
-- [../linux-internals/references/syscall-dispatch-linux.md](../linux-internals/references/syscall-dispatch-linux.md) (cross-reference for Linux syscall gate patterns)
+- [references/flows-and-modes.md](references/flows-and-modes.md) — Load when choosing the sleep pipeline shape, phase ordering, and orchestration mode.
+- [references/reliability-and-safety.md](references/reliability-and-safety.md) — Load when debugging crashes, rollback failures, race conditions, or unsafe transition order.
+- [references/patterns.md](references/patterns.md) — Load for concrete masking patterns, permission-transition designs, and thread-handling trade-offs.
+- [../linux-internals-dev/references/syscall-dispatch-linux.md](../linux-internals-dev/references/syscall-dispatch-linux.md) — Cross-reference for Linux syscall gate patterns when adapting ideas across platforms.

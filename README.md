@@ -6,6 +6,15 @@ Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent 
 
 The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, private offensive CTF/lab solving, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, developer, and lab-solving perspectives within a single task.
 
+The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, `hardware/`, and `commands/` belong here only when they directly improve the active security task.
+
+## Skill anatomy
+
+- `SKILL.md` - baseline workflow, routing, and task guidance.
+- `references/` - load-on-demand deep dives for specific subtasks; they extend the parent skill and should not act as README-style overviews, training material, or design rationale.
+- `scripts/` - deterministic helpers the agent can run.
+- `assets/` - templates or static supporting material.
+
 ---
 
 ## Categories
@@ -36,7 +45,7 @@ This area is explicitly about **how to use a specific tool** to reach an objecti
 
 **Note on `forensic/`**: These skills exist because security work often requires analyzing artifacts produced by attacks - understanding what defenders see, recovering post-compromise evidence, assessing detection surface, and validating OPSEC. Tools like `volatility3`, `capa`, and `yara` are as useful for a red team operator understanding EDR behavior as they are for a blue team analyst.
 
-### `offensive-coding/` - Offensive development skills (12 skills)
+### `offensive-coding/` - Offensive development skills
 
 Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, syscall stubs, evasion primitives, and Windows internals. Targeted at agents doing tool development, not just tool execution.
 
@@ -87,7 +96,7 @@ Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, of
 
 CTF skills may reference technique and tool skills, but they stay optimized for controlled lab objectives rather than real-world engagement tradecraft.
 
-### `coding/` - Language patterns and tooling (22 skills)
+### `coding/` - Language patterns and tooling
 
 Idiomatic code patterns, testing strategies, and performance guidance for the languages most used in security tooling. These skills give an agent the ability to write, review, and improve code - not just run existing tools.
 
@@ -101,6 +110,8 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 ### `knowledge/` and `behaviours/` - Research and meta-skills
 
 Skills that support the workflow itself: design, implementation planning, research, analysis, evidence quality, verification gates, orchestration, review triage, and documentation automation.
+
+These categories are support layers. Load them when they improve the current offsec task, not as background reading.
 
 | Skill | Role |
 |-------|------|
@@ -118,15 +129,15 @@ Skills that support the workflow itself: design, implementation planning, resear
 | `zero-day-hunter` | Structured unknown-vulnerability research and hypothesis workflow |
 | `malware-analysis` | Static/dynamic malware analysis and IOC extraction |
 
-### `ai/` - AI framework skills (1 skill)
+### `ai/` - AI framework skills
 
 - **`langchain-py`** - Production-oriented LangChain Python workflows
 
-### `hardware/` - Embedded skills (1 skill)
+### `hardware/` - Embedded skills
 
 - **`arduino`**
 
-### `commands/` - Agent behavior and command modes (1 skill)
+### `commands/` - Agent behavior and command modes
 
 - **`1337`** - Ultra-compressed offensive operator mode for maximum signal/token efficiency
 
@@ -200,4 +211,4 @@ python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/
 
 Do not mix these purposes in the same skill. Keep real-world tradecraft in `offensive-techniques/`, tool manuals in `offensive-tools/`, and lab/challenge solving in `offensive-ctf/`.
 
-Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some include `scripts/` for automation helpers, `references/` for deep dives, and `assets/` for templates.
+Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some also include `scripts/` for automation helpers, `references/` for subtask-specific deep dives loaded on demand, and `assets/` for templates.

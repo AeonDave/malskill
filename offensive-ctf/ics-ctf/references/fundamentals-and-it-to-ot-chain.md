@@ -1,6 +1,6 @@
-# OT/ICS Fundamentals and Realistic IT→OT Kill-Chain
+# OT/ICS Asset Model and IT→OT Pivot Chain
 
-Two complementary references in one file: (1) the core OT/ICS mental model that drives every defensive and offensive decision; (2) a realistic end-to-end IT→OT compromise pattern observed in modern IT/OT red-team exercises and APT campaigns (Volt Typhoon family).
+Load when you need the OT asset model, safety-first priorities, or a realistic IT→OT pivot chain before touching protocol details.
 
 ## 1. Fundamentals
 
@@ -52,7 +52,7 @@ Real-world plants are flatter than the diagram suggests; in pentests expect IT (
 
 ## 2. Realistic IT → OT kill chain
 
-A modern OT compromise rarely starts at the PLC. It starts on a low-privilege IT user, traverses Active Directory, lands on the engineering workstation, and only then touches process logic. The chain below is consistent across recent CISA advisories (Volt Typhoon) and benchmarked red-team exercises (StealthCup arXiv:2511.17761).
+A modern OT compromise rarely starts at the PLC. It usually starts in IT, crosses identity and jump infrastructure, lands on the engineering workstation, and only then touches process logic.
 
 ### Stage 1 — IT foothold (L4/L5)
 
@@ -121,9 +121,7 @@ The same arXiv:2511.17761 evaluation across Wazuh, Suricata, Vendor A EDR, and V
 | Logic download to PLC | None | None | None (no DPI for ICS) | Partial |
 | Modbus FC 6/16 writes | None | None | None by default | None by default |
 
-Practical implication: in IT/OT exercises with EDR coverage, *staying off the domain-joined assets* (operating from a Linux/Kali attacker host) and *moving credentials around without endpoint malware* keeps detection low. The detection cliff is on the *network* side: tune Suricata + Zeek for ICS protocols (`isc_modbus`, `s7comm`, `enip`) and most write traffic becomes visible.
-
-11 of 32 techniques in that benchmark were not detected by any IDS configuration — every one was a credential or AD primitive, not a malware drop. The OT phase itself produced no IDS alert at all.
+Practical implication: in IT/OT exercises with EDR coverage, credential movement and admin pivots often blend into IT noise more easily than direct PLC interaction; the network side usually gives the cleanest visibility on OT writes.
 
 ## 4. CTF/audit takeaways
 

@@ -1,6 +1,6 @@
 # Attack-Path Hints & Severity Decision Matrix
 
-Reference for: (a) scoring rubrics that convert raw findings into severity, (b) attack-path hint templates to attach to HIGH/CRIT findings so the operator knows where to pivot. Methodology link: `osint-technique/SKILL.md` §20+§21+§39+§40.
+Load when converting raw OSINT findings into severity and next-pivot hints.
 
 > **Scope note:** this file scores OSINT findings and describes *target-state hints* used to assess severity (e.g. "why is an exposed Redis CRITICAL"). Any examples that look like exploitation (PUT, `CONFIG SET`, kubelet exec, RCE PoCs) are **severity-assessment heuristics only** — actual exploitation belongs to [vuln-exploit-technique](../../vuln-exploit-technique/) and [web-exploit-technique](../../web-exploit-technique/). OSINT operators stop at evidence of exposure; they do not execute write-side or post-auth actions.
 

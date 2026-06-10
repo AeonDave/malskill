@@ -1,6 +1,6 @@
 # Code & Package Registry Leak Hunting
 
-Reference for systematically hunting target-attributed secrets across public code hosts and package registries. Methodology link: `osint-technique/SKILL.md` §19+§44.
+Load when hunting target-attributed secrets across public code hosts and package registries.
 
 ---
 

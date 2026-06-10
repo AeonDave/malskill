@@ -1,6 +1,6 @@
 # Node.js / V8 Startup Snapshot Reversing
 
-Reference for reversing Node.js executables produced by `pkg`, `nexe`, or `--experimental-sea-config` (Node.js SEA). Load after `triage.md` when the target is an ELF/PE that contains a V8 heap snapshot blob or embedded JavaScript.
+Load after `triage.md` when a `pkg`, `nexe`, or SEA executable embeds JavaScript or a V8 snapshot.
 
 ---
 

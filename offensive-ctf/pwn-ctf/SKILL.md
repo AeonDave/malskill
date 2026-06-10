@@ -67,7 +67,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Keep offsets, libc/loader assumptions, and environment drift explicit.
 - If RELRO, GOT/PLT, relocation tables, or leakless partial overwrites appear, load `references/relro-aslr-relocations.md` before deciding the final target.
 - If shellcode has a byte blacklist (filter function rejecting specific bytes), load `references/shellcode-filtering.md` first — decode the blacklist semantics, find safe XOR/ADD encoding, use register-based string construction to avoid blocked opcodes and string literals.
-- If the task is practice-path or lab-study guidance instead of solving one concrete binary, load `references/practice-labs.md` and keep platform-specific solution details out of generated notes.
 
 ## Quality gates
 
@@ -87,7 +86,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/heap-fsop.md](references/heap-fsop.md) — FSOP-focused heap chains and modern glibc stream abuse patterns.
 - [references/kernel.md](references/kernel.md) — kernel exploitation notes: primitives, mitigation-aware pivots, and practical escalation paths.
 - [references/overflow.md](references/overflow.md) — stack/global/OOB overflow patterns and mitigation-aware exploitation flow.
-- [references/practice-labs.md](references/practice-labs.md) — high-level practice routing for pwn labs, including pwn.college ethics and local reference mapping without challenge-solution leakage.
 - [references/relro-aslr-relocations.md](references/relro-aslr-relocations.md) — ELF RELRO, GOT/PLT, relocation addends, ASLR-invariant partial overwrites, and multi-run reliability gates.
 - [references/rop.md](references/rop.md) — x86-64 ROP and shellcode flow: leaks, pivots, chain assembly, and constrained environments.
 - [references/sandbox.md](references/sandbox.md) — restricted-environment escapes, proc-based pivots, and command-execution constraints.
@@ -95,4 +93,3 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/weird-machines.md](references/weird-machines.md) — emulator, interpreter, ML-dispatch, bit-flip, constrained-shellcode, and data-reinterpretation exploitation patterns.
 - [references/windows-pwn.md](references/windows-pwn.md) — Windows-native exploitation notes: SEH/DEP bypass, CFG-aware call-target hijacks, PEB-walk shellcode, and privilege-abuse pivots after code execution.
 - [references/wasm-pwn.md](references/wasm-pwn.md) — WASM binary exploitation under wasmtime/wasmer: linear memory OOB, shadow stack overflow, function table index overwrite.
-- [references/external-study.md](references/external-study.md) — curated external study and training resources: Linux/Windows user-land and kernel pwn references, heap and ARM heap material, training platforms (pwn.college, nightmare, OST2, ret2 wargames), and syscall tables.

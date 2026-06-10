@@ -1,6 +1,6 @@
 # ICS Protocol Reference
 
-Quick reference for protocol-specific offensive operations in authorized OT assessments.
+Load when an OT subtask needs protocol-specific function codes, object models, or read/write semantics.
 
 ---
 

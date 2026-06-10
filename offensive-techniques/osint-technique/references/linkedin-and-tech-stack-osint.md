@@ -1,6 +1,6 @@
 # LinkedIn Employee Enum & Job-Posting Tech Stack OSINT
 
-Reference for: (a) building a target's people graph via LinkedIn + Google dorking, (b) extracting confirmed technology stack from public job postings. Methodology link: `osint-technique/SKILL.md` §41+§42.
+Load when building a people graph from LinkedIn or extracting confirmed technology stack from public job postings.
 
 ---
 

@@ -1,7 +1,6 @@
 # C BOF — API Reference (Cobalt Strike 4.12)
 
-Complete reference for Beacon Object File development in C, based on the
-official `beacon.h` header (CS 4.x, updated through 4.12).
+Load when writing or debugging C BOFs against the Beacon API, argument parser, and output helpers.
 
 ---
 

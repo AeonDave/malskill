@@ -11,7 +11,7 @@ metadata:
 
 # OSINT Technique
 
-Open-source intelligence (OSINT) is the systematic collection, analysis, and synthesis of information from publicly available online sources. Unlike traditional recon tools (Nmap, Shodan downloads), OSINT emphasizes **research methodology** and **online tool leverage** (APIs, web interfaces, databases) to build comprehensive intelligence on a target—person, organization, domain, infrastructure, or event.
+Use passive online-source research to answer a scoped question about a person, organization, domain, infrastructure, breach, or event. Favor corroborated pivots over broad collection.
 
 ## Initial triage
 
@@ -179,7 +179,6 @@ Reference tool `SKILL.md` files for flags and workflows; use this technique for 
 - [ct-phishing-and-attribution.md](references/ct-phishing-and-attribution.md) — CT monitoring for lookalikes, phishing infrastructure enrichment, and cautious attribution methodology.
 - [ransomware-payment-tracking.md](references/ransomware-payment-tracking.md) — Cryptocurrency flow tracking, service/mixer/bridge identification, cluster confidence, and traceability limits.
 - [operational-security-and-evidence.md](references/operational-security-and-evidence.md) — Sock puppets, browser isolation, evidence archival, chain of custody, reproducibility logging.
-- [online-tools-and-apis-navigator.md](references/online-tools-and-apis-navigator.md) — Directory of online OSINT tools/APIs by domain (no downloads). Updated regularly via Tavily research.
 - [recon-operations-playbook.md](references/recon-operations-playbook.md) — Operational framework for confidence upgrades (tentative/firm/confirmed), detectability tags + back-off ladder, time-budget profiles (1h/4h/1d/1w), and minimal asset-graph discipline.
 - [identity-fabric-enumeration.md](references/identity-fabric-enumeration.md) — Microsoft Entra/Okta/ADFS/Google Workspace/generic OIDC tenant discovery, IP-based Microsoft IDP correlation, GetCredentialType deep-mode, M365 federation (Teams, SharePoint, OneDrive personal-site, OAuth client_id, device-code phishing, Power Platform), GraphQL field-suggestion enum and bypasses.
 - [secret-patterns-and-validators.md](references/secret-patterns-and-validators.md) — 48-pattern secret regex catalog (AWS, GCP, GitHub, AI APIs, package registries, observability, SaaS) with severity + false-positive notes, read-only validators for 9 providers (Postman/AWS/GitHub/Slack/Anthropic/OpenAI/npm/Atlassian/DataDog), post-validation enumeration (IAM simulate, GitHub scopes, Slack workspace, JWT triage). Helper: `scripts/secret_scan.py`.
@@ -187,6 +186,6 @@ Reference tool `SKILL.md` files for flags and workflows; use this technique for 
 - [code-and-package-leaks.md](references/code-and-package-leaks.md) — 13 GitHub code-search dorks, package registry sweep workflow (npm/PyPI/RubyGems/Cargo/Packagist/NuGet/Maven/Docker Hub), version-history walk, typosquat candidate generation.
 - [threat-intel-and-vuln-prio.md](references/threat-intel-and-vuln-prio.md) — TI feed catalog (CISA/MISP/Malpedia/ThreatFox/abuse.ch), sandbox + sample triage stack, bulk CVE prioritization with EPSS + CISA KEV + ExploitDB + Trickest, daily-cache workflow, HackerOne disclosed-report mining via `scripts/h1_reference.py`.
 - [linkedin-and-tech-stack-osint.md](references/linkedin-and-tech-stack-osint.md) — LinkedIn employee enumeration (search techniques, Google dorks, free vs Sales Navigator), P0–P5 role tier rubric, sock-puppet hygiene, job-posting tech-stack extraction across 10 ATS platforms.
-- [saas-and-collaboration-osint.md](references/saas-and-collaboration-osint.md)
-- [dork-corpus.md](references/dork-corpus.md)
-- [sector-specific-recon.md](references/sector-specific-recon.md) — Postman public workspace universal-search API + walk, Stack Exchange code-paste sweep (8 sites), public SaaS dorking (Trello/Notion/Atlassian/Miro/Asana/ClickUp/Airtable), Slack/Discord/Telegram/Teams/Mattermost workspace discovery.
+- [saas-and-collaboration-osint.md](references/saas-and-collaboration-osint.md) — Postman public workspace walk, Stack Exchange code-paste sweep, public SaaS workspace dorking, and chat/community discovery.
+- [dork-corpus.md](references/dork-corpus.md) — Cross-engine reusable dork templates organized by intent for leaks, configs, admin panels, and archived content.
+- [sector-specific-recon.md](references/sector-specific-recon.md) — Sector-specific pivots, vendors, protocols, and severity cues by vertical such as healthcare, finance, ICS/OT, and government.

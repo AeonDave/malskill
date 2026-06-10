@@ -1,6 +1,6 @@
 # PEB / TEB / LDR Reference
 
-Full structural reference for walking the Process Environment Block, Thread Environment Block, and loader data. Offsets verified against Windows 11 22H2/24H2 public debug symbols. Version-dependent fields flagged inline.
+Load when walking the PEB, TEB, or loader lists for module discovery, environment inspection, or API resolution.
 
 ---
 

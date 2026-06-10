@@ -1,6 +1,6 @@
 # Secret Patterns & Live Validators
 
-Reference for: (a) regex catalog to find secrets in any text source, (b) read-only validators to confirm liveness, (c) post-validation read-only enumeration. Methodology in `osint-technique/SKILL.md` §17+§23. Helper: `scripts/secret_scan.py` (authoritative source for runnable patterns).
+Load when scanning public artifacts for leaked secrets, validating them read-only, or doing post-validation read-only enumeration. Use `scripts/secret_scan.py` for runnable patterns.
 
 > **Copy-paste note:** regexes below appear in a markdown table; literal `\|` inside cells is a **markdown pipe escape** for table rendering. When porting to a regex engine, unescape `\|` → `|` (alternation). Authoritative un-escaped versions live in `scripts/secret_scan.py`.
 

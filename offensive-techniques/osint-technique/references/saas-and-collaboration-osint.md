@@ -1,6 +1,6 @@
 # SaaS & Collaboration Surface OSINT
 
-Reference for: (a) Postman public workspace search + walk, (b) Stack Exchange code-paste sweep, (c) generic public SaaS collaboration dorks, (d) Slack/Discord/Telegram/Teams/Mattermost workspace discovery. Methodology link: `osint-technique/SKILL.md` §24+§25+§26+§43.
+Load when investigating public collaboration surfaces tied to a target: Postman workspaces, Stack Exchange code pastes, public SaaS workspaces, or chat/community discovery.
 
 ---
 

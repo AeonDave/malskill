@@ -1,6 +1,6 @@
 # Android Backup Forensics
 
-Reference for extracting and analyzing Android backup (.ab) files in CTF challenges.
+Load when extracting and analyzing Android backup (`.ab`) artifacts.
 
 ---
 

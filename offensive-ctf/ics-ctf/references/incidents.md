@@ -1,14 +1,6 @@
-# Recent ICS/OT incidents 2025-2026 — pattern reference for CTF
+# ICS/OT Incident Pattern Cards
 
-Real-world TTPs distilled from Dragos 2026 Year in Review (8th-9th annual), CISA advisories (AA23-335A, AA24-038A, AA22-055A, AA22-103A), CloudSEK 2026 Iran-US ICS/OT assessment, Claroty Team82, Forescout Vedere, ESET, Check Point, Palo Alto Unit 42, CERT-UA, and CERT Polska Energy Sector Incident Report 2025 (29 Dec 2025). Use to design or recognize CTF scenarios that mirror current adversary behavior rather than abstract textbook attacks. **All real-world references are intel context — execute only in authorized isolated labs.**
-
-## Headline numbers (2025-2026)
-
-- 26 OT threat groups tracked globally by Dragos, 11 active in 2025; 3 new in the 2026 report: AZURITE, PYROXENE, SYLVANITE.
-- Ransomware groups touching industrial orgs surged 49 % YoY (Dragos), 119 groups tracked, ~3,300 victim orgs; manufacturing > 2/3 of victims; industry-wide OT ransomware dwell time 42 days, vs 5 days for orgs with mature OT visibility.
-- 25 % of ICS-CERT/NVD CVSS scores judged wrong by Dragos; 26 % of advisories ship with no vendor patch/mitigation; only 2 % qualify as "Now" priority.
-- 60+ Iranian-aligned hacktivist groups activated within hours of 28 Feb 2026 strikes (Unit 42).
-- US internet-exposed OT footprint (Forescout/Shodan, 2024-25): ~78.7K Modbus TCP, ~50.1K S7comm, ~53.4K Niagara Fox; 40K+ ICS devices reachable from any IP.
+Load when you need real-world OT attack chains, vendor/CVE landing pads, or recognizable incident patterns to map an artifact to a likely workflow. Use it as context for realistic modeling or recognition, not as a narrative incident digest.
 
 ## Threat-group → CTF-pivot mapping
 

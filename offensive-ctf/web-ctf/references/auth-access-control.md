@@ -1,6 +1,6 @@
 # Auth and Access Control
 
-Use this reference for authentication flaws, access-control bypasses, token abuse, and identity-flow attacks in web CTFs.
+Use this reference for authentication flaws, access-control bypasses, token abuse, and identity-flow attacks.
 
 ## Table of Contents
 - [Fast triage](#fast-triage)

@@ -1,6 +1,6 @@
 # Nim Binary Reversing
 
-Reference for reversing Nim-compiled binaries. Load after `triage.md` and `re-workflow.md` when the target shows Nim indicators. Nim produces native binaries with a GC runtime, Nim-specific type layouts, and symbol patterns that differ from C/C++/Go.
+Load after `triage.md` and `re-workflow.md` when the target shows Nim indicators.
 
 ---
 

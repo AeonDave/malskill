@@ -77,14 +77,6 @@ Rust crate (`unwinder` on crates.io) implementing full SilentMoonwalk DESYNC wit
 - **When to pick**: Rust implants where you want SilentMoonwalk without rolling your own `global_asm!` trampoline. Treat it as the canonical Rust answer to the lang-c-rust-go reference's SilentMoonwalk slot.
 - **Caveat**: still subject to all the Win11 22H2+ gadget-population limits. Cascade module ordering is internal to the crate — read its source before assuming `wininet → user32 → kernelbase` is wired the way you want.
 
-### HulkOps — tutorial reference, not a tool
-
-GitBook write-up walking through both **return address spoofing** and **x64 call stack spoofing** at code level: synthetic stack frames with proper unwinding, locating `RUNTIME_FUNCTION` in `.pdata`, parsing `UNWIND_CODE` to compute frame sizes, and the assembly `Spoof` function that pushes a sentinel `0` to terminate unwinding.
-
-- **Use as**: pedagogical reference for engineers new to the technique. Especially good for understanding **why** the math in `references/frame-math.md` looks the way it does. Not a drop-in implementation.
-
----
-
 ## Decision tree
 
 ```
@@ -305,16 +297,4 @@ Full diagnostic script + instrumentation pattern in `references/frame-math.md` �
 
 - [references/frame-math.md](references/frame-math.md) — `calc_frame_size` algorithm, SAVE_NONVOL safety filter, gadget scanner with instrumentation, Win11 22H2+ empirical inventory, diagnosing init failures
 - [references/lang-c-rust-go.md](references/lang-c-rust-go.md) — Per-language trampoline patterns (mingw-w64 AT&T asm, Rust `global_asm!`, Go Plan 9), context-struct layout rules, buffer-management patterns, interop caveats
-
-### External references
-
-- Eden / Draugr — original C++ implementation, `NtDallas` author
-- SilentMoonwalk — Klezvirus et al., public repo (github.com/klezVirus/SilentMoonwalk)
-- YouMayPasser — Waldo-irc, 64-bit Gargoyle / Return-Address-Spoofing extension (precursor of Draugr; built on Namaszo's PoC)
-- VulcanRaven — synthetic stack mimicry with SysMon-captured wmi/rpc/svchost profiles + VEH cleanup; targets `NtOpenProcess` on lsass
-- Unwinder — Kudaes, Rust port/weaponization of SilentMoonwalk (github.com/Kudaes/Unwinder; `unwinder` on crates.io)
-- HulkOps — GitBook tutorial: x64 Return Address Spoofing and x64 Call Stack Spoofing (hulkops.gitbook.io/blog/red-team)
-- Eclipse bypass — Arash Parsa (waldo-irc), Call Stack Masquerading research
-- WithSecure Labs — "Spoofing Call Stacks To Confuse EDRs" (CallStackSpoofer PoC)
-- Microsoft x64 unwind docs — `learn.microsoft.com/en-us/cpp/build/exception-handling-x64`
-- Geoff Chappell — CALL-site reverse on `RtlUserThreadStart` / `BaseThreadInitThunk`
+- Start with `references/frame-math.md`; bad unwind math invalidates every language-specific trampoline.

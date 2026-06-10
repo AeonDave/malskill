@@ -68,7 +68,6 @@ Detailed pwn notes that support [`SKILL.md`](../SKILL.md). Read this file after 
 - **Safe-linking** (glibc 2.32+): tcache fd mangled as `ptr ^ (chunk_addr >> 12)`.
 - Check glibc version: `strings libc.so.6 | grep GLIBC`
 - For named glibc techniques, sanity-check the matching how2heap `glibc_<version>/technique.c` first; see [heap.md](heap.md#versioned-corpus-workflow). Treat House names as hypotheses, not compatibility proof.
-- For pwn.college or other lab practice paths, use [practice-labs.md](practice-labs.md) and avoid publishing challenge-specific solution steps.
 - Freed chunks contain libc pointers (fd/bk) -> leak via error messages or missing null-termination
 - Heap feng shui: control alloc order/sizes, create holes, place targets adjacent to overflow source
 - **Unsafe unlink + top chunk consolidation**: After unlink writes self-pointer to BSS, craft fake BSS chunk spanning to top chunk. `free()` consolidates, relocating heap base to BSS. Subsequent mallocs return BSS memory. See [heap.md].

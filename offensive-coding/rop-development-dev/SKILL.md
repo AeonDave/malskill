@@ -115,6 +115,6 @@ If CET/CFG blocks your intended path, pivot early to alternate technique (JOP/SR
 
 ## Resources
 
-- [references/tooling-and-workflow.md](references/tooling-and-workflow.md)
-- [references/reliability-patterns.md](references/reliability-patterns.md)
-- [references/examples-and-resources.md](references/examples-and-resources.md)
+- [references/tooling-and-workflow.md](references/tooling-and-workflow.md) — Load when selecting gadget tooling, debugger flow, and leak/chain instrumentation.
+- [references/reliability-patterns.md](references/reliability-patterns.md) — Load when chains work once but fail across runs, libc variants, or layout changes.
+- [references/examples-and-resources.md](references/examples-and-resources.md) — Load for compact chain templates and common failure fixes such as alignment, IFUNC, CET, CFG, and leak instability.

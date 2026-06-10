@@ -1,6 +1,6 @@
 # Identity Fabric Enumeration
 
-Concrete URL/payload reference for SSO/IdP fingerprinting and tenant enumeration. Methodology in `osint-technique/SKILL.md`. All probes here are **read-only** unless flagged "deep mode" (auth-log generating, cap at ~20 attempts/tenant).
+Load when fingerprinting SSO/IdP surfaces or enumerating tenants. All probes here are **read-only** unless flagged "deep mode" (auth-log generating; cap at ~20 attempts/tenant).
 
 ---
 

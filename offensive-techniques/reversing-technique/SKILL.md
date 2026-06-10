@@ -535,5 +535,4 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 - [references/in-memory-loading.md](references/in-memory-loading.md) — Linux fileless loading via memfd_create + dlopen: detection, runtime dump, layer separation.
 
 - `offensive-tools/forensic/capa/` — capability-based binary classification (TTP/family detection).
-- [references/external-study.md](references/external-study.md) — curated external study and training resources for reversing methodology: OST2 Arch1001/2001, guyinatuxedo nightmare, anti-analysis indexes, allocator references, and supporting talks.
 

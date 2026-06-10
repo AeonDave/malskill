@@ -1,4 +1,6 @@
-# Practical examples and learning resources for ROP development
+# ROP quick chain templates and failure fixes
+
+Load when you need a compact chain sketch or a fast fix for common reliability failures.
 
 ## Example chains
 
@@ -22,16 +24,6 @@
 - Invoke _dl_runtime_resolve with crafted args.
 - Resolves arbitrary functions without prior leak.
 
-## Learning resources
-
-- **ROP Emporium guide**: Practical fundamentals, common pitfalls (`movaps` alignment), and challenge progression.
-- **Hands-on lab practice**: Keep platform-specific learning paths in `offensive-ctf/pwn-ctf/references/practice-labs.md`; this file stays focused on ROP engineering resources.
-- **CS6265 Advanced ROP**: Leak-first two-stage flow, multi-call chains, alignment troubleshooting, and ifunc caveats.
-- **pwntools ROP docs**: Reproducible chain building APIs (`ROP`, `ret2csu`, SROP support).
-- **pwntools ret2dlresolve docs**: Automated payload generation and required staging (`read` to payload area).
-- **HackTricks ROP page**: Broad technique map (ret2lib/ret2syscall/stack pivot).
-- **Stanford ROP note**: Historic but useful mental model for code-reuse mechanics on x64 Linux.
-
 ## Common pitfalls and fixes
 
 - **Alignment crashes**: Add `ret` gadget to align RSP to 16 bytes before SSE-using functions.
@@ -39,17 +31,3 @@
 - **CET blocks**: Switch to JOP (jump-oriented) or syscall-only chains.
 - **CFG fails**: Use allowed call targets or avoid indirect calls.
 - **Leak instability**: Robust parsing; handle partial outputs, newlines.
-
-## Curated external references
-
-- https://ropemporium.com/guide.html
-- https://tc.gtisc.gatech.edu/cs6265/tut/tut06-02-advrop.html
-- https://notes.qazeer.io/binary-exploitation/elf64_rop_leaks
-- https://blog.1nf1n1ty.team/hacktricks/binary-exploitation/rop-return-oriented-programing
-- https://docs.pwntools.com/en/stable/rop/rop.html
-- https://docs.pwntools.com/en/stable/rop/ret2dlresolve.html
-- https://ir0nstone.gitbook.io/notes/binexp/stack/return-oriented-programming/stack-alignment
-- https://ir0nstone.gitbook.io/notes/types/stack/ret2dlresolve
-- https://gitlab.com/x86-psABIs/x86-64-ABI
-
-Use externally authored blogs as practical complements; prefer ABI/vendor/course docs for normative behavior.

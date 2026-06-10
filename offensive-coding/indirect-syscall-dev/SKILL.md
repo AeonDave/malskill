@@ -293,14 +293,4 @@ Full code sketches per language in [references/lang-c-rust-go.md](references/lan
 - [references/lang-c-rust-go.md](references/lang-c-rust-go.md) — Per-language dispatcher skeletons: C (mingw-w64 AT&T .s), Rust (`global_asm!`), Go (Plan 9), plus SSN table init patterns and obfuscation hooks
 - [references/strategies.md](references/strategies.md) — In-depth on each SSN resolution strategy, detection footprint per strategy, migration between strategies, hook-pattern reverse engineering
 - [references/implementation-examples.md](references/implementation-examples.md) — Practical C/Rust implementation patterns distilled from real-world projects (mode switching, 4/6/11 arg dispatch, DESYNC composition)
-
-### External references
-
-- Hell's Gate — @smelly__vx, @am0nsec (2020) — github.com/am0nsec/HellsGate
-- Halo's Gate — Sektor7 (2020) — blog.sektor7.net/#!res/2021/halosgate.md
-- Tartarus' Gate — @trickster0 (2021) — github.com/trickster0/TartarusGate
-- FreshyCalls — @crummie5 (2021) — github.com/crummie5/FreshyCalls
-- RecycledGate — @thefLink — github.com/thefLink/RecycledGate
-- `SysWhispers3` — @klezVirus — github.com/klezVirus/SysWhispers3
-- NtDoc syscall cross-reference — `ntdoc.m417z.com`
-- Peter Ferrie, *"Inside Windows"* series — Virus Bulletin
+- Start with `references/strategies.md`, then pair exactly one implementation path with the chosen strategy before debugging failures.

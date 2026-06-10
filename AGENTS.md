@@ -14,6 +14,8 @@
 
 - Keep `Project structure` sections folder-level only; do not turn them into file inventories.
 - Treat `AGENTS.md` as a living operational file; update it after important repo changes or when workflows/tool availability materially change.
+- `malskill` is an offsec-curated skill set; support categories such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, `hardware/`, and `commands/` are valid only when they directly improve the active security task.
+- Every loaded skill must help the active task. Do not load skills for design justification, benchmark/stats dumps, background reading, or generic narration.
 - Put developer-facing detail in `README.md` first; use `references/` only when the detail is too deep or too specialized for the README.
 - Code comments must be in English, technical, precise, and brief; explain intent or non-obvious behavior, not obvious syntax.
 - When improving or curating tool skills, use external research (`fetch_webpage` plus Tavily/web search) for important, missing, disputed, or potentially outdated tools instead of relying only on local repo context.
@@ -23,6 +25,7 @@
 - When the same topic exists in both layers (for example fuzzing), keep the distinction explicit: tool flags/workflows belong in `offensive-tools/fuzzing/`; technique process and strategy belong in `offensive-techniques/fuzzing-technique/`.
 - Keep `offensive-roles/` as supervisor/operator routing guidance: role skills compose `*-technique` methodology and optimized tool skills, but they must not become tool manuals or replace the technique layer.
 - Keep `offensive-ctf/` separate from field offsec skills: it is for lab/challenge/flag-style workflows and may route into technique/tool skills only as support.
+- `offensive-ctf/` captures challenge-derived patterns that may still help real-world tasks when the artifact, primitive, or workflow matches. Use it as a support layer, not as platform-specific writeup culture.
 
 ## Testing
 
@@ -56,6 +59,10 @@
 
 - Every skill root must contain `SKILL.md` with valid YAML frontmatter; `name` must match the folder name and use lowercase hyphens.
 - Aim to keep the substantive body of `SKILL.md` around 500 lines as a soft target (not validator-enforced); move deep dives, long examples, and reference material to `references/`. Link/index sections like `## Reference Files` or `## Resources` do not count toward this target.
+- `references/` files must extend the skill: deep dives, extra procedures, lookup tables, long examples, or domain detail the agent loads on demand to act. They are not a skill README and not a design/rationale justifier — never use a reference to explain or defend why the skill is built the way it is.
+- Load `references/` only for a clear subtask. Pattern: broad parent skill first, then the narrowest reference that adds concrete task value.
+- Remove or rewrite references that behave like catalogs, study guides, README material, or general background without a clear subtask trigger.
+- Keep meta-justification (benchmarks, "why this exists", design defense) out of both `SKILL.md` and `references/`. If maintenance rationale is truly needed, reduce it to terse actionable rules; do not let it become prose.
 - Use `scripts/` for deterministic helpers the agent can run and `assets/` for templates or static supporting files.
 - Each skill folder is independent; read the local `SKILL.md` before editing resources under that skill.
 - Prefer qualitative comments over verbose narration; document intent, constraints, and non-obvious tradeoffs.

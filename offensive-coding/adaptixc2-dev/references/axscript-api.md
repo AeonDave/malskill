@@ -1,7 +1,6 @@
 # AxScript API Reference
 
-Complete reference for the AxScript JavaScript bridge API (Goja engine).
-AxScript files (`.axs`) define UI, commands, menus, and events for AdaptixClient.
+Load when writing or debugging AxScript bridge calls, UI definitions, commands, menus, or events in `.axs` files.
 
 ---
 

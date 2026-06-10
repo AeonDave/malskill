@@ -287,12 +287,4 @@ Use those skills when writing code; use this one for the underlying structures a
 - `references/tokens-privileges.md` — TOKEN struct, privileges, integrity levels, impersonation
 - `references/kernel-objects.md` — EPROCESS, ETHREAD, KPCR/KPRCB, handle table, object manager, kernel callbacks
 - `references/evasion-surface.md` — ETW/ETW-TI, AMSI, CFG/XFG/CET, VBS/HVCI/CG, hook detection/unhooking
-
-### External references used
-
-- Geoff Chappell, *Windows Kernel Studies* — authoritative on undocumented structures
-- Vergilius Project — debug-symbol-derived layouts per build
-- NtDoc (`ntdoc.m417z.com`) — searchable NTAPI reference
-- Process Hacker / System Informer source — production NTAPI consumer
-- ReactOS source — open-source reimplementation; layouts match public WinDbg symbols closely
-- Windows Internals 7e (Russinovich, Solomon, Ionescu, Yosifovich) — still current for architectural concepts
+- Start with the narrowest subsystem reference that matches the current primitive; expand only when the chain crosses subsystems.

@@ -1,6 +1,6 @@
 # Linux In-Memory Loading (memfd_create + dlopen)
 
-Reference for the fileless ELF loading pattern: the outer binary writes a shared object into an anonymous file descriptor via `memfd_create`, then opens it with `dlopen("/proc/self/fd/N")`. The inner library never touches the filesystem. Load after `triage.md` when `strace` shows `memfd_create` calls or when a binary has no suspicious imports but exhibits unexplained capability.
+Load after `triage.md` when evidence suggests fileless ELF loading via `memfd_create` + `dlopen`.
 
 ---
 

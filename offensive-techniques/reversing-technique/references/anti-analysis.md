@@ -1,6 +1,6 @@
 # Anti-Analysis Techniques and Bypasses
 
-Comprehensive reference for anti-debugging, anti-VM, anti-DBI, code integrity, and anti-disassembly techniques with practical bypass strategies. Applies to protected targets on Linux and Windows.
+Load when a Linux or Windows target uses anti-debug, anti-VM, anti-DBI, integrity, or anti-disassembly protections.
 
 ---
 

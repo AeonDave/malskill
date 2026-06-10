@@ -1,6 +1,6 @@
 # Evasion Surface
 
-Modern Windows security telemetry is layered: userland instrumentation (AMSI, ETW providers, inline hooks on `ntdll` / `kernelbase`), kernel callbacks (covered in [kernel-objects.md](kernel-objects.md)), and Virtualization-Based Security (VBS + HVCI + Credential Guard). An offensive operator has to model each layer as a separate detection pipeline, understand what it sees, and know the mitigation for each. This reference maps the surface, lists the patches/bypasses that have worked historically (and which are dead), and covers the hardening modern EDRs add that neutralize once-reliable tricks.
+Load when modeling Windows telemetry layers such as AMSI, ETW, hooks, kernel callbacks, and VBS-backed protections.
 
 ## The telemetry stack
 
@@ -488,13 +488,4 @@ Quick host surveys to understand the battlefield:
 | CET capability | `coreinfo.exe -v` | CPU features |
 | AMSI registered providers | `reg query HKLM\Software\Microsoft\AMSI\Providers` | CLSID list |
 
-Cross-reference with `tasklist /m <dll>` to identify which processes hold which EDR DLL — classic baseline before offensive tradecraft decisions.
-
-## References to real-world applications
-
-Two project trees in the user's workspace demonstrate many of these techniques end-to-end:
-
-- `D:\Sources\evasion` — collection of evasion primitives, including AMSI/ETW patching, indirect-syscall stub building, and sleep obfuscation implementations.
-- `D:\Sources\AdaptixC2-Extenders\beacon_wraith_rs_agent\src_beacon_wraith_rs` — Rust-based beacon using indirect syscalls, call-stack spoofing (DESYNC context struct, `.pdata` unwind manipulation), and hash-based API resolution. Good reference for production-grade Hell's Gate + stack spoofing integration.
-
-Both apply the mental model in this document: bypass userland hooks with indirect syscalls, minimize the ETW-TI footprint by choosing in-process primitives where possible, and assume any surviving kernel signal must blend with baseline activity to evade correlation.
+Cross-reference with `tasklist /m <dll>` to identify which processes hold which EDR DLL before making tradeoff decisions.

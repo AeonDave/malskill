@@ -1,6 +1,6 @@
 # Web Vulnerabilities and CVEs
 
-Use this reference for framework-, library-, and product-specific web vulnerabilities that often short-circuit normal exploit development in web CTFs.
+Use this reference for framework-, library-, and product-specific web vulnerabilities that can short-circuit normal exploit development.
 
 ## Table of Contents
 - [When to use this file](#when-to-use-this-file)

@@ -182,12 +182,12 @@ Primary tool families:
 
 ## Resources
 
-- [references/evidence-preservation.md](references/evidence-preservation.md)
-- [references/disk-and-iso-analysis.md](references/disk-and-iso-analysis.md)
-- [references/windows-execution-indicators.md](references/windows-execution-indicators.md)
-- [references/document-malware-analysis.md](references/document-malware-analysis.md)
-- [references/pcap-analysis.md](references/pcap-analysis.md)
-- [references/memory-analysis.md](references/memory-analysis.md)
-- [references/timeline-correlation.md](references/timeline-correlation.md)
-- [references/lessons-learned-patterns.md](references/lessons-learned-patterns.md)
-- [scripts/forensic_triage.py](scripts/forensic_triage.py)
+- [references/evidence-preservation.md](references/evidence-preservation.md) — Load for provenance, hashing, read-only workflow, and evidence-handling order.
+- [references/disk-and-iso-analysis.md](references/disk-and-iso-analysis.md) — Load for filesystem/media triage, startup paths, selective extraction, and validation.
+- [references/windows-execution-indicators.md](references/windows-execution-indicators.md) — Load for Prefetch, LNK, Jump Lists, AmCache, ShimCache, SRUM, and related execution artifacts.
+- [references/document-malware-analysis.md](references/document-malware-analysis.md) — Load for Office, PDF, archive, embedded-object, and external-template payload chains.
+- [references/pcap-analysis.md](references/pcap-analysis.md) — Load for protocol triage, session reconstruction, transfer paths, and network chronology.
+- [references/memory-analysis.md](references/memory-analysis.md) — Load for process/module/socket triage, injected regions, transient secrets, and disk/network correlation.
+- [references/timeline-correlation.md](references/timeline-correlation.md) — Load for clock normalization and merging source-local timelines with confidence labels.
+- [references/lessons-learned-patterns.md](references/lessons-learned-patterns.md) — Load for mixed-artifact heuristics and fast-answer investigation patterns.
+- [scripts/forensic_triage.py](scripts/forensic_triage.py) — Run to classify an evidence file and get the first forensic workflow/tool-family recommendation.

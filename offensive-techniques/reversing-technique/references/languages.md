@@ -1,6 +1,6 @@
 # Language-Specific Reversing Techniques
 
-Reference for binary reversing when the target was compiled from Go, Rust, Python, or a managed runtime (Unity IL2CPP, .NET ConfuserEx, HarmonyOS). Each language produces distinct binary patterns; recognizing them early focuses analysis effort.
+Load when triage shows Go, Rust, Python, or managed-runtime patterns and you need language-specific reversing pivots.
 
 ---
 
