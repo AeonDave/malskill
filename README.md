@@ -8,6 +8,16 @@ The collection covers the full range a security-focused agent needs: offensive t
 
 The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, `hardware/`, and `commands/` belong here only when they directly improve the active security task.
 
+## Why Malskill? (The Agentic Paradigm)
+
+Most public AI skill repositories fail because they treat LLMs like human students or hard drives. They dump 10,000-line SecLists payloads, massive tool manuals, and theoretical textbooks directly into the context window. This causes **Attention Dilution** and context collapse—the agent hallucinates, runs unauthorized destructive commands, or gets lost describing the history of a vulnerability instead of exploiting it.
+
+Malskill is fundamentally different. It is engineered as a **Software Contract** for autonomous agents:
+- **High Signal-to-Noise Ratio**: Zero theoretical fluff. Skills use rigid `Cognitive Stance -> The Loop -> Strict Rules` structures.
+- **Negative Constraints**: LLMs are "eager to please" and often skip steps out of helpfulness. We use strict negative boundaries (*"Do not run scanners"*, *"Evidence First"*, *"Execute in /dev/shm"*) to prevent hallucination and enforce OPSEC.
+- **Separation of Concerns**: We heavily separate **Roles** (Identity and Constraints), **Techniques** (Methodology), and **Tools** (Command execution). An agent loads only what it needs exactly when it's needed, keeping the context window pristine.
+- **Methodology over Payloads**: Malskill doesn't feed static Wordlists into the prompt. It teaches the agent *where* to download them or *how* to use the host OS tools to iterate over them securely.
+
 ## Skill anatomy
 
 - `SKILL.md` - baseline workflow, routing, and task guidance.
@@ -75,17 +85,17 @@ Mission-focused role skills for supervising and delegating offensive work across
 
 | Skill | Role |
 |-------|------|
-| `offensive-supervisor-role` | Owns mission, scope, chain selection, delegation, evidence review, and synthesis |
-| `offensive-recon-role` | Produces scoped target packages, asset inventory, and first attack-path candidates |
-| `offensive-osint-role` | Performs passive public-source, identity, leak, supplier, and pretext-safe research |
-| `offensive-web-role` | Validates web, API, browser, auth-flow, and application-layer exploit paths |
-| `offensive-cloud-role` | Maps cloud/SaaS/IAM/storage/workload and hybrid identity attack paths |
-| `offensive-windows-role` | Handles Windows hosts, accounts, services, SMB shares, WinRM/RDP, Active Directory, Kerberos, and AD CS |
-| `offensive-linux-role` | Handles Linux hosts, sessions, users, services, packages, logs, containers, SSH, and network paths |
-| `offensive-mobile-role` | Assesses Android/iOS apps, devices, storage, auth, traffic, instrumentation, and mobile APIs |
-| `offensive-reverse-role` | Extracts behavior, protocols, configs, patch deltas, and exploit-support facts from artifacts |
-| `offensive-crypto-role` | Handles cryptanalysis, hashes, tokens, signatures, oracles, keys, and cracking strategy |
-| `offensive-exploit-role` | Performs exploit research, PoC adaptation, fuzzing reproducers, and reliability work |
+| `offensive-supervisor-role` | OODA orchestrator. Owns mission, scope, delegation, and strict evidence gates |
+| `offensive-recon-role` | Produces scoped target packages, asset inventory, and external attack-surface discovery |
+| `offensive-osint-role` | Performs passive, zero-touch public-source, identity, and leaked-credential research |
+| `offensive-web-role` | App-layer operator. Handles API mapping, input tampering, and OWASP-tier vulnerability validation |
+| `offensive-cloud-role` | Cloud/SaaS/IAM operator. Focuses on principal identities, metadata endpoints, and blob storage |
+| `offensive-windows-role` | Windows Operator. Handles AD enumeration, access tokens, IPC, and OPSEC-aware local escalation |
+| `offensive-linux-role` | Linux Operator. Living-off-the-Land (LotL) execution, host triage, and Unix privilege escalation |
+| `offensive-mobile-role` | Mobile Operator. Handles APK/IPA static analysis, traffic interception, and Frida instrumentation |
+| `offensive-reverse-role` | Reverse Engineer. Static and dynamic analysis of binaries, malware, and unknown protocols |
+| `offensive-hardware-role` | Hardware Operator. Physical device compromise via UART, JTAG, SPI, and embedded extraction |
+| `offensive-forensic-role` | Forensic Operator. Extracts credentials and timelines from memory dumps, disk images, and PCAP |
 
 ### `offensive-ctf/` - Private offensive CTF and lab-solving skills
 
@@ -126,8 +136,7 @@ These categories are support layers. Load them when they improve the current off
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `cve-search` | CVE enumeration and public PoC collection |
-| `zero-day-hunter` | Structured unknown-vulnerability research and hypothesis workflow |
-| `malware-analysis` | Static/dynamic malware analysis and IOC extraction |
+| `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
 
 ### `ai/` - AI framework skills
 

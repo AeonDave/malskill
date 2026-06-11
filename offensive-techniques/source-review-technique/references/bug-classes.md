@@ -25,3 +25,12 @@
 ## 5. Server-Side Request Forgery (SSRF)
 - **Keywords**: `curl(`, `requests.get(`, `HttpURLConnection`, `fetch(`, `urllib.request.urlopen(`
 - **Taint**: Does the URL stem from a parameter, header (`X-Forwarded-Host`), or an external object?
+
+## 6. Front-End Sinks (XSS / DOM Manipulation)
+- **Angular**: `bypassSecurityTrustHtml`, `[innerHTML]`, `$eval`, `$evalAsync`
+- **React**: `dangerouslySetInnerHTML`
+- **Native JS**: `document.write(`, `eval(`, `setTimeout(`
+
+## 7. PHP Specific Sources and Sinks
+- **Sources**: `$_GET`, `$_POST`, `$_REQUEST`, `$_SERVER`, `php://input`
+- **Sinks**: `echo`, `print`, `system(`, `exec(`, `passthru(`, `eval(`, `unserialize(`
