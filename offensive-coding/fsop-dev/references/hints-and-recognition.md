@@ -1,5 +1,7 @@
 # Hints and recognition for FSOP
 
+Load to quickly map a binary's behavior or crash constraints to viable FSOP paths.
+
 ## Table of Contents
 - [Fast recognition cues](#fast-recognition-cues)
 - [Field-level hint map](#field-level-hint-map)

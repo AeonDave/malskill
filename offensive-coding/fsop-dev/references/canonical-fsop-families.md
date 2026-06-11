@@ -1,5 +1,7 @@
 # Canonical FSOP families
 
+Load when selecting an FSOP target family (`_IO_list_all`, Apple, Kiwi, etc.) for a specific glibc era.
+
 ## Table of Contents
 - [Classic `_IO_list_all` and fake-vtable FSOP](#classic-_io_list_all-and-fake-vtable-fsop)
 - [Stream overlap and buffer redirection](#stream-overlap-and-buffer-redirection)

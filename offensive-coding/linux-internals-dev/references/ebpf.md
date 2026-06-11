@@ -1,6 +1,6 @@
 # eBPF internals for reliable operation
 
-## eBPF execution model
+Load when writing or verifying eBPF programs and understanding kernel hook constraints.
 
 eBPF programs are verified bytecode loaded into kernel hooks. They operate with strict safety constraints and helper-mediated kernel interaction.
 

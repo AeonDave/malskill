@@ -1,6 +1,6 @@
 # procfs internals and interpretation
 
-## What procfs is
+Load when automating process introspection, memory map parsing, or state tracking via `/proc`.
 
 `/proc` is a pseudo-filesystem exposing kernel and process state through virtual files. It includes per-process trees (`/proc/pid`) and system-wide interfaces (`/proc/sys`, `/proc/meminfo`, and more).
 

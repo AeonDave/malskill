@@ -1,6 +1,6 @@
 # Linux Security Modules internals
 
-## LSM framework intent
+Load when interacting with Linux Security Modules architecture, hook placement, and policy enforcement.
 
 LSM is a kernel hook framework enabling pluggable security decisions and security metadata attachment. It is infrastructure, not a single policy engine.
 

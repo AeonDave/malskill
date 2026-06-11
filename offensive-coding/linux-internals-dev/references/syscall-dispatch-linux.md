@@ -1,6 +1,6 @@
 # Linux syscall dispatch internals (x86-64 focus)
 
-## Why this matters
+Load when designing low-level tool dispatcher strategies (vDSO, libc, direct syscalls) and handling telemetry impacts.
 
 For low-level tooling, where the `syscall` instruction executes from is operationally important. Kernel-side telemetry can attribute origin differently depending on whether dispatch comes from vDSO, libc, or your own text section.
 

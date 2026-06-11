@@ -1,5 +1,7 @@
 # Triggers and call paths for FSOP
 
+Load when choosing how to trigger a counterfeit `FILE` stream (e.g., `puts`, `exit`, assert).
+
 ## Table of Contents
 - [Why trigger selection matters](#why-trigger-selection-matters)
 - [Classic cleanup paths](#classic-cleanup-paths)

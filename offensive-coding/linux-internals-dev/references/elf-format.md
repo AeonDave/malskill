@@ -1,6 +1,6 @@
 # ELF internals for programmatic work
 
-## Core model
+Load when parsing or manipulating ELF headers, relocations, or program headers programmatically.
 
 An ELF object can be relocatable, executable, shared object, or core dump. Runtime execution behavior is primarily controlled by the ELF header and **program header table**.
 

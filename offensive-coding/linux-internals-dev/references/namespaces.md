@@ -1,6 +1,6 @@
 # Linux namespaces: mechanics that matter
 
-## Namespace model
+Load when navigating or interacting with Linux namespace isolation and transition constraints.
 
 Namespaces isolate global resources into scoped views. A process belongs to one namespace instance of each namespace type.
 

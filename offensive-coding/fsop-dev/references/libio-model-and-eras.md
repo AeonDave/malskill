@@ -1,5 +1,7 @@
 # libio model and exploitation eras
 
+Load when analyzing or constructing FSOP primitives to understand underlying `FILE` and vtable structures.
+
 ## Table of Contents
 - [Core structures](#core-structures)
 - [What actually matters in practice](#what-actually-matters-in-practice)
