@@ -361,3 +361,5 @@ See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`,
 - [references/wpa3-and-ble.md](references/wpa3-and-ble.md) — WPA3 transition mode exploitation, dragonblood, BLE enumeration, GATT service analysis, BLE MITM patterns.
 - [references/bluetooth-attacks.md](references/bluetooth-attacks.md) — Bluetooth/BLE assessment sequence: discovery, pairing, authentication, encryption, GATT/SDP, MITM/downgrade, evidence packaging.
 - [references/evil-twin.md](references/evil-twin.md) — Evil twin setup, WPA2-Personal PSK capture, WPA2-Enterprise EAP downgrade (hostapd-wpe, eaphammer), captive portal credential harvest.
+- [references/iot-zigbee-matter.md](references/iot-zigbee-matter.md) — Load for 802.15.4 mesh protocols. Covers KillerBee, Touchlink commissioning abuse, and Zigbee Global Link Key sniffing.
+- [references/sub-ghz-lorawan.md](references/sub-ghz-lorawan.md) — Load for 433/868/915 MHz targets. Covers raw IQ capture/replay, OOK/FSK analysis, and LoRaWAN ABP/OTAA key vulnerabilities.
