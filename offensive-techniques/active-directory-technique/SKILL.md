@@ -716,6 +716,7 @@ MITRE ATT&CK primary mappings:
 - [references/ad-enumeration.md](references/ad-enumeration.md) — BloodHound query catalog, PowerView cheatsheet, LDAP query patterns, trust enumeration, Snaffler, LLMNR/NBT-NS poisoning, credential hunting.
 - [references/ad-acl-abuse.md](references/ad-acl-abuse.md) — ACL abuse methodology: GenericAll, WriteDACL, WriteOwner, GenericWrite, shadow credentials, RBCD, and reversible proof paths.
 - [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), Diamond Ticket, NoPac/sAMAccountName spoofing, double-hop workarounds, ticket forgery.
+- [references/kerberos-time-skew.md](references/kerberos-time-skew.md) — Load when Kerberos authentication fails with `KRB_AP_ERR_SKEW` or Clock skew too great. Covers `faketime` and `ntpdate` synchronization.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
 - [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-14 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
 - [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.

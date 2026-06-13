@@ -102,7 +102,7 @@ impacket-getST -spn HTTP/<target_fqdn> -impersonate administrator -altservice CI
   /msdsspn:HTTP/<target> /altservice:cifs/<target> /ptt
 ```
 
-**Clock skew**: Kerberos operations fail with `KRB_AP_ERR_SKEW` if client clock differs >5 min from DC. Fix with `faketime '+Nh'` (Linux) or sync time before running tools.
+**Clock skew**: Kerberos operations fail with `KRB_AP_ERR_SKEW` if client clock differs >5 min from DC. See `[references/kerberos-time-skew.md](kerberos-time-skew.md)` for `libfaketime` bypass workflows and active syncing.
 
 ---
 

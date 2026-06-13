@@ -512,7 +512,7 @@ secretsdump.py DOMAIN/user:pass@DC -just-dc-ntlm
 - `wmiexec` → uses WMI provider host (`wmiprvse.exe`), output over SMB pipe. Medium detection.
 - `secretsdump` DCSync → generates replication events (Event 4662). Monitored on hardened DCs.
 - NTLM relay → network-level; no host artifact if relay-only (no -c payload).
-- Use `-k` (Kerberos) when possible — no NTLM challenges in traffic.
+- Use `-k` (Kerberos) when possible — no NTLM challenges in traffic. (Note: Kerberos requires synchronized clocks. If you see `KRB_AP_ERR_SKEW`, prefix your command with `faketime '+2h'` or use `ntpdate -u <DC>`).
 - Prefer `dcomexec` or `atexec` over `psexec` when stealth matters.
 
 ## Resources
