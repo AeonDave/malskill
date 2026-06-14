@@ -164,16 +164,29 @@ python3 vol.py -f memory.raw windows.modscan   # includes unlinked
 
 ### Credential Extraction
 
+**v2.28+**: `windows.hashdump`, `windows.cachedump`, and `windows.lsadump` were removed. Use registry hive dump + secretsdump instead.
+
 ```bash
-# NTLM hashes from SAM (requires SYSTEM privileges at capture time)
+# Dump all registry hives from memory to a directory
+mkdir hives
+python3 vol.py -f memory.raw -o hives windows.registry.hivelist --dump
+# Output: hives/registry.SAM.<addr>.hive, registry.SYSTEM.<addr>.hive, registry.SECURITY.<addr>.hive, etc.
+
+# Offline credential extraction (impacket — shell glob expands to actual filename)
+secretsdump.py \
+  -sam hives/registry.SAM.*.hive \
+  -system hives/registry.SYSTEM.*.hive \
+  -security hives/registry.SECURITY.*.hive \
+  LOCAL
+# Output: Administrator:500:aad3b435...:NTHASH:::  LSA secrets, cached domain hashes
+
+# Legacy (Volatility < 2.28 only — will error on 2.28+):
 python3 vol.py -f memory.raw windows.hashdump
-
-# Cached credentials (domain user hashes)
 python3 vol.py -f memory.raw windows.cachedump
-
-# LSA secrets
 python3 vol.py -f memory.raw windows.lsadump
 ```
+
+**Note**: First run requires internet to fetch the ntkrnlmp symbol pack for the target OS version. Run foreground or in a persistent session — background jobs (e.g. `nohup &`) may be killed when the shell idles.
 
 ### Registry
 
@@ -316,10 +329,9 @@ grep -E "Temp|AppData|ProgramData" cmdline.txt  # suspicious paths
 vol windows.malfind > malfind.txt
 grep -E "MZ|PAGE_EXECUTE_READWRITE" malfind.txt
 
-# Phase 4 — credentials
-vol windows.hashdump
-vol windows.cachedump
-vol windows.lsadump
+# Phase 4 — credentials (v2.28+: hivelist dump + secretsdump; see Credential Extraction section)
+mkdir -p hives; vol -o hives windows.registry.hivelist --dump
+secretsdump.py -sam hives/registry.SAM.*.hive -system hives/registry.SYSTEM.*.hive -security hives/registry.SECURITY.*.hive LOCAL
 
 # Phase 5 — artifacts
 vol windows.filescan > filescan.txt
@@ -386,7 +398,7 @@ python3 vol.py -f memory.raw linux.find_file --inode <inode_from_above>
 | Find C2 connections | `windows.netscan` → look for unusual foreign IPs/ports |
 | Find injected shellcode | `windows.malfind` → MZ header in RWX VAD |
 | Recover deleted file | `windows.filescan` → `windows.dumpfiles --virtaddr` |
-| Dump credentials | `windows.hashdump` + `windows.cachedump` + `windows.lsadump` |
+| Dump credentials | v2.28+: `windows.registry.hivelist --dump` → `secretsdump.py LOCAL`; legacy: `windows.hashdump`/`cachedump`/`lsadump` |
 | Find target string in memory | `windows.filescan` grep indicator, then `dumpfiles` |
 | Bash history | `linux.bash` |
 | Suspicious env var | `linux.envars` grep key/flag/pass |

