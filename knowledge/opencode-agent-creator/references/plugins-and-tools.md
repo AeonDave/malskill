@@ -57,11 +57,28 @@ export const MyPlugin: Plugin = async ({ client, $, directory, worktree }) => ({
 })
 ```
 
-Common event hooks: `tool.execute.before/after`, `session.idle/created/compacted`, `file.edited`, `shell.env`, `experimental.session.compacting`. High-value plugins for a team:
+Common event hooks: `tool.execute.before/after`, `session.idle/created/compacted`, `file.edited`, `shell.env`, `experimental.session.compacting`.
+
+### Ecosystem plugins worth knowing (from the OpenCode ecosystem list)
+
+- **`opencode-background-agents`** — async background delegation that survives context compaction. Adds three tools: `delegate(prompt, agent)` (returns an id immediately), `delegation_read(id)`, `delegation_list()`. Results persist to disk as markdown; if OpenCode exits mid-run the plugin re-adopts and finalizes the delegation on next start. **Constraints:** read-only subagents only (`edit`/`write`/`bash` denied — write-capable work must use native `task`); 15-minute timeout; background sessions sit outside the undo/branch tree. Notably, `delegate` accepts a **per-call `model` and `timeout`** — the practical way to vary model per dispatch (a quick lookup → cheap model + short window; deep research → stronger model + longer runway). Invalid/nonexistent models fail the delegation with an error rather than silently falling back.
+- **`opencode-workspace` / `oh-my-opencode`** — bundled multi-agent orchestration harnesses (background agents + curated specialist agents + planning/research protocols + pre-built LSP/AST/MCP tools), Claude Code-compatible. Use when you want a batteries-included team instead of wiring one by hand.
+- **`opencode-skillful`** — lets agents lazy-load prompts/skills on demand with skill discovery + injection (keeps prompts small until needed).
+- **`opencode-supermemory` / supermemory-style** — persistent cross-session memory. Weigh privacy: it retains scope/target data; never let it persist sensitive engagement data.
 - **Context pruning / dynamic context** — drops stale tool output to cut tokens (big win for the expensive supervisor).
-- **Persistent memory** — cross-session memory store. Weigh privacy: it can retain scope/target data.
 
 Evaluate plugins critically: a context-compression *proxy* that normalizes models can break per-agent model tiering — prefer native pruning plugins over proxies when your team relies on pinned models.
+
+### Experimental flags (env vars, preview — behavior may shift)
+
+| Flag | Effect |
+|---|---|
+| `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` | Native background subagent tasks (send a running subagent to the background). |
+| `OPENCODE_EXPERIMENTAL_SCOUT` | Enable the built-in `scout` subagent. |
+| `OPENCODE_EXPERIMENTAL_PARALLEL` | Parallel web-search execution. |
+| `OPENCODE_EXPERIMENTAL_WORKSPACES` | Workspace support. |
+
+Prefer the stable `opencode-background-agents` plugin over the native experimental flag when you need async delegation in production.
 
 ## Secrets
 

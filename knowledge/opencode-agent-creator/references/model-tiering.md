@@ -8,6 +8,8 @@ OpenCode resolves a subagent's model from its **pre-existing agent definition**.
 
 Consequence: **cost routing = routing to the agent whose pinned model fits the job.** You design tiers at config time; the supervisor "selects a model" only indirectly, by choosing which agent to dispatch.
 
+**The one exception — the `opencode-background-agents` plugin.** Its `delegate(prompt, agent)` tool *does* accept a per-call `model` (and `timeout`), so the supervisor can pick a model per dispatch at runtime — but only for **read-only** subagents (write-capable work must use native `task`). Use it for "cheap model + short window for a quick lookup, strong model + long runway for deep research" without pre-creating `x`/`x-heavy` duplicates. Everything else below is the native, plugin-free baseline.
+
 ## The three tiers
 
 | Tier | Who | Model policy |
