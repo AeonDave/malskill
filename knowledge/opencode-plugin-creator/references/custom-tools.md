@@ -60,10 +60,7 @@ type ToolContext = {
 }
 ```
 
-- **`metadata({ title })`** — sets the compact one-line header the TUI shows for the tool call. Set it to avoid dumping every argument (including long prompts) into the transcript:
-  ```ts
-  ctx.metadata({ title: `${args.agent} · ${id}` })
-  ```
+- **`metadata({ title })` is a NO-OP for plugin tools.** The host (`registry.ts` `fromPlugin`) takes the tool-call title/metadata **only from the value `execute` returns** and discards the Effect this call produces. To set the compact header, **return `{ title, output }`** (see `ToolResult` below) — `ctx.metadata(...)` does nothing here. A tool that returns a bare string gets an **empty** title, and the TUI then dumps every argument (including long prompts) into the transcript.
 - **`ask(...)`** — request a permission gate before a side effect.
 - **`abort`** — honor it in loops / long fetches: `if (ctx.abort.aborted) return "Cancelled."`
 - **`directory` / `worktree`** — resolve paths against these, not `process.cwd()`.
@@ -82,7 +79,10 @@ type ToolResult =
 ```
 
 - Return a **string** for the simple case.
-- Return the **object** when you also want a title/metadata/attachments.
+- Return the **object** to set a `title` (the compact TUI header), `metadata`, or `attachments` — for a plugin tool this returned object is the **only** way to set them (`ctx.metadata` is ignored):
+  ```ts
+  return { title: `${args.agent} · ${id}`, output: response }
+  ```
 - **`attachments`** surface files (images, generated artifacts) back into the conversation.
 
 ## Idioms from real plugins
@@ -93,7 +93,7 @@ type ToolResult =
   if (!model) return `❌ Invalid model "${args.model}". Expected "provider/model-id".`
   ```
   Reserve `throw` for truly unrecoverable states.
-- **Keep the header compact.** Long-prompt tools should call `ctx.metadata({ title })` early so the transcript stays readable.
+- **Keep the header compact.** Tools with a large arg (e.g. a long `prompt`) must **return `{ title, output }`** with a one-line title, or the TUI dumps the full args inline. `ctx.metadata` will not do this for plugin tools.
 - **Empty args are fine.** `args: {}` with `execute(_args, ctx)` for tools that take no input (status/list tools).
 - **Build tools in factories.** `createX(manager)` returning `tool({...})` keeps state (a manager/store) closed over and keeps `index.ts` thin.
 - **Write rich `description`s.** Multi-line is fine; state *when to use*, *what it returns*, and *when not to* — the model reads it verbatim.

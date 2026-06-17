@@ -63,9 +63,10 @@ const MyPlugin: Plugin = async (input) => {
 				args: {
 					message: tool.schema.string().describe("Text to echo back."),
 				},
-				async execute(args, ctx) {
-					ctx.metadata({ title: `echo: ${args.message.slice(0, 32)}` })
-					return `Echo: ${args.message}`
+				async execute(args, _ctx) {
+					// Set the compact TUI header via the RETURNED object — for plugin tools
+					// ctx.metadata() is a no-op; the host reads title/metadata only from here.
+					return { title: `echo: ${args.message.slice(0, 32)}`, output: `Echo: ${args.message}` }
 				},
 			}),
 		},

@@ -103,7 +103,14 @@ Bun runs the TS; the config only typechecks. Use Bundler resolution and Bun type
 ```
 `verbatimModuleSyntax` forces `import type { Plugin }` for type-only imports — keep types and values separated.
 
-## 12. Verification rule (do not skip)
+## 12. Spawned child sessions: navigation vs. the "view subagents" badge
+
+For plugins that create child sessions (`client.session.create({ body: { parentID, title } })` — delegation/background-agent style):
+- They are **navigable in the TUI by `parentID`**: `ctrl+x ↓` enters the first child, `←`/`→` cycle siblings, `↑` returns — and this works even while the parent turn is **idle** (it reads the live session list, not the running turn). The child `title` is its label in that navigation and the session list, so make it identifiable (`"<agent> · <id>"`, not `"Delegation: <id>"`).
+- The inline **"view subagents" badge** and the live `↳ N tool calls` block are **hardcoded to the native `task` tool** (`part.tool === "task"`). A custom `delegate`-style tool gets **no** passive on-screen cue — the user must press `ctrl+x ↓`. The native alternative that does get the badge is `task(background=true)` (flag `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`), at the cost of the custom control plane.
+- Finished child sessions are **never auto-evicted**, so they pile up and `ctrl+x ↓` lands on stale ones. Delete terminal+consumed children yourself (`client.session.delete`), but **persist their result to disk first** — deletion is permanent.
+
+## 13. Verification rule (do not skip)
 
 A plugin that typechecks and passes unit tests can still fail to load (bad export, wrong hook key, runtime import error). **Before reporting success:**
 1. `tsc --noEmit` clean.
