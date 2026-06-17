@@ -58,6 +58,24 @@ evil-winrm> PowerSploit.ps1   # load from scripts dir
 evil-winrm -i <target> -u user -r domain.local -k   # requires /etc/krb5.conf set
 ```
 
+### WinRM over Kerberos from Linux — gotchas
+
+Authenticating WinRM with a Kerberos ticket from a Linux attack host repeatedly fails on SPN and endpoint issues. Fixes:
+
+- **Use the FQDN, never the IP**, with `-i` — Kerberos needs the SPN `HTTP/<fqdn>`.
+- **`KDC_ERR_S_PRINCIPAL_UNKNOWN` / "Server not found in Kerberos database"**: the client canonicalised the hostname into a wrong SPN. Set `dns_canonicalize_hostname = false` in `/etc/krb5.conf` `[libdefaults]`.
+- **SPN service class is `HTTP`, not `WSMAN`.** Tools defaulting to `WSMAN/<host>` get principal-unknown — with pypsrp set `negotiate_service="HTTP"`. Confirm the SPN is issuable: `getST.py -k -no-pass -spn HTTP/<fqdn> -dc-ip <DC> DOMAIN/user`.
+- **HTTPS (5986) + `Access is denied` (WSManFault Code 5) on shell create**: the WinRS `cmd` endpoint is denied while the PSRP/PowerShell endpoint is allowed. Run PowerShell (PSRP), not `cmd`.
+- **evil-winrm's interactive REPL wedges** under non-tty/agent control (Reline `quoting_detection_proc` warning, no command echo). For non-interactive use, drive PSRP directly:
+
+```python
+from pypsrp.client import Client          # ships in the python netexec uses
+c = Client("dc01.domain.htb", auth="kerberos", negotiate_service="HTTP",
+           ssl=True, cert_validation=False)
+out, streams, had_err = c.execute_ps("whoami; type C:\\Users\\u\\Desktop\\user.txt")
+```
+Wrap the whole call in `faketime '+Xh'` if the DC clock skews (see `kerberos-only-and-badsuccessor.md` clock-skew matrix).
+
 ---
 
 ## RDP lateral movement patterns

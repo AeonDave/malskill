@@ -3,6 +3,7 @@
 Load this reference when:
 - NTLM authentication is rejected for LDAP (but SMB still works)
 - `getTGT` fails with `KDC_ERR_ETYPE_NOSUPP` even with a valid hash
+- A target account is in **Protected Users** (NTLM/RC4 rejected for that account only)
 - You need to abuse dMSA (delegated MSA) via BadSuccessor
 - Shadow credentials fail with `KDC_ERR_PADATA_TYPE_NOSUPP`
 
@@ -48,6 +49,17 @@ export KRB5CCNAME=user.ccache
 ```
 
 AES256 keys are stable across password resets only if the password itself hasn't changed. Obtain them via DCSync (`secretsdump -just-dc-user <user>`) or from memory.
+
+---
+
+## Protected Users members (per-account Kerberos-only)
+
+A member of **Protected Users** is locked into the same constraints as a Kerberos-only domain, but scoped to that one account: no NTLM, no RC4/DES (AES-only Kerberos), no delegation, 4h TGT cap. Detect via `memberOf` containing `CN=Protected Users` (RID 525).
+
+- **You can still reset its password.** Protected Users restricts how the *protected account itself* authenticates — it does NOT stop an actor holding `ForceChangePassword`/`GenericWrite`/`GenericAll` from resetting it. A `WILL_NOT_PERFORM` on the reset means you do not yet hold the right (e.g. not yet a member of the group whose ACE grants it), not the PU membership.
+- **NTLM PtH against the account fails**: `getTGT -hashes :NT`, `wmiexec`/`psexec -hashes`, `evil-winrm -H` all fail (RC4 banned, NTLM off). An NT hash alone is useless against a PU account.
+- **With a plaintext password** (known, or just reset): `getTGT DOMAIN/user:pass -dc-ip <DC>` works directly — impacket derives the AES key for the etype the KDC offers. Then drive everything over Kerberos (`-k`).
+- **WinRM as a PU member**: NTLM is rejected → authenticate with Kerberos only. See the WinRM-over-Kerberos gotchas in `lateral-movement-ad.md`.
 
 ---
 

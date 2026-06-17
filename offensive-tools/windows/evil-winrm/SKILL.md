@@ -14,7 +14,7 @@ When an AI Agent executes `evil-winrm`, standard PTY interactive prompts usually
 Instead, when obtaining output programmatically through a shell:
 1. Locate the absolute path of the gem (e.g., `gem contents evil-winrm`, or `find / -name "evil-winrm" -type f`).
 2. Use an interactive shell controller, OR pass commands directly through single execution modes if supported.
-3. If `evil-winrm` hangs or drops output, switch to Impacket's `wmiexec.py` or `psexec.py` as fallbacks for initial command execution.
+3. If `evil-winrm` hangs or drops output, switch to Impacket's `wmiexec.py` or `psexec.py` as fallbacks for initial command execution. Caveat: those use NTLM — against **Kerberos-only or Protected Users** targets they fail; there, drive WinRM PSRP over Kerberos non-interactively (pypsrp `Client(...).execute_ps()`). See `offensive-techniques/active-directory-technique/references/lateral-movement-ad.md`.
 
 ## The Domain/Realm Trap
 A common failure when attacking Active Directory via WinRM is attempting to pass the domain with the `-d` flag. **Modern versions of `evil-winrm` do not use `-d` for basic domain routing.**
