@@ -1,0 +1,37 @@
+{
+  "name": "@you/opencode-myplugin",
+  "version": "0.1.0",
+  "description": "TODO: one-line summary of what this OpenCode plugin does.",
+  "keywords": ["opencode", "opencode-plugin"],
+  "homepage": "https://github.com/you/opencode-myplugin#readme",
+  "bugs": "https://github.com/you/opencode-myplugin/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/you/opencode-myplugin.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "src/plugin/index.ts",
+  "exports": {
+    ".": "./src/plugin/index.ts"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opencode-ai/sdk": "*"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": { "optional": true },
+    "@opencode-ai/sdk": { "optional": true }
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "latest",
+    "@opencode-ai/sdk": "latest",
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}
