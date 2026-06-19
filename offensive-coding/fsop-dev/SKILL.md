@@ -80,11 +80,13 @@ If the problem is mostly allocator selection, heap shaping, tcache/largebin chor
 | obstack paths | stream or neighboring stream state controllable | call via `_obstack_newchunk` | underused but real |
 | leak-oriented FSOP | need TLS/libc/stack/tcb leak more than immediate RCE | stdout/stderr disclosure, pointer-guard recovery | often better than forcing shell-first |
 | pointer-guard-adjacent FSOP | TLS/pointer-guard or encrypted callback surfaces in play | unlock later destructor/cookie-file hijack | usually a bridge, not the first stage |
+| **input-buffer redirection** | can't forge in place (zeroing alloc) or redirect a RO stream pointer; an input stream is read each loop | corrupt only `_IO_buf_base`/read ptrs (keep `vtable`+`_lock`) → program's `fgets`/`fread` `read()`s a forged FILE into another stream → trigger on next print | the practical escape from the in-place wall; CET/IBT-safe (dispatch stays in libc) |
 
 ## Hint-mode recognition rules
 
 Load `references/hints-and-recognition.md` when triaging quickly. The shortest recognition cues are:
 
+- **Triage the trigger first**: scan imports/PLT — only `_exit` (no `exit`/`atexit`) means `_IO_list_all` never flushes; unused `stderr` means no assert/error trigger. Don't forge for an unreachable trigger.
 - If you can overlap `stdout` or `stderr`, ask **which natural call path touches it next** before chasing ROP.
 - If the `vtable` must stay inside libc, ask **which misaligned slot or alternate jump table** gives the call you want.
 - If `_wide_data` is reachable, ask **can I force `_IO_wdoallocbuf` or `_IO_WOVERFLOW`?**
@@ -92,6 +94,7 @@ Load `references/hints-and-recognition.md` when triaging quickly. The shortest r
 - If a heap exploit already gives largebin/tcache positioning over a stream, bias toward FSOP before exotic leakless Houses.
 - If seccomp or SUID makes `system("/bin/sh")` weak, bias toward `setcontext`, ORW, or a leak-first destructor chain.
 - If normal output mangles your crafted state, prefer `stderr` or assert-time dispatch.
+- **In-place wall** — if your only write primitive zeroes the chunk and the program does a FILE op on that stream before you can re-forge it (e.g. an alloc that `memset`s then `printf`s), do **not** forge in place. Use **cross-stream buffer redirection** (corrupt an *input* stream's `_IO_buf_base`/read ptrs, keep `vtable`+`_lock`, let its `fgets`/`fread` `read()` your forged FILE into another stream), pick a stream the corrupting op never touches, or use a non-zeroing/print-free/second-thread write.
 
 ## Trigger-driven rules
 
@@ -127,6 +130,8 @@ Load `references/hints-and-recognition.md` when triaging quickly. The shortest r
 - Forgetting that many FSOP wins are leak/read/write primitives, not immediate PC control.
 - Recommending `system("/bin/sh")` on SUID or seccomp targets by reflex.
 - Ignoring normal stream activity that mutates `_IO_write_ptr`, `_IO_buf_base`, `_mode`, or `_flags` before the trigger fires.
+- Forging a FILE for an **unreachable trigger** (e.g. `_IO_list_all` when the binary only `_exit`s) — verify the trigger in the imports/PLT first.
+- Repeatedly attempting an **in-place** forge when the write primitive zeroes the stream and the program immediately uses it — that ordering can never complete; switch to buffer redirection or a print-free write.
 
 ## Resources
 

@@ -20,6 +20,19 @@ Load to quickly map a binary's behavior or crash constraints to viable FSOP path
 - glibc is post-2.34 and old hook endings are gone
 - the program naturally prints, flushes, exits, aborts, or asserts after corruption
 - a fake `FILE` is easier to allocate than a fake stack or full object graph
+- you can corrupt an **input** stream's buffer pointers (`_IO_buf_base`/`_IO_read_*`) — the program's own `fgets`/`fread`/`scanf` then becomes an **arbitrary write of attacker-typed bytes** (use it to forge a FILE into *another* stream). See `triggers-and-call-paths.md` → "Buffer redirection as arbitrary write".
+
+### The in-place wall: allocator zeroes + immediately uses the target stream
+
+A very common reason an otherwise-correct in-place FSOP "just crashes": the **only write primitive zeroes the buffer it returns (calloc / explicit `memset`/`rep stosq`) and the program performs a FILE op on that same stream before you can re-forge it** (e.g. `create` zeroes a chunk over `stdout` then immediately `printf`s the success line; or corrupting `stdin` breaks the *next* `fgets` you need to drive the forging write). The half-zeroed stream (NULL vtable / NULL `_lock`) faults before your forge completes.
+
+Recognise it, then escape via one of:
+
+- **Cross-stream redirect (no in-place forge):** corrupt an *input* stream's buffer only — keep its `vtable` and `_lock` intact — so the program's own read lands your forged FILE bytes into a *different* target stream; trigger on the next print. This sidesteps the wall entirely and is single-shot.
+- **Pick a stream the corrupting op never touches:** forge a stream whose only consumer is a *later* trigger you control, so no FILE op runs on the half-built state in between.
+- **A write primitive that does not zero / does not print** (a true arbitrary write, a `free()`-deposited pointer, or a second thread performing the write outside the corrupting op).
+
+When choosing the chunk offset for the corrupting allocation, **align the zeroed/edited window to exclude the fields that must stay live for the intervening op** (`_lock`, `vtable`, and the read/`_lock` fields any in-between I/O needs).
 
 ### You probably do **not** need FSOP when
 
@@ -44,7 +57,7 @@ Load to quickly map a binary's behavior or crash constraints to viable FSOP path
 
 - **`stdout`**: easiest to trigger, hardest to keep pristine.
 - **`stderr`**: often the best practical default on modern targets because it is used less, yet still reachable on errors and asserts.
-- **`stdin`**: strongest when you want arbitrary read/write or structure self-overwrite, not immediate RIP control.
+- **`stdin`**: strongest when you want arbitrary read/write or structure self-overwrite, not immediate RIP control. Its biggest modern use: **redirect `_IO_buf_base` to a target address** (keeping `vtable`+`_lock`) so the next `fgets`/`fread` `read(0, target, n)` writes attacker-typed bytes there — type a forged FILE straight into `stdout`/`stderr`, then trigger on the next print. Lets you weaponise even when the stdout/stderr pointer-of-record is in a read-only RELRO page.
 - **custom `FILE *`**: great when the program keeps a heap-allocated or attacker-influenced stream object alive across operations.
 
 ## Trigger-selection hints
@@ -69,3 +82,5 @@ Load to quickly map a binary's behavior or crash constraints to viable FSOP path
 - Do not burn time on Apple 3 if `_codecvt` is not realistically writable.
 - Do not ignore obstack and sync/finish paths just because public writeups talk mostly about `puts` and `exit`.
 - Do not choose `system("/bin/sh")` when the target needs ORW, `setuid(0)`, or a less noisy post-exploitation path.
+- Do not keep retrying an **in-place** vtable/struct forge when the same write op zeroes the stream and the program uses it immediately after (the in-place wall) — switch to cross-stream buffer redirect or a non-zeroing/print-free write instead.
+- Do not assume an exit/`_IO_list_all` or `stderr`/assert trigger exists — **verify it in the imports/PLT first** (see trigger-availability triage). Burning time forging a FILE for a trigger the binary never reaches is a classic dead path.
