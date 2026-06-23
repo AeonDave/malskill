@@ -8,6 +8,8 @@ Use this when creating, reviewing, or packaging markdown agents for Pi subagent 
 - [Agent File Contract](#agent-file-contract)
 - [Supervisor Pattern](#supervisor-pattern)
 - [Context Selection](#context-selection)
+- [Model Routing](#model-routing)
+- [Decomposition and Coaching](#decomposition-and-coaching)
 - [Chains and Fanout](#chains-and-fanout)
 - [Packaging Agents](#packaging-agents)
 - [Extension Differences](#extension-differences)
@@ -23,6 +25,7 @@ Use this when creating, reviewing, or packaging markdown agents for Pi subagent 
 - Keep the main Pi session as supervisor unless the user explicitly wants a child that can spawn children.
 - Use a custom agent when a reusable role, tool boundary, model choice, context mode, or output contract is stable across tasks.
 - Use `agentOverrides` for small builtin tweaks. Create a markdown agent with the same runtime name when the role changes substantially.
+- Let supervisor agents choose per-task models. Children may use a different provider/model than the parent when the subagent extension accepts a `model` override.
 
 ## Locations and Precedence
 
@@ -216,6 +219,106 @@ Use fork context for:
 - The child receives the active session branch and a final task message.
 - It does not apply a custom agent markdown persona.
 - Use it for dense `Result`, `Output`, `Evidence`, `Learnings` reports from the same persona/context.
+
+## Model Routing
+
+Pi model availability is runtime state. Do not hardcode a global catalog in agent docs.
+
+Ways to inspect models:
+- Shell: `pi --list-models`
+- Filtered shell: `pi --list-models <search>`, for example `pi --list-models sonnet` or `pi --list-models openrouter`
+- Extension/RPC code: use `ctx.modelRegistry.getAvailable()` or the RPC `get_available_models` command when building a structured extension
+
+Supervisor rules:
+- Pick `provider/model` and thinking effort per delegated task when capability, cost, context, vision, provider trust, reasoning depth, or latency matters.
+- Omit `model` or use `inherit` only when the parent model is already the right fit.
+- Use full `provider/model` strings when available. Bare model IDs are safe only when unique in the registry.
+- In execution calls, express per-task effort as a model suffix, such as `anthropic/claude-sonnet-4-5:high`.
+- In agent markdown or `agentOverrides`, use `thinking` to append a default suffix at runtime unless the model string already has one.
+- Re-check the registry after login/logout, settings changes, package changes, or model failures.
+
+Selection heuristics:
+- `:off`, `:minimal`, `:low`: grep-heavy scouting, formatting, simple summaries, obvious test triage.
+- `:medium`: normal implementation, investigation, and synthesis that need judgment.
+- `:high`, `:xhigh`: exploit chains, hard debugging, architecture, adversarial review, multi-step implementation.
+- Large context: broad repository review, long logs, many artifacts, cross-file synthesis.
+- Vision: screenshots, diagrams, UI review, image evidence.
+- Trusted/private provider: sensitive source, credentials-adjacent data, client artifacts, exploit material.
+
+Per-call examples:
+
+```ts
+subagent({
+  agent: "1337-operator",
+  task: "<hard reasoning packet>",
+  model: "anthropic/claude-sonnet-4-5:high",
+  context: "fresh"
+});
+```
+
+```ts
+subagent({
+  tasks: [
+    { agent: "1337-operator", task: "<cheap repository scout>", model: "github-copilot/gpt-4.1" },
+    { agent: "1337-operator", task: "<exploit-analysis pass>", model: "anthropic/claude-opus-4-5:high" }
+  ],
+  context: "fresh",
+  concurrency: 2
+});
+```
+
+Agent-level fallback example:
+
+```md
+---
+name: deep-reviewer
+description: Performs expensive second-pass review when the supervisor requests high confidence
+tools: read, grep, find, ls, bash
+model: anthropic/claude-opus-4-5:high
+fallbackModels: anthropic/claude-sonnet-4-5:high, openrouter/anthropic/claude-sonnet-4.5
+defaultContext: fresh
+---
+```
+
+Do not let ordinary operator prompts select new models at will. Operators should report when the assigned model is inadequate because of context size, vision need, reasoning quality, provider/tool constraint, or sensitive-data policy.
+
+## Decomposition and Coaching
+
+Supervisor agents should decompose large work before launching children.
+
+Good child task size:
+- One domain, component, exploit path, test suite, artifact family, or review dimension.
+- One clear deliverable and success signal.
+- Enough work to justify a separate context window.
+- Small enough for the parent to verify without replaying the whole run.
+- Output bounded by `maxOutput`, `outputMode: "file-only"`, or explicit output files when large.
+
+Avoid:
+- One giant "do everything" worker.
+- Many tiny children that only restate setup or duplicate reads.
+- Parallel writers in the same checkout without `worktree: true` or disjoint file ownership.
+- Children coordinating with each other. The parent is the message bus.
+
+Routing:
+- Parallel `tasks`: independent scouts, independent review lenses, subsystem-specific searches, competing approaches, or non-overlapping implementation legs.
+- Sequential `chain`: scout -> plan -> implement -> verify -> review, or enumerate -> test hypothesis -> report.
+- Dynamic fanout: only from bounded structured output; set a maximum item count.
+- Direct parent work: quick orientation, final synthesis, and high-impact verification.
+
+Use model/effort by phase:
+- Scout: cheaper model, `:low`.
+- Planner: balanced model, `:medium` or `:high`.
+- Worker: capable coding model, `:medium` or `:high` depending on risk.
+- Reviewer/oracle/exploitability: strongest suitable model, usually `:high`.
+
+Control capabilities in `npm:pi-subagents`:
+- `status` is the normal peek path for live/background runs. It surfaces run ids, progress, nested status, session/artifact paths, and output/log references when available.
+- `resume` nudges or steers an active/revivable run; use it to narrow scope, add evidence requirements, or redirect a stuck child.
+- `interrupt` stops unsafe, out-of-scope, wrong-target, or repeatedly failing runs.
+- `append-step` adds exactly one tail step to a running async chain; it is not a general rewrite of completed/failed work.
+- Attention notices can tell the parent when to inspect, nudge, or interrupt.
+
+Foreground runs support live progress. In TUI, expanded live detail is a human UI affordance; agent-visible steering should rely on `status`, result details, saved outputs, and control actions.
 
 ## Chains and Fanout
 
