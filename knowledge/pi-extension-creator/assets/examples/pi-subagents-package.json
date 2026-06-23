@@ -1,0 +1,15 @@
+{
+  "name": "my-pi-agent-pack",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "pi": {
+    "subagents": {
+      "agents": ["./agents"],
+      "chains": ["./chains"]
+    }
+  },
+  "pi-subagents": {
+    "agents": ["./agents"],
+    "chains": ["./chains"]
+  }
+}
