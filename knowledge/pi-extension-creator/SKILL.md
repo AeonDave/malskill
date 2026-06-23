@@ -1,0 +1,136 @@
+---
+name: pi-extension-creator
+description: "Create, review, package, and troubleshoot Pi coding-agent extensions and Pi packages. Use when asked to build TypeScript extensions for Pi, register tools with pi.registerTool, subscribe to pi.on lifecycle/tool/input/session events, add slash commands, custom UI/widgets/renderers, package resources through package.json pi.extensions/skills/prompts/themes, install via pi -e or pi install, or adapt examples such as pi-fork, pi-minimal-subagent, Hypa pi-hypa, permission gates, protected paths, subagents, command rewriters, custom providers, and dynamic resources."
+license: MIT
+metadata:
+  author: AeonDave
+  version: "1.0"
+---
+
+# Pi Extension Creator
+
+## Start Here
+
+Build Pi extensions as TypeScript modules that export a default factory receiving `ExtensionAPI`.
+
+Use current Pi imports for new work:
+
+```ts
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
+```
+
+Some older public examples use `@mariozechner/*` or `@sinclair/typebox`. Preserve those only when maintaining that codebase. For new code, follow the current docs and local package conventions.
+
+## Workflow
+
+1. Define the extension surface before coding.
+   - LLM-callable capability: `pi.registerTool`.
+   - User slash command: `pi.registerCommand`.
+   - Gate, rewrite, context injection, or lifecycle reaction: `pi.on`.
+   - Persistent visible UI: `ctx.ui.setStatus`, `ctx.ui.setWidget`, `ctx.ui.setHeader`, or `ctx.ui.setFooter`.
+   - Custom tool/message rendering: `renderCall`, `renderResult`, or `pi.registerMessageRenderer`.
+   - Shared installable bundle: Pi package with `package.json` `pi` manifest.
+2. Pick the smallest layout.
+   - Single `.ts` file for one tool, one command, or a simple event gate.
+   - Directory with `index.ts` plus sibling modules for stateful tools, subprocess runners, renderers, or policies.
+   - npm/git Pi package when users should install it with `pi install`.
+3. Keep the extension factory light.
+   - Register tools, commands, flags, shortcuts, and event handlers there.
+   - Do not start long-lived watchers, servers, child processes, or timers in the factory.
+   - Start session-scoped resources from `session_start`, a command, a tool call, or the exact event that needs them.
+   - Clean up in `session_shutdown`; make cleanup idempotent.
+4. Implement with Pi runtime modes in mind.
+   - Check `ctx.hasUI` before confirm/select/input/notify flows.
+   - Check `ctx.mode === "tui"` before custom TUI components or editor replacement.
+   - Provide non-interactive fallbacks for `print`, JSON, and CI usage.
+5. Persist state through the session, not hidden process memory.
+   - Put reconstructable state in tool result `details` when it affects future behavior.
+   - Rebuild in-memory state from `ctx.sessionManager.getBranch()` on `session_start`.
+   - Use `pi.appendEntry()` for custom persistent entries that are not natural tool results.
+6. Test pure logic outside Pi.
+   - Move parsing, settings resolution, command construction, and policy decisions into plain modules.
+   - Unit-test those modules with `node --test`, `tsx --test`, or the project toolchain.
+   - Typecheck with `tsc --noEmit`.
+7. Verify in Pi before claiming it works.
+   - Quick load: `pi -e ./path/to/index.ts`.
+   - Auto-discovery: copy/link into `~/.pi/agent/extensions/` or `.pi/extensions/`, then use `/reload`.
+   - Package install: `pi install ./package` or `pi -e ./package`.
+
+## API Routing
+
+Load [references/api-surface.md](references/api-surface.md) when writing handler signatures, event returns, tool result shapes, UI behavior, rendering, or provider/resource integration.
+
+Use these defaults:
+
+| Goal | API |
+|---|---|
+| Add a model-callable operation | `pi.registerTool({ name, label, description, parameters, execute })` |
+| Block or rewrite a tool call | `pi.on("tool_call", handler)` |
+| Modify per-turn system context | `pi.on("before_agent_start", handler)` or `pi.on("context", handler)` |
+| Add `/command` | `pi.registerCommand("name", { description, handler })` |
+| Ask the user | `ctx.ui.confirm`, `ctx.ui.select`, `ctx.ui.input`; guard with `ctx.hasUI` |
+| Show status or dashboard text | `ctx.ui.setStatus`, `ctx.ui.setWidget` |
+| Override a built-in tool | Register a tool with the same name, then preserve expected args/rendering |
+| Contribute skills/prompts/themes dynamically | `pi.on("resources_discover", handler)` |
+| Communicate across extensions | `pi.events` |
+| Add a provider/model source | `pi.registerProvider` |
+
+## Design Rules
+
+- Give tools narrow names, explicit parameter descriptions, and strong `description` text that tells the model when to use them.
+- Prefer `StringEnum([...])` from `@earendil-works/pi-ai` for enum-like string parameters when Google-compatible schemas matter.
+- Return actionable error content with `isError: true`; throw only when the tool execution itself should be reported as a failed tool call.
+- Use `signal` and pass it to subprocesses, fetches, timers, and long work.
+- Stream progress through `onUpdate` only for meaningful state changes.
+- Never rely on closure state alone for session behavior that must survive `/reload`, `/resume`, `/fork`, or restart.
+- Keep path handling cross-platform with `node:path`, and normalize only at module boundaries.
+- Treat project-local extensions and packages as trusted code that run with full system access; keep security-sensitive defaults conservative.
+
+## Example Selection
+
+Load [references/patterns-and-examples.md](references/patterns-and-examples.md) when choosing structure from real examples:
+
+- `pi-fork`: subprocess runner, context snapshot, effort config, cost footer, custom rendering.
+- `pi-minimal-subagent`: named agent discovery, simple subagent tool, config tri-state for child extensions.
+- `Hypa pi-hypa`: command rewrite gate, diagnostics command, package subdirectory, external runtime dependency.
+- Official examples: permission gates, protected paths, dynamic tools, stateful todo, custom UI, package dependencies, resource discovery.
+
+Load [references/advanced-redesign.md](references/advanced-redesign.md) when the request says redesign, advanced theme, UI chrome, statusline, powerline footer, hide/show Pi UI, replace footer/header/editor, or combine a JSON theme with extension behavior.
+
+## Packaging
+
+Load [references/package-and-release.md](references/package-and-release.md) before publishing, installing, adding dependencies, or wiring a repo as a Pi package.
+
+Minimum package manifest:
+
+```json
+{
+  "name": "my-pi-extension",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  }
+}
+```
+
+Use peer dependencies for Pi-provided packages and runtime dependencies for everything your extension imports at runtime.
+
+## Resources
+
+### references/
+
+- [references/api-surface.md](references/api-surface.md) - Pi extension APIs, event routing, tool signatures, UI modes, rendering, state, and error behavior. Load before implementing API handlers.
+- [references/patterns-and-examples.md](references/patterns-and-examples.md) - Architecture patterns from official examples plus `pi-fork`, `pi-minimal-subagent`, and `Hypa`. Load when choosing a design or reviewing an existing extension.
+- [references/advanced-redesign.md](references/advanced-redesign.md) - Theme-vs-extension decision rules, advanced UI chrome replacement, statusline/footer/header/editor patterns, mode limits, and validation. Load before implementing a redesign or advanced theme package.
+- [references/package-and-release.md](references/package-and-release.md) - Pi package layout, dependencies, install modes, filtering, release checklist, and validation. Load when packaging or distributing.
+
+### scripts/
+
+- [scripts/init_pi_extension.py](scripts/init_pi_extension.py) - Copy the basic template into a target directory and rename package identifiers. Run when starting a new Pi extension package.
+
+### assets/
+
+- [assets/templates/basic-pi-extension/](assets/templates/basic-pi-extension/) - Minimal typed Pi package with `src/index.ts`, `package.json`, `tsconfig.json`, and a small test.
+- [assets/examples/](assets/examples/) - Focused single-file examples for common extension surfaces. Copy only when the matching pattern is needed.
