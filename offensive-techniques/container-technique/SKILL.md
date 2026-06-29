@@ -23,7 +23,9 @@ Determine the isolation boundaries.
 
 - **Exposed Docker Socket**: `ls -la /var/run/docker.sock`. If writable, attach the host root filesystem to a new container.
 - **Privileged Container**: If `fdisk -l` lists host drives or `capsh` shows `CAP_SYS_ADMIN`, mount the host filesystem (e.g., `mount /dev/sda1 /mnt`) or load a malicious kernel module.
-- **Cgroups Release Agent**: If `CAP_SYS_ADMIN` is present, leverage the `release_agent` feature to spawn host processes.
+- **Cgroups Release Agent**: If `CAP_SYS_ADMIN` is present on cgroups v1, leverage the `release_agent` feature to spawn host processes.
+- **core_pattern / modprobe_path**: Overwrite `/proc/sys/kernel/core_pattern` (pipe format) or `/proc/sys/kernel/modprobe` to make the kernel run an attacker script as root on the host. Works on cgroups v1 and v2. Trigger via SIGSEGV crash or unknown-magic binary execution. Use overlay `upperdir` from `/proc/self/mountinfo` for host-accessible read/write path.
+- **Entrypoint UID-drop bypass**: If the image entrypoint checks `$(id -u)` to decide whether to drop privileges via `gosu`/`su-exec`, and `/bin/sh` is bash, inject `BASH_FUNC_id%%=() { echo uid=1000; }` as an environment variable. Bash imports it as a function overriding `/usr/bin/id`, so the check sees non-root and skips the privilege drop. Container stays as real uid 0.
 
 ### 3. Kubernetes Specifics
 - **Service Account Tokens**: Located at `/var/run/secrets/kubernetes.io/serviceaccount/`.

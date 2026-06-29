@@ -65,6 +65,8 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - Triage binary and mitigations first; prove exact controlled primitive before payload engineering.
 - Build exploit in stages: local repro, info leak, base calculation, control-flow/data-only effect, remote adaptation.
 - Keep offsets, libc/loader assumptions, and environment drift explicit.
+- Harness reliability: anchor each response parser on a *stable* token (the menu reprint), not the input prompt the previous step already consumed — a swallowed delimiter desyncs the next `recvuntil` and reads as a flaky exploit, usually papered over with long timeouts instead of fixed. Parse binary leaks over raw pipes or the live socket, never a pty (a pty mangles non-printable bytes).
+- For local ground truth during development — PIE/heap/libc bases and arbitrary R/W to validate offsets before wiring the leak — read `/proc/<pid>/{maps,mem}` directly instead of trusting the exploit's own parsed values.
 - If RELRO, GOT/PLT, relocation tables, or leakless partial overwrites appear, load `references/relro-aslr-relocations.md` before deciding the final target.
 - If shellcode has a byte blacklist (filter function rejecting specific bytes), load `references/shellcode-filtering.md` first — decode the blacklist semantics, find safe XOR/ADD encoding, use register-based string construction to avoid blocked opcodes and string literals.
 

