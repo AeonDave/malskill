@@ -74,6 +74,19 @@ Do not brute-force domain accounts blindly — AD lockout policies are common. S
 
 Map the domain before attacking. BloodHound gives the full graph; PowerView for targeted queries.
 
+### No credentials yet, shell on a domain-joined *nix host
+
+Bootstrap valid usernames before any other Phase 1/2 step.
+
+```bash
+/usr/sbin/realm list -a                       # confirm domain-joined + realm name
+getent passwd <candidate_user>                # validate via NSS/SSSD, no auth needed
+```
+
+With root, read the local SSSD cache directly for a full user/group list without any domain credential.
+
+→ Full technique: `references/ad-enumeration.md` §Domain user/group enumeration from a domain-joined *nix host.
+
 ### BloodHound collection
 
 ```powershell
@@ -565,6 +578,12 @@ Modify a legitimate TGT rather than forging from scratch — stealthier than Gol
   /krbkey:<aes256_krbtgt> /ldap /opsec /nowrap
 ```
 
+### RODC Golden Ticket / KeyList Attack
+
+Forge TGTs signed by the RODC-specific `krbtgt_XXXXX` account, or reveal a target's long-term keys via KERB-KEY-LIST-REQ — both accepted by the writable DC if the target passes the RODC's Password Replication Policy (PRP). The AES256 `krbtgt_XXXXX` key exists only in the RODC's live LSASS (never in an offline `ntds.dit` dump), and the forged/revealed ticket's `enc-part.kvno` must encode the RODC number or the writable DC rejects it.
+
+→ Full technique: `references/rodc-attacks.md` §kvno encoding, PRP setup, key extraction, Rubeus/impacket golden-ticket and KeyList commands.
+
 ### AD persistence
 
 ```powershell
@@ -736,6 +755,7 @@ MITRE ATT&CK primary mappings:
 - [references/kerberos-time-skew.md](references/kerberos-time-skew.md) — Load when Kerberos authentication fails with `KRB_AP_ERR_SKEW` or Clock skew too great. Covers `faketime` and `ntpdate` synchronization.
 - [references/kerberos-only-and-badsuccessor.md](references/kerberos-only-and-badsuccessor.md) — Load when NTLM is disabled for LDAP, RC4 is banned for AS-REQ, shadow credentials fail with `KDC_ERR_PADATA_TYPE_NOSUPP`, or you need to exploit BadSuccessor (dMSA) in single-actor or split-identity mode.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
+- [references/rodc-attacks.md](references/rodc-attacks.md) — RODC Golden Ticket and KeyList Attack: kvno encoding, PRP prerequisite, krbtgt_XXXXX extraction, forge/reveal commands and caveats.
 - [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-14 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
 - [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.
 - [references/lateral-movement-ad.md](references/lateral-movement-ad.md) — Protocol × credential type matrix, WMI/DCOM/RDP/WinRM/SMB patterns, detection signatures to avoid.

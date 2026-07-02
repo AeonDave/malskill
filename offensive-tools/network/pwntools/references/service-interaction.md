@@ -193,6 +193,60 @@ print(f'Score: {correct}/100, Flag: {flag}')
 
 ## Error handling and robustness
 
+### Preserve same-process state
+
+Keep all dependent exploit phases on one tube:
+
+```python
+def attempt(host, port):
+    io = remote(host, port)
+    try:
+        libc = leak_libc(io)
+        pie = establish_clean_entry_and_leak_pie(io)
+        shape_persistent_state(io)
+        stack, canary = leak_current_frame(io)
+        stage_payload(io, libc, pie, stack, canary)
+        trigger(io)
+        return wait_for_objective(io)
+    finally:
+        io.close()
+```
+
+Do not reconnect between phases that depend on ASLR, allocator history, menu counters, stored data, or the current stack frame. Log derived addresses with an attempt ID so values from different processes cannot be mixed.
+
+### Retry by failure class
+
+Retry only failures expected to vary on a fresh process:
+
+```python
+class RetryableAttempt(Exception):
+    pass
+
+for attempt_id in range(1, 33):
+    try:
+        result = attempt(host, port)
+        if result:
+            break
+    except (EOFError, PwnlibException, RetryableAttempt) as exc:
+        log.warning("attempt %d retryable: %s", attempt_id, exc)
+```
+
+Use explicit retry reasons for truncated leaks, rejected ASLR bytes, or service restarts. Raise a hard failure for protocol desynchronization, incorrect offsets, or a repeatable bad checkpoint.
+
+### Delay input after image replacement
+
+Do not queue shell commands before an `execve` trigger. Buffered parent input may consume those bytes before the new image starts.
+
+```python
+trigger_execve(io)
+banner = io.recvrepeat(0.2)
+sleep(0.1)
+io.sendline(b'printf READY; id')
+proof = io.recvuntil(b'READY', timeout=2) + io.recvrepeat(0.5)
+```
+
+Wait for a target-specific readiness signal when available; use a short bounded delay only as a fallback.
+
 ### Retry on failure
 
 ```python

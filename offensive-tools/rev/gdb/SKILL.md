@@ -98,6 +98,40 @@ pwndbg> context          # Show registers, code, stack, backtrace
 | `dump binary memory out.bin ADDR1 ADDR2` | Dump memory range to file |
 | `find /b ADDR1, ADDR2, 0x4d, 0x5a` | Find byte pattern |
 
+## Breakpoint snapshot campaign
+
+Use snapshots when exploitability depends on runtime frame layout, allocator history, or a library call's internal path.
+
+1. Break at the exact call instruction, function entry, return instruction, and epilogue/pivot.
+2. At each stop, record `rip`, general registers, `bt`, mappings, and bounded memory windows around `rsp`, `rbp`, inputs, outputs, and write targets.
+3. Give each snapshot a stage and attempt ID; keep all stages from one PID together.
+4. Compare the pre-call and post-return snapshots byte-for-byte.
+5. Continue to the next consumer of the modified state. A correct write that is never consumed is not an exploitable chain.
+
+Minimal command block:
+
+```gdb
+set pagination off
+set logging file snapshot.log
+set logging overwrite off
+set logging enabled on
+printf "\n=== attempt-03 stage-trigger-pre ===\n"
+info inferior
+info registers
+bt
+info proc mappings
+x/32gx $rsp
+x/16gx $rbp-0x40
+x/64bx <input-address>
+x/64bx <target-address>
+```
+
+Use a watchpoint on the exact target after the first snapshot. Re-capture registers, backtrace, and both memory windows on every write. Snapshot the real final call site; a smaller test case may select a different algorithm or stack frame.
+
+For allocator integrity failures, stop at the comparison that rejects the list instead of recording only `malloc_printerr` or `SIGABRT`. Dump the victim, `fd`, `bk`, bin sentinel, tcache entry, and normalized request size. Step backward through the last allocation/free transition to identify which automatic metadata write broke reciprocity.
+
+When a clean-process trigger works but the full exploit fails, run the complete payload and break before every helper allocation introduced by the trigger. Compare arena and tcache state against the clean trigger; this is the composability gate.
+
 ## Malware Analysis Workflows
 
 ### Anti-debug bypass (ptrace)
@@ -231,4 +265,4 @@ gdb.execute("run")
 | File | When to load |
 |------|--------------|
 | [references/malware-debugging.md](references/malware-debugging.md) | Step-by-step malware debugging workflows |
-| [references/scripting.md](references/scripting.md) | GDB Python API patterns for automation |
+| [references/scripting.md](references/scripting.md) | Load when automating repeated breakpoint snapshots, call/return tracing, watchpoints, or structured event logs with the GDB Python API |
