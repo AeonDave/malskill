@@ -59,6 +59,14 @@ Look for:
 - vote or market logic that trusts unbounded IDs or stale state
 - force-funding or selfdestruct-based balance manipulation
 
+## Compiler / language pitfalls
+
+**Solidity Transient Storage Clearing Collision (0.8.28\u20130.8.33, `-via-ir`)**: the IR pipeline generates identically-named Yul helpers for `delete` on persistent and transient variables of the same type. One helper uses `sstore`, the other should use `tstore`, but deduplication keeps only *one* implementation. Two exploit shapes:
+- **Overwrite `owner`** (slot 0) via a transient `delete` \u2014 the wrong helper runs `sstore(0, 0)` on the persistent owner slot.
+- **Ineffective persistent `delete`** \u2014 e.g. `delete _approvals` fails to revoke approvals when the compiler dedups to the transient variant.
+
+Workaround: `_lock = address(0)` instead of `delete _lock` for transient state; upgrade to \u2265 0.8.34.
+
 ## Common operator notes
 
 Use web tooling and chain tooling together:

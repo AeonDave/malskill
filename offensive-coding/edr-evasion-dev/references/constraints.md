@@ -125,3 +125,44 @@ Hard constraints discovered through testing. Each entry caused a crash, detectio
 | `EnumWindows(shellcode, 0)` with shellcode using `spoofed_syscall` | Crash | Caller thread stack layout not guaranteed; synthetic frames corrupt |
 | `QueueUserAPC(shellcode)` targeting CLR thread + module-stomped DLL | DllMain re-entry crash | CLR APC delivery may re-trigger DLL load notification on stomped module |
 | Callback-based execution in beacon loop (repeated timer fires) | High EDR suspicion | Multiple callbacks from winmm.dll to private/RWX memory → behavioral pattern; use once for initial exec, not for looping |
+
+## Disproven Assumptions — Do Not Reintroduce
+
+Assumptions falsified by S1/CS/Defender testing (each cost measurable time or produced a detection regression). Read this before adding an evasion feature "just in case".
+
+| Assumption | Reality | Fix |
+|------------|---------|-----|
+| Selective ETW suppression will satisfy S1 (CLR-aware) | S1 correlates `CLR loaded` + `CLR ETW absent` = bypass, regardless of who suppressed it | Disable DR0 entirely instead of trying to filter CLR-only |
+| More HWBP coverage = better evasion (expand 4→11 targets) | Every active DR is a "breakpoint without debugger" signal; re-issued indirect_syscall adds "direct syscall from patched library" | Remove ALL HWBP from tool_mode |
+| Indirect syscall > direct ntdll stubs (for backed EXE) | S1 validates syscall RIP against ntdll stub entries; gadget dispatch fires "direct syscall from patched library". Real hooked stubs generate **zero** syscall indicators on a backed EXE | PEB-resolved direct `Nt*` calls for backed EXE; save indirect_syscall for unbacked contexts |
+| Gating call sites (with `if false {}`) removes bytes | At `opt-level=0`, all function bodies compile regardless of reachability; dead code retains `0F 05` (syscall) and `mov eax,ecx; jmp r11` gadget bytes | `#[cfg]`-gate the *definitions*, not the call sites; verify with `objdump` |
+| VEH registration is invisible if handler is a no-op | S1 signatures on the `AddVectoredExceptionHandler` **call pattern** in `.text`, not the handler body | `#[cfg]`-gate the entire VEH registration block for tool_mode |
+| SilentMoonwalk helps a backed EXE | Backed `.text` is already a legitimate return address; SMW adds indirect_syscall + VEH + HWBP = 3 indicators for zero gain | Skip SMW in tool_mode; keep it only for beacon (unbacked) |
+| More evasion features = better evasion | A 1,472-line minimal beacon (no VEH/HWBP/unhooking) evades fully; a 6,126-line "everything on" build is detected. Each added feature added 1–3 real indicators | §0 minimalism: start minimal, add only after confirming a real signal it must suppress |
+| A more OS-correct reflective entrypoint fixes Rust shellcode | Switching a Rust cdylib loader from exported-`DllMain` first to `AddressOfEntryPoint`/`_DllMainCRTStartup` first can regress: the exported path may reach beacon+HTTP resolve while entrypoint-first stops server contact | Preserve the loader/payload lifecycle that already reaches the beacon; add breadcrumbs around the failing runtime primitive instead of rewriting loader entry order |
+
+### Confirmed indicator reductions
+
+| Change | Reduction real? | Notes |
+|--------|-----------------|-------|
+| Private RWX (drop mapped-section W^X in tool_mode) | Yes | Section kernel signal eliminated |
+| Disable ETW DR0 entirely | Yes | ~8→~4 indicators, "ETW bypassed" eliminated |
+| Eliminate syscall/VEH/HWBP call sites for tool_mode | Yes | ~4→~1, three indicators gone |
+| Selective ETW (CLR-only DR0) | No | S1 still detects the CLR gap |
+| Expand HWBP targets 4→11 | No | More DRs = more signals |
+| Gate call sites only (dead functions retained) | No | Dead code keeps signature bytes |
+| Entrypoint-first Rust reflective load | No | Regressed live shellcode contact |
+
+**Irreducible remainder**: "Malicious shellcode execution" (private RWX + PEB walk + dynamic API resolution). Everything else is negotiable; this is the floor.
+
+## CrowdStrike-Specific Regressions
+
+Distinct from S1 findings. Never combine these three patterns with any usermode-evasion implant.
+
+| Pattern | Detection signature | Delta on VT |
+|---------|--------------------|-------------|
+| **PE header stomp** (`map → execute → zero first 0x1000`) | CS shellcode-loader signature (missing PE header on RWX region) | 60%→90% |
+| **AMSI propagation inside `NtCreateThreadEx` hook** (PEB walk + resolve `AmsiScanBuffer` + `SetThreadContext` inside the hook body) | CS SharpBlock signature | 60%→90% |
+| **Removing `panic_abort`** from a Rust build | Reintroduces Rust unwinding strings (`attempt to divide by zero`, `library/core/src/…`) | Static string signature |
+
+**Rule**: always use `build-std = ["std", "panic_abort"]` + `panic = "immediate-abort"`. Do PEB walks and AMSI resolution on the TP worker thread, never inside a hook body. Never zero the PE header in-place; if header removal is needed, do it in a fresh copy in unmodified memory.

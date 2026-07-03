@@ -23,7 +23,7 @@ Goal: solve web-application CTF tasks with professional methodology, curated hig
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
 3. Load the closest curated reference for the dominant primitive before touching deep topic banks.
-4. Use `field-notes.md` and `sql-injection.md` as deep banks only when the focused reference is too shallow for the current edge case.
+4. Use `sql-injection.md` as the deep bank when the focused SQLi reference is too shallow for the current edge case.
 5. Choose the smallest tool chain that can produce a validation signal.
 6. Record the exact proof path and stop once the objective is reproducible.
 
@@ -113,7 +113,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/server-execution.md](references/server-execution.md) — curated execution pack: runtime injection, upload-to-RCE, deserialization, and advanced framework chains.
 - [references/web-vulnerabilities-and-cves.md](references/web-vulnerabilities-and-cves.md) — curated framework/product CVE pack for stack-specific web shortcuts.
 - [references/web3-attacks.md](references/web3-attacks.md) — curated Web3/web-wallet/contract interaction pack.
-- [references/field-notes.md](references/field-notes.md) — deep quick-reference bank for compact payloads, niche chains, and challenge-specific pivots.
 - [references/sql-injection.md](references/sql-injection.md) — deep SQLi bank for DBMS quirks, filter bypasses, second-order cases, timing oracles, and SQL-adjacent injections.
 
-Use the focused references as the primary load path; use deep banks when an edge case needs more detail.
+Use the focused references as the primary load path; use the SQLi deep bank when an edge case needs more detail.
