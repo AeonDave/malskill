@@ -51,7 +51,7 @@ This area is explicitly about **how to use a specific tool** to reach an objecti
 | `linux/` | linpeas, linux-persistence, mimipenguin, pwncat, ssh-key-scanner |
 | `shells/` | reverse-ssh, revshells, shellerator, weevely3 |
 | `cracking/` | hashcat, hydra, john |
-| `exploits/` | beef, metasploit, searchsploit, vuln-research |
+| `exploits/` | beef, metasploit, pwntools, searchsploit, foundry-cast, vuln-research |
 
 **Note on `forensic/`**: These skills exist because security work often requires analyzing artifacts produced by attacks - understanding what defenders see, recovering post-compromise evidence, assessing detection surface, and validating OPSEC. Tools like `volatility3`, `capa`, and `yara` are as useful for a red team operator understanding EDR behavior as they are for a blue team analyst.
 
@@ -138,13 +138,32 @@ These categories are support layers. Load them when they improve the current off
 | `cve-search` | CVE enumeration and public PoC collection |
 | `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
 
+### `offensive-hardware/` - Hardware-focused assessments
+
+On-device compromise, firmware extraction, and signal reversing. Live-hardware attack surface that complements `offensive-techniques/hardware-technique/` methodology and `offensive-tools/hardware-technique/`-adjacent lab tools.
+
+- **`flipper-zero`** - Sub-GHz, RFID/NFC, iButton, BadUSB, BLE offensive workflows
+- **`jtag-swd`** - JTAG/SWD probe workflows and IDCODE walking
+- **`saleae-logic-2`** - Logic-analyzer capture and protocol export
+- **`spi-flash`** - In-circuit SPI flash dump and reflash
+- **`uart-console`** - UART discovery, baud detection, and root-shell recovery
+
 ### `ai/` - AI framework skills
 
+Support skills for building or auditing AI/ML pipelines used inside security tooling.
+
+- **`codemachine-template`** - CodeMachine multi-agent workflow scaffolding
+- **`keras`** / **`pytorch`** / **`scikit-learn`** - ML framework patterns for security models and adversarial workflows
 - **`langchain-py`** - Production-oriented LangChain Python workflows
+- **`vec2text`** - Embedding-inversion attack against vector databases
 
-### `hardware/` - Embedded skills
+### `hardware/` - Embedded and maker-platform support
 
-- **`arduino`**
+General hardware/embedded platform skills. Load when a security task needs them (build a custom probe, bring up a CAN tap, capture radio traffic).
+
+- **`arduino`**, **`esp32`**, **`raspberry-pi`** - dev-board bring-up and firmware patterns
+- **`can-bus-modules`**, **`gps-modules`**, **`gsm-lte-modules`**, **`lora-modules`**, **`rfid-nfc-modules`** - communication-stack helpers
+- **`sensors`** - common sensor interfacing
 
 ### `commands/` - Agent behavior and command modes
 
