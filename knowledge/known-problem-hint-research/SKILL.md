@@ -2,7 +2,7 @@
 name: known-problem-hint-research
 description: "Targeted post-triage online research for a known technical problem signature, not broad discovery. Use after the agent has already analyzed the artifact, ranked hypotheses, and hit a wall, to find the missing hint in papers, blogs, articles, public writeups, source discussions, specifications, commits, issues, changelogs, advisories, PoCs, or implementation notes. Useful for cryptography, protocol debugging, reversing, AI/ML behavior, web/API behavior, exploit constraints, version-specific bugs, build/runtime errors, and standards mismatches where one external clue unlocks the next local test."
 license: MIT
-compatibility: "AgentSkills-compatible agents with web search/fetch access; uses fetch_webpage, Tavily when available, and Jina Reader/Search endpoints."
+compatibility: "AgentSkills-compatible agents with web search/fetch access; uses fetch_content, Tavily when available, and Jina Reader/Search endpoints."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -65,7 +65,7 @@ Bad query ingredients:
 Use available discovery tools in this order:
 
 1. Tavily search/research when available, with one narrow query at a time.
-2. Jina Search through `fetch_webpage` on `https://s.jina.ai/{url-encoded-query}`, preferably with a site filter from `references/source-filters.md`.
+2. Jina Search through `fetch_content` on `https://s.jina.ai/{url-encoded-query}`, preferably with a site filter from `references/source-filters.md`.
 3. Direct site-native search or normal web search only for gaps or when the above fail.
 
 Do not accept Tavily's synthesis as final evidence. Treat it as URL discovery and claim triage, then fetch primary pages.
@@ -74,8 +74,8 @@ Do not accept Tavily's synthesis as final evidence. Treat it as URL discovery an
 
 For each candidate URL, use the smallest reliable fetch path:
 
-1. Jina Reader: `fetch_webpage` on `https://r.jina.ai/{full-url-with-scheme}`.
-2. Direct `fetch_webpage` for raw text, JSON, PDFs, API pages, or simple sites.
+1. Jina Reader: `fetch_content` on `https://r.jina.ai/{full-url-with-scheme}`.
+2. Direct `fetch_content` for raw text, JSON, PDFs, API pages, or simple sites.
 3. Tavily extraction when available and the page needs structured extraction.
 4. Browser automation only if the source is highly relevant and other fetches fail.
 

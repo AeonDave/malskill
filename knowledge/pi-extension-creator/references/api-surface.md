@@ -11,6 +11,7 @@
 - [State](#state)
 - [Rendering](#rendering)
 - [Modes](#modes)
+- [Additional API](#additional-api)
 - [Errors](#errors)
 
 ## Imports
@@ -87,10 +88,17 @@ Useful event choices:
 | Intercept user text before agent run | `input` |
 | Inject per-turn system prompt additions | `before_agent_start` |
 | Add/trim context before provider request | `context` |
+| Inspect provider payload just before HTTP send | `before_provider_request` |
+| Inspect HTTP response status/headers | `after_provider_response` |
+| Intercept `!`/`!!` user bash commands | `user_bash` |
 | Gate or rewrite tool args | `tool_call` |
 | Inspect or alter tool result | `tool_result` |
+| React to model change | `model_select` |
+| React to thinking-level change | `thinking_level_select` |
 | Update footer/status after work | `turn_end`, `agent_end` |
-| Prevent destructive session operations | `session_before_switch`, `session_before_fork`, `session_before_compact` |
+| Prevent or customise compaction | `session_before_compact`, `session_compact` |
+| Prevent or customise tree navigation | `session_before_tree`, `session_tree` |
+| Prevent destructive session operations | `session_before_switch`, `session_before_fork` |
 | Release resources | `session_shutdown` |
 
 ## Tools
@@ -124,15 +132,58 @@ Tool result rules:
 
 - `content` is what the model sees.
 - `details` is persisted and can support reconstruction or custom rendering.
-- `isError: true` marks recoverable tool failure.
+- **Throw** to signal tool failure — Pi sets `isError: true` automatically. Returning `{ isError: true }` from `execute()` has no effect. In a `tool_result` event handler, returning `{ isError: true }` patches the result correctly.
 - `terminate: true` is for final structured-output tools that should end the agent loop.
 - Include compact, actionable text. Put bulky structured state in `details`.
+- Truncate large output: use `truncateHead`/`truncateTail` from `@earendil-works/pi-coding-agent` (defaults: 2000 lines / 50 KB). Save full output to a temp file and include the path in `content` when truncating.
 
 For subprocess tools:
 
-- Pass `signal` to the process or kill on abort.
+- Pass `signal` (from the `execute` parameters or `ctx.signal`) to the process or kill on abort.
 - Return stdout/stderr summaries, exit code, and decisive artifacts.
-- Avoid dumping large output; truncate deterministically and include where the full output was saved.
+- Truncate deterministically and include where the full output was saved.
+
+For parallel-safe file mutations:
+
+```ts
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
+import { resolve } from "node:path";
+
+async execute(_id, params, _signal, _onUpdate, ctx) {
+  const abs = resolve(ctx.cwd, params.path);
+  return withFileMutationQueue(abs, async () => {
+    // read-modify-write inside the queue
+    return { content: [...], details: {} };
+  });
+}
+```
+
+Use `withFileMutationQueue` whenever your tool reads then writes the same file, or when it may run in parallel with built-in `edit`/`write` on the same file.
+
+For session-resume compat, use `prepareArguments` to fold old call shapes into the current schema:
+
+```ts
+pi.registerTool({
+  name: "my_tool",
+  parameters: CurrentSchema,
+  prepareArguments(args) {
+    // runs before validation; normalize legacy field names here
+    return args;
+  },
+  async execute(id, params, signal, onUpdate, ctx) { ... },
+});
+```
+
+For typed `tool_call` handler input:
+
+```ts
+import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
+pi.on("tool_call", async (event, ctx) => {
+  if (isToolCallEventType("bash", event)) {
+    // event.input is { command: string; timeout?: number }
+  }
+});
+```
 
 ## Commands And Input
 
@@ -186,7 +237,8 @@ Status and widgets:
 
 ```ts
 ctx.ui.setStatus("my-ext", ctx.ui.theme.fg("dim", "my-ext idle"));
-ctx.ui.setWidget("my-ext", ["My Extension", "Ready"]);
+// placement: "aboveEditor" (default) | "belowEditor"
+ctx.ui.setWidget("my-ext", ["My Extension", "Ready"], { placement: "belowEditor" });
 ```
 
 Use `ctx.mode === "tui"` before custom components, keyboard handling, custom editors, games, or overlay-style UI.
@@ -198,6 +250,15 @@ Always provide non-interactive behavior:
 - Return an actionable message explaining how to run interactively if needed.
 
 ## State
+
+`ctx.signal` — the current agent abort signal (defined during turn events; undefined when idle). Pass to `fetch`, `pi.exec`, subprocess helpers, and timers to support Esc-cancellation:
+
+```ts
+pi.on("tool_result", async (event, ctx) => {
+  const res = await fetch("https://example.com/api", { signal: ctx.signal });
+  return { details: await res.json() };
+});
+```
 
 Closure state is acceptable for per-process caches only. Anything needed after `/reload`, `/resume`, restart, or fork must be reconstructable.
 
@@ -272,6 +333,83 @@ Mode behavior:
 | Print | `print` | `false` | No prompts; avoid UI-only flows |
 
 Guard mode-specific code explicitly.
+
+## Additional API
+
+These are available from `ExtensionAPI` (the `pi` object) and are not covered in earlier sections.
+
+```ts
+// Run a shell command (non-interactive, captures output)
+const { stdout, stderr, code } = await pi.exec("git", ["status"], { signal, timeout: 5000 });
+
+// Keyboard shortcuts
+pi.registerShortcut("ctrl+shift+p", {
+  description: "Toggle mode",
+  handler: async (ctx) => { ctx.ui.notify("toggled", "info"); },
+});
+
+// CLI flags (readable via pi.getFlag("name"))
+pi.registerFlag("plan", { type: "boolean", default: false, description: "Start in plan mode" });
+
+// Send a user message as if typed (always triggers a turn)
+pi.sendUserMessage("Continue from here.");
+// During streaming, specify delivery mode:
+pi.sendUserMessage("/my-command", { deliverAs: "followUp" });
+
+// Manage active tools
+const active = pi.getActiveTools();        // string[]
+const all = pi.getAllTools();              // metadata for all tools
+pi.setActiveTools([...active, "my_tool"]); // enable/disable
+
+// Model and thinking level
+const model = ctx.modelRegistry.find("anthropic", "claude-sonnet-4-5");
+if (model) await pi.setModel(model);
+pi.setThinkingLevel("high"); // "off"|"minimal"|"low"|"medium"|"high"|"xhigh"
+
+// Session name and labels
+pi.setSessionName("refactor-auth");
+pi.setLabel(entryId, "checkpoint"); // bookmark for /tree; pass undefined to clear
+
+// Remove a registered provider
+pi.unregisterProvider("my-proxy");
+
+// Get commands (extension + prompt + skill commands)
+const commands = pi.getCommands();
+
+// Graceful shutdown
+ctx.shutdown(); // available from any event/tool/command
+
+// Trigger compaction
+ctx.compact({ customInstructions: "Focus on recent changes" });
+
+// Read the current system prompt string
+const prompt = ctx.getSystemPrompt();
+
+// Check project trust state
+const trusted = ctx.isProjectTrusted();
+```
+
+### ExtensionCommandContext
+
+Command handlers receive `ExtensionCommandContext`, which extends `ExtensionContext` with session-control methods. These **cannot** be called from event handlers (risk of deadlock).
+
+```ts
+pi.registerCommand("my-cmd", {
+  handler: async (_args, ctx) => {
+    await ctx.waitForIdle();               // wait for agent to finish
+    await ctx.reload();                    // hot-reload extensions; treat as terminal for handler
+    const opts = ctx.getSystemPromptOptions(); // structured system-prompt inputs
+
+    // Session replacement — use only the ctx passed to withSession
+    await ctx.newSession({
+      withSession: async (ctx) => { await ctx.sendUserMessage("Continue."); },
+    });
+    await ctx.fork(entryId, { position: "before" });
+    await ctx.switchSession("/path/to/session.jsonl");
+    await ctx.navigateTree(entryId, { summarize: true });
+  },
+});
+```
 
 ## Errors
 

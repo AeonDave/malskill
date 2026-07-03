@@ -92,7 +92,7 @@ Avoid:
 
 - long walls of prose
 - repeating the same value proposition in the header, overview, and features
-- giant badge farms, marketing filler, and TODO dumps
+- giant badge farms, marketing filler, and to-do dumps
 
 Write features as concrete outcomes, not technology lists:
 
@@ -169,9 +169,6 @@ Before finishing, check:
 ## Drafting Rules
 
 - Prefer one clear sentence over two clever ones.
-- Use imperative instructions for setup steps.
-- Keep paragraph length short.
-- Keep features as concrete user-visible outcomes, not technology lists.
 - Mention environment variables only when actually required.
 - If configuration is extensive, show the minimum and link to deeper docs.
 - If multiple workflows exist, present the recommended one first.

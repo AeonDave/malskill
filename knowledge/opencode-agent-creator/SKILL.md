@@ -21,7 +21,6 @@ Build precise, functional, professional OpenCode agents and agent teams without 
 - **Cost control = routing, not runtime selection.** Pre-create agents pinned to different models; the supervisor controls cost by choosing *which agent* to dispatch — a cheap model for trivial/bulk work, a strong model for hard reasoning, each a separate agent.
 - "Create a team with the best/cheapest models" is a **config-time** act (writing `model:` into each agent), not something the supervisor does live.
 - To get "cheap for easy, strong for hard" inside one domain, make **two agents** (e.g. `x-operator` and `x-operator-heavy`) and let the supervisor route between them.
-- **The one exception:** the `opencode-background-agents` plugin's `delegate` tool *does* take a per-call `model` and `timeout` — but only for **read-only** subagents (write-capable work must use native `task`). See [references/plugins-and-tools.md](references/plugins-and-tools.md).
 
 Internalize this first — it is why the architecture looks the way it does.
 
@@ -49,8 +48,8 @@ Pick the topology by what the work needs (full catalog + native-support status: 
 ### 2. Don't recreate the built-ins
 
 OpenCode ships agents — extend or route to them instead of cloning:
-- **Primary:** `build` (all tools), `plan` (edits + bash gated to `ask`). (`compaction`, `title` are hidden system primaries.)
-- **Subagent:** `general` (full tools except todo; the docs' own answer to "run multiple units of work in parallel"), `explore` (fast read-only codebase search), `scout` (read-only external-docs/dependency research; `scout` may require `OPENCODE_EXPERIMENTAL_SCOUT`).
+- **Primary:** `build` (all tools), `plan` (edits + bash gated to `ask`). (`compaction`, `title`, `summary` are hidden system primaries.)
+- **Subagent:** `general` (full tools except todo; the docs' own answer to "run multiple units of work in parallel"), `explore` (fast read-only codebase search), `scout` (read-only external-docs/dependency research).
 
 Create a custom agent only when a focused role, tool boundary, or pinned model beats the built-ins.
 
@@ -123,7 +122,7 @@ Never hardcode keys/tokens in `opencode.json` — use `{env:VAR}` or `{file:~/.s
 
 ## Anti-patterns
 
-- **Hardcoding a per-task model in the supervisor prompt** — impossible natively; route to a pinned agent (or use the background-agents `delegate` for read-only work).
+- **Hardcoding a per-task model in the supervisor prompt** — impossible natively; route to a pre-created pinned agent.
 - **Forgetting `task: deny` on subagents** — invites recursive fan-out (no native depth guard).
 - **Building a true mesh** (subagents calling each other) — unreliable on OpenCode; emulate hub-and-spoke through the supervisor.
 - **Assuming active skills/modes propagate to subagents** — they don't (cold context); inject into the packet.
@@ -137,7 +136,7 @@ Never hardcode keys/tokens in `opencode.json` — use `{env:VAR}` or `{file:~/.s
 - [references/agent-config-reference.md](references/agent-config-reference.md) — complete frontmatter + `opencode.json` field reference: `mode`, `model`, `hidden`, `temperature`, `top_p`, `steps`, `reasoningEffort`, `color`, `disable`, the full `permission.*` key list and `permission.task` globs, `tools` (legacy), `default_agent`, model variants, the built-in agents, `opencode agent create`/`list` CLI, and session navigation. Load when writing or debugging agent config.
 - [references/multi-agent-topologies.md](references/multi-agent-topologies.md) — the topology catalog (subagent, supervisor/hierarchical, swarm/parallel, mesh, template), each with when-to-use, OpenCode native-support status, a config sketch, and the OpenAgentsControl-derived discipline (scout-first context, dependency-batched parallelism, context-level allocation, stage gating). Load when choosing or composing a team shape.
 - [references/orchestrator-pattern.md](references/orchestrator-pattern.md) — supervisor + subagent architecture on the **native `task` tool**: adaptable prompt skeletons (lean and XML-structured), dispatch protocol, wave parallelism, anti-loop guard, delegation discipline, cold-context packet rules. Load when building a team.
-- [references/model-tiering.md](references/model-tiering.md) — the per-agent-fixed-model constraint, the Zen catalog and free tier, cost-routing tiers, inheritance-as-fallback, the background-agents per-call-model workaround, the dynamic-model-selection roadmap, and the free-model privacy caveat. Load when assigning models or controlling cost.
+- [references/model-tiering.md](references/model-tiering.md) — the per-agent-fixed-model constraint, the Zen catalog and free tier, cost-routing tiers, inheritance-as-fallback, the dynamic-model-selection roadmap, and the free-model privacy caveat. Load when assigning models or controlling cost.
 - [references/plugins-and-tools.md](references/plugins-and-tools.md) — custom tools API (TypeScript, Zod args, context), plugin hooks/events, the ecosystem plugin shortlist (`opencode-background-agents`, workspace, skillful, supermemory), experimental flags, a worked `deep-research` custom tool, and the secrets/`.env` handling pattern. Load when extending agents with tools, plugins, or env-based secrets.
 - [references/triggering-and-testing.md](references/triggering-and-testing.md) — does the supervisor route to the right subagent, and does each agent stay in its permission boundary and honor its output contract? Triggering, behavior, and adversarial checks. Load before finalizing.
 - [assets/agent-template.md](assets/agent-template.md), [assets/supervisor-template.md](assets/supervisor-template.md) — fill-in skeletons for a subagent and a primary supervisor. [assets/examples/](assets/examples/) — ready-to-adapt agents: `supervisor.md`, `code-reviewer.md` (read-only), `researcher.md` (scout-style), `summarizer.md` (cheap utility). Read for concrete patterns.

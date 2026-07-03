@@ -17,11 +17,10 @@ Curated reference for offensive security research. Load this file when needing t
 
 | Source | URL | Best for | Notes |
 |---|---|---|---|
-| NVD (NIST) | nvd.nist.gov | CVSS scores, affected versions, references | Authoritative; use Playwright if JS-blocked |
-| MITRE CVE | cve.mitre.org | CVE descriptions, CNA attribution | Often more up-to-date than NVD for new CVEs |
+| NVD (NIST) | nvd.nist.gov | CVSS scores, affected versions, references | Enrichment backlog since Feb 2024; pre-2018 CVEs marked Deferred (Apr 2025) — cross-check cve.org |
+| CVE Program | cve.org | CVE descriptions, CNA attribution | Canonical; often more current than NVD for new CVEs |
 | CISA KEV | cisa.gov/known-exploited-vulnerabilities-catalog | Actively exploited CVEs | Filter by date; download CSV for bulk |
 | OSV.dev | osv.dev | Open source library vulns | JSON API available; good for deps |
-| VulnDB | vulndb.cyberriskanalytics.com | Commercial; broader coverage | Requires subscription |
 | Vulncheck | vulncheck.com/nvd-mirror | NVD mirror + exploit intel | Better exploit track than raw NVD |
 
 ## Exploit Repositories
@@ -32,6 +31,7 @@ Curated reference for offensive security research. Load this file when needing t
 | Sploitus | sploitus.com | Aggregator across exploit sources | Good for new CVEs not yet in ExploitDB |
 | PacketStorm | packetstormsecurity.com | Exploits, tools, advisories | Broad; quality varies |
 | GitHub Search | github.com/search | PoC repos, patch diffs | Search: `CVE-YYYY-NNNNN exploit` |
+| poc-in-github | poc-in-github.motikan2010.net | GitHub PoC index by CVE ID | API: `/api/v1/?cve_id=CVE-YYYY-NNNNN` |
 | Nuclei Templates | github.com/projectdiscovery/nuclei-templates | Detection templates | Check `cves/` folder |
 | Metasploit Modules | github.com/rapid7/metasploit-framework | Weaponized modules | Filter `modules/exploits/` |
 
@@ -40,7 +40,7 @@ Curated reference for offensive security research. Load this file when needing t
 | Source | URL | Best for |
 |---|---|---|
 | CISA Advisories | cisa.gov/news-events/cybersecurity-advisories | US critical infra threats |
-| US-CERT | us-cert.cisa.gov/ncas/alerts | Alert-level threat intel |
+| US-CERT | cisa.gov/uscert/ncas/alerts | Alert-level threat intel |
 | Recorded Future Blog | recordedfuture.com/research | APT and ransomware TTPs |
 | Mandiant | mandiant.com/resources/insights | Advanced threat reporting |
 | Krebs on Security | krebsonsecurity.com | Breaking vuln/exploit news |
@@ -74,39 +74,6 @@ Search pattern: `[vendor] security advisory [year]`
 | Fortinet | fortiguard.com/psirt |
 | Palo Alto | security.paloaltonetworks.com |
 | Red Hat | access.redhat.com/security/updates/advisory |
-| Debian | packages.debian.org/security → security.debian.org |
+| Debian | www.debian.org/security/ |
 | Ubuntu | ubuntu.com/security/notices |
 | F5 | support.f5.com/csp/article/K00000 |
-
-## MCP Search Patterns
-
-Ready-to-use Tavily query strings for common research tasks:
-
-```
-# Find CVE entries
-site:nvd.nist.gov "CVE-YYYY-NNNNN"
-
-# Find PoC on GitHub
-"CVE-YYYY-NNNNN" exploit site:github.com
-
-# Find metasploit module
-"CVE-YYYY-NNNNN" site:github.com/rapid7
-
-# Find active exploitation evidence
-"CVE-YYYY-NNNNN" exploited in the wild ransomware APT
-
-# Find nuclei template
-"CVE-YYYY-NNNNN" site:github.com/projectdiscovery
-
-# Find vendor patch
-"CVE-YYYY-NNNNN" patch advisory site:[vendor.com]
-
-# Shodan dork (search for Shodan queries, then run manually)
-"CVE-YYYY-NNNNN" shodan dork vuln
-
-# Research on product/version
-[product] [version] vulnerability 2024 2025
-
-# ATT&CK technique
-"T[ID]" site:attack.mitre.org procedure
-```

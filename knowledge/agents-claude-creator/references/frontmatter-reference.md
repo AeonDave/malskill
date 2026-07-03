@@ -48,7 +48,7 @@ Store the `.md` file in one of these locations. On a name collision, the higher-
 | `mcpServers` | No | MCP servers for this subagent: a string (reference an already-configured server) or an inline definition. Ignored for plugin subagents. |
 | `hooks` | No | Lifecycle hooks scoped to this subagent. Ignored for plugin subagents. |
 | `memory` | No | Persistent memory scope: `user` / `project` / `local`. Enables cross-session learning. |
-| `background` | No | `true` → always run as a background task. Default `false`. |
+| `background` | No | `true` → always run as a background task, even when Claude needs the result immediately. When omitted, Claude chooses; as of v2.1.198 it runs subagents in the background by default. |
 | `effort` | No | `low` / `medium` / `high` / `xhigh` / `max` while active. Overrides session effort. |
 | `isolation` | No | `worktree` → run in a temporary git worktree (isolated repo copy, auto-cleaned if unchanged). |
 | `color` | No | `red` / `blue` / `green` / `yellow` / `purple` / `orange` / `pink` / `cyan` (UI accent). |
@@ -63,6 +63,7 @@ Store the `.md` file in one of these locations. On a name collision, the higher-
 | `haiku` | Fast, cheap, high-volume: codebase search, file discovery, log scanning, bulk summarizing. |
 | `sonnet` | Balanced analysis: code review, debugging, data analysis, most specialists. |
 | `opus` | Hardest reasoning: architecture, tricky root-cause, multi-constraint planning. |
+| `fable` | Available alias; use the full model ID (e.g. `claude-sonnet-5`) when exact versioning matters. |
 | `inherit` (default) | Match the main session — when the agent's difficulty tracks the parent task. |
 
 Claude Code resolves the effective model in this order (first wins):
@@ -77,6 +78,7 @@ Claude Code resolves the effective model in this order (first wins):
 - **Allowlist:** `tools: Read, Grep, Glob, Bash` — only these.
 - **Denylist:** `disallowedTools: Write, Edit` — everything except these.
 - **Both set:** `disallowedTools` is applied first, then `tools` resolves against what remains. A tool in both is removed.
+- **MCP patterns:** both fields accept `mcp__<server>` or `mcp__<server>__*` to grant/remove every tool from a named server; `mcp__*` in `disallowedTools` removes every MCP tool from any server.
 - **Always unavailable to subagents** (UI/session-bound), even if listed: `AskUserQuestion`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, and `ExitPlanMode` (unless `permissionMode: plan`).
 - **Spawning other agents:** include `Agent` in `tools` to let a subagent spawn nested subagents; omit it (or add to `disallowedTools`) to forbid. For a main-thread agent (`--agent`), `Agent(worker, researcher)` is an allowlist of which types it may spawn.
 

@@ -33,14 +33,10 @@ Each task should include:
 
 ## Plan quality gates
 
-- No TODO, TBD, “similar to previous”, or undefined functions/types.
+- No unresolved placeholders ("similar to previous") or undefined functions/types.
 - No task that requires reading the entire prior conversation.
+- No cross-task file conflicts; tasks must not mutate shared files in ways that depend on execution order.
 - No hidden assumptions about scope, credentials, targets, or destructive actions.
 - No bundled unrelated cleanup.
 - Review spec compliance before code quality when delegating implementation.
-
-## Resources
-
-Load on demand:
-
-- `references/plan-review.md` — plan reviewer checklist and issue calibration.
+- Block only on wrong artifact, stuck worker, or scope overreach — not style or formatting.

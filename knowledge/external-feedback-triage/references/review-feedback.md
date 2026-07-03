@@ -21,11 +21,7 @@
 
 ## Evidence before acceptance
 
-For code feedback, prefer failing test, compiler/linter error, or direct code citation.
-
-For security feedback, prefer reproduction, reachable source/sink path, packet/log trace, or trusted advisory plus matching version/configuration.
-
-For performance feedback, prefer benchmark/profiler output before and after.
+Apply `evidence-before-claims` to verify evidence quality before acting on feedback.
 
 ## Response patterns
 

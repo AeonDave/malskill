@@ -114,7 +114,7 @@ python scripts/quick_validate.py <path/to/skill-folder>
 # Package into a .skill archive (validates first)
 python scripts/package_skill.py <path/to/skill-folder>
 ```
-Fix all errors. Resolve all `TODO` markers.
+Fix all errors. Resolve all unresolved markers before packaging.
 
 ### Step 7: Iterate
 

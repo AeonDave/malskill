@@ -50,7 +50,7 @@ Notes:
   - With 2FA/TOTP: add --totp-secret (base32 TOTP secret string from your authenticator app).
   - Keep cookies.json secure — it provides full account access.
   - twikit max count per search_tweet() call: 20. Use --pages to paginate via .next().
-  - Each result includes fxtwitter_url — use with Firecrawl extract to get full thread content.
+  - Each result includes fxtwitter_url — use with Jina Reader to get full thread content.
 """
 
 from __future__ import annotations

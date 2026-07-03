@@ -1,6 +1,6 @@
 ---
 name: deep-research-generic
-description: "File-backed deep research with recursive link-following, multi-tool fetching (Jina Reader, Tavily, Playwright), and step-by-step synthesis. Use when the user asks to research, investigate, analyze, or summarize a topic in depth; when a thorough answer requires gathering and cross-referencing multiple sources across linked pages; or when the output must be comprehensive, cited, and not limited by context window size."
+description: "File-backed deep research with recursive link-following, multi-tool web fetching, and step-by-step synthesis. Use when the user asks to research, investigate, analyze, or summarize a topic in depth; when a thorough answer requires gathering and cross-referencing multiple sources; or when output must be comprehensive, cited, and not limited by context window size. For CVE/exploit/threat-intel research → use deep-research-offensive."
 license: MIT
 metadata:
   author: AeonDave
@@ -40,8 +40,9 @@ Ask at most two clarifying questions. If the request is clear, proceed immediate
 
 For each sub-question, run parallel searches to discover URLs:
 
-- **Tavily** (if available): one query per sub-question, `search_depth: basic`, `max_results: 5–10`
-- **Jina Search** (always available): `fetch_webpage` on `https://s.jina.ai/{search-query}`
+- **`web_search`** (primary): one query per sub-question; multi-provider, synthesized results with citations
+- **Jina Search** (complementary): `fetch_content` on `https://s.jina.ai/{search-query}`
+- **Tavily** (if MCP-available): `search_depth: basic`, `max_results: 5–10`
 
 From results:
 - Record every promising URL in `_plan.md` under the URL queue
@@ -56,15 +57,15 @@ Process each queued URL individually:
 
 | Priority | Tool | When |
 |---|---|---|
-| 1 | **Jina Reader** | Default for all pages — cleanest markdown |
-| 2 | **`fetch_webpage`** (direct) | APIs, raw JSON/text, simple pages |
-| 3 | **Tavily extract** | Available + structured data needed |
-| 4 | **Playwright** | JS-rendered pages, dynamic tables, SPAs |
+| 1 | **`fetch_content`** (Jina proxy) | `https://r.jina.ai/{url}` — strips boilerplate, cleanest markdown |
+| 2 | **`fetch_content`** (direct) | APIs, raw JSON, PDFs, GitHub repos |
+| 3 | **Tavily extract** | MCP-available; structured extraction |
+| 4 | **Playwright** | JS-rendered SPAs, dynamic tables |
 
-**Jina Reader**: `fetch_webpage` on `https://r.jina.ai/{full-url-with-scheme}`
-Converts any page to clean markdown. No auth, no MCP dependency. Handles complex layouts, strips ads/nav.
+**Jina proxy**: `fetch_content` on `https://r.jina.ai/{full-url-with-scheme}`
+Converts any page to clean markdown. Strips ads, nav, popups. Falls back to Gemini for bot-blocked pages.
 
-**Escalation**: Jina empty → direct fetch → Tavily extract → Playwright.
+**Escalation**: Jina proxy empty → `fetch_content` direct → Tavily extract → Playwright.
 
 **3b. Evaluate**: Is the content relevant and citable? If not, mark URL as `skipped` in `_plan.md` and move on.
 
@@ -167,35 +168,42 @@ Present `output.md` to the user. Intermediate files remain available for follow-
 
 ## Fetch Tool Details
 
-### Jina Reader (primary — always available)
+### fetch_content (primary — always available)
 
 ```
-Read a page:   fetch_webpage → https://r.jina.ai/{target-url-with-scheme}
-Search the web: fetch_webpage → https://s.jina.ai/{search-query}
+Jina proxy:  fetch_content(url="https://r.jina.ai/{target-url-with-scheme}")
+Direct:      fetch_content(url="{target-url}")
 ```
 
-- Strips ads, navigation, popups — returns main content as markdown
-- Handles complex layouts, paywalled previews, documentation sites
-- Preserves headings, lists, code blocks, and links
-- Works on news sites, blogs, wikis, official docs, most pages
+Handles URLs, GitHub repos, PDFs (text extraction), and YouTube transcripts. Jina proxy strips boilerplate, returns clean markdown. Direct mode for APIs, raw text, and documents. Gemini fallback activates automatically for bot-blocked pages.
+
+### web_search (primary search — always available)
+
+Multi-provider search (OpenAI, Brave, Perplexity, Exa, Tavily, Gemini). Returns synthesized answer with source citations.
+
+```python
+web_search(queries=["sub-question 1", "sub-question 2"])  # parallel
+web_search(query="...", recencyFilter="month")             # time-bounded
+```
+
+Use `numResults=10` for broad sweeps. Post-filter URLs for relevance before deep-fetching.
 
 ### Tavily (when MCP available)
 
 | Tool | Use |
 |---|---|
-| `tavily_search` | Keyword search — primary discovery |
+| `tavily_search` | Keyword search; `search_depth: basic/advanced/ultra-fast` |
 | `tavily_extract` | Content extraction from known URLs |
-| `tavily_crawl` | Multi-page site crawl (expensive — use last) |
+| `tavily_crawl` | Multi-page crawl (expensive — use last) |
 | `tavily_map` | Enumerate URLs before crawling |
 
-Query rules: max 400 chars, one topic per query, parallel sub-questions, `include_domains` instead of `site:`, filter by `score > 0.5`.
+Query rules: max 400 chars, one topic per query, `include_domains` instead of `site:`, `score > 0.5` filter. Use `search_depth: advanced` + `chunks_per_source: 3` for precise fact retrieval.
 
 ### Playwright (fallback for JS-heavy pages)
 
-Use when Jina and Tavily return empty or incomplete content:
-- JavaScript-rendered tables and SPAs
-- Dynamic content loaded via AJAX
-- Login-gated content previews
+Use when fetch_content and Tavily return empty or incomplete content:
+- JavaScript-rendered SPAs and dynamic tables
+- Content requiring browser-level JS execution
 
 ---
 
@@ -208,17 +216,6 @@ Use when Jina and Tavily return empty or incomplete content:
 | 3 | Reputable news outlets, expert commentary | Medium |
 | 4 | Blogs, forums, unverified claims | Low — verify independently |
 
----
-
-## Depth Levels
-
-| Level | Fetch rounds | Link depth | Pages | Output |
-|---|---|---|---|---|
-| Quick | 1 | None | 5–10 | 500–1000 words |
-| Standard | 2 | 1 level | 15–25 | 1500–3000 words |
-| Deep | 3+ | 2–3 levels | 30–50+ | 3000+ words |
-
-Default to **Standard**. Use **Deep** when user says "in depth", "thorough", "comprehensive", or topic has many interconnected sources.
 
 ---
 
@@ -228,5 +225,4 @@ Default to **Standard**. Use **Deep** when user says "in depth", "thorough", "co
 - Never fabricate a source — if unavailable, state "not found"
 - Distinguish "no evidence" from "evidence of absence"
 - Flag information older than 2 years as potentially outdated
-- Present analysis, not advocacy — no editorializing
-- Every intermediate file must have a source URL — no unsourced files
+- Respect robots.txt on public-domain research; record the fetch method used per page

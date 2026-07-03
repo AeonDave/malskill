@@ -126,6 +126,6 @@ For advanced scenarios:
 | Everything in SKILL.md | Bloats context even when not needed | Split into reference files |
 | Deeply nested references | Reference chains create loading ambiguity | Keep all references one level from SKILL.md |
 | Duplicate content | Same content in SKILL.md and a reference file | Single source of truth — pick one location |
-| Generic TODO placeholders left in | Skill is not ready to use | Resolve all TODOs before packaging |
+| Unresolved placeholder markers left in | Skill is not ready to use | Resolve all markers before packaging |
 | Long reference files without a TOC | Agent cannot preview scope | Add a TOC at the top of any file >100 lines |
 | README.md and CHANGELOG.md in the skill | Irrelevant to agent execution | Remove — skills are for agents, not humans |

@@ -1,8 +1,8 @@
 # @you/opencode-myplugin
 
-> TODO: one-line description of what this plugin does.
+> Replace with a one-line description of what this plugin does.
 
-A plugin for [OpenCode](https://github.com/sst/opencode) that TODO.
+A plugin for [OpenCode](https://github.com/sst/opencode).
 
 ## Installation
 
@@ -39,7 +39,7 @@ Restart OpenCode. Delete the shim to uninstall. Use one install method at a time
 
 ## Configuration
 
-TODO: document env vars / `opencode.json` plugin-options.
+Describe env vars and `opencode.json` plugin-options here. Delete this section if none.
 
 ## Development
 

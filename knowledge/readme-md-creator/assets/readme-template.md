@@ -56,5 +56,5 @@ Document only the minimum required configuration here. Link to deeper docs if ne
 
 ## Related docs
 
-- [Detailed guide](./docs/guide.md)
-- [Troubleshooting](./docs/troubleshooting.md)
+- [Guide title](fill-in-path)
+- [Reference title](fill-in-path)

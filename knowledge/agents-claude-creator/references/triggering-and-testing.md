@@ -4,7 +4,7 @@ An agent that never gets delegated to, or that wanders outside its boundary, is 
 
 ## 0. Load the file
 
-Manual `.md` edits load at **session start** — restart Claude Code, or create/edit through `/agents` (effective immediately). Confirm the agent appears in `/agents` → Library before testing.
+Manual `.md` edits load at **session start** — restart Claude Code. (As of v2.1.198, `/agents` no longer opens a creation wizard; use it to list and confirm agents are registered.) For session-only testing without restarting, pass JSON via `--agents`.
 
 ## 1. Triggering test (does Claude route to it?)
 

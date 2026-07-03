@@ -69,6 +69,11 @@ Use these defaults:
 | Block or rewrite a tool call | `pi.on("tool_call", handler)` |
 | Modify per-turn system context | `pi.on("before_agent_start", handler)` or `pi.on("context", handler)` |
 | Add `/command` | `pi.registerCommand("name", { description, handler })` |
+| Add keyboard shortcut | `pi.registerShortcut("ctrl+x", { description, handler })` |
+| Add CLI flag | `pi.registerFlag("name", { type, default, description })` |
+| Run a shell command | `pi.exec("git", ["status"], { signal, timeout })` |
+| Inject a user message or trigger a turn | `pi.sendUserMessage(text, { deliverAs })` |
+| Enable/disable tools at runtime | `pi.setActiveTools(names)` / `pi.getAllTools()` |
 | Ask the user | `ctx.ui.confirm`, `ctx.ui.select`, `ctx.ui.input`; guard with `ctx.hasUI` |
 | Show status or dashboard text | `ctx.ui.setStatus`, `ctx.ui.setWidget` |
 | Override a built-in tool | Register a tool with the same name, then preserve expected args/rendering |

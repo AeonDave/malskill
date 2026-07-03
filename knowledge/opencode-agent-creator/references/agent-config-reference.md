@@ -32,8 +32,8 @@ OpenCode ships these — extend or route to them rather than cloning. Names are 
 | `plan` | primary | Analysis/planning. `edit` (writes/patches/edits) and `bash` default to `ask` — no unintended changes. |
 | `general` | subagent | Full tool access **except** `todo`. For multi-step work and **running multiple units of work in parallel**. Can make file changes. |
 | `explore` | subagent | Fast **read-only** codebase exploration: find files by pattern, search code, answer "where/how" questions. Cannot modify files. |
-| `scout` | subagent | **Read-only** external-docs/dependency research: clones a dependency repo into OpenCode's managed cache, inspects library source, cross-references local vs upstream. May require `OPENCODE_EXPERIMENTAL_SCOUT`. |
-| `compaction`, `title` | primary | Hidden system agents (context summarization, session titling). Not user-selectable; do not redefine. |
+| `scout` | subagent | **Read-only** external-docs/dependency research: clones a dependency repo into OpenCode's managed cache, inspects library source, cross-references local vs upstream. |
+| `compaction`, `title`, `summary` | primary | Hidden system agents (context summarization, session titling, session summaries). Not user-selectable; do not redefine. |
 
 ## Markdown agent skeleton
 

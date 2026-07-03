@@ -21,7 +21,7 @@ Internalize this — every decision below maps to one of these:
 1. **Identity** — `name` (lowercase-hyphens; how Claude and `@`-mentions address it).
 2. **Routing** — `description` (third person; the trigger that makes Claude delegate).
 3. **Capability boundary** — `tools` / `disallowedTools` / `mcpServers` / `skills` (what it can touch).
-4. **Brain** — `model` (cost vs. capability: `haiku` / `sonnet` / `opus` / `inherit`).
+4. **Brain** — `model` (cost vs. capability: `haiku` / `sonnet` / `opus` / `fable` / `inherit`).
 5. **Behavior** — the Markdown body (the system prompt: role, workflow, output contract).
 
 ## The one constraint that shapes every prompt
@@ -101,7 +101,7 @@ Match **degrees of freedom** to the task: tight numbered steps for fragile/destr
 ### 6. Validate and test
 
 - Frontmatter is valid YAML between `---`; `name` is lowercase-hyphens; `tools` names are real; `model` is a valid alias/ID/`inherit`.
-- Manual file edits load at **session start** — restart, or create via `/agents` (effective immediately).
+- Manual file edits load at **session start** — restart the session. Use `--agents` JSON flag for session-only testing without a file (as of v2.1.198, `/agents` no longer opens a creation wizard).
 - **Triggering test:** give a natural prompt that *should* delegate and confirm Claude picks the agent; if not, sharpen the `description`. **Behavior test:** run it on a real task and confirm it stays in its tool boundary and returns the contracted output. Method: [references/triggering-and-testing.md](references/triggering-and-testing.md).
 
 For teams of agents (a coordinator that delegates to specialists), keep each specialist single-responsibility and let the coordinator route — see the orchestration notes in [references/system-prompt-patterns.md](references/system-prompt-patterns.md).

@@ -172,11 +172,12 @@ Use this structure (adapt for engagement type):
 
 For single-CVE research, run steps 1–3 in parallel, then follow links:
 
-**Step 1 — NVD data**: Jina Reader on `https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN` → save to `pages/001_nvd.md`
+**Step 1 — NVD data**: Jina Reader on `https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN` → save to `pages/001_nvd.md`. If NVD metadata is absent (enrichment backlog since Feb 2024; pre-2018 CVEs marked Deferred Apr 2025), cross-check `https://cve.org/CVERecord?id=CVE-YYYY-NNNNN`.
 
-**Step 2 — PoC search** (3 parallel queries):
+**Step 2 — PoC search** (parallel queries):
 - GitHub: `"CVE-YYYY-NNNNN" exploit PoC` (include_domains: github.com)
-- Exploit DBs: `CVE-YYYY-NNNNN exploit` (sploitus.com, packetstormsecurity.com)
+- Exploit DBs: `CVE-YYYY-NNNNN exploit` (include_domains: sploitus.com, packetstormsecurity.com)
+- poc-in-github: Jina Reader on `https://poc-in-github.motikan2010.net/api/v1/?cve_id=CVE-YYYY-NNNNN`
 - ITW: `CVE-YYYY-NNNNN exploited ransomware APT` (topic: news)
 
 **Step 3 — ExploitDB** (JS-rendered, requires Playwright):

@@ -101,13 +101,21 @@ def sweep(root: pathlib.Path, *, ctf_check: bool, top: int) -> int:
         rel = _rel(md)
         sizes[rel] = len(txt)
 
-        for m in _MD_LINK_RE.finditer(txt):
-            link = m.group(1)
-            if link.startswith(("http://", "https://", "mailto:")):
+        in_fence = False
+        for line in txt.splitlines():
+            stripped = line.lstrip()
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_fence = not in_fence
                 continue
-            target = (md.parent / link).resolve()
-            if not target.exists():
-                broken.append((rel, link))
+            if in_fence:
+                continue
+            for m in _MD_LINK_RE.finditer(line):
+                link = m.group(1)
+                if link.startswith(("http://", "https://", "mailto:")):
+                    continue
+                target = (md.parent / link).resolve()
+                if not target.exists():
+                    broken.append((rel, link))
 
         for m in _PLACEHOLDER_RE.finditer(txt):
             line_no = txt.count("\n", 0, m.start()) + 1

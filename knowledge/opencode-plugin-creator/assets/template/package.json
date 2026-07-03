@@ -1,7 +1,7 @@
 {
   "name": "@you/opencode-myplugin",
   "version": "0.1.0",
-  "description": "TODO: one-line summary of what this OpenCode plugin does.",
+  "description": "One-line summary of what this OpenCode plugin does.",
   "keywords": ["opencode", "opencode-plugin"],
   "homepage": "https://github.com/you/opencode-myplugin#readme",
   "bugs": "https://github.com/you/opencode-myplugin/issues",

@@ -2,19 +2,6 @@
 
 Use this reference after the problem fingerprint exists and the next question is **where** a decisive hint is likely to live. Pick one or two lanes; do not sweep every site.
 
-## Contents
-
-- Query shape
-- Research papers and preprints
-- Standards and specifications
-- Source code, commits, and implementation discussions
-- Issue trackers and advisories
-- Exploit and PoC sources
-- Security research blogs and technical articles
-- Q&A and public discussions
-- Public solution notes and writeups
-- Jina and Tavily workflow
-
 ## Query shape
 
 Build source-filtered queries from:
@@ -146,15 +133,3 @@ site:hackmd.io {equation or exploit constraint} {writeup}
 ```
 
 Extract the technique and validation condition, not the surrounding narrative.
-
-## Jina and Tavily workflow
-
-Use Tavily for discovery and claim triage, then fetch primary pages before citing them.
-
-Use Jina Reader for clean extraction of a candidate page:
-
-```text
-https://r.jina.ai/{full-url-with-scheme}
-```
-
-Stop when one source gives a local test or when high-signal sources contradict the current hypothesis.

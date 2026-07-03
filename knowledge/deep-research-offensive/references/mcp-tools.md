@@ -161,16 +161,6 @@ async (page) => {
 }
 ```
 
-#### GitHub repository search
-```javascript
-async (page) => {
-  await page.goto('https://github.com/search?q=CVE-YYYY-NNNNN+exploit&type=repositories&s=updated',
-    { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('[data-testid="results-list"]', { timeout: 15000 });
-  return await page.locator('[data-testid="results-list"]').innerText();
-}
-```
-
 ---
 
 ## Fetch Escalation Decision Tree

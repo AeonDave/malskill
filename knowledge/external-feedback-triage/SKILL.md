@@ -23,7 +23,7 @@ Treat every external suggestion as a hypothesis until it is checked against the 
 1. **Restate feedback** in neutral technical terms.
 2. **Check applicability**: version, platform, configuration, code path, permissions, and scope.
 3. **Classify severity**: critical correctness, security risk, maintainability, style, or preference.
-4. **Verify evidence** before acting: reproduction, source citation, local test, or manual replay.
+4. **Verify evidence**: apply `evidence-before-claims` before accepting.
 5. **Choose action**: apply, adapt, defer, reject, or ask for clarification.
 6. **Patch minimally** when acting; do not bundle unrelated cleanup.
 7. **Report disagreement** with evidence when rejecting or narrowing feedback.
@@ -45,11 +45,17 @@ For non-trivial feedback, return:
 - feedback summary
 - applicability result
 - action taken or rejected
-- evidence checked
 - remaining risk or follow-up
+
+Evidence output shape: pair with `evidence-before-claims`.
 
 ## Resources
 
 Load on demand:
 
 - `references/review-feedback.md` — decision table for reviews, scanner output, advisories, PoCs, and model suggestions.
+
+Pair with:
+
+- `evidence-before-claims` — evidence quality and claim wording when verifying accepted feedback.
+- `verification-before-completion` — freshness gate before claiming the applied fix is complete.

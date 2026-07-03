@@ -122,7 +122,7 @@ Runs after a tool finishes. Inspect or rewrite the result the model sees (`outpu
   output: { description: string; parameters: any },
 ) => Promise<void>
 ```
-Modify the description/parameters of a tool **as presented to the model**. Some hosts also pass `output.jsonSchema` (plain JSON) alongside `parameters` (an Effect Schema) — prefer `jsonSchema` when serializing.
+Modify the description/parameters of a tool **as presented to the model**.
 
 ---
 
