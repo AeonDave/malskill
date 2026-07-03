@@ -1,5 +1,5 @@
 ---
-name: python-reverse
+name: python-reverser-patterns
 description: "Binary reverse engineering with Python: analyze, parse, and disassemble ELF/PE executables using pwntools, capstone, Frida, and custom parsing tools. Use when understanding malware, debugging binary failures, analyzing section structure, extracting strings/entropy, or instrumenting runtime behavior."
 license: MIT
 compatibility: "Python 3.11+. Core libraries: pwntools, capstone, pyelftools, pefile, Frida (dynamic). Optional: pyinstaller-extractor, binwalk, upx."

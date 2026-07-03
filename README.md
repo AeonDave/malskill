@@ -63,6 +63,7 @@ Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, sy
 - **Evasion**: `edr-evasion-dev`, `indirect-syscall-dev`, `sleep-masking-dev`, `stack-spoofing-dev` - technique-level development patterns
 - **Exploit and payload development**: `heap-exploitation-dev`, `rop-development-dev`, `shellcode-dev`
 - **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, and memory layout knowledge
+- **Assembly patterns**: `asm-offensive-patterns` - x86-64/ARM64 patterns tuned for shellcode, syscall stubs, and evasion primitives
 - **C2**: `adaptixc2-dev` - framework-specific development
 
 ### `offensive-techniques/` - Methodology and tradecraft skills
