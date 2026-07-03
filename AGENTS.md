@@ -17,6 +17,7 @@ Follow this for any request to add or update a skill or reference.
 - Scaffold a new skill: `python knowledge/skill-creator/scripts/init_skill.py <skill-name> --path <target-dir> --resources references`
 - Validate one skill: `python knowledge/skill-creator/scripts/quick_validate.py <skill-dir>`
 - Validate changed-file hygiene: `python knowledge/skill-creator/scripts/check_changed_files.py`
+- Sweep a category or skill dir for broken links, placeholder markers, and workstation paths: `python knowledge/skill-creator/scripts/sweep_skills.py <path> [--ctf-check] [--top N]`
 - Package one skill: `python knowledge/skill-creator/scripts/package_skill.py <skill-dir>`
 - Install interactively: `.\install.ps1` (PowerShell) or `./install.sh` (Bash)
 
