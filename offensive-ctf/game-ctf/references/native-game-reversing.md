@@ -172,7 +172,7 @@ Look for the `check_win` equivalent by tracing from the render loop. In SFML, fu
 ## Windows PE specifics
 
 ```bash
-# r2 on Windows PE (GamePwn often targets Windows)
+# r2 on Windows PE (game CTF binaries often target Windows)
 r2 -A game.exe   # works on Linux via r2's PE parser
 
 # Imports reveal engine:

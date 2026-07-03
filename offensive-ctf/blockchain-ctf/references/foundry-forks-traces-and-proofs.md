@@ -19,16 +19,18 @@ Why pin the block:
 
 Use trace verbosity intentionally:
 
-- `-vvv` — failing stack traces
-- `-vvvv` — full traces for all tests
-- `-vvvvv` — traces plus storage changes
+- `-vvv` — execution traces for failing tests
+- `-vvvv` — execution traces for all tests, setup traces for failing tests
+- `-vvvvv` — execution and setup traces for all tests
+
+Storage diffs are not surfaced by verbosity; use `vm.record` + `vm.accesses(addr)` in the test or `forge inspect <contract> storage-layout` to enumerate slots.
 
 Read traces for:
 
 - exact call hierarchy
 - which branch reverted
 - staticcall vs call vs delegatecall context
-- storage changes that prove impact
+- storage side effects on the vulnerable path
 
 ## Cheatcodes that matter most in CTF proofs
 

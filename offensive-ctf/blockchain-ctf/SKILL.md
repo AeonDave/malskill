@@ -60,7 +60,9 @@ Load these when the adjacent domain appears:
 - Oracle and market logic: stale price, spot-price manipulation, phantom IDs, unresolved state, missing existence checks.
 - Signature and auth: replay, missing chain ID/domain separator, malleability, dirty address, unchecked signer, nonce reuse.
 - Calldata and ABI: overlapping dynamic offsets, short calldata, custom fallback dispatch, ABI coder v1/v2 differences.
-- Compiler/bytecode: metadata stripping, optimizer/via-IR bugs, transient storage issues, version-specific behavior.
+- Vault/token standards: ERC-4626 first-depositor share inflation via direct `asset.transfer` before initial `deposit`, rounding-direction abuse, decimals-offset defense skipped; ERC-777/hook-token reentry through `tokensReceived`.
+- Account abstraction and delegation: ERC-4337 `validateUserOp`/`validatePaymasterUserOp` trust boundary, paymaster refund griefing, bundler-simulation vs on-chain-state gap, EntryPoint version mismatch; EIP-7702 (Pectra) `0xef0100 || address` designators, init-frontrun on the authorization signature, delegation persists until re-signed.
+- Compiler/bytecode: metadata stripping, optimizer/via-IR bugs, version-specific behavior; EIP-1153 transient storage (`tstore`/`tload`) is per-transaction — fine as a reentrancy lock, unsafe as cross-tx or cross-fork state.
 - ZK/governance: trusted setup equality mistakes, public input mismatch, replayed proofs, missing nullifier tracking.
 
 ## Safety and scope gates

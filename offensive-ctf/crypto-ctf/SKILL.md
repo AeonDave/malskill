@@ -22,7 +22,7 @@ Goal: solve cryptography challenge solving tasks with professional offensive met
 
 1. Classify the dominant artifact, primitive, or objective.
 2. Load the closest `offensive-techniques` methodology before selecting tools.
-3. Load debrandized imported references only for deep technique details.
+3. Load references only for deep technique details.
 4. Choose the smallest tool chain that can produce a validation signal.
 5. Record the exact proof path and stop once the objective is reproducible.
 
@@ -48,13 +48,6 @@ Prefer these tool families when the corresponding signal appears:
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
-## Writeup-derived patterns
-
-- Public writeup patterns favor artifact-first triage, shortest reproducible path, and explicit validation signal before pivoting.
-- Record failed hypotheses with evidence so an agent does not repeat expensive dead paths.
-- Prefer category-specific tools after surface classification instead of running every scanner or brute-forcer by habit.
-- End with a replayable proof: recovered secret, local verification, exploit output, decoded artifact, or correlated evidence chain.
-
 ## Category-specific quick pivots
 
 - Extract parameters before choosing attacks: modulus, exponent, curve order, nonce, IV, oracle response, random source, and serialization.
@@ -65,7 +58,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 
 If local triage has already classified the primitive, ranked attacks, and still hit a specific wall, load `knowledge/known-problem-hint-research`.
 
-Use it only as a post-triage spike to find a paper, blog, article, public writeup, source discussion, or implementation note that maps to the exact problem fingerprint. Do not use it as broad search or before the local pivot ledger has evidence.
+Use it only as a post-triage spike to find a paper, blog, article, public analysis, source discussion, or implementation note that maps to the exact problem fingerprint. Do not use it as broad search or before the local pivot ledger has evidence.
 
 ## Quality gates
 

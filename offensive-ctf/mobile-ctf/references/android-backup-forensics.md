@@ -48,11 +48,15 @@ for i, b in enumerate(data):
         break
 "
 
-# Step 3: Extract with exact header skip
-SKIP=24  # or whatever the header byte count is
-dd if=backup.ab bs=$SKIP skip=1 2>/dev/null \
-  | python3 -c "import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))" \
-  > backup.tar
+# Step 3: Extract — header is variable length; skip 4 newline-terminated fields, then zlib-decompress
+python3 - <<'PY'
+import zlib, pathlib
+raw = pathlib.Path('backup.ab').read_bytes()
+p = 0
+for _ in range(4):
+    p = raw.index(b'\n', p) + 1
+pathlib.Path('backup.tar').write_bytes(zlib.decompress(raw[p:]))
+PY
 
 # Verify tar
 file backup.tar    # should show: POSIX tar archive
@@ -79,7 +83,7 @@ for root, _, files in os.walk('extracted/'):
         p = os.path.join(root, fn)
         try:
             d = open(p,'rb').read()
-            for m in re.findall(b'HTB\{[^}]{1,60}\}', d):
+            for m in re.findall(rb'(?:flag|ctf|HTB|THM)\{[^}]{1,60}\}', d):
                 print(p, m)
         except: pass
 "

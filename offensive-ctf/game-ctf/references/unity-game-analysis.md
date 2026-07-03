@@ -209,8 +209,8 @@ import re
 
 data = open('assets.dmp', 'rb').read()
 
-# HTB flag pattern
-flags = re.findall(b'HTB\{[^}]{1,60}\}', data)
+# Generic flag pattern — swap PREFIX (e.g. HTB, CTF, pico, flag) per event
+flags = re.findall(rb'(?:flag|HTB|CTF|pico)\{[^}]{1,80}\}', data, re.I)
 print('Flags found:', flags)
 
 # All printable ASCII sequences ≥ 12 chars

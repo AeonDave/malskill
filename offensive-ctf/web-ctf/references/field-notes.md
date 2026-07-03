@@ -358,7 +358,7 @@ See [server-execution.md](server-execution.md) for detailed steps.
 
 ## Multi-Stage Chain Patterns
 
-**0xClinic chain:** Password inference → path traversal + ReDoS oracle (leak secrets from `/proc/1/environ`) → CRLF injection (CSP bypass + cache poisoning + XSS) → urllib scheme bypass (SSRF) → `.so` write via path traversal → RCE
+**Example chain:** Password inference → path traversal + ReDoS oracle (leak secrets from `/proc/1/environ`) → CRLF injection (CSP bypass + cache poisoning + XSS) → urllib scheme bypass (SSRF) → `.so` write via path traversal → RCE
 
 **Key chaining insights:**
 - Path traversal + any file-reading primitive → leak `/proc/*/environ`, `/proc/*/cmdline`
@@ -393,6 +393,9 @@ Proxy `attachShadow` to capture closed roots; `(0,eval)` for scope escape; `</sc
 ## HTTP Request Smuggling via Cache Proxy
 
 Cache proxy desync for cookie theft via incomplete POST body. See [browser-attacks.md](browser-attacks.md).
+
+- **CL.0 desync (2024):** front-end forwards the body but back-end treats the request as `Content-Length: 0` (common on static-asset or method-mismatched routes behind a shared proxy). Body bytes become the prefix of the next queued request — use a benign `GET /notfound` prefix to prove the socket poisons a follower response.
+- **Browser-powered desync (2024):** trigger H1/H2 downgrade smuggling from a victim browser via a malicious page that issues cross-origin fetches with pinned connection reuse. Useful when the front-end only speaks H2 externally but downgrades to H1 internally.
 
 ## Path Traversal: URL-Encoded Slash Bypass
 
@@ -444,7 +447,12 @@ Endpoints returning 403 on GET/POST may respond to TRACE, PUT, PATCH, or DELETE.
 
 ## LLM/AI Chatbot Jailbreak
 
-AI chatbots guarding flags can be bypassed with system override prompts, role-reversal, or instruction leak requests. Rotate session IDs and escalate prompt severity. See [auth-access-control.md](auth-access-control.md).
+Direct jailbreak: system-override prompts, role-reversal, instruction-leak requests; rotate session IDs and escalate severity. Beyond direct prompt:
+- **Indirect prompt injection:** poison a retrieved doc, uploaded file, URL preview, or tool output the model ingests — payload runs in the assistant turn, not the user turn.
+- **Tool/function-call abuse:** if the app wires the LLM to server tools (search, fetch, DB, shell), coax the model into calling a tool with attacker-chosen args; the app trusts the tool response for auth or state changes.
+- **RAG cross-tenant leak:** ask the model to "summarize the newest doc" / "cite chunk id N" to enumerate other users' indexed content when the retriever lacks tenant scoping.
+
+See [auth-access-control.md](auth-access-control.md) and the `llm-technique` skill for the full OWASP LLM Top 10 lane.
 
 ## Admin Bot javascript: URL Scheme Bypass
 

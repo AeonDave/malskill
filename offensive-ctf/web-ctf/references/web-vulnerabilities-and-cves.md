@@ -58,6 +58,7 @@ Affects any Java application using Log4j 2.0-beta9 through 2.14.1. The logger ev
 React Server Components / Next.js:
 - If responses or requests expose `Next-Action`, `text/x-component`, Flight payloads, or App Router server-action behavior, check React Server Components handling before generic Node payload iteration.
 - CVE-2025-55182 affects the React Server Components server-function protocol and is surfaced through frameworks such as Next.js. In CTFs, treat it as a stack-fingerprinted deserialization/Flight-protocol lane, not as a blind spray.
+- CVE-2025-29927 (Next.js middleware auth bypass, < 15.2.3 / 14.2.25 / 13.5.9 / 12.3.5): send `x-middleware-subrequest: middleware:middleware:middleware:middleware:middleware` (15.x) or `x-middleware-subrequest: pages/_middleware` (12.x–13.x) to skip middleware and reach protected routes directly. Confirm by requesting a middleware-gated path with and without the header and diffing status/body.
 - Useful proof signals are server-action responses, redirect/error headers, a harmless callback, or a controlled file-read/command echo in the challenge container.
 
 Framework routing:

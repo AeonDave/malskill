@@ -1,7 +1,3 @@
-# Preserved source: lattice-and-lwe.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Lattice and LWE Attacks
 
 ## Table of Contents
@@ -74,7 +70,7 @@ Use it when:
 ```python
 from sage.all import Matrix, ZZ
 
-M = Matrix
+M = Matrix(ZZ, rows)  # rows = your lattice basis
 R = M.LLL()
 print(R[0])
 ```

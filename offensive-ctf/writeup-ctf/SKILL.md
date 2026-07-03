@@ -36,32 +36,6 @@ Primary methodology to load:
 
 Use these as decision engines. This skill adds writeup structure, proof ordering, artifact packaging, and reproducibility discipline.
 
-## Tool routing
-
-Prefer these tool families when the corresponding signal appears:
-
-- `coding/test-driven-development`
-- `knowledge/evidence-before-claims`
-- `knowledge/verification-before-completion`
-
-Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
-
-## Writeup-derived patterns
-
-- Public writeup patterns favor artifact-first triage, shortest reproducible path, and explicit validation signal before pivoting.
-- Record failed hypotheses with evidence so an agent does not repeat expensive dead paths.
-- Prefer category-specific tools after surface classification instead of running every scanner or brute-forcer by habit.
-- End with a replayable proof: recovered secret, local verification, exploit output, decoded artifact, or correlated evidence chain.
-
-## Category-specific quick pivots
-
-- Write from evidence, not memory: artifact, command, output, interpretation.
-- Separate dead ends from final path so future agents can reproduce without noise.
-- Include exact verification signal and minimal solver/run steps.
-- Prefer one complete solve path and, when code is needed, one complete solver that starts from provided challenge data and ends at the recovered objective.
-- Keep the main path to 1-3 short steps unless the proof genuinely needs more structure.
-- Include tool versions or environment notes only when they affect reproducibility.
-
 ## Quality gates
 
 - No claim without a validation signal: recovered secret, replayed exploit, decoded artifact, reproduced model behavior, or corroborated evidence.

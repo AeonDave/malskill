@@ -1,19 +1,4 @@
-# Preserved source: modern-ciphers.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Modern Oracles, Protocols, and Custom Crypto Failures
-
-## Use This Reference When
-
-- The artifact is a protocol transcript, oracle service, custom KDF, custom S-box/SPN/permutation, reduced-round primitive, or non-standard authenticated-encryption design.
-- The break depends on adaptive queries, algebraic cancellation, invalid parameter validation, short nonces, custom-field mistakes, timing, or recovering a reduced construction rather than attacking a standard primitive directly.
-- The validation signal is an accepted transcript, recovered session key, recovered plaintext, forged tag/proof, or exact reproduction of the custom construction.
-
-## External Anchors
-
-- RFC 8017 provides the terminology for RSAES-PKCS1-v1_5 and RSA padding checks used in Bleichenbacher-style oracle workflows.
-- NIST SP 800-38D provides the GCM/GHASH baseline when comparing custom GCM-like constructions against standard binary-field GHASH.
 
 ## Table of Contents
 - [Non-Permutation S-box Collision Attack](#non-permutation-s-box-collision-attack)

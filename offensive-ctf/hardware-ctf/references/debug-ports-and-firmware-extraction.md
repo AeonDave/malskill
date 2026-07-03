@@ -2,6 +2,8 @@
 
 Load when the task needs UART/JTAG/SWD/SPI/eMMC access, firmware dumping, or bootloader-level pivots.
 
+Scope: CTF artifact triage and lab-lite pivots (interpret `printenv`/boot logs, validate a dump, choose a next step). For live-hardware attack workflow with concrete commands (JTAGulator sweeps, OpenOCD IDCODE tables, RDP/APPROTECT bypass, `flashrom -p ch341a_spi`, U-Boot bootargs abuse), delegate to `hardware-technique/references/serial-console-attacks.md`, `jtag-swd-attacks.md`, and `firmware-extraction.md` instead of restating them here.
+
 ## Fast path
 
 1. Prefer official firmware or update packages first.

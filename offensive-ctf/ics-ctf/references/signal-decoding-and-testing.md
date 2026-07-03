@@ -109,7 +109,7 @@ Watch out for:
 
 - Tag names are visible in plaintext inside `cip_class 0x6B`/`0x6C` requests (Symbol Object) and `cip_data` reads.
 - Common class codes worth grepping in PCAP: `0x01` Identity, `0x02` Message Router, `0x06` Connection Manager, `0x67` PCCC, `0x6B` Symbol, `0x6C` Template, `0xAC`/`0xAD` vendor-specific.
-- `0xA1` (forward open) and `0xA2` (forward close) bracket I/O sessions; large `0xA1` payloads carry the connection path with PLC slot.
+- Connection Manager services `0x54` (Forward Open), `0x5B` (Large Forward Open), and `0x4E` (Forward Close) bracket I/O sessions; large Forward Open payloads carry the connection path with PLC slot. In CPF framing the same session shows as CPF item type `0xA1` (Connected Address) + `0xB1` (Connected Data) — those are transport IDs, not services.
 - `Service 0x52` (read tag fragmented) and `0x53` (write tag fragmented) handle arrays larger than one packet.
 
 ## S7comm decoding cues
@@ -121,7 +121,7 @@ Watch out for:
 
 ## DNP3 decoding cues
 
-- Function codes: `0x01` Read, `0x02` Write, `0x03` Select, `0x04` Operate, `0x05` Direct Operate, `0x12` Cold Restart, `0x0D` Confirm.
+- Application function codes: `0x00` Confirm, `0x01` Read, `0x02` Write, `0x03` Select, `0x04` Operate, `0x05` Direct Operate, `0x06` Direct Operate No Ack, `0x0D` Cold Restart, `0x0E` Warm Restart. Response codes: `0x81` Response, `0x82` Unsolicited Response.
 - Object groups: `g1` binary input, `g10` binary output, `g12` CROB (control relay output block — actual command), `g30` analog input, `g40` analog output, `g41` analog output block.
 - `g12v1` write with `op_type=3` (latch-on) followed by `op_type=4` (latch-off) is the classic open/close sequence; flag-style data sometimes hides in the count field.
 
@@ -146,13 +146,14 @@ mbtget -r1 -a 0 -n 32  -u 1 TARGET > baseline_coils.txt
 ```
 
 ```python
+# pymodbus >= 3.10 uses device_id=; on 3.9 and earlier substitute slave=.
 from pymodbus.client import ModbusTcpClient
 c = ModbusTcpClient("TARGET", 502); c.connect()
 baseline = {
-    "hr":    c.read_holding_registers(0, 125, slave=1).registers,
-    "input": c.read_input_registers(0, 125, slave=1).registers,
-    "coils": c.read_coils(0, 128, slave=1).bits,
-    "di":    c.read_discrete_inputs(0, 128, slave=1).bits,
+    "hr":    c.read_holding_registers(0, 125, device_id=1).registers,
+    "input": c.read_input_registers(0, 125, device_id=1).registers,
+    "coils": c.read_coils(0, 128, device_id=1).bits,
+    "di":    c.read_discrete_inputs(0, 128, device_id=1).bits,
 }
 ```
 
@@ -169,15 +170,15 @@ Change exactly one bit/register at a time. Choose the smallest semantically mean
 ```python
 target_addr  = 100
 target_value = 1
-old = c.read_holding_registers(target_addr, 1, slave=1).registers[0]
-c.write_register(target_addr, target_value, slave=1)
+old = c.read_holding_registers(target_addr, 1, device_id=1).registers[0]
+c.write_register(target_addr, target_value, device_id=1)
 ```
 
 ### 3. Verify (read-back + side channel)
 
 ```python
 import time; time.sleep(0.5)                # one scan cycle
-new = c.read_holding_registers(target_addr, 1, slave=1).registers[0]
+new = c.read_holding_registers(target_addr, 1, device_id=1).registers[0]
 assert new == target_value, (old, new)
 ```
 
@@ -197,7 +198,7 @@ Some oracles sample every N seconds; the write must be held longer than N. If th
 ### 5. Restore
 
 ```python
-c.write_register(target_addr, old, slave=1)
+c.write_register(target_addr, old, device_id=1)
 ```
 
 Restoring is part of the test, not optional politeness. It separates "I changed this and the oracle reacted" from "I changed this and the process is now stuck", and it gives the next test a clean baseline.

@@ -67,6 +67,7 @@ Steps:
 Skeleton (Modbus example):
 
 ```python
+# pymodbus >= 3.10 uses device_id=; on 3.9 and earlier substitute slave=.
 import time, sys
 from pymodbus.client import ModbusTcpClient
 
@@ -79,7 +80,7 @@ while True:
     now = time.time()
     phase = (now - t0) % POLL_PERIOD
     if abs(phase - WRITE_OFFSET) < 0.05:
-        c.write_register(2, 0xFFFF, slave=1)   # flip one tag
+        c.write_register(2, 0xFFFF, device_id=1)   # flip one tag
         time.sleep(POLL_PERIOD / 2)
     time.sleep(0.01)
 ```

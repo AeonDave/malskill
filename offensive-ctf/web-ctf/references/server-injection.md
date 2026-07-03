@@ -87,6 +87,7 @@ GraphQL:
 - field-level auth gaps
 - batching, aliases, and nested object abuse
 - GET/POST mismatch and persisted-query behavior
+- subscription/WebSocket transport (`graphql-ws`, `subscriptions-transport-ws`): auth is bound at `connection_init.payload`, not per-message — check Origin enforcement, session takeover after upgrade, HTTP-layer WAF bypass via subscription payloads, and forbidden fields exposed only through the subscription schema
 
 Other parser classes:
 - XPath / XML injection

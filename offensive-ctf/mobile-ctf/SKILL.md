@@ -94,7 +94,9 @@ iv  = b'\x00'*16                   # ECB has no IV; CBC: extract IV from app
 # AES-ECB (most common in easy CTF challenges)
 cipher = AES.new(key, AES.MODE_ECB)
 pt = cipher.decrypt(ct)
-print(pt.rstrip(b'\x00\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10'))
+# Strip PKCS7 padding (last byte = pad length, 1..blocksize)
+pad = pt[-1]
+print(pt[:-pad] if 1 <= pad <= 16 else pt)
 
 # AES-CBC
 # cipher = AES.new(key, AES.MODE_CBC, iv=iv)
@@ -112,7 +114,7 @@ find apk_out/assets/ -type f | xargs file
 # Stego on asset images
 zsteg apk_out/assets/suspicious.png    # LSB stego (PNG/BMP)
 steghide info apk_out/assets/suspicious.jpg  # JPEG stego (needs passphrase)
-strings apk_out/assets/suspicious.png | grep -i "HTB\|flag"
+strings apk_out/assets/suspicious.png | grep -iE 'flag\{|ctf\{'
 # Check data after EOF marker
 python3 -c "
 data=open('apk_out/assets/suspicious.png','rb').read()
@@ -151,11 +153,15 @@ with open('backup.ab','rb') as f: print(repr(f.read(60)))
 # Expected: b'ANDROID BACKUP\n<version>\n<compressed>\n<encryption>\n'
 # Header size = length of that ASCII block (often 24 bytes, count manually)
 
-# Extract: skip header, decompress zlib, untar
-HEADER_SIZE=24   # adjust if header content differs
-dd if=backup.ab bs=$HEADER_SIZE skip=1 2>/dev/null \
-  | python3 -c "import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))" \
-  > backup.tar
+# Extract: header is variable length — skip 4 newline-terminated fields, then zlib-decompress
+python3 - <<'PY'
+import zlib, pathlib
+raw = pathlib.Path('backup.ab').read_bytes()
+p = 0
+for _ in range(4):
+    p = raw.index(b'\n', p) + 1
+pathlib.Path('backup.tar').write_bytes(zlib.decompress(raw[p:]))
+PY
 tar xf backup.tar -C extracted/
 
 # List all non-manifest files
@@ -176,7 +182,7 @@ for root, _, files in os.walk('extracted/'):
         p = os.path.join(root, f)
         try:
             d = open(p,'rb').read()
-            m = re.findall(b'HTB\{[^}]{1,60}\}', d)
+            m = re.findall(rb'(?:flag|ctf|HTB|THM)\{[^}]{1,60}\}', d)
             if m: print(p, m)
         except: pass
 "
@@ -270,7 +276,8 @@ Use when: flag is constructed at runtime, key is derived (not hardcoded), or log
 
 ```bash
 # Frida — hook the decryption function and capture plaintext
-frida -U -f <package_name> -l hook_crypto.js --no-pause
+# frida-tools 12+ spawns and auto-resumes; do NOT pass --no-pause (deprecated)
+frida -U -f <package_name> -l hook_crypto.js
 
 # Generic crypto hook (catches AES/DES decryption output):
 # See mobile-technique for full Frida script patterns

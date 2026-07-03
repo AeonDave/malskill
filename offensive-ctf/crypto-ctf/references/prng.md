@@ -1,10 +1,4 @@
-# Preserved source: prng.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - PRNG & Key Recovery
-
-Foundational PRNG state/seed recovery techniques.
 
 ## Table of Contents
 - [Mersenne Twister (MT19937) State Recovery]
@@ -341,7 +335,7 @@ When key is computed by complex function, emulate it rather than reimplementing.
 ```python
 import numpy as np
 
-def build_prng_matrix:
+def build_prng_matrix(prng_func, seed_bits, output_bits):
     """Build GF(2) matrix by running PRNG on unit vectors."""
     M = np.zeros((output_bits, seed_bits), dtype=np.uint8)
     for i in range(seed_bits):
@@ -413,7 +407,7 @@ def render(flag_bytes):
 
 # Hill climb: try each byte value, keep the one that maximizes grid match
 target = parse_target_art()
-flag = list
+flag = list(known_prefix)  # known flag-format bytes
 for pos in range(7, 17):
     best_score, best_char = -1, 0
     for c in range(32, 127):
@@ -691,7 +685,7 @@ def crack_seed_from_two_outputs(mt0_val, mt227_val):
 
 # After recovering seed, all future (and past) outputs are predictable
 r = random.Random()
-r.seed
+r.seed(seed)
 ```
 
 **Key insight:** MT19937 seeds recoverable from as few as two state values via the twist function's wrap-around relationship. Any challenge that exposes MT state values through solvable mathematical puzzles is vulnerable to full seed recovery.
@@ -991,4 +985,4 @@ def predict_branches(W_start, G, n_steps, bit_fn=lambda pt: int(pt[0]) & 1):
 
 **Key insight:** EC-LCG truncation is broken by the same lattice/bounded-search ideas as integer LCG truncation, but the curve equation adds an extra non-linear constraint that couples the hidden low bits of `x` and `y` together — use that coupling to reduce the search space before reaching for heavy lattice machinery.
 
-**References:** [HTB Blessed writeup — EC-LCG ZKP prediction](https://7rocky.github.io/en/ctf/htb-challenges/crypto/blessed/) · [Springer: Attacking EC-LCG via lattice techniques](https://link.springer.com/article/10.1007/s12095-021-00535-6)
+**Reference:** [Springer: Attacking EC-LCG via lattice techniques](https://link.springer.com/article/10.1007/s12095-021-00535-6)

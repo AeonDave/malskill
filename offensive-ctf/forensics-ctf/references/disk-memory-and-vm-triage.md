@@ -214,7 +214,7 @@ with open('$MFT', 'rb') as f:
 
 # Search for flag patterns in raw MFT data
 import re
-flags = re.findall(rb'utflag\{[^}]+\}', mft_data)
+flags = re.findall(rb'[A-Za-z_]+\{[^}]+\}', mft_data)  # adapt regex to challenge flag format
 for flag in flags:
     print(f"Found: {flag.decode()}")
 ```
@@ -226,11 +226,11 @@ strings -a cold-workspace.dmp | grep -i "flag\|password\|key\|secret"
 # Environment variables survive in process memory snapshots
 ```
 
-**Challenge patterns
-- **Landfall:** Flag hidden in PowerShell history or Amcache execution records
-- **Sherlockk:** Correlate Amcache entries with MFT timestamps to identify malicious activity
-- **Cold Workspace:** Flag in environment variables extracted from memory dump
-- **Checkpoint A/B:** Multi-part investigation using combined artifacts
+**Common triage patterns:**
+- PowerShell history (fastest path) — attacker commands or flag directly in history
+- Amcache + MFT timestamp correlation — identifies malicious executables by execution time
+- Environment variables in memory dumps — flags or keys stored in process environment blocks
+- Multi-artifact investigation — combine PSReadLine, Amcache, MFT, registry for timeline reconstruction
 
 **Key insight:** KAPE triage ZIPs contain pre-collected forensic artifacts — no need for full disk imaging. Start with PowerShell history (fastest wins) → Amcache (execution timeline) → MFT (resident data for small files) → registry hives (persistence, credentials).
 

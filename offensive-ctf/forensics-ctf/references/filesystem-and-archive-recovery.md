@@ -115,7 +115,7 @@ for row in ws.iter_rows():
         if cell.value is not None:
             binary_data.append((int(cell.value) - 78) // 3)
 
-with open as f:
+with open('recovered.bin', 'wb') as f:
     f.write(binary_data)
 ```
 
@@ -260,7 +260,7 @@ with open('raw.bin', 'rb') as f:
     data = f.read()
 # Remove null bytes at odd positions
 cleaned = bytes(data[i] for i in range(0, len(data), 2))
-with open as f:
+with open('cleaned.bin', 'wb') as f:
     f.write(cleaned)
 ```
 

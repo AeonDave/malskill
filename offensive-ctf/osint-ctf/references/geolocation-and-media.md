@@ -76,7 +76,7 @@
 
 **Precision:** Standard Plus Codes resolve to ~14m x 14m areas (vs. W3W's 3m x 3m). Adding extra characters increases precision. Meter-level position changes can alter the code.
 
-**Key insight:** Unlike W3W (proprietary, requires API key), Plus Codes are free and built into Google Maps. When a flag format shows `{XXXX+XXX}`, recognize it as a Plus Code. Position the Street View camera at the exact photo capture location, then read the Plus Code from the map pin.
+**Key insight:** Unlike W3W (proprietary, requires API key), Plus Codes are free and built into Google Maps. When a flag format matches the Plus Code pattern (e.g., `H9G2+47X`), recognize it as a Plus Code. Position the Street View camera at the exact photo capture location, then read the Plus Code from the map pin.
 
 -
 
@@ -249,7 +249,7 @@ curl "https://ipinfo.io/103.150.68.150/json"
 
 **Key insight:** Google Lens performs significantly better on cropped regions than full scene images. A full scene may return generic landscape results, while a cropped shop sign returns the exact business with its address.
 
-**Example workflow (W3W2):**
+**Example workflow:**
 1. Challenge image shows a street scene with a shop
 2. Crop to just the shop portion
 3. Google Lens identifies the shop and its location
@@ -296,7 +296,7 @@ img.transpose(Image.FLIP_LEFT_RIGHT).save('flipped.jpg')
 
 ## What3Words (W3W) Geolocation
 
-**Pattern:** Photo of a location. Find the exact What3Words address (3-meter precision grid). Flag format: `utflag{word1.word2.word3}`.
+**Pattern:** Photo of a location. Find the exact What3Words address (3-meter precision grid). Flag format: `flag{word1.word2.word3}`.
 
 **What3Words basics:**
 - Divides entire world into 3m x 3m squares, each with a unique 3-word address

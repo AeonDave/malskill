@@ -1,19 +1,4 @@
-# Preserved source: modern-ciphers.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Modern Hash, MAC, and Collision Attacks
-
-## Use This Reference When
-
-- The artifact contains a digest, checksum, MAC, signature-over-hash, hash chain, truncated hash, CRC, or custom linear hash construction.
-- The likely break is length extension, collision generation, multicollision composition, CRC linearity, XOR aggregation, leaked intermediate state, or a flawed HMAC-like design.
-- The validation signal is a matching digest/MAC, accepted forged message, recovered secret component, or collision pair that passes the verifier.
-
-## External Anchors
-
-- RFC 2104 defines HMAC behavior, including the rule that keys longer than the hash block size are first hashed.
-- The 2020 "SHA-1 is a Shambles" result is the practical chosen-prefix collision baseline for SHA-1 collision workflows.
 
 ## Table of Contents
 - [Weak Hash Functions / GF(2) Gaussian Elimination](#weak-hash-functions-gf2-gaussian-elimination)

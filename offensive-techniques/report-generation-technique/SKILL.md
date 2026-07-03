@@ -33,7 +33,7 @@ Before writing, classify the deliverable and the evidence maturity so the report
 ## Boundary with other skills
 
 - **Evidence production**: the relevant offensive or analysis technique should already have produced validated findings and artifacts.
-- **Writing support**: use `knowledge/evidence-before-claims/` and `knowledge/verification-before-completion/` logic when a finding is not yet report-ready.
+- **Writing support**: use `behaviours/evidence-before-claims/` and `behaviours/verification-before-completion/` logic when a finding is not yet report-ready.
 
 ## Report structure
 

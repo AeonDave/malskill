@@ -53,9 +53,9 @@ Prefer these tool families when the corresponding signal appears:
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
-## Writeup-derived patterns
+## Solving discipline
 
-- Public writeup patterns favor artifact-first triage, shortest reproducible path, and explicit validation signal before pivoting.
+- Favor artifact-first triage, shortest reproducible path, and an explicit validation signal before pivoting.
 - Record failed hypotheses with evidence so an agent does not repeat expensive dead paths.
 - Prefer category-specific tools after surface classification instead of running every scanner or brute-forcer by habit.
 - End with a replayable proof: recovered secret, local verification, exploit output, decoded artifact, or correlated evidence chain.

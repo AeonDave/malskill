@@ -53,13 +53,6 @@ Prefer these tool families when the corresponding signal appears:
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 
-## Writeup-derived patterns
-
-- Public writeup patterns favor artifact-first triage, shortest reproducible path, and explicit validation signal before pivoting.
-- Record failed hypotheses with evidence so an agent does not repeat expensive dead paths.
-- Prefer category-specific tools after surface classification instead of running every scanner or brute-forcer by habit.
-- End with a replayable proof: recovered secret, local verification, exploit output, decoded artifact, or correlated evidence chain.
-
 ## Category-specific quick pivots
 
 - Triage binary and mitigations first; prove exact controlled primitive before payload engineering.
@@ -94,7 +87,6 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/advanced-primitives.md](references/advanced-primitives.md) — advanced edge cases: seccomp oddities, VM/JIT/interpreter bugs, runtime pivots, and data-reinterpretation tricks that do not fit cleanly under the core references.
 - [references/dynamic-linker-resolver-pivots.md](references/dynamic-linker-resolver-pivots.md) — load when a leakless chain redirects loader metadata, forges dynamic symbols, triggers lazy resolution through a library path, or chains multiple resolver calls.
 - [references/exotic-arch.md](references/exotic-arch.md) — RISC-V, ARM32, ARM64, and MIPS exploitation notes: register conventions, shellcode, gadget patterns, and architecture-specific pitfalls.
-- [references/field-notes.md](references/field-notes.md) — compact exploit playbook with fast pivots and cross-links to deeper references.
 - [references/format-string.md](references/format-string.md) — format-string exploitation workflow: leaks, arbitrary writes, staged loops, and hardened-binary pivots.
 - [references/heap.md](references/heap.md) — heap exploitation core: bins, safe-linking bypass strategy, modern chains, and allocator-specific notes.
 - [references/heap-fsop.md](references/heap-fsop.md) — FSOP-focused heap chains and modern glibc stream abuse patterns.

@@ -95,17 +95,19 @@ guestfish -a <snap-id>.img
 
 ## IMDS (from inside EC2)
 
-```bash
-# IMDSv1 (direct)
-curl http://169.254.169.254/latest/meta-data/
-curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
-curl http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
+IMDSv2 is the default for new EC2 launches since 2024-03; try token-first flow first, fall back to v1 only if `HttpTokens=optional`.
 
-# IMDSv2 (requires token first)
+```bash
+# IMDSv2 (token-first, default on modern instances)
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/
+curl -H "X-aws-ec2-metadata-token: $TOKEN" \
   http://169.254.169.254/latest/meta-data/iam/security-credentials/<role>
+
+# Legacy IMDSv1 (direct GET; older AMIs, SSRF-friendly)
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
 ```
 
 ## Directory Service (DS) + WorkDocs

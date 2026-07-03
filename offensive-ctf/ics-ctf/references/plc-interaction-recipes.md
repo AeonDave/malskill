@@ -33,15 +33,16 @@ nmap -sV -p 502 --script modbus-discover --script-args='modbus-discover.aggressi
 ### Read sweep with `pymodbus`
 
 ```python
+# pymodbus >= 3.10 uses device_id=; on 3.9 and earlier substitute slave=.
 from pymodbus.client import ModbusTcpClient
 
 c = ModbusTcpClient("TARGET", port=502)
 assert c.connect()
 try:
-    holding = c.read_holding_registers(address=0, count=64, slave=1)
-    inputs  = c.read_input_registers(address=0, count=64, slave=1)
-    coils   = c.read_coils(address=0, count=64, slave=1)
-    discr   = c.read_discrete_inputs(address=0, count=64, slave=1)
+    holding = c.read_holding_registers(address=0, count=64, device_id=1)
+    inputs  = c.read_input_registers(address=0, count=64, device_id=1)
+    coils   = c.read_coils(address=0, count=64, device_id=1)
+    discr   = c.read_discrete_inputs(address=0, count=64, device_id=1)
     print("HR :", holding.registers if not holding.isError() else holding)
     print("IR :", inputs.registers  if not inputs.isError()  else inputs)
     print("CO :", coils.bits        if not coils.isError()   else coils)
@@ -59,7 +60,7 @@ from pymodbus.client import ModbusTcpClient
 
 c = ModbusTcpClient("TARGET", 502); c.connect()
 for base in range(0, 1000, 16):
-    r = c.read_coils(base, count=16, slave=1)
+    r = c.read_coils(base, count=16, device_id=1)
     if not r.isError() and any(r.bits):
         print(base, r.bits)
 c.close()
@@ -71,11 +72,11 @@ c.close()
 from pymodbus.client import ModbusTcpClient
 
 c = ModbusTcpClient("TARGET", 502); c.connect()
-prev = c.read_holding_registers(0, 1, slave=1).registers[0]
-c.write_register(0, 1234, slave=1)
-after = c.read_holding_registers(0, 1, slave=1).registers[0]
+prev = c.read_holding_registers(0, 1, device_id=1).registers[0]
+c.write_register(0, 1234, device_id=1)
+after = c.read_holding_registers(0, 1, device_id=1).registers[0]
 print(prev, "->", after)
-c.write_register(0, prev, slave=1)  # restore when scope allows
+c.write_register(0, prev, device_id=1)  # restore when scope allows
 c.close()
 ```
 
@@ -129,7 +130,7 @@ If `rack`/`slot` are wrong, the session is closed by the PLC; never brute-force 
 
 - `s7comm.header.rosctr == 1` (Job) followed by `== 3` (Ack-Data) is a normal request/response.
 - `s7comm.param.func == 0x04` (Read Var) and `0x05` (Write Var) carry the area type and address.
-- SZL reads (`s7comm.param.func == 0x11`) return module/firmware identification — useful for lab fingerprinting.
+- SZL reads live in userdata (ROSCTR 0x07), CPU funcgroup: filter `s7comm.header.rosctr == 7 and s7comm.param.userdata.funcgroup == 4 and s7comm.param.userdata.subfunc == 1`, or just `s7comm.data.userdata.szl_id` to see every SZL. Common IDs: 0x0011 (module identification / order code), 0x001C (CPU details), 0x0017 (LED status).
 
 ## OPC UA
 

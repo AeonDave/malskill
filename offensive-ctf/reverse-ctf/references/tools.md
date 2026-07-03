@@ -31,9 +31,10 @@ objdump -M intel -d binary
 
 - **Ghidra** — best free all-rounder: type recovery, xref reading, headless scripting, emulator-assisted local decryption. `analyzeHeadless <proj> tmp -import binary -postScript script.py`.
 - **radare2 / Rizin + Cutter** — fast structural triage and scriptable JSON. `r2 -d binary; aaa; afl; pdf @ main`. `V!` panels are ideal for live VM tracing. Cutter bundles the Ghidra decompiler via r2ghidra.
-- **Binary Ninja** — fast scripting surface and a strong second-opinion decompiler.
+- **Binary Ninja** — fast scripting surface and a strong second-opinion decompiler; official **Sidekick** plugin adds LLM-driven rename/summarize.
 - **RetDec** — LLVM-based, multi-arch (x86/ARM/MIPS/PPC/PIC32), emits compilable C. Use for architectures Ghidra handles poorly.
 - **dogbolt** — cross-check one ugly function across several decompilers before trusting any single rendering.
+- **LLM-assisted decompilation** — for many small crackmes or unknown VM handlers, rapid rename/summarize is worth minutes: **Gepetto** (IDA), **aidapal** (IDA, local models), **GhidrAssist** / **GhidraChatGPT** (Ghidra), **r2ai** (radare2). Treat output as hypothesis, verify against raw disasm.
 
 ## Debuggers
 
@@ -72,8 +73,8 @@ objdump -M intel -d binary
 ## Bytecode and Managed Runtimes
 
 - **Python** — `marshal`+`dis` for disassembly (ground truth); `pycdc`/`uncompyle6` when version-compatible; `Pyarmor-Static-Unpack-1shot` for Pyarmor 8/9. Match the exact CPython version — opcode mismatches waste hours.
-- **WASM** — `wasm2c checker.wasm -o checker.c && gcc -O3 ...`; `wasm2wat`/`wat2wasm` to patch comparisons/constants.
-- **.NET** — dnSpy (debug+decompile), ILSpy, dotPeek. NativeAOT keeps .NET semantics but loses IL-level comfort.
+- **WASM** — `wasm-decompile` (wabt) for quickly readable pseudo-C; `wasm2c checker.wasm -o checker.c && gcc -O3 …` when you want to link/instrument; `wasm2wat`/`wat2wasm` to patch comparisons/constants.
+- **.NET** — **dnSpyEx** (community fork, .NET 6/7/8/9 support — the original `dnSpy/dnSpy` is inactive since 2020), ILSpy, dotPeek. NativeAOT keeps .NET semantics but loses IL-level comfort.
 - **RISC-V** — Capstone with compressed-instruction mode + QEMU user-mode when no native env exists.
 - **boolector** — materially faster than Z3 on pure QF_BV bit-twiddling hash validators.
 

@@ -16,8 +16,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
   - [YARA Rules with Z3](#yara-rules-with-z3)
   - [Type Systems as Constraints](#type-systems-as-constraints)
   - [Z3 SAT Solving for Boolean Logic Gate Networks]
-- [Kubernetes RBAC Bypass](#kubernetes-rbac-bypass)
-  - [K8s Privilege Escalation Checklist](#k8s-privilege-escalation-checklist)
+- [Kubernetes RBAC / Secret Extraction (misc-flavor)](#kubernetes-rbac--secret-extraction-misc-flavor) (full escapes: see `container-technique`)
 - [Floating-Point Precision Exploitation](#floating-point-precision-exploitation)
   - [Finding Exploitable Values](#finding-exploitable-values)
   - [Exploitation Strategy](#exploitation-strategy)
@@ -263,30 +262,18 @@ if solver.check() == sat:
 
 -
 
-## Kubernetes RBAC Bypass
+## Kubernetes RBAC / Secret Extraction (misc-flavor)
 
-**Pattern:** Container deployer with claimed ServiceAccount isolation.
-
-**Attack chain:**
-1. Deploy probe container that reads in-pod ServiceAccount token at `/var/run/secrets/kubernetes.io/serviceaccount/token`
-2. Verify token can impersonate deployer SA (common misconfiguration)
-3. Create pod with `hostPath` volume mounting `/` -> read node filesystem
-4. Extract kubeconfig (e.g., `/etc/rancher/k3s/k3s.yaml`)
-5. Use node credentials to access hidden namespaces and read secrets
+Full escape recipes (pod-create abuse, `hostPath` node takeover, kubelet `/run/<ns>/<pod>` RCE, `nodes/proxy` GET) live in `offensive-techniques/container-technique/`. Load that skill for the exploit path. The block below is only the misc-CTF surface: a deployer container claims ServiceAccount isolation, but the in-pod token lets you read "hidden" namespace secrets directly.
 
 ```bash
-# From inside pod:
+# From inside pod — read the flag without escaping
 TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 curl -k -H "Authorization: Bearer $TOKEN" \
   https://kubernetes.default.svc/api/v1/namespaces/hidden/secrets/flag
 ```
 
-### K8s Privilege Escalation Checklist
-- Check RBAC: `kubectl auth can-i -list`
-- Look for pod creation permissions (can create privileged pods)
-- Check for hostPath volume mounts allowed in PSP/PSA
-- Look for secrets in environment variables of other pods
-- Check for service mesh sidecars leaking credentials
+**Misc triage cues:** `kubectl auth can-i --list` for the mounted SA, secrets in other pods' `env`, service-mesh sidecars (Envoy admin, Linkerd tap) leaking credentials. If the goal is a flag from a peer namespace, direct API reads with the mounted token are usually shorter than a full node escape.
 
 -
 

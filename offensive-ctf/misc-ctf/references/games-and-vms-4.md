@@ -4,7 +4,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 # CTF Misc - Games, VMs & Constraint Solving (Part 4)
 
-Additional CTF-era challenges extracted from 2018+ writeups. For earlier parts, see [games-and-vms.md](games-and-vms.md), [games-and-vms-2.md](games-and-vms-2.md), and [games-and-vms-3.md](games-and-vms-3.md).
+Additional constraint-solving and multi-layer artifact patterns. For earlier parts, see [games-and-vms.md](games-and-vms.md), [games-and-vms-2.md](games-and-vms-2.md), and [games-and-vms-3.md](games-and-vms-3.md).
 
 ## Table of Contents
 - [XSLT as Turing-Complete VM for Binary Search]
@@ -167,6 +167,7 @@ def tribonacci(N, MOD=13371337):
 
 ```python
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from PIL import Image
 import pytesseract, io
 d = webdriver.Chrome()
@@ -174,7 +175,7 @@ d.get(URL); d.execute_script("document.body.style.zoom='450%'")
 img = Image.open(io.BytesIO(d.get_screenshot_as_png()))
 expr = pytesseract.image_to_string(img).replace('x','*').replace('{','(').replace('}',')')
 d.execute_script(f"document.getElementsByName('answer')[0].value={eval(expr)}")
-d.find_element_by_tag_name('form').submit()
+d.find_element(By.TAG_NAME, 'form').submit()
 ```
 
 **Key insight:** Dynamic CAPTCHAs are often too short-lived for manual solves but trivial for a 1-second Selenium + Tesseract loop. When OCR alone fails, pair it with a cmap reference library.
@@ -186,10 +187,10 @@ d.find_element_by_tag_name('form').submit()
 **Pattern:** Recognise the three most common esolangs stacked together: Brainfuck source outputs a YouTube URL, the video's thumbnail border is a Piet program whose execution prints the flag. Use `bf` → `yt-dlp` → strip border pixels → `npiet` pipeline.
 
 ```bash
-bf puzzle.bf                          # prints youtube.com/watch?v=XXXX
-yt-dlp -x -write-thumbnail "$URL"    # grabs JPG thumbnail
+bf puzzle.bf                            # prints youtube.com/watch?v=XXXX
+yt-dlp --write-thumbnail --skip-download "$URL"  # grabs JPG thumbnail only
 python crop_border.py thumb.jpg > piet.png
-npiet piet.png                        # prints the flag
+npiet piet.png                          # prints the flag
 ```
 
 **Key insight:** Multi-layer esolangs are recognisable by eye: Brainfuck is `+-<>.,[]`, Piet is colored block grids, Whitespace is invisible. If a challenge description mentions multiple "weird" formats, pipeline the decoders in order.
@@ -198,7 +199,7 @@ npiet piet.png                        # prints the flag
 
 ## Bytebeat Synth Code Recognition for Hidden Audio
 
-**Pattern:** A short C-like one-liner is bytebeat — a generative music format where `t` is a monotonic sample counter. Paste into an online interpreter (http://wry.me/bytebeat/) to hear it; the resulting tune is a recognizable song whose title is the flag.
+**Pattern:** A short C-like one-liner is bytebeat — a generative music format where `t` is a monotonic sample counter. Paste into an online interpreter (https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html or https://dollchan.net/bytebeat/) to hear it; the resulting tune is a recognizable song whose title is the flag.
 
 ```c
 /* Bytebeat example: output byte = low 8 bits of this expression */

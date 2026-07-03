@@ -53,6 +53,15 @@ Collect these before deciding exploit path:
 - Check whether accounting uses `address(this).balance` or internal balances.
 - Rounding and share calculations often fail near zero, one wei, or very large values.
 - Unchecked low-level calls can silently fail and leave state inconsistent.
+- ERC-4626 vaults: attacker mints 1 share, `asset.transfer`s a large donation to inflate `pricePerShare`, next depositor rounds down to 0 shares. Check for OpenZeppelin `_decimalsOffset()` or virtual-shares defense; without it the first-depositor pattern is exploitable.
+
+### Smart accounts and delegation
+
+- ERC-4337: entrypoint calls `validateUserOp` on the account and `validatePaymasterUserOp` on the paymaster before execution. Trust boundary is that pair — replay, missing sig-hash chaining, wildcard callers, or accepting unbounded gas from a paymaster are all account bugs, not bundler bugs.
+- ERC-4337 simulation gap: bundlers enforce storage/opcode rules only during simulation; a permissive or self-hosted bundler can include ops that read state banned by ERC-7562 rules, so accounts must not trust the simulated environment.
+- EIP-7702 (Pectra, May 2025): a signed authorization tuple sets EOA code to the designator `0xef0100 || <delegate>`. Delegation persists until the EOA signs a new tuple or delegates to the zero address.
+- 7702 init-frontrun: if the delegate contract has a public `init()` that grants ownership on first call, an observer of the mempool can front-run the intended init and take over the delegated EOA. Delegates must atomically bind init to the authorization signer.
+- 7702 storage carryover: switching delegates does not clear the EOA's storage; a new delegate can read/misinterpret slots written by the previous one.
 
 ### Governance, markets, and ZK
 
@@ -63,7 +72,7 @@ Collect these before deciding exploit path:
 ### Compiler and bytecode edge cases
 
 - Check compiler version and optimizer/via-IR flags before trusting source-level assumptions.
-- Transient storage and delete semantics can be version-sensitive.
+- EIP-1153 transient storage (`tstore`/`tload`) is cleared at transaction boundaries; safe as a same-tx reentrancy lock, unsafe if used to persist state across calls that end the tx or across a fork/snapshot boundary in tests.
 - Metadata length is stored at the end of Solidity bytecode; strip it only when the target logic does the same.
 
 ## Exploit construction workflow

@@ -180,7 +180,8 @@ git clone https://github.com/AssetRipper/AssetRipper
 python3 -c "
 import re
 data = open('assets.dmp','rb').read()
-print('HTB patterns:', re.findall(b'HTB\{[^}]{1,60}\}', data))
+# Generic flag pattern — swap PREFIX (e.g. HTB, CTF, pico, flag) per event
+print('Flags:', re.findall(rb'(?:flag|HTB|CTF|pico)\{[^}]{1,80}\}', data, re.I))
 print('Strings (16+ printable chars):')
 for s in re.findall(b'[\x20-\x7e]{16,}', data):
     print(s.decode())
@@ -195,7 +196,7 @@ Pure C/C++ game. Standard binary reversing + memory manipulation.
 
 ```bash
 # Static analysis
-strings radar_challenge | grep -iE "HTB\{|flag|score|win|cheat|pass|unlock|level"
+strings radar_challenge | grep -iE "flag\{|HTB\{|CTF\{|pico\{|score|win|cheat|pass|unlock|level"
 checksec --file=radar_challenge   # check mitigations
 
 # Ghidra / radare2 analysis

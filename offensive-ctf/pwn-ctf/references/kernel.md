@@ -637,7 +637,7 @@ NICD = Buffer () { 0x48, 0xc7, 0xc0, /* patched commit_creds prologue */ }
 
 ## ARM fcntl64 set_fs() CVE-2015-8966 Pipe Exfil
 
-**Pattern:** Bug: `fcntl64` on ARM Linux set `KERNEL_DS` via `set_fs()` and never restored it. Exploit: fork a child that calls `fcntl64`, then have the child write arbitrary kernel addresses through a pipe; parent reads the pipe back. Direct reads of MMU regions panic, so pipes act as a safe shim.
+**Legacy** (pre-set_fs removal; historically ARM Linux < ~5.10 and any residual builds still shipping `set_fs`). **Pattern:** Bug: `fcntl64` on ARM Linux set `KERNEL_DS` via `set_fs()` and never restored it. Exploit: fork a child that calls `fcntl64`, then have the child write arbitrary kernel addresses through a pipe; parent reads the pipe back. Direct reads of MMU regions panic, so pipes act as a safe shim.
 
 ```c
 if (fork() == 0) {
@@ -910,6 +910,8 @@ system("/bin/umount /tmp 2>/dev/null");
 ---
 
 ## Kernel addr_limit Bypass via Failed File Open
+
+**Applies to Linux < 5.18 on x86** (set_fs()/addr_limit was removed in 5.18; earlier on arm64/powerpc). Modern kernels use `access_ok()` + `copy_{to,from}_user()` without a per-thread `addr_limit`.
 
 **Pattern:** Kernel module calls `set_fs(KERNEL_DS)` to access userspace pointers, but if a subsequent file open fails, it returns without restoring the old `addr_limit`. Force the failure by making the target file a directory. Now user-space `read()` can access kernel memory.
 

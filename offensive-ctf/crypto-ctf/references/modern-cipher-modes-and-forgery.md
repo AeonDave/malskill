@@ -1,19 +1,4 @@
-# Preserved source: modern-ciphers.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Modern Cipher Modes and Forgery
-
-## Use This Reference When
-
-- The artifact shows block-mode or stream-mode misuse: ECB patterns, CBC bit flips, CTR/OFB/CFB keystream reuse, padding or decode oracles, or repeated GCM nonces.
-- The expected proof is a forged token, modified ciphertext, recovered plaintext, recovered authentication subkey, or replayable oracle transcript.
-- The fastest validation signal is local re-encryption, tag verification, known-plaintext recovery, or a server response that accepts the forged ciphertext.
-
-## External Anchors
-
-- NIST SP 800-38D specifies GCM/GMAC and is the baseline for nonce uniqueness and tag-validation assumptions.
-- RFC 8017 is the baseline for PKCS #1 terminology when RSA padding-oracle material crosses into mode/oracle workflows.
 
 ## Table of Contents
 - [AES-CFB-8 Static IV State Forging](#aes-cfb-8-static-iv-state-forging)

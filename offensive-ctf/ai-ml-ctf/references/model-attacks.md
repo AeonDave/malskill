@@ -89,7 +89,7 @@ input_tensor = torch.randn(1, 3, 224, 224, requires_grad=True)
 optimizer = optim.Adam([input_tensor], lr=0.01)
 mse_loss = nn.MSELoss()
 
-for step in range:
+for step in range(2000):
     optimizer.zero_grad()
     output = model(input_tensor)
     loss = mse_loss(output, target_output)
@@ -113,9 +113,9 @@ for step in range:
 
 # Save recovered image
 recovered = input_tensor.squeeze(0).detach()
-img = transforms.ToPILImage()
-img.save
-print
+img = transforms.ToPILImage()(recovered.clamp(0, 1))
+img.save("recovered.png")
+print(f"Final loss: {loss.item():.6f}")
 ```
 
 **Key insight:** Neural networks are differentiable, so you can backpropagate through them to optimize the input. Total variation regularization produces more natural-looking images. If the model has batch normalization, set it to eval mode (`model.eval()`) to use running statistics rather than batch statistics.
@@ -157,7 +157,7 @@ for step in range(5000):
 
     # Maximize distance between inputs (so they are distinct)
     input_diff = nn.MSELoss()(input_a, input_b)
-    sity_loss = -input_diff  # negative because we want to maximize
+    diversity_loss = -input_diff  # negative because we want to maximize
 
     # Regularize to valid range
     range_penalty = (
@@ -165,7 +165,7 @@ for step in range(5000):
         torch.relu(-input_b).sum() + torch.relu(input_b - 1).sum()
     )
 
-    loss = collision_loss + 0.1 * sity_loss + 0.01 * range_penalty
+    loss = collision_loss + 0.1 * diversity_loss + 0.01 * range_penalty
     loss.backward()
     optimizer.step()
 
@@ -296,9 +296,9 @@ from sklearn.linear_model import LogisticRegression
 API_URL = "http://challenge:8080/predict"
 
 def query_model(x):
-    """Send input to model API and get prediction/."""
+    """Send input to model API and get prediction and confidence."""
     resp = requests.post(API_URL, json={"input": x.tolist()})
-    return resp.json()  # e.g., {"class": 1, "": 0.87}
+    return resp.json()  # e.g., {"class": 1, "confidence": 0.87}
 
 # Strategy 1: Decision boundary mapping for 2D models
 # Sample a grid of points to map the decision boundary
@@ -306,15 +306,15 @@ xs = np.linspace(-5, 5, 100)
 ys = np.linspace(-5, 5, 100)
 X_grid = np.array([[x, y] for x in xs for y in ys])
 labels = []
-s = []
+confidences = []
 
 for point in X_grid:
     result = query_model(point)
     labels.append(result["class"])
-    s.append
+    confidences.append(result["confidence"])
 
 labels = np.array(labels)
-s = np.array
+confidences = np.array(confidences)
 
 # Fit a surrogate model to the extracted labels
 surrogate = LogisticRegression()
@@ -323,19 +323,23 @@ print(f"Extracted weights: {surrogate.coef_}")
 print(f"Extracted bias: {surrogate.intercept_}")
 
 # Strategy 2: Exact weight extraction for linear models
-# For a linear model f(x) = sigmoid(w*x + b), query with bgeneric case vectors
+# For a linear model f(x) = sigmoid(w*x + b), query with basis vectors
+# and invert the sigmoid to recover logits directly.
 dim = 10  # input dimensionality
 weights = np.zeros(dim)
+
+def logit(p):
+    return np.log(p / (1.0 - p))
+
 # Query with zero vector to get bias term
 base_result = query_model(np.zeros(dim))
-base_logit = np.log)
+base_logit = logit(base_result["confidence"])
 
 for i in range(dim):
     e_i = np.zeros(dim)
     e_i[i] = 1.0
     result = query_model(e_i)
-    logit = np.log)
-    weights[i] = logit - base_logit
+    weights[i] = logit(result["confidence"]) - base_logit
 
 print(f"Extracted weights: {weights}")
 print(f"Extracted bias: {base_logit}")
@@ -369,21 +373,21 @@ def get_prediction_metrics(model, x, true_label):
     with torch.no_grad():
         logits = model(x.unsqueeze(0))
         probs = F.softmax(logits, dim=1)
-        = probs[0, true_label].item()
+        confidence = probs[0, true_label].item()
         loss = F.cross_entropy(logits, torch.tensor([true_label])).item()
         entropy = -(probs * torch.log(probs + 1e-10)).sum().item()
     return {
-        "": ,
+        "confidence": confidence,
         "loss": loss,
         "entropy": entropy,
         "top1_margin": (probs.max() - probs.topk(2).values[0, 1]).item(),
     }
 
 # Method 1: Simple threshold attack
-# Members typically have higher and lower loss
+# Members typically have higher confidence and lower loss
 def threshold_attack(metrics, threshold=0.9):
-    """Predict membership based on threshold."""
-    return metrics[""] > threshold
+    """Predict membership based on confidence threshold."""
+    return metrics["confidence"] > threshold
 
 # Method 2: Shadow model attack (more sophisticated)
 # Train shadow models on known in/out splits to learn the membership signal
@@ -392,8 +396,8 @@ def shadow_model_attack(target_model, candidate_samples, candidate_labels):
     results = []
     for x, y in zip(candidate_samples, candidate_labels):
         m = get_prediction_metrics(target_model, x, y)
-        # High + low loss + low entropy = likely member
-        score = m[""] - 0.5 * m["entropy"]
+        # High confidence + low loss + low entropy = likely member
+        score = m["confidence"] - 0.5 * m["entropy"]
         results.append({
             "sample_label": y,
             "member_score": score,
@@ -408,7 +412,7 @@ def shadow_model_attack(target_model, candidate_samples, candidate_labels):
 candidate = torch.randn(3, 224, 224)  # single candidate image
 label = 5  # true class
 metrics = get_prediction_metrics(model, candidate, label)
-print
+print(f"Confidence: {metrics['confidence']:.4f}")
 print(f"Loss: {metrics['loss']:.4f}")
 print(f"Entropy: {metrics['entropy']:.4f}")
 print(f"Likely member: {threshold_attack(metrics)}")

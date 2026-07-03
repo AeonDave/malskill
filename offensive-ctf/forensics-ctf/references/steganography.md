@@ -130,29 +130,21 @@ deconv = wiener(img_arr, gaussian_psf(3.0), balance=0.003, clip=False)
 
 **6. Document metadata:** Check Producer, Author, Keywords fields: `pdfinfo doc.pdf` or `exiftool doc.pdf`.
 
-**Official writeup details:**
-- **rdctd 1:** Flag is visible in plain text (Section 3.4)
-- **rdctd 2:** Flag in hyperlink URI with escaped braces (`\{`, `\}`)
-- **rdctd 3:** LSB stego in Blue channel, **bit plane 5** (not bit 0!). Use `zsteg` with all planes: `zsteg -a extracted.ppm | grep ENO`
-- **rdctd 4:** QR code hidden under black redaction box. Use Master PDF Editor to remove the box, scan QR
-- **rdctd 5:** Flag in FlateDecode compressed stream (not visible with `strings`):
-  ```python
-  import re, zlib
-  pdf = open('file.pdf', 'rb').read()
-  for s in re.findall(b'stream[\r\n]+(.*?)[\r\n]+endstream', pdf, re.S):
-      try:
-          dec = zlib.decompress(s)
-          if b'ENO{' in dec: print(dec)
-      except: pass
-  ```
-- **rdctd 6:** Flag in `/Producer` metadata field
-
 **Comprehensive PDF flag hunt checklist:**
 1. `strings -a file.pdf | grep -o 'FLAG_FORMAT{[^}]*}'`
 2. `exiftool file.pdf`
-3. `pdfimages -all file.pdf img` + `zsteg -a img-*.ppm`
+3. `pdfimages -all file.pdf img` + `zsteg -a img-*.ppm`  *(use `-a` to check all bit planes — hidden data can be at plane 5 or higher, not just the default plane 0)*
 4. Open in PDF editor, check for overlay/redaction boxes hiding content
-5. Decompress FlateDecode streams and search
+5. Decompress FlateDecode streams and search:
+   ```python
+   import re, zlib
+   pdf = open('file.pdf', 'rb').read()
+   for s in re.findall(b'stream[\r\n]+(.*?)[\r\n]+endstream', pdf, re.S):
+       try:
+           dec = zlib.decompress(s)
+           if dec: print(dec[:200])  # inspect each stream for flag content
+       except: pass
+   ```
 6. Parse link annotations for URIs with escaped characters
 7. `mutool clean -d file.pdf clean.pdf && strings clean.pdf`
 
@@ -568,8 +560,6 @@ xortool -c ff layer.bin
 3. Decrypt and split: the decrypted data contains a valid `IDAT` chunk followed by another `scRT`
 4. Repeat for each layer until all `scRT` chunks are decrypted
 5. Reassemble: concatenate PNG header + all decrypted `IDAT` chunks + `IEND`
-
-**Layer keys in this challenge:** `nacho`, `savages`, `president`, `kilobits`, `monkey`, `butler`
 
 **Shortcut:** Open the raw PNG bytes as a raw image in GraphBitStreamer (32 bpp, width matching original). Weak XOR encryption preserves visual patterns (like ECB-encrypted images), making the flag readable without full decryption.
 

@@ -257,7 +257,7 @@ Get-Item -Path C:\file.txt -Stream *
 Get-Content -Path C:\file.txt -Stream hidden_data
 
 # dir /r shows ADS (Windows Vista+)
-dir /r C:\Users\suspect\Documents\
+dir /r C:\Users\<username>\Documents\
 
 # Common ADS names to check:
 # Zone.Identifier — marks files downloaded from the internet
@@ -524,9 +524,9 @@ with open('candidates.txt') as f:
         try:
             data = base64.b64decode(padded)
             if data[:4] == b'PK\x03\x04':
-                with open as out:
+                with open('recovered.zip', 'wb') as out:
                     out.write(data)
-                print
+                print('recovered.zip')
                 break
         except Exception:
             pass

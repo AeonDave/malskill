@@ -128,23 +128,21 @@ How to recognize a bridge in a capture or broker dump:
 - **Wireshark filters**: `mqtt`, `mqtt.msgtype == 3` (PUBLISH), `mqtt.topic contains "spBv1.0"`, `mqtt.willtopic`, `mqtt.username`.
 - **nmap NSE**: `mqtt-subscribe` (subscribe to `#` for N seconds), pair with `--script-args mqtt-subscribe.topic='$SYS/#'`.
 
-## 8. Real-world / writeup references
+## 8. Case material and reference sources
 
-CTF writeups, blog walkthroughs, and case studies to read for technique reuse:
+Vendor advisories, research reports, and spec docs to pull technique from. Platform-agnostic — use whatever CTF or lab artifact matches the pattern.
 
-- **TryHackMe — Bugged**: full MQTT-only room. Steps: `nmap` to find 1883 → `mosquitto_sub -h <ip> -t '#' -v` to harvest retained topics → first flag in plaintext topic stream → second flag base64 in `/messages/secret` → command-topic discovery → publish to wake a publisher → final flag in a transient topic. Demonstrates the entire anonymous-read → cred-harvest → trigger chain. Writeup: <https://medium.com/@tomalmeida/tryhackme-bugged-walkthrough-bd5e74a72c39> and Hashar Mujahid's walkthrough <https://infosecwriteups.com/bugged-tryhackme-write-up-d6260c89efff>.
-- **HackTheBox — Smarthome / IoT rooms**: pattern is identical — `mosquitto_sub`, retained credentials, pivot to home-automation web UI.
-- **Advent of Cyber 2023/2024 IoT/SCADA days** (TryHackMe): Mosquitto enumeration, Modbus reads, and IT→OT chaining. Day-specific writeups indexed under <https://tryhackme.com/r/christmas>.
+- **MQTT-only broker challenge pattern** (recurring in IoT CTFs): `nmap` finds 1883/8883/8080/9001 → `mosquitto_sub -h <ip> -t '#' -v -W 30` harvests retained topics → flag-like strings surface in plaintext or base64 payloads → command topics reveal actuator paths → publishing to a `cmnd/...` / `req/...` topic triggers a transient reply carrying the next artifact. Anonymous-read → cred-harvest → trigger chain is the canonical flow.
+- **Home-automation / smart-building pattern**: identical to broker challenge, but retained credentials pivot into the adjacent web UI (Home Assistant 8123, Node-RED 1880, EMQX 18083, HiveMQ 8080) — the dashboard is usually the real objective, not the broker.
 - **OWASP IoT Top 10 + MQTT case studies**: <https://owasp.org/www-project-internet-of-things/>.
 - **Akamai MQTT-PWN release post** (origin of the framework, attack patterns + Shodan stats): <https://www.akamai.com/blog/security/introducing-mqtt-pwn>.
-- **Avishai Wool / SCADA security MQTT papers** and Trend Micro "The Fragility of Industrial IoT's Data Backbone" report (MQTT + CoAP exposure scan) — solid for prioritization arguments in reports: <https://www.trendmicro.com/vinfo/us/security/news/internet-of-things/data-backbone-of-the-iiot-mqtt-and-coap>.
-- **Sparkplug deep-dive blogs**: HiveMQ "MQTT Sparkplug Essentials" series — <https://www.hivemq.com/blog/mqtt-sparkplug-essentials-part-1-introduction/>.
-- **Ignition / Cirrus Link "Hacking Sparkplug"** community talks from MQTT Summit / S4 — search `S4xEvents Sparkplug MQTT site:youtube.com`.
+- **Trend Micro "The Fragility of Industrial IoT's Data Backbone"** report (MQTT + CoAP exposure scan) — solid for prioritization arguments in reports: <https://www.trendmicro.com/vinfo/us/security/news/internet-of-things/data-backbone-of-the-iiot-mqtt-and-coap>.
+- **Sparkplug deep-dive**: HiveMQ "MQTT Sparkplug Essentials" series — <https://www.hivemq.com/blog/mqtt-sparkplug-essentials-part-1-introduction/>.
 - **Claroty Team82 MQTT broker research** (Mosquitto, EMQX): vendor advisories indexed at <https://claroty.com/team82/research>.
 - **CISA ICS Advisories** with MQTT in title: <https://www.cisa.gov/news-events/cybersecurity-advisories?f%5B0%5D=advisory_type%3A95&search_api_fulltext=mqtt>.
 - **Shodan dorks for context** (read-only): `port:1883 product:"mosquitto"`, `port:1883 "$SYS/broker"`, `"Sparkplug" port:1883`. Use only within engagement scope.
 
-When a CTF challenge presents "an IoT broker", default order is: read writeups for that platform's prior MQTT rooms → Bugged-style anon-read → `$SYS` fingerprint → Sparkplug detection → bridge / dashboard pivot.
+Default order when an IoT broker appears in scope: anonymous `#` + `$SYS/#` read → broker/version fingerprint → Sparkplug topic detection → bridge / dashboard pivot → command-topic write only after safety gate.
 
 ## 9. Reporting checklist for MQTT findings
 

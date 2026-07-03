@@ -69,3 +69,4 @@ Use web tooling and chain tooling together:
 ## See also
 
 - `auth-access-control.md` — nonce, token, and wallet-login handling on the web side
+- `blockchain-ctf` skill — EVM/Solidity, calldata/storage, Foundry/cast, gadget-level exploitation once the chain layer becomes the primary lane

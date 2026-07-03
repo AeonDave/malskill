@@ -1,7 +1,3 @@
-# Preserved source: stream-ciphers.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Stream Cipher Attacks
 
 LFSR, RC4, and XOR-based stream cipher attacks. For block-cipher and message-forgery patterns, see [modern-cipher-modes-and-forgery.md](modern-cipher-modes-and-forgery.md).

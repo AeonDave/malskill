@@ -13,7 +13,6 @@ Use this when a pwn task depends on GOT/PLT behavior, ELF relocation targets, le
 - [Reliability hazards](#reliability-hazards)
 - [FSOP and libc-data targets](#fsop-and-libc-data-targets)
 - [Evidence block](#evidence-block)
-- [Research trail](#research-trail)
 
 ## Activation cues
 
@@ -213,13 +212,3 @@ Trigger proof:
 - breakpoints hit=<yes/no>
 - clobber checks=<allocator/stdio/resolver/application>
 ```
-
-## Research trail
-
-- Red Hat, “Hardening ELF binaries using Relocation Read-Only (RELRO)” — clear partial vs full RELRO behavior and GOT writability.
-- MaskRay, “All about Global Offset Table” — GOT entries, `PT_GNU_RELRO`, `.got`/`.got.plt`, and linker-loader protocol details.
-- MaskRay, “All about Procedure Linkage Table” — lazy vs eager binding and `R_*_JUMP_SLOT` resolver behavior.
-- MaskRay, “Relative relocations and RELR” — `REL` vs `RELA`, relative relocation representation, and loader-side base/addend reasoning.
-- Oracle Linker and Libraries Guide, “Relocation Sections” — ABI notation: `B` base, `A` addend, `S` symbol, and x64 relocation calculations.
-- System Overlord, “GOT and PLT for pwning” — pwn-oriented walkthrough of GOT/PLT and RELRO implications.
-- CTF101, “ASLR” and “RELRO” — compact challenge-level refresher for mitigation triage.

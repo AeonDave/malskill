@@ -362,8 +362,8 @@ sqlite3 formhistory.sqlite "SELECT fieldname, value FROM moz_formhistory;"
 # Session restore (previous tabs)
 python3 -c "
 import json, lz4.block
-with open as f:
-    f.read(8)  # skip magic
+with open('sessionstore.jsonlz4', 'rb') as f:
+    f.read(8)  # skip mozLz40\0 magic header
     data = json.loads(lz4.block.decompress(f.read()))
     for w in data['windows']:
         for t in w['tabs']:

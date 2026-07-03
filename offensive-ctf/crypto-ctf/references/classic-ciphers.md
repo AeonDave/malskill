@@ -1,7 +1,3 @@
-# Preserved source: classic-ciphers.md
-
-This reference is a debrandized preservation copy of imported CTF-skill material. It keeps technical techniques, code patterns, workflows, and decision cues while removing challenge, platform, and competition branding. Treat it as a domain knowledge bank loaded after the concise SKILL.md routing guidance.
-
 # CTF Crypto - Classic Ciphers
 
 ## Table of Contents
@@ -69,7 +65,7 @@ from math import gcd
 from functools import reduce
 from collections import Counter
 
-def kgeneric caseki_examination(ciphertext, min_seq=3):
+def kasiski_examination(ciphertext, min_seq=3):
     """Find repeating sequences and compute likely key lengths."""
     ct = ''.join(c.upper() for c in ciphertext if c.isalpha())
     distances = []

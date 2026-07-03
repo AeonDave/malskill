@@ -10,9 +10,9 @@ Adversarial machine learning techniques: generating adversarial examples, physic
 - [Adversarial Patch Generation](#adversarial-patch-generation)
 - [Evasion Attacks on ML Classifiers (Foundational)](#evasion-attacks-on-ml-classifiers-foundational)
 - [Data Poisoning (Foundational)](#data-poisoning-foundational)
-- [Backdoor Detection in Neural Networks (Foundational)]
-- [foolbox L1BasicIterativeAttack on Keras MNIST-Auth]
-- [Hand-Rolled Keras FGSM via K.gradients]
+- [Backdoor Detection in Neural Networks (Foundational)](#backdoor-detection-in-neural-networks-foundational)
+- [foolbox L1BasicIterativeAttack on Keras](#foolbox-l1basiciterativeattack-on-keras)
+- [Hand-Rolled Keras FGSM via K.gradients](#hand-rolled-keras-fgsm-via-kgradients)
 
 -
 
@@ -418,7 +418,7 @@ def verify_backdoor(model, clean_image, trigger="pixel", target_class=0):
         poison_pred = model(poisoned.unsqueeze(0)).argmax(dim=1).item()
     print(f"Clean prediction: {clean_pred}")
     print(f"Poisoned prediction: {poison_pred} (target: {target_class})")
-    print
+    print(f"Backdoor active: {poison_pred == target_class}")
 ```
 
 **Key insight:** Data poisoning requires only a small fraction (1-5%) of training data to be modified. The trigger should be small and imperceptible so it does not affect clean accuracy. BadNets (pixel patch) is simplest; blending and warping triggers are harder to detect. In challenges, look at what input channels you can control in the training pipeline.
@@ -486,11 +486,11 @@ def neural_cleanse(model, num_classes, input_shape, device="cpu"):
     for cls, r in results.items():
         anomaly_score = abs(r["trigger_size"] - median_size) / (mad + 1e-10)
         if anomaly_score > 2.0 and r["trigger_size"] < median_size:
-            print")
+            print(f"[!] Backdoor candidate: class {cls} (anomaly={anomaly_score:.2f})")
             print(f"    Trigger size: {r['trigger_size']:.2f} vs median: {median_size:.2f}")
             return cls, r
 
-    print
+    print("No backdoor detected")
     return None, None
 
 # Alternative: Activation Clustering
@@ -545,7 +545,8 @@ def activation_clustering(model, data_loader, layer_name, num_classes):
         if ratio < 0.35:  # 35% threshold
             print(f"Class {cls}: suspicious cluster split ({counts[0]} vs {counts[1]})")
 
-# Usage
+# Usage: backdoor detection
+# activation_clustering(model, loader, layer_name="penultimate", num_classes=10)
 backdoor_class, trigger_info = neural_cleanse(
     model, num_classes=10, input_shape=(3, 32, 32)
 )
@@ -555,9 +556,9 @@ backdoor_class, trigger_info = neural_cleanse(
 
 -
 
-## foolbox L1BasicIterativeAttack on Keras MNIST-Auth
+## foolbox L1BasicIterativeAttack on Keras
 
-**Pattern:** A Keras model classifies a 28x28 grayscale "profile" (serialised as a hex blob in a URL) and grants access only when the predicted class matches a target. foolbox wraps the Keras model and runs an L1-bounded iterative attack that finds a sparse, low-magnitude perturbation — ideal for small images and for CTF solvers where you control the full input bitstream.
+**Pattern:** A Keras model classifies a small grayscale image (e.g. 28x28, serialised as a hex/base64 blob in the challenge input) and grants access only when the predicted class matches a target. foolbox wraps the Keras model and runs an L1-bounded iterative attack that finds a sparse, low-magnitude perturbation — ideal for small images where you control the full input bitstream.
 
 ```python
 # pip install foolbox==2.4.0 keras==2.3.1 tensorflow==1.15
@@ -581,13 +582,13 @@ assert np.argmax(model.predict(adv[None,...])) == target_class
 profile = ''.join('0x%02x' % int(v) for v in adv.ravel())
 ```
 
-**Key insight:** foolbox is the shortest path from "here's a Keras model + target class" to a working adversarial example. `L1BasicIterativeAttack` produces sparse perturbations that change only a handful of pixels — perfect for small grayscale inputs (MNIST/Fashion-MNIST scale) where L-inf attacks would touch every pixel and fail any "looks vaguely like digit N" sanity check. Pin `foolbox==2.x` since the v3 API is incompatible.
+**Key insight:** foolbox is the shortest path from "here's a Keras model + target class" to a working adversarial example. `L1BasicIterativeAttack` produces sparse perturbations that change only a handful of pixels — perfect for small grayscale inputs (MNIST/Fashion-MNIST scale) where L-inf attacks would touch every pixel and fail a shape sanity check. Pin `foolbox==2.x` since the v3 API is incompatible.
 
 -
 
 ## Hand-Rolled Keras FGSM via K.gradients
 
-**Pattern:** Face-auth style challenge where the target model is Keras/TF1, inputs are RGB integer arrays (0..255), and the challenge requires a *targeted* misclassification. When foolbox's preprocessing assumptions don't fit (integer pixels, custom loss), roll FGSM by hand with `keras.backend.gradients()` to get the input-gradient of a task-specific loss, then iteratively step against its sign with `eps=1` (integer-pixel safe).
+**Pattern:** Target model is Keras/TF1, inputs are RGB integer arrays (0..255), and the task requires a *targeted* misclassification. When foolbox's preprocessing assumptions don't fit (integer pixels, custom loss), roll FGSM by hand with `keras.backend.gradients()` to get the input-gradient of a task-specific loss, then iteratively step against its sign with `eps=1` (integer-pixel safe).
 
 ```python
 import keras, numpy as np
