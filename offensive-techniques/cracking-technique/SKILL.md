@@ -40,6 +40,7 @@ Before launching a campaign, classify the material and choose the smallest strat
 
 - **Starting state**: are you working with offline hashes, encrypted archives, a password-audit corpus, or a live authentication surface?
 - **First questions**: what is the exact hash or auth format, what objective matters most (audit insight, recovery yield, or single-account recovery), and what contextual candidate sources exist?
+- **Hash-class impact**: slow KDFs (bcrypt, scrypt/yescrypt, PBKDF2, Argon2id) force small, high-precision candidate sets — heavy rule chains and broad masks are non-viable; fast hashes (MD5, NTLM, SHA-1/2) accept large keyspaces. For Wi-Fi handoff prefer unified hash-mode 22000 (WPA-PBKDF2-PMKID+EAPOL); pure WPA3-SAE handshakes have no direct offline PSK-recovery primitive — escalate to transition-mode/downgrade evidence before committing runtime.
 - **Immediate actions**: verify format integrity, split targets by type/salt/context, and rank candidate strategies before spending runtime.
 - **Tool-family direction**: use `john` or format-identification workflows to validate parsing, `hashcat` for scaled offline campaigns, and `hydra` only when the target is a live service and online guessing is explicitly justified.
 - **Escalation rule**: prefer high-signal contextual candidates and rules before broad brute-force or large generic masks.

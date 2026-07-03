@@ -222,8 +222,10 @@ Remember: Tools assist the process but don't replace methodology. Your objective
 |---|---|
 | `G` | Go to address |
 | `X` | Show all cross-references to current location |
-| `Ctrl+E` | Search for strings |
-| `Ctrl+Shift+F` | Search memory for byte pattern |
+| `Ctrl+E` | Open Decompiler window for current function |
+| `S` | Search memory (bytes, hex, string, regex) |
+| `Ctrl+Shift+F` | Search program text (listing tokens) |
+| Menu: Search → For Strings... | Locate ASCII/Unicode strings program-wide |
 | `L` | Rename label / function |
 | `;` | Add comment |
 | `T` | Retype variable |

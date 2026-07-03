@@ -276,13 +276,14 @@ for i, b in enumerate(patched):
 
 ### 3.3 Pyarmor 8/9 (Encrypted Python Bytecode)
 
-Pyarmor 8/9 encrypts `.pyc` with a native extension (`pyarmor_runtime`). Static decompilation is not viable; use dynamic hooks or the `pyarmor-1shot` tool.
+Pyarmor 8/9 encrypts `.pyc` with a native extension (`pyarmor_runtime`). Static decompilation is not viable; use dynamic hooks or `Pyarmor-Static-Unpack-1shot`.
 
 ```bash
-# pyarmor-1shot (community tool, targets Pyarmor 8/9):
-python shot.py /path/to/protected/scripts/
+# Pyarmor-Static-Unpack-1shot (Lil-House, static, Pyarmor 8.0-9.2.x):
+# https://github.com/Lil-House/Pyarmor-Static-Unpack-1shot
+./pyarmor-1shot /path/to/protected/scripts/   # C++ binary; produces .1shot.disasm / .1shot.cdc.py
 
-# Output: .pyc files with encryption removed, decompilable with pycdc/uncompyle6
+# Output: disassembly listings and (experimental) decompiled Python source
 ```
 
 **If tool fails:** Hook `marshal.loads` at runtime:
@@ -319,7 +320,8 @@ ls -la PYZ-00.pyz_extracted/   # All bundled modules
 
 After extraction, decompile with `pycdc` (Python 3.9+) or `uncompyle6` (2.x–3.8):
 ```bash
-python3 -m pycdc entry_point.pyc
+pycdc entry_point.pyc          # C++ binary from https://github.com/zrax/pycdc
+pycdas entry_point.pyc         # disassembler variant when decompilation fails
 ```
 
 **PyArmor v8+ note:** If the extracted `.pyc` files are PyArmor 8/9-protected (identified by `pyarmor_runtime` module in the bundle), static decompilation is not viable. Use the `marshal.loads` hook from §3.3 after extraction.
@@ -403,12 +405,14 @@ aes_key = key[:16]
 # Extract HAP
 unzip app.hap -d app_extracted/
 
-# Decompile ABC (use jadx-dev-all.jar for ArkCompiler support):
-java -jar jadx-dev-all.jar \
-  com.huawei.hms.abc.decompiler.Main \
-  -m simple \
-  app_extracted/entry.abc \
-  -o output_dir/
+# Decompile ABC (Ark Bytecode). Community tools:
+# - abc-decompiler (jadx + abcde): https://github.com/ohos-decompiler/abc-decompiler
+# - arkdecompiler (jd-opensource):   https://github.com/jd-opensource/arkdecompiler
+# - dayu (parser + rudimentary):     https://github.com/hx1997/dayu
+# - abcde (Kotlin toolkit):          https://github.com/Yricky/abcde
+
+# Example: abc-decompiler (drop modules.abc from the extracted HAP into the tool)
+java -jar abc-decompiler-<version>.jar app_extracted/modules.abc
 
 # Output: TypeScript/JavaScript approximation of the ArkTS source
 ```
@@ -697,9 +701,9 @@ node -e "eval = function(s) { console.log('[eval]', s); }; require('./payload.js
 npm install -g js-beautify
 js-beautify obfuscated.js -o clean.js
 
-# synchrony: semantic JS deobfuscation
-npm install -g deobfuscate
-deobfuscate clean.js -o final.js
+# synchrony: cleaner for javascript-obfuscator output (npm package: deobfuscator)
+npm install -g deobfuscator
+synchrony clean.js       # writes clean.cleaned.js beside the input
 
 # For VBScript: manual rewriting is usually fastest
 ```

@@ -21,6 +21,7 @@ Drive parser logic deep enough to trigger memory corruption, parser confusion, a
 4. **Use dictionaries and structure hints**
 	- Add magic values, chunk tags, and delimiter tokens.
 	- Prefer targeted token enrichment over random large dictionary growth.
+	- For deeply structured formats (protobuf, ASN.1, complex TLV/AST), switch to structure-aware mutation (custom mutator, libprotobuf-mutator, grammar-based generators) instead of stacking dictionaries.
 
 5. **Run dual profiles**
 	- Throughput profile for exploration.

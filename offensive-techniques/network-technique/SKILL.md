@@ -120,6 +120,7 @@ Use auth-abuse workflow.
 
 - Prioritize evidence of request origin, relay path, and affected protocol surfaces.
 - Correlate timing with SMB/LDAP/Kerberos-related logs and host events.
+- Cover the full modern vector set, not only LLMNR/NBT-NS: mDNS spoofing, WPAD (LLMNR + DHCP option 252), IPv6/DHCPv6 takeover (rogue RA + link-local DNS, mitm6-style), and coerced auth (PetitPotam / PrinterBug / DFSCoerce). See `references/scenario-playbooks.md` Playbook E.
 
 Tool families:
 - Poisoning/relay context: `offensive-tools/network/responder/`

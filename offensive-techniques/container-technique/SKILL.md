@@ -22,6 +22,7 @@ Determine the isolation boundaries.
 ### 2. Hunting for Escape Vectors
 
 - **Exposed Docker Socket**: `ls -la /var/run/docker.sock`. If writable, attach the host root filesystem to a new container.
+- **Leaky Vessels (CVE-2024-21626)**: runc <=1.1.11 / Docker <25.0.2 / containerd <1.6.28 / <1.7.13. If you can spawn a container (docker socket, k8s exec, buildx), the trigger is `docker run -w /proc/self/fd/8 <img>` — the working directory is set before namespace unshare, giving host FS access. Confirm host runc version via `strings $(command -v runc) | grep -m1 'runc version'` if reachable, otherwise attempt directly.
 - **Privileged Container**: If `fdisk -l` lists host drives or `capsh` shows `CAP_SYS_ADMIN`, mount the host filesystem (e.g., `mount /dev/sda1 /mnt`) or load a malicious kernel module.
 - **Cgroups Release Agent**: If `CAP_SYS_ADMIN` is present on cgroups v1, leverage the `release_agent` feature to spawn host processes.
 - **core_pattern / modprobe_path**: Overwrite `/proc/sys/kernel/core_pattern` (pipe format) or `/proc/sys/kernel/modprobe` to make the kernel run an attacker script as root on the host. Works on cgroups v1 and v2. Trigger via SIGSEGV crash or unknown-magic binary execution. Use overlay `upperdir` from `/proc/self/mountinfo` for host-accessible read/write path.
@@ -30,7 +31,8 @@ Determine the isolation boundaries.
 ### 3. Kubernetes Specifics
 - **Service Account Tokens**: Located at `/var/run/secrets/kubernetes.io/serviceaccount/`.
 - **API Server Recon**: Use `curl -skH "Authorization: Bearer $TOKEN" https://$KUBERNETES_SERVICE_HOST/api/v1/namespaces/default/pods/`
-- **Kubelet / ETCD Unauthenticated Ports**: Check if ports `10250` (kubelet), `10255` (kubelet readonly), or `2379` (etcd) are exposed internally without authentication. 
+- **Kubelet / ETCD Unauthenticated Ports**: Check if ports `10250` (kubelet), `10255` (kubelet readonly, disabled by default since 1.21 but still common on legacy/GKE), or `2379` (etcd) are exposed internally without authentication. On `10250` the endpoint `POST /run/<ns>/<pod>/<container>` yields RCE inside any pod.
+- **RBAC nodes/proxy GET → RCE**: A service account with `nodes/proxy` GET (frequently granted to monitoring/observability tooling) can proxy the kubelet API and exec into arbitrary pods cluster-wide, including control-plane. Test with `kubectl auth can-i get nodes/proxy` before deeper enum.
 
 ## Quality Gates
 - **Do not break the pod**: Kernel module injection and heavy cgroup manipulation can crash the container host. Perform checks first.

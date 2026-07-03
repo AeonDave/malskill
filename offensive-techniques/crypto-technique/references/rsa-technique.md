@@ -212,36 +212,41 @@ print(plaintext)
 
 ---
 
-### 1.5 Padding Oracle Attack (Manger's Attack)
+### 1.5 Padding Oracle Attacks (Bleichenbacher / Manger)
 
-**Preconditions:**
+**Two distinct attacks — do not confuse them:**
+- **Bleichenbacher (1998)**: PKCS#1 v1.5 encryption padding oracle (leaks whether plaintext starts with `0x00 0x02`). ~10^6 queries for 1024-bit key. Still relevant (ROBOT 2017/2018 revivals).
+- **Manger (2001)**: RSAES-OAEP (PKCS#1 v2.x) oracle (leaks whether the leftmost byte of the OAEP-decoded plaintext is `0x00`). ~1100 queries for 1024-bit key — much faster than Bleichenbacher.
+
+**Preconditions (both):**
 - You can submit ciphertexts to an oracle (server, decryption service).
-- Oracle reveals whether decrypted plaintext has valid PKCS#1 v1.5 padding.
-- Oracle **leaks** this information via timing, error messages, or HTTP status.
+- Oracle leaks a padding/decoding validity bit via error message, status code, or timing.
 
-**Why it works:**
-PKCS#1 v1.5 padding defines a valid plaintext as `0x00 0x02 [random bytes] 0x00 [message]`.
-If oracle tells you "padding valid" or "padding invalid," you can binary-search the range of valid plaintexts.
+**Bleichenbacher on PKCS#1 v1.5:**
+A valid plaintext is `0x00 0x02 [random non-zero bytes] 0x00 [message]`. Choose blinding factor `s`, submit `(c * s^e) mod n`, and use the oracle response to narrow `[2B, 3B)` where `B = 2^(8*(k-2))`.
 
-**Operational (high-level):**
+**Manger on OAEP:**
+The oracle only tells you whether `f^d mod n < B = 2^(8*(k-1))` (i.e., MSB is 0). Halve the search interval each step with a chosen multiplier.
 
-1. **Phase 1**: Find `f` such that `(f * c)^d mod n` is just barely valid PKCS#1.
-2. **Phase 2**: Narrow down the plaintext range.
-3. **Phase 3**: Recover plaintext byte-by-byte.
+**Operational (high-level, Bleichenbacher):**
+
+1. **Phase 1**: Find `s_1` such that `(c * s_1^e) mod n` yields a PKCS#1-conforming plaintext.
+2. **Phase 2**: Narrow the set of possible messages using additional oracle queries.
+3. **Phase 3**: Recover plaintext when the interval reduces to a single value.
 
 ```python
-# Simplified illustration (real Manger's is more involved)
+# Simplified illustration (real Bleichenbacher is more involved)
 def padding_oracle(ct_int, n, e):
     """Returns True if decryption has valid PKCS#1 v1.5 padding"""
     m = pow(ct_int, d, n)  # We're the oracle
     return is_valid_pkcs1_padding(m)
 
-# Phase 1: find multiplier f
-f = 2
-while not padding_oracle((f * c) % n, n, e):
-    f = (f * 2) % n
+# Phase 1: find blinding s_1 that yields a conforming plaintext
+s = 1
+while not padding_oracle((pow(s, e, n) * c) % n, n, e):
+    s += 1
 
-# Phase 2-3: binary search to narrow plaintext
+# Phase 2-3: interval narrowing per Bleichenbacher §3.2
 # (Implementation requires careful oracle calls and state management)
 ```
 
@@ -249,6 +254,7 @@ while not padding_oracle((f * c) % n, n, e):
 - A decryption server or service reveals padding-validity behavior.
 - Timing differences between valid/invalid padding.
 - Error messages like "bad padding" vs. "decryption OK."
+- OAEP in use → target Manger, not Bleichenbacher.
 
 **Tool**: `offensive-tools/cryptography/sagemath/` (for modular arithmetic) + custom oracle harness (pwntools).
 
@@ -572,7 +578,8 @@ def batch_gcd(moduli):
     return factors
 
 # Large-scale variant: build product tree for O(k log^2 k)
-# See: github.com/nadia-polikarpova/batch-gcd
+# See: github.com/fionn/batch-gcd (DJB algorithm)
+# Original paper: Heninger et al. "Mining Your Ps and Qs" (USENIX Security 2012)
 
 moduli = [n1, n2, n3, ...]  # collected from target PKI or certificate dump
 weak = batch_gcd(moduli)

@@ -574,7 +574,7 @@ if s.check() == unsat:
 
 ---
 
-## Category 7: Heaven's Gate / WoW64 on Linux (x86 ↔ x64 Mixed-Mode)
+## Category 8: Heaven's Gate / WoW64 on Linux (x86 ↔ x64 Mixed-Mode)
 
 A 32-bit ELF can switch to 64-bit execution mode at runtime using a far jump with selector `0x33`. This is the Linux equivalent of the Windows "Heaven's Gate" trick. The outer binary appears to be x86 (32-bit); sections of its code actually execute as x86-64.
 

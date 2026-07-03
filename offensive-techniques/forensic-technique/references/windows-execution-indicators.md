@@ -15,6 +15,8 @@ Correlate Windows artifacts that show what executed, when it likely executed, an
 | ShimCache | SYSTEM hive AppCompatCache | Program path presence and execution-adjacent evidence |
 | SRUM | `C:\Windows\System32\sru\SRUDB.dat` | Network/app resource usage by executable and time |
 | UserAssist | NTUSER.DAT | GUI program execution by user |
+| BAM/DAM | SYSTEM hive `Services\bam\State\UserSettings\<SID>` and `Services\dam\State\UserSettings\<SID>` (Win10 1709+/Win11) | Per-SID last-run time for executables, including background/CLI processes that skip UserAssist |
+| ActivitiesCache.db | `%USERPROFILE%\AppData\Local\ConnectedDevicesPlatform\L.<user>\ActivitiesCache.db` | Windows Timeline: apps launched, files opened, focus intervals (opt-in / disabled by default on Win11 22H2+) |
 | Run keys/tasks/services | Registry, TaskCache, service registry | Persistence or auto-start execution |
 | PowerShell logs | EVTX 4103/4104, PSReadLine | Script content and operator commands |
 

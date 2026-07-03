@@ -88,7 +88,7 @@ aws iam get-user --user-name <user> --query 'User.PermissionsBoundary'
 enumerate-iam --access-key <AK> --secret-key <SK>
 ```
 
-**AWS IAM privilege escalation — complete path matrix (31+ confirmed paths):**
+**AWS IAM privilege escalation — path matrix (Rhino Security Labs published 21 core paths; additional variants below):**
 
 | Permission | Escalation method |
 |---|---|
@@ -124,6 +124,15 @@ enumerate-iam --access-key <AK> --secret-key <SK>
 - A permissive `sub` wildcard (`token.actions.githubusercontent.com:sub: repo:org/*`) allows any repo in the org to assume the role.
 - Enumerate OIDC providers: `aws iam list-open-id-connect-providers`
 - Check trust policy condition: `aws iam get-role --role-name <role> --query 'Role.AssumeRolePolicyDocument'`
+
+**EKS IRSA (IAM Roles for Service Accounts) misconfig:**
+- Node IAM role often has `sts:AssumeRoleWithWebIdentity` and `eks.amazonaws.com/role-arn` annotations on pod service accounts — a pod with cluster-wide `secrets` or `pods/exec` can steal any IRSA-mapped role token.
+- Trust policy conditions that omit `aud` (`sts.amazonaws.com`) or use only `StringLike` on the `sub` (e.g. `system:serviceaccount:*:*`) allow any pod to assume the role.
+- Enumerate: `aws iam list-roles --query 'Roles[?AssumeRolePolicyDocument.Statement[?contains(Principal.Federated,\`oidc.eks\`)]]'` then inspect each condition block.
+
+**KMS grant escalation:**
+- `kms:CreateGrant` on a CMK lets you grant `Decrypt`/`Encrypt`/`GenerateDataKey` to any principal, including yourself — useful when key policies deny direct use but grants are unrestricted.
+- `kms:PutKeyPolicy` on a CMK is a full-key takeover (replace policy with `Principal: *`).
 
 ### Azure / Entra ID
 
@@ -164,6 +173,8 @@ az vm show --name <vm> --resource-group <rg> --query identity
 - Service Principal with `Application.ReadWrite.All` → add credentials to any app registration → impersonate app with its permissions.
 - Service Principal with `AppRoleAssignment.ReadWrite.All` + `RoleManagement.ReadWrite.Directory` → grant Global Admin to a controlled SP.
 - App Consent Phishing: create multi-tenant app requesting `Mail.Read`, `Files.ReadWrite.All`, `User.ReadWrite.All`, target admin for consent → persistent access without credentials.
+- Conditional Access bypass: enumerate CA policies via `az rest --method GET --uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'` — look for excluded users/groups, missing device-compliance clauses, or app exclusions (e.g. Azure CLI/PowerShell often exempted). Legacy auth (SMTP/IMAP/POP) and device code flow frequently sidestep MFA when CA does not target `Other clients`.
+- Cross-tenant / multi-tenant app abuse (Storm-0558 pattern): a compromised or replay-forged signing key on a multi-tenant app can mint tokens accepted across foreign tenants. Enumerate multi-tenant apps: `az ad app list --query "[?signInAudience!='AzureADMyOrg'].{id:appId, name:displayName, audience:signInAudience}"`.
 
 **Enumerate Entra ID (Azure AD) roles:**
 ```bash
@@ -207,7 +218,11 @@ gcloud iam service-accounts get-iam-policy <sa>@<project>.iam.gserviceaccount.co
   gcloud iam workload-identity-pools providers list --workload-identity-pool=<pool> --location=global
   ```
 
-**Key tools:** `gcp_scanner`, `GCPBucketBrute`, `ScoutSuite` for GCP.
+**GCP Organization Policy weaknesses:**
+- `orgpolicy.policy.set` at folder/project level bypasses org-wide `iam.disableServiceAccountKeyCreation`, `iam.allowedPolicyMemberDomains`, and `compute.vmExternalIpAccess` constraints — check per-project overrides: `gcloud org-policies list --project=<id>` and `gcloud org-policies describe <constraint> --project=<id>`.
+- Constraints inherited from ancestors can be relaxed with `--effective` false; a legacy `restore_default` policy re-enables key export.
+
+**Key tools:** `gcp_scanner` (Google), `GCPBucketBrute` (Rhino), `ScoutSuite` for GCP.
 
 ---
 
@@ -456,7 +471,7 @@ aws codebuild create-project \
   --source type=NO_SOURCE,buildspec="version: 0.2\nphases:\n  build:\n    commands:\n      - aws sts get-caller-identity" \
   --artifacts type=NO_ARTIFACTS \
   --service-role <high-priv-role-arn> \
-  --environment type=LINUX_CONTAINER,computeType=BUILD_GENERAL1_SMALL,image=aws/codebuild/standard:5.0
+  --environment type=LINUX_CONTAINER,computeType=BUILD_GENERAL1_SMALL,image=aws/codebuild/standard:7.0
 aws codebuild start-build --project-name my-project
 
 # SageMaker: get presigned URL for existing notebook (if sagemaker:CreatePresignedNotebookInstanceUrl)
@@ -476,7 +491,7 @@ aws glue update-dev-endpoint \
 ```bash
 # Bucket enumeration
 s3scanner scan --bucket <target>
-gcp-bucket-scanner <target>
+gcpbucketbrute -k <keyword>
 
 # CT log search for cloud subdomains
 # Search: target.s3.amazonaws.com, target.blob.core.windows.net, target.storage.googleapis.com

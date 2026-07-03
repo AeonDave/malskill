@@ -16,8 +16,6 @@ Do not rely on generic pre-made wordlists by name. Build or select wordlists bas
 | **WiFi/WPA** | ISP/router defaults, location names, ISP naming conventions | Address fragments, installer-default patterns |
 | **OSINT-driven** | All terms scraped/collected from the target's public footprint | Social profile data, documents, press releases |
 
-## Wordlist Preparation
-
 ## Target-Specific Wordlist Construction
 
 ### Step 1: OSINT Collection

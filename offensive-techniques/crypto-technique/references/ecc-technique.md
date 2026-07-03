@@ -176,18 +176,9 @@ x = discrete_log(Mod(Q_t, p), Mod(G_t, p))
 **Why it works:**
 Smart's attack lifts points to the p-adics and computes a "p-adic logarithm" that maps the ECDLP into a DLP in Z/pZ (additive group), which is trivially solvable in O(1) operations.
 
-**Sage automatic (use this first):**
-```python
-from sage.all import *
-E = EllipticCurve(GF(p), [a, b])
-G = E(Gx, Gy)
-Q = E(Qx, Qy)
-if E.order() == p:
-    secret = G.discrete_log(Q)  # Sage handles anomalous automatically
-    print(f"Private key: {secret}")
-```
+Sage's generic `discrete_log` on an EC point uses BSGS / Pollard rho at `O(sqrt(order))` and does **not** implement Smart's attack. For an anomalous curve of prime order `p` (large), the generic method is infeasible — use the manual p-adic lift below.
 
-**Manual p-adic lift (when Sage's auto method fails):**
+**Manual p-adic lift (Smart's attack):**
 ```python
 from sage.all import *
 
@@ -221,7 +212,7 @@ secret = smart_attack(p, a, b, Gx, Gy, Qx, Qy)
 - `E.order() == p` — always check this first.
 - A custom curve is generated; verify `order` immediately.
 
-**Tool**: `offensive-tools/cryptography/sagemath/`.
+**Tool**: `offensive-tools/cryptography/sagemath/`. Reference impl: `github.com/jvdsn/crypto-attacks` (`attacks/ecc/smart_attack.py`).
 
 ---
 

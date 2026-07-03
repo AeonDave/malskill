@@ -117,7 +117,7 @@ Threat actors publish breach data on "leak sites" to pressure victims into payin
 
 ### IntelX
 
-- **Tor-accessible index**: IntelX maintains a Tor version at `intelx.io` (onion address: `intelxio2nxrz374.onion`).
+- **Tor-accessible index**: IntelX runs a Tor hidden service. The legacy v2 vanity address `intelxio2nxrz374.onion` stopped resolving after Tor deprecated v2 onions in Oct 2021 — check `blog.intelx.io` or IntelX support for the current 56-char v3 address before use.
 - **Email/username search**: Returns darknet pastes, leaks, and database entries.
 
 ### Pastebin & Code Hosting

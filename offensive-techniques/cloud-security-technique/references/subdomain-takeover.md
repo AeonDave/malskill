@@ -49,7 +49,7 @@ Look at CNAME targets. Common takeover-vulnerable patterns:
 | `s3.amazonaws.com`, `s3-website-*` | AWS S3 | `NoSuchBucket` |
 | `github.io` | GitHub Pages | "There isn't a GitHub Pages site here" |
 | `herokuapp.com`, `herokudns.com` | Heroku | "No such app" |
-| `azurewebsites.net`, `cloudapp.net` | Azure | "Web App not found" |
+| `azurewebsites.net`, `trafficmanager.net`, `azureedge.net` | Azure | "Web App not found" / NXDOMAIN (note: `cloudapp.net` no longer registrable — not vulnerable) |
 | `cloudfront.net` | CloudFront | "Bad request: ERROR" |
 | `fastly.net` | Fastly | "Fastly error: unknown domain" |
 | `shopify.com`, `myshopify.com` | Shopify | "Sorry, this shop is currently unavailable" |

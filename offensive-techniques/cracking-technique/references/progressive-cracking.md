@@ -28,8 +28,8 @@ hashcat -m 0 hashes.txt top1000.txt -r rules/best64.rule
 # Multiple high-signal context sources combined
 hashcat -m 0 hashes.txt top1000.txt context-wordlist.txt -r rules/best64.rule
 
-# With potfile (save progress)
-hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule --potfile=pass1.pot
+# With custom potfile path (save progress)
+hashcat -m 0 hashes.txt broad-wordlist.txt -r rules/best64.rule --potfile-path=pass1.pot
 ```
 
 ### Expected results
@@ -54,7 +54,7 @@ hashcat -m 0 hashes.txt osint-wordlist.txt -r rules/best64.rule -r rules/toggles
 hashcat -m 0 hashes.txt osint-wordlist.txt leak-wordlist.txt -r rules/best64.rule -r rules/toggles1.rule -r rules/leetspeak.rule
 
 # With potfile from pass 1
-hashcat -m 0 hashes.txt osint-wordlist.txt -r rules/best64.rule --potfile=pass1.pot
+hashcat -m 0 hashes.txt osint-wordlist.txt -r rules/best64.rule --potfile-path=pass1.pot
 ```
 
 ### Expected results
@@ -130,8 +130,8 @@ hashcat -m 0 hashes.txt -a 3 ?l?l?l?l?l?l?l?l?l --increment --increment-min 6 --
 # Check potfile
 wc -l *.pot
 
-# View cracked passwords
-hashcat --show-potfile --potfile=pass1.pot
+# View cracked passwords from a specific potfile (needs original hashlist and -m)
+hashcat -m 0 hashes.txt --show --potfile-path=pass1.pot
 ```
 
 ### Analyze results for next pass
@@ -144,7 +144,7 @@ hashcat --show-potfile --potfile=pass1.pot
 2. **Generate targeted wordlists** from patterns:
    ```bash
    # Extract base words from cracked
-   cut -d: -f2 pass1.pot | cut -d' -f1 > base-words.txt
+   cut -d: -f2 pass1.pot | cut -d ' ' -f1 > base-words.txt
    ```
 
 3. **Refine masks** based on observed patterns:
@@ -179,6 +179,6 @@ hashcat --show-potfile --potfile=pass1.pot
 | Tool | When to use |
 |------|-------------|
 | `hashcat` | Execute all passes (-a 0/1/3/6/7) |
-| `hashcat --potfile` | Save/resume progress |
-| `hashcat --show-potfile` | Analyze cracked passwords |
+| `hashcat --potfile-path` | Save/resume progress to a specific potfile |
+| `hashcat --show` | Show cracked hashes from potfile (needs -m + original hashlist) |
 | `hashcat --stdout` | Generate wordlists from masks |

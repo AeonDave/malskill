@@ -1,12 +1,12 @@
 # Database Access Control
 
-This is the #1 source of critical vulnerabilities in vibe-coded apps. AI assistants routinely generate database schemas without proper access control, leaving entire tables exposed.
+This is the #1 source of critical vulnerabilities in vibe-coded apps. AI assistants routinely generate database schemas without proper access control, leaving entire tables exposed. CVE-2025-48757 documents this at fleet scale: hundreds of Lovable-generated apps shipped with Supabase `public` tables reachable via the anon key without any RLS policies.
 
 ## Supabase Row-Level Security (RLS)
 
 ### Enable RLS on Every Table
 
-Tables created via SQL Editor or migrations have RLS **disabled by default**. A table without RLS is fully readable and writable by anyone with the anon key (which is public). Run this in every migration to catch missed tables:
+Tables created via SQL Editor or migrations have RLS **disabled by default**. A table without RLS is fully readable and writable by anyone with the anon key (which is public and ships in every browser bundle by design). Run this in every migration to catch missed tables:
 
 ```sql
 DO $$ DECLARE r RECORD;

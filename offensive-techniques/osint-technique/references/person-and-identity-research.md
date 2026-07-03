@@ -69,9 +69,9 @@ Each platform has different visibility and archival challenges.
 
 ### X (Twitter)
 
-- **snscrape** (CLI, preferred): No API key needed; scrapes public tweets, replies, likes, followers.
-- **Advanced search**: `from:@username since:2024-01-01 until:2024-12-31` to scope by time.
-- **Wayback Machine**: Archive.org snapshots of profiles for historical tweets.
+- **snscrape** (CLI): broken for X since Twitter's mid-2023 login-wall (snscrape issue #996; author will not add auth). Usable only against Wayback-archived pages for pre-2023 data. Live scraping requires paid X API (Basic tier $200/mo min) or logged-in third-party scrapers (ToS risk).
+- **Advanced search**: `from:@username since:2024-01-01 until:2024-12-31` scopes by time — while logged in.
+- **Wayback Machine**: Archive.org snapshots of profiles; the only free path for historical tweets.
 - **Retweets, Likes, Mentions**: Follow the graph; find communities.
 
 ### LinkedIn
@@ -82,7 +82,7 @@ Each platform has different visibility and archival challenges.
 
 ### Instagram
 
-- **Picuki**: View Instagram profiles without account login.
+- **Picuki**: Instagram service shut down early 2025 (site pivoted to TikTok-only). Replacement viewers (Imginn, Storiesig, Iganony, etc.) rotate frequently — verify current status before relying on any.
 - **Metadata & Geolocation**: Look for location tags in posts, EXIF data if available.
 - **Stories Archive**: Stories disappear, but followers may remember content.
 
@@ -101,7 +101,7 @@ Each platform has different visibility and archival challenges.
 ### Mastodon & Fediverse
 
 - **FediSearch**: Cross-instance search for public posts.
-- **Fedifinder**: Find Twitter users on Mastodon (username linking).
+- **Fedifinder**: original at `fedifinder.glitch.me` discontinued 2023-12 (no X API access); Glitch shut down free hosting Aug 2025. Successor by same author at `fedifinder.party`.
 - **Instance exploration**: Understand which instance the user is on (affects privacy policies, logging practices).
 
 ### Bluesky (AT Protocol)

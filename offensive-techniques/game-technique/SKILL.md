@@ -110,8 +110,8 @@ sudo scanmem --pid=$(pgrep game_binary)
 # > 100          → scan for value 100 (current score)
 # > [change score to 150 in game]
 # > 150          → narrow results
-# > list         → show remaining addresses
-# > 0x7fff1234 = 999999  → set value
+# > list         → show remaining addresses (first column = match-id)
+# > set 1=999999 → set match-id 1 to 999999 (or: write i32 0x7fff1234 999999)
 
 # Python: direct /proc/<pid>/mem manipulation
 python3 - <<'EOF'
@@ -260,11 +260,13 @@ json.dump(save, open('save_modified.json','w'))
 # Integrity checksum bypass
 # Many games compute CRC32 or MD5 over save data
 # After modifying, recompute checksum and update checksum field
+python3 -c "
 import zlib, struct
 data = bytearray(open('save.dat','rb').read())
 crc = zlib.crc32(bytes(data[4:]))   # checksum over data after header
 struct.pack_into('<I', data, 0, crc & 0xffffffff)
 open('save_fixed.dat','wb').write(data)
+"
 ```
 
 ---

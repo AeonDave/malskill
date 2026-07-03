@@ -9,6 +9,7 @@ Expose bugs in protocol parsing and state transitions while preserving replayabi
 1. Model protocol phases (connect, auth, negotiate, data, teardown).
 2. Define legal transitions and high-value illegal transitions.
 3. Fuzz both field-level payloads and sequence ordering.
+4. For undocumented or partially-documented protocols, derive a machine-readable grammar from RFCs/captures (manually or LLM-assisted) and feed it to a structure-aware mutator instead of byte-only mutation.
 
 ## Transport strategy
 

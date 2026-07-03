@@ -382,7 +382,7 @@ impacket-secretsdump -k -no-pass domain.local/dc$@<dc_ip>
 
 See `offensive-tools/windows/certipy/`.
 
-→ Full ESC1-14 chains, ADCS enumeration, Shadow Credentials, Golden Certificate: `references/certificate-abuse.md`.
+→ Full ESC1-15 chains, ADCS enumeration, Shadow Credentials, Golden Certificate: `references/certificate-abuse.md`.
 
 → Server Auth EKU certs for TLS impersonation (rogue WSUS/SCCM/ADFS): `references/certificate-abuse.md §TLS Service Impersonation` + `references/ad-services-abuse.md §Rogue WSUS`.
 
@@ -756,7 +756,7 @@ MITRE ATT&CK primary mappings:
 - [references/kerberos-only-and-badsuccessor.md](references/kerberos-only-and-badsuccessor.md) — Load when NTLM is disabled for LDAP, RC4 is banned for AS-REQ, shadow credentials fail with `KDC_ERR_PADATA_TYPE_NOSUPP`, or you need to exploit BadSuccessor (dMSA) in single-actor or split-identity mode.
 - [references/ntlm-relay.md](references/ntlm-relay.md) — Relay chain setup, coercion methods, relay target selection, SOCKS relay for tool chaining.
 - [references/rodc-attacks.md](references/rodc-attacks.md) — RODC Golden Ticket and KeyList Attack: kvno encoding, PRP prerequisite, krbtgt_XXXXX extraction, forge/reveal commands and caveats.
-- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-14 attack chains, certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
+- [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-15 attack chains (incl. EKUwu/CVE-2024-49019), certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
 - [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.
 - [references/lateral-movement-ad.md](references/lateral-movement-ad.md) — Protocol × credential type matrix, WMI/DCOM/RDP/WinRM/SMB patterns, detection signatures to avoid.
 - [references/domain-trust-attacks.md](references/domain-trust-attacks.md) — Child-to-parent escalation, cross-forest Kerberoasting, trust key abuse, SID history, Diamond Ticket with ExtraSID.

@@ -42,10 +42,13 @@ Success condition: reachable surface map with low-noise pivot evidence.
 
 ## Playbook E: Relay/poisoning suspicion in internal network
 
-1. Identify suspicious name resolution/auth patterns.
-2. Correlate SMB/LDAP/NTLM-related events in same time window.
-3. Validate suspected relay path with packet/protocol evidence.
-4. Report affected hosts/accounts and immediate hardening actions.
+1. Identify suspicious name resolution/auth patterns across the full modern vector set, not just LLMNR/NBT-NS:
+   - LLMNR (UDP/5355), NBT-NS (UDP/137), mDNS (UDP/5353) responses from unexpected hosts. Many hardened AD estates disable LLMNR/NBT-NS via GPO but leave mDNS enabled by default — treat mDNS spoofing as a live vector.
+   - WPAD lookups over LLMNR/NBT-NS/mDNS *and* DHCP option 252; any unexpected `wpad.dat` / proxy-auto-config response is high-signal.
+   - IPv6 DHCPv6 Solicit answers from non-infrastructure hosts, rogue Router Advertisements, and link-local IPv6 default gateways/DNS servers (mitm6-style takeover). Windows resolvers prefer IPv6 over IPv4, so a rogue DHCPv6 reply silently steals name resolution.
+2. Correlate SMB/LDAP/HTTP(ADCS Web Enrollment)/MSSQL/NTLM-related events in the same time window; capture per-host SMB signing state (Server 2025 / Windows 11 24H2 require signing by default, which pushes relays away from SMB toward LDAP(S), ADCS Web Enrollment, and MSSQL).
+3. Validate suspected relay path with packet/protocol evidence — NTLM Type 1/2/3 across a mismatched src/dst pair, Kerberos AS-REQ from wrong source, or coerced auth (PetitPotam / PrinterBug / DFSCoerce) triggering unexpected outbound auth from privileged hosts.
+4. Report affected hosts/accounts, coerced identities, and immediate hardening actions (disable LLMNR/NBT-NS/mDNS via GPO, disable DHCPv6 or filter rogue RA, enforce SMB/LDAP signing and channel binding, remove Web Enrollment or enforce EPA).
 
 Success condition: evidence-backed relay path and impacted scope.
 

@@ -136,14 +136,15 @@ t1  # Toggle first char
 t2  # Toggle second char
 ...
 
-# Replace
-s$a  # Replace 'a' with '$'
-s$e  # Replace 'e' with '3'
-s?d0  # Replace any digit with '0'
+# Replace (sXY = substitute char X with char Y)
+sa$  # Replace 'a' with '$'
+se3  # Replace 'e' with '3'
+~s?d0  # Replace any digit with '0' (7.0.0+ char-class rules; needs '~' prefix)
 
-# Duplicate + reverse
-p  # Duplicate word + reverse second
-d  # Duplicate word
+# Duplicate / reflect
+f   # Reflect (word + reversed word)
+d   # Duplicate word (append word to itself)
+p2  # Append word 2 more times
 ```
 
 ### Example custom rule file

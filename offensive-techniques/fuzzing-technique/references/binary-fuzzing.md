@@ -11,7 +11,8 @@ Find memory-safety and logic bugs with a pipeline that is fast, reproducible, an
 	- Persistent execution is typically the biggest throughput win.
 
 2. **Binary only**
-	- Use binary instrumentation/emulation workflow.
+	- Use binary instrumentation/emulation workflow (dynamic rewriting, static rewriting, Intel PT, QEMU/Unicorn).
+	- For full-system, kernel, or multi-process targets prefer snapshot/VM fuzzing (Nyx-class, LibAFL QEMU/hypervisor) over per-process instrumentation.
 	- Expect lower exec/s and spend more effort on seed quality and timeouts.
 
 3. **Mixed environment (local + CI + continuous)**
@@ -72,4 +73,5 @@ If coverage stalls early:
 
 - AFL++ in-depth campaign flow and triage guidance.
 - libFuzzer target constraints (determinism, speed, no exit-on-invalid input).
+- Sanitizer profiles (ASan/UBSan/MSan/TSan/LSan) and their options (e.g. `abort_on_error`, `detect_leaks`, `allocator_may_return_null`, `symbolize`) surfaced through the tool-level skills.
 - OSS-Fuzz reproducibility and coverage workflows.

@@ -61,10 +61,11 @@ telnet localhost 4444
 > exit
 ```
 
-**Common IDCODE patterns** (last hex digit = manufacturer ID per JEP106):
-- `0x4ba00477` — ARM Cortex-A
-- `0x2ba01477` — ARM Cortex-M3/M4
-- `0x0bc11477` — ARM Cortex-M0+
+**Common DAP IDCODE/DPIDR patterns** (these identify the ARM debug port, not the core — same DAP is reused across families; confirm with target-config match):
+- `0x4ba00477` — ARM CoreSight generic DAP (Cortex-A5/A7/A8/A9/A15, also STM32F4 JTAG SWJ-DP)
+- `0x2ba01477` — ARM SW-DP v1 (Cortex-M3/M4 SWD, STM32F1/F4 SWD path)
+- `0x0bc11477` — ARM SW-DP v2 (Cortex-M0+ / STM32F0)
+- `0x6ba02477` — ARM SW-DP v2 multi-drop (Cortex-M33, newer STM32L5/U5)
 
 ## Flash dump
 
@@ -82,9 +83,9 @@ For SPI flash on board (separate from MCU): desolder or in-circuit clip → `fla
 
 | MCU family | Protection | Bypass notes |
 |------------|------------|--------------|
-| STM32 RDP Level 1 | Debug disabled, mass erase allowed | Sometimes downgradeable via voltage glitch (ChipWhisperer, well-documented) |
-| STM32 RDP Level 2 | Permanent | Requires fault injection; not always feasible |
-| Nordic nRF52 APPROTECT | SWD blocked | EMFI/voltage glitch documented (2020 LimitedResults) |
+| STM32 RDP Level 1 | Debug disabled, mass erase allowed | RDP1→RDP0 via voltage glitch on `bootrom` RDP check (ChipWhisperer/PicoGlitcher, well-documented) |
+| STM32 RDP Level 2 | Nominally permanent | RDP2→RDP1 downgrade reproduced via voltage glitching (SEC-Consult SECGlitcher 2020; voidstarsec CSW-2024 low-cost EMFI; SySS STM32L05 2023). Then read as RDP1. Not effective on newest STM32 with dual-glitch mitigations. |
+| Nordic nRF52 APPROTECT | SWD blocked | Classic bypass: single voltage glitch on APPROTECT read (LimitedResults 2020). Improved APPROTECT in nRF52840 rev3 (Fx0), nRF52832 rev3 (Gx0), nRF52833 rev2 (Bx0) etc. hardens the single-glitch path; still bypassable per 2023–2024 research (Matias Soler nRF52832 bypass; O'Reilly *Microcontroller Exploits* ch.16, 2024). Confirm build code before campaign. |
 | ESP32 eFuse Secure Boot | Encrypted flash | Side-channel on early revisions; current revisions hardened |
 | NXP LPC CRP1/CRP2/CRP3 | Tiered | CRP1 keeps ISP; can sometimes read via ISP commands |
 

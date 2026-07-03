@@ -86,7 +86,7 @@ Each finding:
 ### [ID] -- Finding Title
 
 **Severity**: Critical | High | Medium | Low | Informational
-**CVSS v3.1**: X.X (Vector: CVSS:3.1/AV:X/AC:X/PR:X/UI:X/S:X/C:X/I:X/A:X)
+**CVSS**: X.X (v4.0 or v3.1 vector, e.g. CVSS:4.0/AV:X/AC:X/AT:X/PR:X/UI:X/VC:X/VI:X/VA:X/SC:X/SI:X/SA:X or CVSS:3.1/AV:X/AC:X/PR:X/UI:X/S:X/C:X/I:X/A:X)
 **CWE**: CWE-XXX -- Name
 **Affected Systems**: [IP/hostname/URL list]
 **MITRE ATT&CK**: TXXXX -- Technique Name
@@ -124,8 +124,3 @@ Group fixes by effort and impact:
 - Quick wins (low effort, high impact).
 - Strategic fixes (architectural changes).
 - Compensating controls (interim measures).
-
-## Resources
-
-- `references/report-templates.md` — full report templates in Markdown with placeholder sections.
-- `references/finding-writing-guide.md` — guidance for writing clear, defensible finding descriptions.

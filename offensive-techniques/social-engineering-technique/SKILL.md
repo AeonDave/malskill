@@ -74,14 +74,24 @@ See `phishing-technique` for infrastructure setup. Key methodology decisions:
 - Pretexts: IT support, vendor callback, survey, recruiter.
 - Techniques: caller ID spoofing, warm transfer chains, callback numbers.
 - Capture: voicemail PINs, VPN credentials, remote access codes.
+- AI voice/video cloning (2024+): treat any pretext impersonating a specific executive, colleague, or relative as a deepfake candidate. Publicly documented incidents include the Arup HK$200M ($25M) deepfake video-conference fraud (May 2024) and the July 2024 Ferrari CEO WhatsApp+voice-clone attempt foiled by an out-of-band verification question. FBI IC3 PSA I-120324 (Dec 2024) warns on cloned-voice financial fraud. For authorized simulation: pre-register the cloned voice profile with blue team, use a shared out-of-band verification word as safety net, and measure detection rate as a distinct metric.
 
-### 5. Physical social engineering
+### 5. Modern vectors (2024+)
+
+Human-layer evolutions that must be modelled when the engagement authorizes multi-channel social engineering.
+
+- **Callback phishing / TOAD (telephone-oriented attack delivery)**: benign-looking email (fake invoice, subscription renewal, DocuSign) with a callback number; live operator on the line talks the victim into installing a legitimate RMM (AnyDesk, Splashtop, Zoho Assist, ScreenConnect, Atera) for hands-on-keyboard access. Origin BazarCall 2021; still dominant in 2024–2025 via Luna Moth / Silent Ransom Group (UNC3753, Storm-0252) against US legal and financial firms. Measure: callback rate, RMM-install rate, mean time-to-hangup after security team is notified.
+- **Help-desk MFA-reset vishing (post-number-matching evolution)**: since MS mandatory number-matching (Feb 2023) neutralised classic push-bombing, adversaries pivoted to calling the IT help desk impersonating a locked-out employee to force MFA re-registration, FIDO2 removal, or password reset. Scattered Spider / Octo Tempest / UNC3944 tradecraft — CISA AA23-320A + FBI/CISA 2025 update. Push-bombing still combined with vishing ("IT support here — approve the prompt so we can fix your ticket"). Test both channels: measure help-desk identity-verification bypass rate, and end-user prompt-approval rate under pretext.
+- **Multi-channel chained pretexts**: email lure → SMS/WhatsApp follow-up from spoofed number → voice call from same identity. Cross-channel consistency defeats single-channel awareness training; report per-channel drop-off.
+- **Quishing, BitB, OAuth device-code, ClickFix**: delivery vectors — see `phishing-technique/references/modern-aitm-tradecraft.md`.
+
+### 6. Physical social engineering
 
 - Pretexts: maintenance worker, delivery person, new employee, vendor.
 - Techniques: tailgating, badge cloning, desk surfing, dumpster diving.
 - Capture: badge numbers, access codes, document photos.
 
-### 6. Campaign metrics
+### 7. Campaign metrics
 
 | Metric | Description | Industry baseline |
 |--------|-------------|-------------------|
@@ -92,7 +102,8 @@ See `phishing-technique` for infrastructure setup. Key methodology decisions:
 | Reporting rate | Reported to security | 5-15% (target >30%) |
 | Time to first click | Elapsed from send to first click | Typically <5 min |
 
-## Resources
+## Cross-references
 
-- `references/pretext-library.md` — categorized pretext templates for phishing, vishing, and physical scenarios.
-- `references/campaign-planning.md` — campaign design worksheet and metrics tracking template.
+- `phishing-technique` — email/AitM infrastructure, PhaaS threat model, quishing, BitB, OAuth device-code, ClickFix.
+- `osint-technique` — target research feeding pretext development.
+- `report-generation-technique` — turning campaign metrics into stakeholder-ready findings.

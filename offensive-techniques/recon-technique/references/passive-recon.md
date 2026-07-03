@@ -19,9 +19,14 @@ https://crt.sh/?q=%.target.com&output=json
 # Certspotter
 https://sslmate.com/certspotter/api/v1/issuances?domain=target.com&include_subdomains=true&expand=dns_names
 
-# Facebook CT monitor
-https://developers.facebook.com/tools/ct/
+# Censys certificate search (web/API)
+https://search.censys.io/certificates?q=target.com
+
+# Google Transparency Report CT search
+https://transparencyreport.google.com/https/certificates
 ```
+
+Meta's Facebook CT monitor / API was discontinued in 2025 — do not depend on it.
 
 Deduplicate and normalize names from CT results — SANs often include wildcard entries and internal hostnames.
 

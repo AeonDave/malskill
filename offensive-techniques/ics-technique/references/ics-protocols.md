@@ -23,6 +23,7 @@ Load when an OT subtask needs protocol-specific function codes, object models, o
 ### pymodbus — complete read/write examples
 
 ```python
+# pymodbus 3.9+ renamed slave= → device_id= (see pymodbus API changes); use device_id on new installs.
 from pymodbus.client import ModbusTcpClient
 
 c = ModbusTcpClient('<target>', port=502, timeout=3)
@@ -88,7 +89,7 @@ Protocol: S7comm (legacy) and S7comm-plus (S7-1200/1500). Uses ISO-TSAP/RFC1006 
 import snap7, snap7.type
 
 c = snap7.client.Client()
-c.connect('<target>', rack=0, slot=1)   # slot=1 for S7-300, slot=0 for S7-400/1200/1500
+c.connect('<target>', rack=0, slot=1)   # S7-1200/1500 → slot=1; S7-300 → slot=2; S7-400 → slot=3 (PUT/GET must be enabled on 1200/1500)
 
 # CPU info and state
 print(c.get_cpu_info())
@@ -227,7 +228,8 @@ EOF
 | DNP3 | 20000 | nmap dnp3-info | Metasploit dnp3_device_info, scapy-ics |
 | BACnet | 47808/UDP | nmap bacnet-info, bacwi | bacnet-stack-utils, bacwp |
 | OPC-UA | 4840 | python-opcua | Metasploit opcua_* modules |
-| Profinet DCP | 34964/UDP | nmap profinet-logo, Wireshark pn_dcp | — |
+| Profinet DCP | L2 EtherType 0x8892 | nmap multicast-profinet-discovery, Wireshark pn_dcp | — |
+| Profinet PN-CM | 34964/UDP | nmap profinet-cm-lookup | — |
 | IEC 104 | 2404 | iec104 library | — |
 | Modbus RTU/ASCII | serial | — | pymodbus serial client |
 

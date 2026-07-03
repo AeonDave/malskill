@@ -110,7 +110,7 @@ Image and geospatial research reveals location, time, people, and context from v
 
 - **Forensically** (29a.ch/photo-forensics/): Error Level Analysis, metadata examination, clone detection.
 - **FotoForensics** (fotoforensics.com): Digital forensics tools.
-- **Bellingcat Photo Checker** (photo-checker.bellingcat.com): AI-assisted deepfake detection.
+- **Bellingcat Online Investigation Toolkit** (bellingcat.gitbook.io/toolkit): curated, maintained image/video verification tool index (launched 2024-09); use as the canonical directory instead of hardcoded links that rot.
 
 ### Deepfake Detection
 
@@ -124,8 +124,8 @@ Image and geospatial research reveals location, time, people, and context from v
 
 ### Document Metadata
 
-- **FOCA** (elevenpaths.com/labstools/foca): Batch extract metadata from documents (PDFs, Word, Excel).
-- **Metagoofil** (edge-security.com/metagoofil.php): Extract metadata from public documents via Google dorking.
+- **FOCA** (github.com/ElevenPaths/FOCA): Batch extract metadata from documents (PDFs, Word, Excel). Original elevenpaths.com landing page is dead; repo is stagnant (last release 2022) but binaries still usable for offline parsing.
+- **Metagoofil** (github.com/opsdisk/metagoofil): Maintained fork; original edge-security.com project abandoned. Extract metadata from public documents via Google dorking.
 - **ExifTool**: Also works on office documents.
 - **Value**: Author names, software versions, creation dates, server names, usernames.
 

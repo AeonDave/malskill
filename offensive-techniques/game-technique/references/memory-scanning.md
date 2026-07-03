@@ -80,8 +80,8 @@ sudo scanmem --pid=$(pgrep game_binary)
 # > 0             ← scan for value 0 (current score)
 # [change score in game to 100]
 # > 100           ← narrow: scan for 100
-# > list          ← show remaining addresses
-# > 0x7f1234 = 999999   ← set by address
+# > list          ← show remaining addresses (first column = match-id)
+# > set 1=999999  ← set match-id 1 to 999999 (or: write i32 0x7f1234 999999)
 # > reset         ← clear results and start fresh
 ```
 

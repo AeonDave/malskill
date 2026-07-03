@@ -176,7 +176,7 @@ Cloud-specific subdomain takeover patterns (extend from active-recon.md subdomai
 | `*.netlify.app` | Netlify | Create matching site |
 | `*.vercel.app` | Vercel | Create matching project |
 
-Tools: `nuclei -t takeovers/`, `can-i-take-over-xyz` repository for current provider status.
+Tools: `nuclei -t http/takeovers/`, `can-i-take-over-xyz` repository for current provider status.
 
 ---
 
@@ -188,6 +188,6 @@ Tools: `nuclei -t takeovers/`, `can-i-take-over-xyz` repository for current prov
 | `s3scanner` | AWS | S3 bucket permission testing |
 | `GrayhatWarfare` (web) | AWS / Azure / GCP | Search indexed open buckets |
 | `AADInternals` | Azure | Azure AD tenant and user enum |
-| `nuclei -t takeovers/` | All | Cloud subdomain takeover detection |
+| `nuclei -t http/takeovers/` | All | Cloud subdomain takeover detection |
 | `gsutil` | GCP | Manual GCS bucket access verification |
 | `aws cli --no-sign-request` | AWS | Anonymous S3 bucket access verification |

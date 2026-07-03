@@ -6,8 +6,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### X (Twitter)
 
-- **snscrape** (CLI): Preferred; no API key required. Scrapes public tweets, replies, likes, followers.
-  - `snscrape twitter-search "from:@username" --jsonl` → export tweets.
+- **snscrape** (CLI): broken for X since mid-2023 (login-wall; author will not add auth). Only viable against Wayback-archived pages; live public-tweet scraping requires paid X API (Basic $200/mo min) or logged-in tooling.
 - **Advanced Search**: `from:@username since:2024-01-01 until:2024-12-31` for time scoping.
 - **Wayback Machine**: Archive.org snapshots; useful for deleted tweets.
 - **Follower analysis**: Mutual followers, friends of friends → social graph.
@@ -21,7 +20,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### Instagram
 
-- **Picuki** (picuki.com): View profiles without login.
+- **Picuki** (picuki.com): Instagram service shut down early 2025 (domain now targets TikTok only). Successor viewers (Imginn, Storiesig, Iganony) come and go — verify freshness before use.
 - **Geolocation tags**: Geotag data reveals location + time.
 - **Stories**: Ephemeral content; captured via screenshot or archived via third-party.
 - **Following/followers**: Social graph analysis.
@@ -42,7 +41,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 ### Mastodon & Fediverse
 
 - **FediSearch** (fedisearch.skorpil.cz): Cross-instance public post search.
-- **Fedifinder** (fedifinder.glitch.me): Find Twitter users on Mastodon.
+- **Fedifinder**: original (`fedifinder.glitch.me`) discontinued 2023-12 (X API loss); Glitch dropped free hosting Aug 2025. Successor at `fedifinder.party`.
 - **Instance enumeration**: [Fediverse Observer](https://fediverse.observer/) lists instances + moderation policies.
 - **WebFinger**: `https://<instance>/.well-known/webfinger?resource=acct:<user>@<instance>` returns ActivityPub actor URL.
 
@@ -67,7 +66,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### Reddit
 
-- **Reveddit** (reveddit.com): Removed content recovery (threads, comments deleted by mods/users).
+- **Reveddit**: main website broken by Reddit's removal-API changes; only the `reveddit real-time` browser extension still tracks removals, and only for accounts you subscribe to (no arbitrary lookup).
 - **RedTrack.social** (redtrack.social): User history, post analytics.
 - **Subreddit analysis**: Communities reveal interests, beliefs, affiliations.
 
@@ -118,7 +117,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### API Changes & Access Restrictions
 
-- **X (Twitter)**: API access now restricted; snscrape still works for public data.
+- **X (Twitter)**: API paywalled (Basic $200/mo min); snscrape broken since mid-2023. Public-data collection now requires paid API, logged-in scrapers (ToS/legal risk), or Wayback for historical.
 - **Instagram, TikTok**: No official API for scraping; rely on web scraping (against ToS) or Picuki-like alternatives.
 - **LinkedIn**: Officially discourages scraping; limited API.
 

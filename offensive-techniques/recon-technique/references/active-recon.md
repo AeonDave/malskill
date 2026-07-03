@@ -56,7 +56,7 @@ CNAME pointing to an unclaimed cloud service is a takeover vector.
 - `sub.target.com CNAME foo.s3.amazonaws.com` → S3 bucket unclaimed → claim it
 - Common providers: GitHub Pages, Heroku, AWS S3, Azure blob, Fastly, Shopify
 
-Tools: `subjack`, `nuclei -t takeovers/`.
+Tools: `subjack`, `nuclei -t http/takeovers/`.
 
 ### Active DNS brute-force and permutation expansion
 
@@ -186,9 +186,9 @@ httpx -l resolved.txt -json -o httpx_results.json
 # Filter for interesting status codes
 httpx -l resolved.txt -mc 200,301,302,403 -o live_web.txt
 
-# Extract specific tech (e.g. find all PHP hosts)
-httpx -l resolved.txt -tech-detect -o all.json
-cat all.json | jq '.tech[]?' | grep -i php
+# Extract specific tech (e.g. find all PHP hosts) — -json is required for jq parsing
+httpx -l resolved.txt -tech-detect -json -o all.json
+cat all.json | jq -r '.tech[]?' | grep -i php
 ```
 
 ### Fingerprint priority targets
@@ -224,7 +224,7 @@ httpx -l resolved.txt -tech-detect -o tech_results.json
 cat tech_results.json | jq '.technologies[]?' | grep -i "waf\|cloudflare\|akamai\|imperva\|f5"
 
 # nuclei — WAF/CDN detection templates
-nuclei -l live_web.txt -t technologies/waf-detect.yaml -o waf_results.txt
+nuclei -l live_web.txt -t http/technologies/waf-detect.yaml -o waf_results.txt
 ```
 
 Once a WAF is identified:

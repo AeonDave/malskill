@@ -54,15 +54,15 @@ Per mobile application:
 ### Static analysis
 
 ```bash
-# Quick win: strings on the raw APK first
-strings target.apk | grep -iE "api[_-]?key|secret|password|token|HTB\{"
+# Quick win: strings on the raw APK first (zip container: unzip -p for embedded files)
+strings target.apk | grep -iE "api[_-]?key|secret|password|token|bearer|firebaseio\.com|s3\.amazonaws"
 
 # Decompile
 jadx -d output_dir target.apk
 apktool d target.apk -o output_dir   # smali + decoded manifest + resources
 
 # Manifest analysis: exported components, debuggable, allowBackup, permissions
-aapt dump badging target.apk
+aapt2 dump badging target.apk       # aapt is deprecated; aapt2 in modern SDK build-tools
 
 # Hardcoded crypto (SecretKeySpec, Cipher.getInstance — common leak point)
 grep -r "SecretKeySpec\|Cipher\|AES\|DES\|encrypt\|decrypt\|base64" output_dir/ | grep -v "^Binary"
@@ -83,16 +83,16 @@ find output_dir/assets/ -type f | xargs file
 ### Dynamic analysis
 
 ```bash
-# Frida — SSL pinning bypass
-frida -U -f com.target.app -l ssl_pinning_bypass.js --no-pause
+# Frida — SSL pinning bypass (spawn+resume is default since frida-tools 12+; do not pass --no-pause)
+frida -U -f com.target.app -l ssl_pinning_bypass.js
 
 # Objection — rapid assessment
 objection -g com.target.app explore
-# android sslpinning disable
+# android sslpinning disable          # OkHttp3, TrustManagerImpl, SSLContext, Conscrypt, etc.
 # android root disable
 # android hooking list activities
 
-# Drozer — exposed components
+# Drozer (community fork WithSecureLabs/drozer) — exposed components
 dz> run app.package.attacksurface com.target.app
 dz> run app.provider.query content://com.target.app.provider/
 ```
@@ -101,7 +101,7 @@ dz> run app.provider.query content://com.target.app.provider/
 
 - Configure device/emulator proxy to Burp Suite.
 - Install CA certificate (user store for Android 7+; system store requires root).
-- SSL pinning bypass: Frida universal scripts > Objection > Xposed > smali patching.
+- SSL pinning bypass: Frida universal scripts (httptoolkit/frida-interception-and-unpinning) > Objection > LSPosed module (TrustMeAlready, JustTrustMe) > smali patching + repackage + resign.
 
 ### Storage analysis
 
@@ -113,27 +113,24 @@ adb shell ls /data/data/com.target.app/files/
 
 ### Android backup (.ab) analysis
 
-Android backup files are unencrypted by default and contain full app data + shared storage.
+`.ab` is a legacy channel. `adb backup` is restricted since Android 12 and requires `android:debuggable=true` for most apps; on Android 13+ most stock apps refuse it outright. Still useful for older/debuggable builds and forensic images.
 
 ```bash
-# Header: "ANDROID BACKUP\n<ver>\n<compressed>\n<encryption>\n"
-# Measure header length exactly before extracting
-python3 -c "
-with open('backup.ab','rb') as f: h=f.read(60)
-print(repr(h))
-idx = h.find(b'x\xda') or h.find(b'x\x9c')  # zlib magic
-print('zlib starts at byte', idx)
-"
-
-# Extract (adjust skip= to header byte count)
-dd if=backup.ab bs=24 skip=1 2>/dev/null \
-  | python3 -c "import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))" \
-  > backup.tar && tar xf backup.tar -C extracted/
+# Header: "ANDROID BACKUP\n<ver>\n<compressed>\n<encryption>\n" (variable length — do NOT hardcode skip=)
+python3 - <<'PY'
+import zlib, pathlib
+raw = pathlib.Path('backup.ab').read_bytes()
+# Skip 4 newline-terminated header fields, then decompress the zlib stream that follows.
+p = 0
+for _ in range(4):
+    p = raw.index(b'\n', p) + 1
+pathlib.Path('backup.tar').write_bytes(zlib.decompress(raw[p:]))
+PY
+tar xf backup.tar -C extracted/
 
 # Triage extracted content
-grep -r "password\|token\|secret\|key" extracted/ 2>/dev/null
-find extracted/ -name "*.db" | xargs -I{} sqlite3 {} ".tables" 2>/dev/null
-find extracted/ -name "*.jpg" -o -name "*.png" | sort   # inspect visually
+grep -rE "password|token|secret|api[_-]?key|bearer" extracted/ 2>/dev/null
+find extracted/ -name "*.db" -exec sqlite3 {} ".tables" \; 2>/dev/null
 ```
 
 ### Unity / IL2CPP APK
@@ -159,16 +156,18 @@ strings libil2cpp.so | grep -i "flag{"
 
 ### Static analysis
 
-- Decrypt IPA (if App Store): `frida-ios-dump` or `bfinject`.
-- Decompile with Hopper, Ghidra, or Binary Ninja.
-- Inspect `Info.plist` for URL schemes, app transport security, entitlements.
-- Search for hardcoded secrets in Mach-O binaries and bundled resources.
+- Decrypt App Store IPA (jailbroken device required on iOS 15+): `frida-ios-dump`, `bagbak`, or `ipadecrypt`. `bfinject` is dead (iOS 11 Electra-era); Needle is archived (Reversec Labs, May 2025) — do not use.
+- Off-device sideload for testing on stock iOS: TrollStore (iOS 14.0–17.0 unpatched) or a paid developer profile for re-signing.
+- Decompile with Hopper, Ghidra, or Binary Ninja; entitlements via `ldid -e`, `codesign -d --entitlements :-`.
+- Inspect `Info.plist` for URL schemes, ATS exceptions, `UIBackgroundModes`, associated domains, and entitlements (keychain access groups, app groups).
+- Search for hardcoded secrets in Mach-O binaries and bundled resources (`strings -a`, `rabin2 -zzz`).
 
 ### Dynamic analysis
 
-- Frida: `frida -U -f com.target.app -l script.js`.
-- Objection: `objection -g com.target.app explore` — `ios sslpinning disable`, `ios jailbreak disable`.
-- Needle: modular iOS testing framework.
+- Frida: `frida -U -f com.target.app -l script.js` (frida-tools spawns and auto-resumes; do not pass `--no-pause`).
+- Objection: `objection -g com.target.app explore` — `ios sslpinning disable`, `ios jailbreak disable`, `ios cookies get`, `ios ui dump`.
+- r2frida (in-process r2 session): `r2 frida://spawn/usb//com.target.app` for interactive dump/hook without a separate Frida script.
+- App Attest / DeviceCheck: modern iOS apps bind API calls to a hardware attestation key; server-side rejection of forged attestations is common — validate via traffic replay, not just Frida hook success.
 
 ### Keychain and storage
 
@@ -193,3 +192,17 @@ ls /var/mobile/Containers/Data/Application/<UUID>/Library/
 | MASVS-NETWORK | SSL pinning, certificate validation, proxy detection |
 | MASVS-PLATFORM | Exported components, intent handling, WebView |
 | MASVS-CODE | Code tampering, debugging, root/jailbreak detection |
+
+## Modern platform gotchas
+
+Android:
+- **Play Integrity API** replaced SafetyNet Attestation (fully retired 2025-01-31). Server verdicts (`MEETS_DEVICE_INTEGRITY`, `MEETS_BASIC_INTEGRITY`, `MEETS_STRONG_INTEGRITY`) are backed by hardware key attestation on Android 13+; Magisk `zygisk-assistant` / `PlayIntegrityFix` bypass basic, not strong.
+- **Explicit `android:exported`** required on Android 12+ (targetSdk ≥ 31) for any activity/service/receiver with an `<intent-filter>`; missing attribute = install failure. Old "exported by intent-filter" implicit exports are gone — re-check attack surface.
+- **Runtime broadcast receivers** on Android 14+ (targetSdk ≥ 34) must pass `RECEIVER_EXPORTED` or `RECEIVER_NOT_EXPORTED` to `registerReceiver` — grep for these flags to map dynamic IPC exposure.
+- **`adb backup`** restricted since Android 12; requires `android:debuggable=true`. Most production apps yield an empty archive — pivot to root+`tar` of `/data/data/<pkg>/` or Frida file dump.
+- **Xposed original** is dead; use **LSPosed** (Zygisk module) on Android 8.1–15 for system-wide hooking modules.
+
+iOS:
+- **TrustCache** + **CoreTrust** enforce signed-binary allow-lists in the kernel; unsigned/adhoc binaries need a jailbreak or a TrollStore-style CoreTrust bypass (patched in iOS 17.0). No `bfinject`/`Needle` era techniques apply.
+- **App Attest** (`DCAppAttestService`) binds requests to a Secure Enclave key; server rejects forged attestations even with a working Frida hook — always validate bypass end-to-end against the backend, not just on-device.
+- **Universal SSL pinning bypass** landscape: httptoolkit/frida-interception-and-unpinning covers OkHttp/Conscrypt/BoringSSL/NSURLSession/CFNetwork; fall back to per-library hooks (`SSL_CTX_set_custom_verify`, `SecTrustEvaluateWithError`) when custom pinners are used.

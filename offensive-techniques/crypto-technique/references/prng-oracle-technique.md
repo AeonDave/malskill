@@ -453,17 +453,20 @@ def recover_java_full_state(observed_int):
 
 ## Category 2: Oracle Attacks
 
-### 2.1 Padding Oracle (Manger's Attack)
+### 2.1 RSA Padding Oracles (Bleichenbacher / Manger)
 
-**Preconditions:**
-- You can submit ciphertexts to decryption oracle.
-- Oracle leaks whether padding is valid (via timing, error message, or status code).
-- Encryption is PKCS#1 v1.5 or similar.
+**Two attacks — pick by padding scheme:**
+- **Bleichenbacher (1998)** → PKCS#1 v1.5 encryption padding. Oracle bit: does `m` begin with `0x00 0x02`? Cost ~10^6 queries per 1024-bit key. ROBOT (2017/2018) revived it against TLS.
+- **Manger (2001)** → RSAES-OAEP (PKCS#1 v2.x). Oracle bit: is the OAEP-decoded MSB `0x00`? Cost ~1100 queries per 1024-bit key. Do not attack v1.5 with Manger.
+
+**Preconditions (both):**
+- You can submit ciphertexts to a decryption oracle.
+- Oracle leaks validity via timing, error text, status code, TLS alert, or connection behavior.
 
 **Why it works:**
-PKCS#1 v1.5 padding defines plaintext structure. Oracle tells you byte-by-byte whether decryption is in valid range. Binary search to recover plaintext.
+Each oracle query on `(c * s^e) mod n` reveals one bit about the plaintext interval. Chosen multipliers halve the search space per round.
 
-**Operational (high-level Manger's):**
+**Operational (high-level, Bleichenbacher):**
 
 ```python
 import time

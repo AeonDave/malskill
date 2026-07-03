@@ -150,7 +150,7 @@ See `references/rsa-technique.md`.
 - `e` close to `φ(n)`? → Wiener's attack likely.
 - Multiple public keys with same `n`? → Common modulus attack.
 - Multiple ciphertexts with same message and different `e`? → Hastad broadcast.
-- Can you time oracle responses? → Padding oracle (Manger's attack).
+- Can you time oracle responses? → Bleichenbacher's attack (PKCS#1 v1.5) or Manger's attack (OAEP / PKCS#1 v2.x).
 - Does `p-1` or `q-1` factor smoothly? → Pollard p-1 or ECM.
 - Consecutive-like primes (close or near-squares)? → Fermat factorization.
 
@@ -193,7 +193,7 @@ Tool families:
 See `references/prng-oracle-technique.md`.
 
 - **PRNG output biased?** → Recover internal state via LLL or meet-in-the-middle.
-- **Padding oracle?** → Manger's attack (Appendix F).
+- **Padding oracle?** → Bleichenbacher's attack (PKCS#1 v1.5) or Manger's attack (OAEP).
 - **Timing oracle?** → Cache timing, branch prediction, or response latency.
 - **Signature verification oracle?** → Fault injection, signature forgeability, or existential forgery.
 
@@ -321,7 +321,7 @@ Once the attack is selected:
 - `references/rsa-technique.md` — RSA weakness diagnosis, attack selection matrix, quick-reference attack conditions.
 - `references/ecc-technique.md` — ECC and DSA weakness diagnosis, nonce reuse patterns, curve singularity checks.
 - `references/lattice-lwe-technique.md` — LLL lattice reduction, Coppersmith's method, LWE embedding, constraint modeling.
-- `references/prng-oracle-technique.md` — PRNG state recovery, oracle timing/error-based methodology, Manger's padding oracle.
+- `references/prng-oracle-technique.md` — PRNG state recovery, oracle timing/error-based methodology, Bleichenbacher/Manger padding oracles.
 - `references/oracle-detection-checklist.md` — Oracle confirmation workflow: observable channels, timing gates, controls, and exploit-readiness criteria.
 - `references/symmetric-cipher-technique.md` — ECB, CBC, CTR, and GCM mode weaknesses; plaintext recovery techniques.
 - `references/finite-field-technique.md` — Shamir secret sharing recovery, Lagrange interpolation over GF(p) and GF(p^k), field extension arithmetic.

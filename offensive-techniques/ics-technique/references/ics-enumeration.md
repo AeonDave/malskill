@@ -97,6 +97,12 @@ EOF
 
 # Metasploit S7 password enumeration
 # use auxiliary/scanner/scada/s7_300_400_passwords
+
+# Vendor CVE routing (2024+): check CISA ICS advisories per fingerprinted vendor/firmware:
+#   https://www.cisa.gov/news-events/cybersecurity-advisories?f%5B0%5D=advisory_type%3A95
+# Recent classes worth checking: Rockwell ControlLogix/GuardLogix CIP validation (icsa-24-107-03,
+# icsa-24-214-09, icsa-24-284-20, icsa-25-226-28), Siemens SIMATIC S7-1500 CPU CVEs, Schneider
+# Modicon M340/M580 UMAS/Modbus auth-bypass advisories.
 ```
 
 ---
@@ -167,14 +173,16 @@ EOF
 
 ---
 
-## Profinet DCP (UDP 34964)
+## Profinet DCP (L2 EtherType 0x8892) and PN-CM (UDP 34964)
 
-Profinet DCP (Discovery and Configuration Protocol) is broadcast-based — passive Wireshark capture on the OT segment reveals all Profinet devices.
+Profinet DCP (Discovery and Configuration Protocol) runs directly on Ethernet L2 (EtherType 0x8892) — not IP — so it is broadcast-only and cannot be reached by TCP/UDP port scan. Use L2 discovery or passive capture on the OT segment. UDP 34964 is a separate Profinet Context Manager (PN-CM) service reachable over IP.
 
 ```bash
 # Wireshark: display filter pn_dcp
-# nmap
-nmap -sU --script profinet-logo -p 34964 <target>
+# nmap L2 DCP discovery (requires -e <iface> on the OT segment)
+sudo nmap -e <iface> --script multicast-profinet-discovery
+# nmap PN-CM lookup (UDP 34964, DCE/RPC endpoint mapper)
+sudo nmap -sU --script profinet-cm-lookup -p 34964 <target>
 
 # Python scapy Profinet DCP identify request (active)
 python3 - <<'EOF'
@@ -217,7 +225,7 @@ nmap -sn -T2 <ot_subnet>/24 -oG alive_hosts.txt
 # Step 2: Port scan alive hosts — ICS ports only, gentle rate
 HOSTS=$(grep "Up" alive_hosts.txt | awk '{print $2}' | tr '\n' ',')
 nmap -T2 --max-retries 1 -p 102,502,2404,4840,9100,20000,34964,44818,47808 \
-  -sV --script s7-info,modbus-discover,enip-info,dnp3-info,bacnet-info \
+  -sV --script s7-info,modbus-discover,enip-info,dnp3-info,bacnet-info,profinet-cm-lookup \
   -oA ics_scan $HOSTS
 
 # Step 3: Protocol-specific interrogation (sequential, not parallel)

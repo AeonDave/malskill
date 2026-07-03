@@ -9,9 +9,8 @@ Load after `triage.md` when a `pkg`, `nexe`, or SEA executable embeds JavaScript
 ### 1.1 Quick identification
 
 ```bash
-strings binary | grep -iE "snapshot_blob|v8\.getHeap|NMF\|SEA_FUSE|pkg/prelude|nexe"
+strings binary | grep -iE "snapshot_blob|v8\.getHeap|SEA_FUSE|pkg/prelude|nexe"
 strings binary | grep -E "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2"
-hexdump -C binary | grep -E "k\]Ax|NODE_SEA"   # V8 snapshot magic
 ```
 
 **Strong indicators by bundler:**
@@ -19,15 +18,12 @@ hexdump -C binary | grep -E "k\]Ax|NODE_SEA"   # V8 snapshot magic
 | Bundler | Indicator string / pattern |
 |---|---|
 | `pkg` (vercel) | `pkg/prelude`, `PKG_ENTRYPOINT`, `"/snapshot/"` paths in strings |
-| Node.js SEA (v20+) | `NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2` sentinel |
+| Node.js SEA (v20+) | `NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2:<0/1>` sentinel |
 | `nexe` | `NEXE_PAYLOAD_SENTINEL`, `__nexe` |
-| `pkg` + snapshot | `snapshot_blob.bin` string or raw V8 blob magic bytes |
+| `pkg` + snapshot | `snapshot_blob.bin` string; V8 has no fixed ASCII magic — look for the snapshot header structure and Node runtime references |
 
-**V8 snapshot magic bytes (little-endian):**
-```
-k]Ax  →  hex: 6B 5D 41 78
-```
-This 4-byte sequence typically opens a V8 startup snapshot blob.
+**V8 startup snapshot layout note:**
+V8's `SnapshotData` header is `uint32_t`-based (`[magic|external_refs] [num_reservations] [payload_len] ...`), not a fixed ASCII string. Detect V8 snapshots by adjacency to Node runtime strings and by feeding candidate blobs to a matching Node binary (§2.2).
 
 ### 1.2 Binary structure (pkg)
 
@@ -53,20 +49,35 @@ print(hex(pos))
 
 ### 1.3 Binary structure (Node.js SEA, v20+)
 
-SEA injects a single-file resource (Blob) into the Node.js executable using a FUSE sentinel:
+SEA does NOT append the blob after the fuse. `postject` writes the blob to a
+format-specific container and flips the fuse's trailing `:0` to `:1` so the
+loader knows a resource is present:
+
+- **PE**: resource named `NODE_SEA_BLOB` (parse with `pefile` / `Resource Hacker`).
+- **Mach-O**: section `NODE_SEA_BLOB` inside segment `NODE_SEA` (`otool -s NODE_SEA NODE_SEA_BLOB`).
+- **ELF**: note named `NODE_SEA_BLOB` (`readelf -n` / `objcopy --dump-section`).
 
 ```bash
-strings binary | grep "NODE_SEA_FUSE"   # Should appear exactly once
-# The blob is appended after the fuse marker
+strings binary | grep "NODE_SEA_FUSE"          # sentinel; ends in :1 when a blob was injected
+
+# ELF example
+objcopy --dump-section .note.NODE_SEA_BLOB=sea.blob ./binary
+
+# PE example (Python)
 python3 - << 'EOF'
-data = open('binary','rb').read()
-fuse = b'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
-pos = data.find(fuse) + len(fuse)
-blob_len = int.from_bytes(data[pos:pos+4], 'little')
-blob = data[pos+4:pos+4+blob_len]
-open('extracted.blob', 'wb').write(blob)
-print(f"Blob at {hex(pos+4)}, size {blob_len}")
+import pefile
+pe = pefile.PE('binary.exe')
+for rt in pe.DIRECTORY_ENTRY_RESOURCE.entries:
+    for name in rt.directory.entries:
+        if str(name.name) == 'NODE_SEA_BLOB':
+            for lang in name.directory.entries:
+                d = lang.data.struct
+                blob = pe.get_data(d.OffsetToData, d.Size)
+                open('sea.blob','wb').write(blob)
 EOF
+
+# Mach-O example
+otool -s NODE_SEA NODE_SEA_BLOB ./binary       # or use lief.MachO to dump section bytes
 ```
 
 ---
@@ -158,10 +169,10 @@ Most `pkg`-bundled production code applies a JS obfuscator:
 | `UglifyJS` | Single-char variable names, no whitespace | prettier + rename pass |
 | Custom eval packer | `eval(function(p,a,c,k,e,d){...})` | Run in isolated Node.js REPL + intercept eval |
 
-**Synchrony (automated JS deobfuscation):**
+**Synchrony (automated JS deobfuscation for `javascript-obfuscator` output):**
 ```bash
-npm install -g deobfuscate
-deobfuscate obfuscated.js -o clean.js
+npm install -g deobfuscator     # npm package name; CLI binary is `synchrony`
+synchrony obfuscated.js         # writes obfuscated.cleaned.js beside input
 ```
 
 **eval interception:**

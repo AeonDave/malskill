@@ -60,4 +60,3 @@ The harness is the control plane of the campaign. A weak harness wastes CPU; a g
 ## Decision rule
 
 If a testcase cannot be replayed reliably, fix harness determinism before continuing campaign scale-out.
-<parameter name="filePath">offensive-coding/fuzzing/references/harness-writing.md

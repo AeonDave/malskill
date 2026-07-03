@@ -150,12 +150,14 @@ Use when evidence is mostly EVTX, registry hives, MFT snapshots, API trace logs,
 
 - Build an objective-to-artifact map first (which artifact can answer each objective decisively).
 - Prefer deterministic extraction over broad hunting (exact key, exact event id, exact stream, exact record).
-- For Windows log-heavy cases, prioritize: PowerShell ScriptBlock (4104), process creation (4688/Sysmon 1), service/task creation, Defender/AV alerts, and relevant registry keys.
+- For Windows log-heavy cases, prioritize: PowerShell ScriptBlock (4104), process creation (4688/Sysmon 1), service/task creation, Defender/AV alerts, and relevant registry keys. When an ETW trace (`.etl`) is provided, treat provider name + event id as the primary pointer (e.g. `Microsoft-Windows-PowerShell`, `Microsoft-Antimalware-Scan-Interface`, `Microsoft-Windows-Kernel-Process`).
+- For Linux hosts, prioritize `journalctl` output from `/var/log/journal/*` (auth, sshd, sudo, systemd unit start/stop) and `/var/log/audit/audit.log` (auditd) for structured process/command evidence.
+- For macOS hosts, use the Unified Log system (`log collect`, `log show --predicate ...`, or an `.logarchive` bundle) for process, network, and security signals; classic `/var/log` text logs are largely deprecated.
 - For API trace cases, reconstruct sequence by API dependency chain (enumeration → allocation/write → execution).
 - Mark each conclusion as: direct artifact fact vs inferred interpretation.
 
 Primary tool families:
-- `offensive-tools/forensic/chainsaw/` — rapid EVTX triage: Sigma rule hunting, built-in detection patterns for common attack TTPs, timeline output from multiple log sources
+- `offensive-tools/forensic/chainsaw/` — fast triage across EVTX, `$MFT`, ShimCache, SRUM, and registry hives with Sigma and built-in detection rules; produces multi-source execution timelines
 
 ## Practical quality gates
 

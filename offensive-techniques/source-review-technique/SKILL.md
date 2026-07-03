@@ -22,7 +22,7 @@ Modern SAST effectively bridges static tools with LLMs. The LLM acts as the tria
 Do not ask the LLM to "find bugs" across thousands of lines at once. It will hallucinate.
 1. **Identify Sources**: HTTP requests, CLI args, file reads, database returns, IPC.
 2. **Identify Sinks**: `exec`, `system`, `query`, `eval`, `deserialize`, `UnsafeCell`, memory allocators.
-3. **Map**: Use `grep_search` or `vscode_listCodeUsages` to find all invocations of the sinks.
+3. **Map**: Use `ripgrep`/`semgrep`/`opengrep` (or the IDE's code-usage search when available) to enumerate every invocation of the sinks.
 
 ### 2. Taint Evaluation (LLM-Assisted)
 

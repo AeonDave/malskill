@@ -74,9 +74,14 @@ Use the simplest family that gives coverage signal and reproducible failures.
   - Typical families: contract-aware API fuzzing.
   - Why: automatically reaches valid states and explores success paths, not only 404/400 noise.
 
-5. **Early feasibility phase when no model exists**
+5. **Highly structured input (grammar, protobuf, AST, complex packet header)**
+  - Use structure-aware/grammar mutators; do not rely on byte-level bitflip only.
+  - Typical families: custom mutators, protobuf-mutator, grammar-based generators, LLM-extracted grammars for opaque formats/protocols.
+  - Why: bytewise mutation stalls at checksum/tag/length gates; structural mutation reaches semantic states.
+
+6. **Early feasibility phase when no model exists**
   - Use short smoke runs to rank entrypoints by signal.
-  - Typical families: lightweight mutation-first probing.
+  - Typical families: lightweight mutation-first probing, optionally LLM-assisted harness/spec bootstrap for unfamiliar codebases.
   - Why: avoid over-investing in low-value targets.
 
 ## Tool families
@@ -120,6 +125,8 @@ Use the simplest family that gives coverage signal and reproducible failures.
 
 6. **Plateau response**
   - If progress stalls: improve model/seed quality first, then mutate strategy.
+  - Enable comparison/value-profile guidance (e.g., CmpLog-class features) before increasing runtime.
+  - Switch to structure-aware mutation when byte-level mutators cannot cross format/protocol gates.
   - For stateful APIs/protocols: unlock producer/handshake reliability before consumer depth.
 
 7. **Triage, minimization, and replay**

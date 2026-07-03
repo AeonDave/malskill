@@ -12,7 +12,7 @@ In IT pentesting, a failed exploit causes a process to crash and restart. In ICS
 - A historian exploit can expose weeks of process data including production quantities, safety setpoints, and personnel shifts.
 - Physical equipment damage from incorrect outputs may take weeks and significant cost to repair.
 
-These are not theoretical risks. FrostyGoop (2024) was the first observed ICS malware specifically targeting Modbus TCP to manipulate control parameters, resulting in heating disruption affecting thousands of customers.
+These are not theoretical risks. FrostyGoop (2024, ninth known ICS-specific malware; Golang; abuses Modbus TCP FC06 to manipulate ENCO controller setpoints — disrupted district heating in Lviv). Fuxnet (2024, Blackjack group vs Moskollektor sensor-gateways; wipes NAND, floods RS-485/M-Bus to disable field sensors). Prior classes still relevant: PIPEDREAM/INCONTROLLER (2022, modular attack framework targeting Schneider/OMRON/CODESYS and OPC UA); Industroyer2 (2022, IEC 60870-5-104 payload); CosmicEnergy (2023, IEC-104 red-team tool leaked publicly).
 
 ---
 

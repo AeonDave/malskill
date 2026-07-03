@@ -74,7 +74,7 @@ Zero direct contact with target infrastructure. All data from public or archived
 Use certificate transparency, passive DNS, and search engines — no direct DNS queries to target resolvers yet.
 
 Sources to check:
-- Certificate Transparency logs (crt.sh, certspotter, Facebook CT monitor)
+- Certificate Transparency logs (crt.sh, Certspotter, Censys certificate search)
 - Passive DNS aggregators (SecurityTrails PDNS, DNSDB, Farsight)
 - Search engine dorking: `site:target.com`, `site:*.target.com`
 - Archive and index: Wayback Machine, Common Crawl, URLScan

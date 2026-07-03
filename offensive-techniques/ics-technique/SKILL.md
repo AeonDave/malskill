@@ -126,7 +126,7 @@ nmap -sV --script s7-info -p 102 <target>
 python3 - <<'EOF'
 import snap7
 c = snap7.client.Client()
-c.connect('<target>', 0, 1)   # rack=0, slot=1 — adjust per model
+c.connect('<target>', 0, 1)   # rack=0, slot=1 for S7-1200/1500; S7-300 → slot=2; S7-400 → slot=3
 print(c.get_cpu_info())
 c.disconnect()
 EOF

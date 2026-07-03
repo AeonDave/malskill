@@ -107,10 +107,12 @@ from sage.all import *
 R.<x> = PolynomialRing(ZZ)
 f = 2*x + a  # a is known, x is unknown small root
 
-# Sage's small_roots computes this automatically
-roots = f.small_roots(X=N^(1/2), beta=0.4)
-# X: upper bound on |root|
-# beta: parameterizes which moduli to use (0.4 is typical)
+# Sage's small_roots computes this automatically.
+# beta is the exponent of the divisor b of N that the root satisfies
+# (f(x) ≡ 0 mod b with b >= N^beta). Default = 1.0 (root mod N).
+# Use beta < 1 only when searching a divisor of N (e.g. beta ≈ 0.5 to
+# find a prime factor p ≈ sqrt(N), as in Boneh-Durfee / factor recovery).
+roots = f.small_roots(X=N^(1/2), beta=1.0)
 
 if roots:
     x_recovered = roots[0]
@@ -177,7 +179,8 @@ res = f.resultant(g, y)
 Rx.<t> = PolynomialRing(ZZ)
 res_uni = Rx(res.univariate_polynomial())
 
-roots = res_uni.small_roots(X=error_bound, beta=0.4)
+# beta=1.0 finds roots mod N; drop beta only if searching a divisor.
+roots = res_uni.small_roots(X=error_bound, beta=1.0)
 
 if roots:
     e1 = int(roots[0])
@@ -742,9 +745,11 @@ if plaintext_bits:
 
 ---
 
+## Common Pitfalls
+
 1. **Choosing wrong bound `X`**: If `X` is too large, LLL won't find the root. If too small, root is outside the search space. Start with `X = 2^(bits_of_secret)`.
 
-2. **Beta parameter in Coppersmith**: Determines moduli used. For `f(x) ≡ 0 (mod N)`, use `beta = 0.4` or `0.5`. For higher moduli, increase beta.
+2. **Beta parameter in Coppersmith**: `beta` is the exponent of the divisor `b | N` such that `b >= N^beta`. Default (and correct for a root mod N) is `beta = 1.0`. Lower beta only when searching modulo a proper divisor — e.g. `beta ≈ 0.5` for a prime factor `p ≈ sqrt(N)` (Boneh-Durfee, partial-`p` factorization). Using `beta` too low without a divisor to find silently fails.
 
 3. **Multivariate vs. univariate**: LLL works best on univariate polynomials. For multivariate, reduce to univariate via resultant (§1.3) if possible.
 
@@ -754,11 +759,21 @@ if plaintext_bits:
 
 ---
 
+## Post-quantum lattice deployments (ML-KEM / ML-DSA)
+
+FIPS 203 (ML-KEM, ex-Kyber) and FIPS 204 (ML-DSA, ex-Dilithium) are lattice schemes now shipping in TLS 1.3 hybrids, SSH, and embedded devices. LLL/BKZ does **not** break the primitives themselves; attacks are implementation-level:
+
+- **ML-KEM timing / side-channel**: KyberSlash (CVE-2024-37880/-37881, secret-dependent division in `poly_frommsg`) recovers the KEM secret key from timing on affected implementations. `clangover` (CVE-2024-37880) exploits a Clang-emitted branch. Also single-trace masked-implementation attacks (eprint 2023/1042, 2023/1187, 2023/1587).
+- **ML-DSA fault attacks**: single-trace fault on hedged Dilithium (eprint 2024/238), correction faults on randomized signing (eprint 2024/138), differential faults MLWE→RLWE (TCHES 2023/4). Draft `draft-connolly-cfrg-ml-dsa-security-considerations` tracks mitigations.
+- **Hybrid caveat**: X25519+ML-KEM (X25519MLKEM768) protects confidentiality only if **both** halves are unbroken; a downgrade to classical-only, or misuse of the shared secret KDF, negates the PQ leg.
+
+Triage: fingerprint the library and version (liboqs, pq-crystals reference, mlkem-native, BoringSSL PQ) and match against the CVE list before assuming the deployment is safe. Practical attacks require physical access (traces, faults) or a compiled binary against a known-vulnerable version.
+
 ## References and Tools
 
 - **Sage**: `LLL()`, `small_roots()`, `BKZ()`, `resultant()`, `GF(2^N)`, `PolynomialRing(GF(2))`.
-- **fplll**: https://github.com/fplll/fplll — external lattice reduction library.
-- **Coppersmith implementations**: Various papers and GitHub repos with ready-to-use implementations.
+- **fplll / fpylll**: https://github.com/fplll/fplll — external lattice reduction library.
+- **Coppersmith implementations**: `github.com/defund/coppersmith`, `github.com/jvdsn/crypto-attacks`.
 
 Load `offensive-tools/cryptography/sagemath/` for operational scripts and pattern reference.
 

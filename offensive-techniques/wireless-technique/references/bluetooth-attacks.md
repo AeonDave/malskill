@@ -39,7 +39,23 @@ Tools: `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/kismet/`, `o
 
 LE Secure Connections improves key exchange, but it does not fix unauthenticated characteristics or weak application authorization.
 
-## 4) GATT exploitation workflow
+## 4) BLE 5.4 (Core Spec Jan 2023) surface
+
+When the target advertises `LE Features` bits for EAD or PAwR, extend the workflow:
+
+- **Encrypted Advertising Data (EAD)**: adverts/scan responses are AES-CCM’d with a
+  Key Material blob exchanged over an authenticated GATT link. Check for KM read
+  without bonding, KM re-use across resets, and replay of the encrypted advert
+  block when the device omits the `Randomizer` update.
+- **Periodic Advertising with Responses (PAwR)**: bidirectional connectionless
+  transport (ESL, sensor swarms). Sniff subevent + response slots with nRF
+  Sniffer + Wireshark 4.2+, verify EAD is applied, and test whether response
+  slot timing lets an attacker inject before the legitimate peripheral.
+- Deprecation reminder: `hcitool`, `hciconfig`, `gatttool`, `sdptool`, `hcidump`
+  are in BlueZ’s `bluez-deprecated` subpackage. Prefer `bluetoothctl`, `btmgmt`,
+  `btmon`, `btgatt-client` for anything new.
+
+## 5) GATT exploitation workflow
 
 1. Enumerate services, characteristics, descriptors, properties.
 2. Label each handle: readable, writable, notify/indicate, authenticated, encrypted, application-sensitive.
@@ -57,7 +73,7 @@ Interesting bug classes:
 - OTA firmware accepted unsigned, downgraded, or replayed.
 - Notifications leak sensitive data before authentication.
 
-## 5) MITM and downgrade paths
+## 6) MITM and downgrade paths
 
 Try MITM only after passive + authorization gates:
 
@@ -68,7 +84,7 @@ Try MITM only after passive + authorization gates:
 
 Evidence should show both sides' view: central/app, peripheral/device, and captured link behavior.
 
-## 6) Classic Bluetooth notes
+## 7) Classic Bluetooth notes
 
 Classic Bluetooth still appears in embedded, automotive, audio, and legacy industrial devices.
 
@@ -82,7 +98,7 @@ Assess:
 
 Most modern phones are hardened; focus Classic testing on scoped embedded/legacy targets rather than random nearby consumer devices.
 
-## 7) Evidence package
+## 8) Evidence package
 
 - Adapter and tool used, scan window, channel/interface, device MAC/name/UUIDs.
 - Passive evidence before active interaction.

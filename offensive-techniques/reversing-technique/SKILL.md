@@ -98,7 +98,7 @@ Quick assessment to decide approach:
 - `NimMain` / `HEXnn` mangled names / `@[` slice constants → **Nim RE** (see `references/nim-rev.md`)
 - `pkg/prelude` / `NODE_SEA_FUSE` / `snapshot_blob` in strings → **Node.js/V8 snapshot** (see `references/node-v8-snapshots.md`)
 - `memfd_create` in strace / `/proc/self/fd/` path to `dlopen` → **In-memory loading** (see `references/in-memory-loading.md`)
-- `ljmp 0x33:` / `push 0x33; retf` in 32-bit ELF → **Heaven's Gate Linux** (see `references/anti-analysis.md §Category 7`)
+- `ljmp 0x33:` / `push 0x33; retf` in 32-bit ELF → **Heaven's Gate Linux** (see `references/anti-analysis.md §Category 8`)
 - Two binary versions for patch analysis / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
 - Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Memory-corruption exploitation** workflow (see `references/binary-exploitation-capability.md`)
 - Kernel driver/module, hidden artifacts, boot-chain tampering, or EFI/bootloader changes → **Rootkit / bootkit RE** workflow (see `references/rootkit-and-bootkit-re.md`)
