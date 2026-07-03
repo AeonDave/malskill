@@ -28,12 +28,14 @@ decisive lines.
    insufficient.
 3. **Extract, don't hoard**: keep only the ≤few decisive lines/quote you need; leave the bulk on
    disk. One fact needs one quote, not a page.
-4. **Bounded passes for a must-digest file**: if a huge artifact genuinely must be analyzed, do it in
-   bounded passes, not one load.
-5. **Context quarantine**: if a large artifact must be fully analyzed, **delegate** it to a fresh
+4. **Preview before full read**: for an artifact/upload/large tool output, check size + a small
+   preview (metadata, head/tail, first few KB) before pulling the blob. Skip the full read when the
+   preview answers the question; otherwise paginate with bounded windows.
+5. **Tail growing logs by byte offset**: for streaming/appended logs (or long-running shell output),
+   read from the last-known byte forward — never re-scan from byte 0. Prefer streaming large tool
+   output to a side artifact/file over pulling it inline.
+6. **Context quarantine**: if a large artifact must be fully analyzed, **delegate** it to a fresh
    sub-agent that reads it and returns a digest — keep the raw tokens out of your own window.
-6. **Cap what you ingest**: if a read starts dumping bulk, stop, narrow with `grep`/`limit`, and pull
-   only the decisive lines.
 
 ## Anti-patterns
 
@@ -43,6 +45,9 @@ decisive lines.
 | Loading a whole log/dump into context | tail/grep the relevant span only |
 | Re-reading files a worker already summarized | consolidate from the returned report |
 | Pasting a page to "keep it handy" | quote the decisive lines; leave the page on disk |
+| Downloading a whole artifact just to look at it | preview metadata + head/tail first; fetch only if needed |
+| Re-reading a growing log from byte 0 | tail from the last-known byte offset |
+| Pulling a huge command's stdout inline | route it to a side artifact/file; read a window from disk |
 
 ## Writing for others' budget
 

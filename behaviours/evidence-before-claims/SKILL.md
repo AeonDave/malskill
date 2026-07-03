@@ -22,11 +22,11 @@ Use this skill when a conclusion could mislead an operator, reviewer, or report 
 
 Prefer the strongest evidence that is practical and authorized:
 
-1. **Fresh reproduction**: exact command/API/action rerun in the current environment.
-2. **Primary artifact**: logs, packet capture, crash trace, screenshot, hash, file path, HTTP transcript, debugger output.
+1. **Fresh reproduction**: exact command/API/action rerun in the current environment. Reproduce twice for racy, timing-sensitive, or stochastic behavior.
+2. **Primary artifact**: logs, packet capture, crash trace, hash, file path, HTTP transcript, debugger output. Prefer machine-readable log/transcript over screenshots — screenshots are mutable, croppable, and OCR-lossy; keep them only as supporting context.
 3. **Independent corroboration**: second tool, manual replay, source review, negative control, or version check.
 4. **Reasoned hypothesis**: clearly marked as likely/plausible and not final.
-5. **Unverified lead**: useful for next steps only, never reported as confirmed.
+5. **Unverified lead**: useful for next steps only, never reported as confirmed. Includes any LLM/subagent assertion not yet checked against a primary artifact.
 
 ## Claim workflow
 
@@ -46,6 +46,7 @@ Prefer the strongest evidence that is practical and authorized:
 | Partial | likely, plausible, needs validation | vulnerable, exploitable |
 | Tool-only | scanner reports, tool flagged | confirmed finding |
 | Not checked | unverified lead | real issue |
+| LLM/subagent said so | reported by model/subagent, pending replay | found, confirmed |
 
 ## Stop conditions
 
@@ -64,6 +65,6 @@ When finishing, include:
 
 Load on demand:
 
-- `references/offensive-evidence-gates.md` — concrete evidence requirements by offensive/research domain.
+- `references/offensive-evidence-gates.md` — concrete evidence requirements by offensive/research domain, including LLM/agent output.
 
 Pair with `verification-before-completion` before claiming a task, fix, validation, or report is complete.

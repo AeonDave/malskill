@@ -1,6 +1,6 @@
 # Cognitive Biases That Derail Hypothesis-Driven Work
 
-Hypothesis-driven investigation fails far more often from reasoning errors than from a lack of tooling. These are the recurring biases, the signal that they are active, and the counter-move to apply during the investigation itself — not in retrospect.
+Each entry: the signal that the bias is active in the current investigation, and the counter-move to apply now (not in retrospect).
 
 ## Confirmation bias
 
@@ -81,17 +81,3 @@ Hypothesis-driven investigation fails far more often from reasoning errors than 
 
 - **Signal**: an earlier reviewer, doc, or senior engineer asserted a cause, so the hypothesis space is trimmed prematurely.
 - **Counter**: treat prior assertions as hypotheses with priors, not as constraints. They still need a falsifier.
-
----
-
-## Quick self-check during investigation
-
-If any of the following is true, pause and re-examine:
-
-- The last three experiments only added detail to the leading hypothesis, never tried to break it.
-- No falsifier was written down for the current hypothesis.
-- The investigation log shows the same idea tested twice with different framings.
-- A "fix" was applied but the original reproducer was not re-run.
-- The reasoning ends with "it must be X" without a causal chain from defect to symptom.
-
-Each of these is a reliable signal that the discipline has slipped, regardless of how much progress feels close.

@@ -26,13 +26,28 @@ on the goal.
    re-trigger it blindly; quote the failure and switch to a **different** test, not a repeat.
 2. **Pivot on evidence**: `failed path → quote the exact failure → next shortest path`. Each retry
    must change a variable, not just re-run hope.
-3. **Don't grind side quests**: a secondary problem gets a **bounded** attempt. If it doesn't yield,
-   surface `[BLOCKED: need X]` and pivot to productive work rather than sinking the run into it.
+3. **Don't grind side quests**: a secondary problem gets one bounded attempt (see Budgets). If it
+   doesn't yield, surface `[BLOCKED: need X]` and pivot to productive work rather than sinking the
+   run into it.
 4. **Hold the objective**: every step ties to the success signal. If you've drifted onto a
    sub-problem, name the drift and return to the goal (or escalate for the missing capability).
 5. **Escalate honestly**: when genuinely stuck after pivots and local tests, load the narrowest
    hint/research support skill or hand back an honest blocker **with everything derived so far**
    (offsets, leaks, partial output) — never a fabricated success.
+
+## Budgets and hard stops
+
+Set caps before starting. Trip a cap → stop, quote it, pivot or report.
+
+- **Tool-calls per approach**: ~5–10 calls to prove or kill one hypothesis. Past that: path is dead.
+- **Side-quest cap**: ~10 tool-calls or ~15 min on env/tooling/creds/transfer. Past that:
+  `[BLOCKED: need X]`.
+- **Wall-clock / token budget**: when ~70% of the run budget is spent, drop low-yield branches and
+  reserve remainder for verification and reporting.
+- **MCP / network retry cap**: at most 2 automatic retries on the same call with the same args.
+  The third attempt must change the call, target, or route — otherwise mark it dead.
+- **Sub-agent runaway**: kill and reassign a delegated worker when it exceeds its budget, produces
+  no new artifacts across two status reports, or drifts off the stated goal.
 
 ## Anti-patterns
 

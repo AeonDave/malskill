@@ -12,28 +12,32 @@ metadata:
 
 Completion is a claim. Claims need fresh evidence.
 
+Boundary: `evidence-before-claims` governs claim wording and evidence quality in general. This skill is the **freshness gate at the completion boundary** — did you actually re-run the check after the last change?
+
 ## Core rule
 
-Do not say work is complete, fixed, passing, clean, validated, or ready unless the verification command or artifact was checked in the current context.
+Do not say work is complete, fixed, passing, clean, validated, or ready unless the verification command or artifact was checked **after the last change** in the current context.
 
 ## Gate workflow
 
 1. **Name the claim**: what exactly is being asserted?
 2. **Choose proof**: command, test, diff, log, replay, artifact, or checklist that would falsify the claim.
-3. **Run or inspect fresh evidence**: use the full relevant check, not a partial proxy.
-4. **Read the output**: exit code, failures, warnings, skipped checks, and scope limits.
+3. **Run fresh, post-edit**: use the full relevant check on the current tree; any prior run before the last edit is stale.
+4. **Read the output**: exit code, failures, warnings, skipped checks, and scope limits. Exit 0 ≠ objective met — inspect what the tool actually produced.
 5. **Report accurately**: claim success only when evidence supports it; otherwise state the actual status and next smallest fix.
 
 ## Common claim gates
 
 | Claim | Requires | Not enough |
 |---|---|---|
-| Tests pass | fresh focused or suite output with zero relevant failures | previous run or assumed pass |
-| Build succeeds | build command exit 0 | lint-only success |
-| Bug fixed | original reproducer now passes | code changed near symptom |
-| Requirements met | checklist against spec or request | tests pass without coverage of requirements |
-| Skill valid | `quick_validate.py` on changed skill | frontmatter looks right by inspection |
-| Delegated work done | inspect diff/artifacts and verify outputs | worker report says done |
+| Tests pass | fresh run **after the last code edit**, zero relevant failures | earlier green run before further edits |
+| Build succeeds | build command exit 0 on current tree | lint-only, or stale build artifact |
+| Bug fixed | original reproducer now fails-then-passes across the fix | code changed near symptom, or “should work” |
+| Requirements met | checklist mapped to each spec/request item | tests pass without covering the requirement |
+| Skill valid | `quick_validate.py` on the changed skill dir | frontmatter looks right by inspection |
+| Objective met via tool | tool output shows the objective state | tool exit 0 or “no error” |
+| Delegated / sub-agent work done | controller inspects diff/artifacts and re-runs the check | worker/sub-agent report says done |
+| Cleanup / remediation complete | post-action target-state re-inspected | remediation command ran without error |
 
 ## Security and offensive focus
 

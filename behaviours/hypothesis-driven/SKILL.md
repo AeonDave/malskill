@@ -10,10 +10,6 @@ metadata:
 
 # Hypothesis-Driven Investigation
 
-Treat the unknown like a scientist, not a gambler. Every guess is a hypothesis; every action is an experiment that should be able to disprove it.
-
-The point is not to be right on the first try — it is to converge on the truth without burning hours on confirmation bias, sunk cost, or symptom-chasing.
-
 ## When to activate
 
 - A bug, crash, regression, or flaky behavior resists two or more direct fixes.
@@ -33,10 +29,6 @@ Do not activate for trivial fixes, single-line typos, or tasks where the user al
 - **Write it down.** Maintain an explicit log of hypotheses, predictions, evidence, and verdicts. The cost is small; the cost of re-testing the same idea twice is large.
 - **Evidence wins over preference.** When data contradicts a favorite hypothesis, kill the hypothesis, not the data.
 - **Stop the loop, not the work.** If three plausible fixes failed, the mental model is wrong. Re-examine assumptions before trying a fourth.
-
-## Loop guard
-
-Pause and re-frame as soon as one of these is true: three distinct fix attempts failed, new evidence contradicts a load-bearing assumption, or the next experiment needs access, authorization, or destructive action beyond approved scope. The goal is disciplined progress, not heroic thrashing.
 
 ## Workflow
 
@@ -101,33 +93,7 @@ H1: <one-line hypothesis>
   Verdict:   supported | refuted | inconclusive | blocked
 ```
 
-A handful of these in a scratch note or session memory is enough to keep the investigation honest and avoid repeating dead ends.
-
-Mini-example:
-
-```text
-H2: The decoder output is corrupt because the loop reads one byte past the input.
-   Mechanism: index i reaches len(input), so the last output byte is derived from adjacent state.
-   Predicts:  reducing the input by one byte moves the corrupt byte one position earlier.
-   Falsifier: corruption stays at the same logical position after input reduction.
-   Test:      run decoder on N-byte and N-1-byte inputs; compare final bytes.
-   Evidence:  N-1 run shifts corruption left by one byte.
-   Verdict:   supported; refine to loop-bound hypothesis before patching.
-```
-
-## Common failure modes to resist
-
-- **Confirmation bias**: designing experiments that can only confirm the favorite idea. Always include a falsifier.
-- **Anchoring**: locking onto the first hypothesis because it was first, not because it is best. Generate the alternatives anyway.
-- **Symptom chasing**: fixing where the program crashes instead of where the bad state originated. Trace backward.
-- **Sunk-cost continuation**: refusing to drop a hypothesis because effort was already spent on it. Effort is not evidence.
-- **Tool authority**: treating a scanner, decompiler, or LLM suggestion as a fact. It is a lead until reproduced.
-- **Compound changes**: changing two things between tests. The next failure will be unattributable.
-- **Vague predictions**: "something should change." If the prediction has no specific observable, the experiment is wasted.
-- **Silent assumptions**: building on an unchecked premise (version, target, encoding, endianness, scope, identity). Promote the riskiest assumption to a hypothesis and test it early.
-- **Unreduced reproducers**: investigating a full trace, exploit chain, PCAP, or corpus item when a smaller failing case would remove noise.
-- **Jumping the inference ladder**: moving from selected data to action without writing the interpretation and assumptions in between.
-- **Solutioning too early**: building a "how to fix" tree before the diagnostic "why" branch is supported.
+For named failure modes to resist during investigation, load `references/cognitive-biases.md`.
 
 ## Domain-specific accents
 
@@ -158,13 +124,13 @@ When reporting investigation results, include:
 
 Load on demand:
 
-- `references/hypothesis-patterns.md` — concrete hypothesis templates and falsifier examples per domain (debugging, CTF/exploit, reversing, incident, research).
-- `references/cognitive-biases.md` — biases that derail hypothesis-driven work and counter-moves to apply during investigation.
-- `references/research-foundations.md` — source-backed foundations for scientific debugging, reduction, slicing, SRE postmortems, issue trees, and agentic debugging patterns.
+- `references/hypothesis-patterns.md` — hypothesis templates and falsifier examples per domain (debugging, CTF/exploit, reversing, incident, research).
+- `references/cognitive-biases.md` — biases that derail investigation and counter-moves to apply during it.
 
 Pair with:
 
-- `systematic-debugging` for code-level reproduction, instrumentation, and patching once the hypothesis narrows to a code defect. `hypothesis-driven` is the investigation discipline; `systematic-debugging` is the execution protocol for code bugs.
+- `systematic-debugging` for code-level reproduction, instrumentation, and patching once the hypothesis narrows to a code defect.
+- `loop-control-and-pivots` when three attempts have failed and the mental model likely needs re-framing before more work.
 - `evidence-before-claims` before reporting a cause, vulnerability, or fix as confirmed.
 - `verification-before-completion` before claiming the investigation is done.
 - `design-before-implementation` when the diagnosis triggers a non-trivial change.

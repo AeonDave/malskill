@@ -72,6 +72,21 @@ Downgrade when:
 - identity linkage is based on a single weak signal
 - timestamps/time zones are ambiguous
 
+## LLM and agent output
+
+Confirmed requires:
+
+- primary artifact re-checked in the current context (file read, command rerun, request replayed) — the model/subagent report alone is not evidence
+- exact quote/path/offset the model cited, verified to exist and match
+- for delegated work: inspection of diff/artifacts, not the worker's summary
+
+Downgrade when:
+
+- claim rests on paraphrased tool output or a subagent's conclusion
+- cited file/line/CVE/function was not opened and matched byte-for-byte
+- screenshot is the only artifact for a text/log claim (replay the source)
+- model output contradicts a fresh command run
+
 ## Cleanup and remediation
 
 Confirmed requires:

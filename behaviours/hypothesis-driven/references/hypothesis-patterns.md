@@ -1,6 +1,6 @@
 # Hypothesis Patterns
 
-Concrete templates for forming falsifiable hypotheses by domain. Use these as starting points, not as a checklist to exhaust mechanically.
+Domain templates for forming falsifiable hypotheses. Starting points, not a checklist to exhaust.
 
 ## Template
 
@@ -11,7 +11,7 @@ H<n>: <cause> produces <symptom> via <mechanism>.
   Test:      <smallest experiment>.
 ```
 
-A good hypothesis names a **cause**, a **mechanism**, and a **specific observable**. If any of the three is missing, sharpen before testing.
+Name a **cause**, a **mechanism**, and a **specific observable**. If any is missing, sharpen before testing.
 
 ---
 
@@ -131,18 +131,3 @@ Always include "blast radius" as an early hypothesis dimension: scope shapes bot
 | Causal vs correlational | "A causes B, not a shared confound." | Find a case where A varies while the suspected confound is held; B still tracks A. |
 
 Write the prediction **before** running the query. Otherwise the analysis silently fits the data.
-
----
-
-## Sharpening checklist
-
-Before running an experiment, verify:
-
-- The hypothesis names a specific cause and mechanism.
-- The prediction is a concrete observable, not "different."
-- The falsifier is what you would actually see if the hypothesis is wrong.
-- Only one variable changes between this run and the baseline.
-- A negative control exists where the hypothesis predicts no effect.
-- The experiment is the cheapest one that can still distinguish the candidates on the table.
-- The hypothesis tree is diagnostic before it is solution-oriented.
-- The current input, artifact, or trace is already minimized enough that noise is not driving the next action.
