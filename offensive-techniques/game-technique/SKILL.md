@@ -318,5 +318,3 @@ Understanding anti-cheat mechanisms for authorized bypass research or security a
 ## Resources
 
 - [references/memory-scanning.md](references/memory-scanning.md) — Cheat Engine methodology, pointer scanning, scanmem Linux workflow, Python ptrace patterns, float/double/struct value location.
-- [references/game-binary-analysis.md](references/game-binary-analysis.md) — License bypass patterns, DRM identification, JNE→JMP patching, HTTP license interception, Unity/Unreal engine-specific analysis.
-- [references/game-network-protocol.md](references/game-network-protocol.md) — pcap analysis for game protocols, Protobuf reverse engineering, score/currency replay attack templates, WebSocket game traffic analysis.

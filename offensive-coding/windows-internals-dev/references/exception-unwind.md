@@ -2,7 +2,7 @@
 
 Complete coverage of x64 Windows exception mechanics: SEH / VEH / CEH, UNWIND_INFO format, `RtlLookupFunctionEntry`, `RtlVirtualUnwind`, `KiUserExceptionDispatcher` flow, and how all of this gets reused for offensive call-stack spoofing (SilentMoonwalk / Draugr / CHRYSALIS).
 
-> **See also**: the dedicated [`stack-spoofing`](../../stack-spoofing/SKILL.md) skill covers the **implementation** side of call-stack spoofing (frame-size math with `SAVE_NONVOL` safety filter, `FF 23` gadget scanners with debug instrumentation, per-build empirical gadget inventories, C/Rust/Go trampoline skeletons). This file is the **reference** for the underlying mechanisms; go to `stack-spoofing` when actually building a spoofer.
+> **See also**: the dedicated [`stack-spoofing`](../../stack-spoofing-dev/SKILL.md) skill covers the **implementation** side of call-stack spoofing (frame-size math with `SAVE_NONVOL` safety filter, `FF 23` gadget scanners with debug instrumentation, per-build empirical gadget inventories, C/Rust/Go trampoline skeletons). This file is the **reference** for the underlying mechanisms; go to `stack-spoofing` when actually building a spoofer.
 
 ---
 
@@ -454,4 +454,4 @@ For most dispatcher needs, lowering the threshold to `0x60` unlocks the 14 kerne
 
 A gadget whose parent function has `UWOP_SAVE_NONVOL` at offset ≥ frame size will clobber the caller's shadow/arg region when its prologue executes. Symptom: 5th syscall arg overwritten → `STATUS_PARTIAL_COPY` from `NtReadVirtualMemory`, `STATUS_INVALID_PARAMETER` from larger APIs. On Win11 22H2+ kernelbase, ~8 of 14 `FF 23` sites fail this filter and must be rejected at discovery time.
 
-Full treatment of the filter, the scanner with debug instrumentation, and per-build inventories: see [`stack-spoofing/references/frame-math.md`](../../stack-spoofing/references/frame-math.md).
+Full treatment of the filter, the scanner with debug instrumentation, and per-build inventories: see [`stack-spoofing/references/frame-math.md`](../../stack-spoofing-dev/references/frame-math.md).

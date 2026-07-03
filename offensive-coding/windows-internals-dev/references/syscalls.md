@@ -80,7 +80,7 @@ No `mov r10, rcx`-equivalent trick is needed — ARM64 calling convention alread
 
 The SSN is not stable across Windows builds. Patch Tuesday routinely shuffles them. Every modern implant resolves at runtime.
 
-> **See also**: the dedicated [`indirect-syscall`](../../indirect-syscall/SKILL.md) skill covers the **implementation** side of each strategy (complete C/Rust/Go trampolines, SSN-table init with obfuscated hashes, gadget caching, 6+ arg variants). This section is the **reference** for how each strategy works; go to `indirect-syscall` when actually writing dispatcher code.
+> **See also**: the dedicated [`indirect-syscall`](../../indirect-syscall-dev/SKILL.md) skill covers the **implementation** side of each strategy (complete C/Rust/Go trampolines, SSN-table init with obfuscated hashes, gadget caching, 6+ arg variants). This section is the **reference** for how each strategy works; go to `indirect-syscall` when actually writing dispatcher code.
 
 ### Strategy 1 — Hell's Gate
 

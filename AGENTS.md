@@ -36,7 +36,7 @@ Follow this for any request to add or update a skill or reference.
 ## Skill Structure & Conventions
 
 - **YAML Frontmatter**: Required in `SKILL.md`. `name` must match the folder name exactly (lowercase hyphens).
-- **SKILL.md body**: Soft target ~500 lines. Focus on baseline workflow, routing, and task guidance.
+- **SKILL.md body**: Keep it focused and concise. Focus on baseline workflow, routing, and task guidance.
 - **references/** files: Load-on-demand deep dives extending the skill for specific subtasks.
   - Pattern: Broad parent skill first, then narrowest reference that adds concrete task value.
   - DO NOT use references as catalogs, study guides, READMEs, or general background.

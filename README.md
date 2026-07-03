@@ -10,7 +10,7 @@ The repository is curated for offensive-security work first. Support areas such 
 
 ## Why Malskill? (The Agentic Paradigm)
 
-Most public AI skill repositories fail because they treat LLMs like human students or hard drives. They dump 10,000-line SecLists payloads, massive tool manuals, and theoretical textbooks directly into the context window. This causes **Attention Dilution** and context collapse—the agent hallucinates, runs unauthorized destructive commands, or gets lost describing the history of a vulnerability instead of exploiting it.
+Most public AI skill repositories fail because they treat LLMs like human students or hard drives. They dump enormous SecLists payloads, massive tool manuals, and theoretical textbooks directly into the context window. This causes **Attention Dilution** and context collapse—the agent hallucinates, runs unauthorized destructive commands, or gets lost describing the history of a vulnerability instead of exploiting it.
 
 Malskill is fundamentally different. It is engineered as a **Software Contract** for autonomous agents:
 - **High Signal-to-Noise Ratio**: Zero theoretical fluff. Skills use rigid `Cognitive Stance -> The Loop -> Strict Rules` structures.

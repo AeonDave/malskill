@@ -271,8 +271,8 @@ When you apply any technique, the following signals are potentially visible. Thi
 
 ### Companion skills
 
-- [`stack-spoofing`](../stack-spoofing/SKILL.md) — Building call-stack spoof trampolines (Draugr / SilentMoonwalk / CHRYSALIS): frame-size math with `SAVE_NONVOL` safety filter, `FF 23` gadget scanner with debug instrumentation, Win11 22H2+ empirical gadget inventory, C/Rust/Go trampoline skeletons.
-- [`indirect-syscall`](../indirect-syscall/SKILL.md) — Building indirect syscall dispatchers: SSN resolution (Hell's / Halo's / Tartarus / RecycledGate / DWhisper), `syscall;ret` gadget discovery with caching, name obfuscation, per-language dispatcher implementations with arg-count variants.
+- [`stack-spoofing`](../stack-spoofing-dev/SKILL.md) — Building call-stack spoof trampolines (Draugr / SilentMoonwalk / CHRYSALIS): frame-size math with `SAVE_NONVOL` safety filter, `FF 23` gadget scanner with debug instrumentation, Win11 22H2+ empirical gadget inventory, C/Rust/Go trampoline skeletons.
+- [`indirect-syscall`](../indirect-syscall-dev/SKILL.md) — Building indirect syscall dispatchers: SSN resolution (Hell's / Halo's / Tartarus / RecycledGate / DWhisper), `syscall;ret` gadget discovery with caching, name obfuscation, per-language dispatcher implementations with arg-count variants.
 
 Use those skills when writing code; use this one for the underlying structures and invariants.
 
