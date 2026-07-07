@@ -21,7 +21,8 @@ Determine the isolation boundaries.
 
 ### 2. Hunting for Escape Vectors
 
-- **Exposed Docker Socket**: `ls -la /var/run/docker.sock`. If writable, attach the host root filesystem to a new container.
+- **Exposed Docker Socket**: `ls -la /var/run/docker.sock`. If writable (or you are in the `docker` group), attach the host root filesystem to a new container — with the CLI *or* the REST API via `curl --unix-socket` when no docker binary is present. Full flows + host bind-mount abuse: `references/socket-and-mounts.md`.
+- **Excessive capability (not full `--privileged`)**: `capsh --print` shows a single dangerous cap (`CAP_SYS_MODULE`, `CAP_DAC_READ_SEARCH`, `CAP_SYS_PTRACE`, `CAP_MKNOD`…). Each has its own escape — see `references/capability-escapes.md`.
 - **Docker daemon over TCP (2375 plain / 2376 TLS)**: `ss -tlnp | grep -E '2375|2376'` or read `dockerd -H` args in `ps`. Plain 2375 = instant `docker -H tcp://host:2375 run -v /:/mnt ...`. TLS 2376 needs a client cert signed by the daemon CA — hunt the CA key (`ca.pem`+`ca-key.pem`, often in `/etc/docker/certs`, an NFS/world-readable share, or a config repo) and forge one:
   ```bash
   openssl genrsa -out c-key.pem 4096; openssl req -new -key c-key.pem -subj /CN=root -out c.csr
@@ -47,4 +48,6 @@ Determine the isolation boundaries.
 - **Proof of Action**: Once you escape, immediately collect evidence of reaching the underlying host (e.g., `cat /etc/shadow` from the host mount) rather than deploying destructive backdoors.
 
 ## References
-- [references/privileged-escapes.md](references/privileged-escapes.md) — Load when dealing with a container running with `--privileged` or `CAP_SYS_ADMIN`.
+- [references/privileged-escapes.md](references/privileged-escapes.md) — Load when dealing with a container running with `--privileged` or `CAP_SYS_ADMIN` (mount host disk, cgroups `release_agent`, `core_pattern`/`modprobe_path`).
+- [references/capability-escapes.md](references/capability-escapes.md) — Load for a single excessive capability without full privileged: capability→vector triage table, `CAP_SYS_MODULE`, `CAP_DAC_READ_SEARCH`/`CAP_DAC_OVERRIDE` (shocker), `CAP_SYS_PTRACE` (+`--pid=host`), `CAP_MKNOD`.
+- [references/socket-and-mounts.md](references/socket-and-mounts.md) — Load when the Docker socket is reachable (CLI or `curl` REST API), the user is in the `docker` group, or sensitive host paths are bind-mounted (`-v /:/host`, `/etc`, `/root`).
