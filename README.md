@@ -6,7 +6,7 @@ Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent 
 
 The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, private offensive CTF/lab solving, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, developer, and lab-solving perspectives within a single task.
 
-The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, `hardware/`, and `commands/` belong here only when they directly improve the active security task.
+The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, and `hardware/` belong here only when they directly improve the active security task.
 
 ## Why Malskill? (The Agentic Paradigm)
 
@@ -127,6 +127,8 @@ These categories are support layers. Load them when they improve the current off
 
 | Skill | Role |
 |-------|------|
+| `1337` | Ultra-compressed offensive operator mode for maximum signal/token efficiency |
+| `1337-brain` | Obsidian-vault second-brain workflow for project knowledge capture and grounded Q&A |
 | `skill-creator` | Create, validate, and package new skills |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
 | `readme-md-creator` | Create and maintain high-signal README files |
@@ -166,10 +168,6 @@ General hardware/embedded platform skills. Load when a security task needs them 
 - **`arduino`**, **`esp32`**, **`raspberry-pi`** - dev-board bring-up and firmware patterns
 - **`can-bus-modules`**, **`gps-modules`**, **`gsm-lte-modules`**, **`lora-modules`**, **`rfid-nfc-modules`** - communication-stack helpers
 - **`sensors`** - common sensor interfacing
-
-### `commands/` - Agent behavior and command modes
-
-- **`1337`** - Ultra-compressed offensive operator mode for maximum signal/token efficiency
 
 ---
 

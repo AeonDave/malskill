@@ -32,7 +32,7 @@ Follow this for any request to add or update a skill or reference.
 - `offensive-hardware/`: Hardware-focused assessments (device compromise, firmware extraction).
 - `offensive-ctf/`: Challenge-derived patterns. Use as a support layer for real-world tasks when artifacts or workflows match; avoid platform-specific writeup culture.
 - `knowledge/`: Meta-skills (skill-creator, research helpers, orchestration).
-- `coding/`, `ai/`, `hardware/`, `commands/`: Support categories.
+- `coding/`, `ai/`, `hardware/`: Support categories.
 
 ## Skill Structure & Conventions
 

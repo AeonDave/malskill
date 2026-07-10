@@ -1,11 +1,11 @@
 ---
 name: loop-control-and-pivots
-description: "Retry discipline for stuck work. Use when an approach fails repeatedly, when grinding a side problem (env setup, missing tool, credentials, file transfer) instead of the goal, or when a debug/exploit/build attempt is not converging. Enforces evidence-first pivots, a 3-strikes rule, and honest BLOCKED reporting over thrash."
+description: "Retry discipline for stuck work. Use when an approach fails repeatedly, when grinding a side problem (env setup, missing tool, credentials, file transfer) instead of the goal, or when a debug/exploit/build attempt is not converging. Enforces evidence-first pivots, a 3-strikes rule, and honest BLOCKED reporting over thrash - while resisting premature give-up: pivot the dead path, but hold the objective while budget and untried approaches remain."
 license: MIT
 compatibility: "AgentSkills-compatible loop-control guidance for coding, debugging, security testing, and research."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Loop Control and Pivots
@@ -31,9 +31,27 @@ on the goal.
    run into it.
 4. **Hold the objective**: every step ties to the success signal. If you've drifted onto a
    sub-problem, name the drift and return to the goal (or escalate for the missing capability).
-5. **Escalate honestly**: when genuinely stuck after pivots and local tests, load the narrowest
+5. **Escalate honestly**: when genuinely stuck after the recovery pass, pivots, and local tests, load the narrowest
    hint/research support skill or hand back an honest blocker **with everything derived so far**
    (offsets, leaks, partial output) — never a fabricated success.
+
+## Persist on the objective (the other half of fail-fast)
+
+Fail-fast applies to a **path**, never to the **objective**. A dead path means pivot; it does not
+license abandoning the goal. The dominant failure mode on capable models against hard targets is
+*premature surrender* — bailing with "stuck" / "need a tool" / BLOCKED while budget and untried
+attack-classes remain.
+
+- **Two levels, opposite reflexes.** Pivot the vector/class fast (3-strikes, above); keep attacking
+  the *objective* until the run budget is committed **or** every distinct attack-class has been tried
+  and killed with evidence. Do not collapse "this path is dead" into "I am stuck."
+- **Recovery pass before BLOCKED.** On a solvable target, before you report blocked: (a) diff current
+  state vs your hypothesis and probe what is still *unverified*; (b) re-read recon for missed env
+  vars, comments, headers, versions; (c) try the *simplest* attack of the class, not the cleverest;
+  (d) send wild/empirical payloads — errors leak parser and structure.
+- **What BLOCKED actually means.** A genuine blocker is a *missing external capability* — credential,
+  authorization, access, or a tool you cannot obtain — not "out of ideas." Out-of-ideas → recovery
+  pass or a hint/research skill; missing-capability → the BLOCKED report shape below.
 
 ## Budgets and hard stops
 
