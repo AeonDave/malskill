@@ -28,6 +28,7 @@ Do not activate for trivial fixes, single-line typos, or tasks where the user al
 - **One experiment, one hypothesis.** Test a single variable; otherwise you cannot tell which assumption was wrong.
 - **Write it down.** Maintain an explicit log of hypotheses, predictions, evidence, and verdicts. The cost is small; the cost of re-testing the same idea twice is large.
 - **Evidence wins over preference.** When data contradicts a favorite hypothesis, kill the hypothesis, not the data.
+- **"Impossible / can't work / unreachable" is a hypothesis, not a conclusion.** A negative claim needs a *falsifying live test*, never a deductive proof — enumerating code paths, primitives, gadgets, or inputs is always incomplete, so "I proved X is impossible" is almost always a mental-model gap that abandons the correct path. Rewrite every "X can't work" as "X untested," then design the experiment that would make it work (hook the candidate call site, fuzz the threshold, vary the input length/format). Reaching for a longer impossibility argument is the tell that you should be running an experiment instead. This is the most expensive bias in exploitation, debugging, and RE.
 - **Stop the loop, not the work.** If three plausible fixes failed, the mental model is wrong. Re-examine assumptions before trying a fourth.
 
 ## Workflow

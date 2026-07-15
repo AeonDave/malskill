@@ -27,6 +27,11 @@ Each entry: the signal that the bias is active in the current investigation, and
 - **Signal**: a scanner finding, decompiler output, LLM suggestion, or stack trace is treated as ground truth.
 - **Counter**: every tool output is a lead until reproduced by an independent observation. Tools have false positives, decompilers lie, traces lose frames.
 
+## Deductive impossibility
+
+- **Signal**: a path, primitive, or exploit vector is abandoned because a *reasoning chain* concluded it "can't work / is unreachable / is a dead vector" — with no failing live test. The argument keeps getting longer instead of a probe getting run.
+- **Counter**: impossibility is a hypothesis, and code paths / primitives / gadgets / inputs can never be fully enumerated, so a deductive impossibility proof is almost always an incomplete-model error that discards the correct path. Demote every "X is impossible" to "X untested," then run the one experiment that would make it work — hook the candidate call site and fuzz thresholds (input length, allocation size, error/locale paths); internal scratch-buffer growth and parser edge cases create calls absent from normal flow. Only "no hit after adversarial fuzzing" counts as unreachable.
+
 ## Compound changes
 
 - **Signal**: two variables changed between runs (code edit + env tweak, payload + target version).

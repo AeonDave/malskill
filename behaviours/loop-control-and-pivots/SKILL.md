@@ -45,6 +45,12 @@ attack-classes remain.
 - **Two levels, opposite reflexes.** Pivot the vector/class fast (3-strikes, above); keep attacking
   the *objective* until the run budget is committed **or** every distinct attack-class has been tried
   and killed with evidence. Do not collapse "this path is dead" into "I am stuck."
+- **Kill paths with tests, not proofs.** "Dead" requires a *failing live experiment*. A reasoning-based
+  "this can't work / is unreachable / is impossible" verdict is a hypothesis, not a kill — abandoning
+  the *correct* vector on a deductive impossibility is a top cause of losing solvable targets. When
+  your attempts have become impossibility *arguments* instead of *experiments*, the pivot is to dynamic
+  probing (hook the candidate call site, fuzz the threshold/length/format), not deeper static reasoning.
+  (See `hypothesis-driven` → "'Impossible' is a hypothesis".)
 - **Recovery pass before BLOCKED.** On a solvable target, before you report blocked: (a) diff current
   state vs your hypothesis and probe what is still *unverified*; (b) re-read recon for missed env
   vars, comments, headers, versions; (c) try the *simplest* attack of the class, not the cleverest;
