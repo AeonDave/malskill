@@ -14,7 +14,7 @@ MCPwn is a Linux-container-backed MCP server (Kali or Debian base — same tools
 ## The Loop
 
 1. **Session first.** `create_analysis_session()` → keep `session_id` + `workspace`. Reuse it for the whole task. Lost it after a context reset? `list_sessions()` / `list_interactive_sessions()` to rediscover, don't spawn a duplicate.
-2. **Discover, never guess.** `list_catalog()` → `get_tools(domain=..., query=...)` → `get_tool("name")` to read args → `run_tool("name", {...})`. Tool names are hidden until discovered; guessing wastes turns.
+2. **Discover, never guess.** The **infra tools are always direct** — call them with no discovery: session (`create_analysis_session`/`list_sessions`/`delete_session`), artifacts (`request_upload`/`request_download`/`list_artifacts`/`analyze_artifact`/`import_artifact_to_workspace`), workspace (`write_workspace_file`/`read_workspace_file`/`patch_workspace_file`), storage (`storage_usage`/`prune_*`), execution (`execute_command`), interactive (`start_interactive_shell`/`send_to_shell`/`read_shell_output`/`run_in_shell`/`stabilize_shell`/`close_shell`/`list_interactive_sessions`/`signal_interactive_shell`). Only **DOMAIN** tools (network/web/pwn/…) need discovery: `list_catalog()` → `get_tools(domain=..., query=...)` → `get_tool("name")` (read args) → `run_tool("name", {...})`. Catalog names are hidden until discovered; guessing them wastes turns — but never `list_catalog` to "find" an infra tool.
 3. **Execute on the right path** (see decision table below).
 4. **Collect** results; large output lands as a CAS artifact — read the digest, not the whole blob.
 5. **Cleanup** when done: `close_shell`, `delete_job`, `delete_session`.
@@ -29,7 +29,9 @@ MCPwn is a Linux-container-backed MCP server (Kali or Debian base — same tools
 | Catalog tool, slow / tagged `long_running` | `run_tool("name", {...}, detach=True)` → `poll_job` |
 | Needs stdin/tty or live streaming (nc, ssh, gdb, REPL, penelope) | `start_interactive_shell` → `run_in_shell`/`read_shell_output` → `close_shell` |
 
-Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
+Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline.
+
+**Interactive shells: prefer `run_in_shell(id, cmd)` for a discrete command.** It is marker-synced — returns THAT command's output + `exit_code` in ONE call (autodetects posix/powershell/cmd) — so no guess-the-timing `send_to_shell`+`read_shell_output` loop and no command-echo / job-control noise bleeding into the read. Keep `read_shell_output(wait_seconds=N)` for streaming / TUI / a shell you must watch live; `wait_seconds` is server-clamped to ~20s, so **loop it** for longer waits rather than expecting one 60s block. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
 
 ## Moving files — use the right mechanism
 
@@ -72,6 +74,7 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 - `execute_command` is `sh -c` (dash on a Debian base, bash on Kali) — wrap bashisms in `bash -c '...'` so they don't silently degrade. `start_interactive_shell` has no shell — use `cwd=` (no `cd &&`) or `bash -lc`.
 - `/etc/hosts` is a bind mount — append with `sudo tee -a`, not `sed -i`.
 - Sub-agents don't inherit the MCP client — hand off state as `mcp://artifacts/<sha>`.
+- **Server readiness (non-Linux host):** don't poll `:5002`/`:5001` `/health` to check the server is up — those control ports bind loopback and aren't reliably host-reachable under Docker Desktop. Just call `create_analysis_session` — a successful reply means it's up.
 - Cleanup: close shells, delete finished jobs, delete the session.
 
 ## Resources
