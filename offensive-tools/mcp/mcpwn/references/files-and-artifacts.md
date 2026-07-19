@@ -9,10 +9,15 @@ Two storage planes plus a target-transfer layer. Pick by size, mutability, and d
 
 ## Into the server
 
+Decide by **source/type, not size** — byte count is a red herring:
+
 | Case | Mechanism |
 |------|-----------|
-| Small text/config (<64 KB) | `write_workspace_file(session_id, filename, content_text=...)` — `content_base64=...` for binary; auto-creates parent dirs (`www/app/h.js` needs no mkdir). |
-| Large/binary file (≥64 KB) | `request_upload` → HTTP PUT the raw bytes to the `:5001` URL, then `import_artifact_to_workspace`. See the step-by-step flow below. |
+| Text you author in-context (script, exploit, config) | `write_workspace_file(session_id, filename, content_text=...)` — one call, already in context, no corruption risk; auto-creates parent dirs (`www/app/h.js` needs no mkdir). |
+| A file that already exists on disk (any size, binary or text) | `request_upload` → HTTP PUT raw bytes to the `:5001` URL → `import_artifact_to_workspace` (skip import if you only need the CAS ref). Flow below. |
+| A small binary blob generated in-context, not on disk | `write_workspace_file(..., content_base64=..., sha256=<digest>)` — last resort. |
+
+**Never `base64 -w0` a disk file into `content_base64`.** It streams the bytes through the model context (token cost ∝ file size) and one flipped char is still valid base64 — it decodes to *different bytes with no error*, so downstream PKI/binary consumers (OpenSSL, OpenVPN, signed archives, ELF loaders) reject the result while the transfer looks clean. The `:5001` PUT has **no minimum size**, keeps bytes out of context, and is content-addressed by SHA (corruption impossible on a 201) — make it the default for on-disk files at any size. When you must use `content_base64`, pass `sha256=<source digest>`: the server verifies the decoded bytes, **refuses to write on mismatch**, and always echoes the written `sha256`.
 
 ### Large-file upload — the working flow (agent-driven)
 

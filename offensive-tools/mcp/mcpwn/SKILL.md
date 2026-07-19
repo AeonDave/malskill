@@ -35,14 +35,17 @@ Known-long commands are **rejected synchronously** on `execute_command` — use 
 
 | Goal | Mechanism |
 |------|-----------|
-| Small text/config INTO workspace (<64 KB) | `write_workspace_file` (base64 for binary; auto-creates parent dirs) |
+| Text you AUTHOR in-context (script/config/exploit) | `write_workspace_file(content_text=...)` — 1 call, already in context, no corruption risk; auto-creates parent dirs |
 | Read/patch a workspace file | `read_workspace_file` / `patch_workspace_file` (no shell, no size cap, atomic) |
-| Large/binary file (≥64 KB) INTO the server | `request_upload` → `curl -X PUT --data-binary @f` the raw bytes to the `:5001` URL **from your own local shell** → `import_artifact_to_workspace`. Don't base64-chunk (burns context); import only *after* the 201. |
+| A file that ALREADY EXISTS on disk (any size, binary or text) | `request_upload` → `curl -X PUT --data-binary @f` the raw bytes to the `:5001` URL **from your own local shell** → `import_artifact_to_workspace` (only *after* the 201; skip import if a CAS ref is enough). |
+| Small binary blob generated in-context, not on disk | `write_workspace_file(content_base64=..., sha256=<digest>)` — last resort |
 | Pull a result OUT | `request_download` → `curl` the tokenized `:5001` GET URL from your local shell |
 | CAS artifact → mutable workspace (needed by GDB/pwntools/patch tools) | `import_artifact_to_workspace` |
 | Inspect an artifact without transferring | `analyze_artifact` (preview) / `list_artifacts` |
 | Read-only analyzers | pass the CAS ref directly: `mcp://artifacts/<sha256>` |
 | Ship a payload TO a target host | `list_payloads` → `get_payload` → `upload_to_target` (smb/scp/ftp/http, PtH-aware) |
+
+**Decide by source/type, not size.** **NEVER `base64 -w0` a file that exists on disk into `write_workspace_file`** — it streams the bytes through model context (token cost ∝ file size) and one flipped char stays valid base64 = silent corruption (decoded bytes differ from source with no error; downstream PKI/binary consumers reject the result). The `:5001` PUT has **no minimum size** and is SHA-addressed — default for any on-disk file. If you must send `content_base64`, pass `sha256=` (server refuses on mismatch).
 
 Details, the pre-staged `/opt/*-payloads` depots, and the sub-agent CAS-handoff rule: `references/files-and-artifacts.md`.
 

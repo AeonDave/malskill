@@ -48,6 +48,8 @@ decisive lines.
 | Downloading a whole artifact just to look at it | preview metadata + head/tail first; fetch only if needed |
 | Re-reading a growing log from byte 0 | tail from the last-known byte offset |
 | Pulling a huge command's stdout inline | route it to a side artifact/file; read a window from disk |
+| Reprinting a big remote command's whole output (`env`, source files, `/etc/passwd`) to read one field | filter on the remote (`grep`/`awk`/`cut`), return only the field |
+| Running verbose commands over a raw interactive shell (each read echoes the command + prompt) | write results to a file, `grep` the slice; keep per-turn output small |
 
 ## Writing for others' budget
 
