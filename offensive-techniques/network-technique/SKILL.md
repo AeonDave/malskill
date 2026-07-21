@@ -110,8 +110,7 @@ Use tunnel/pivot workflow.
 - After tunnel is established, route arbitrary tools through it with proxychains — avoids rebuilding the pivot for each tool.
 
 Tool families:
-- Agent-based pivoting: `offensive-tools/network/ligolo-ng/`
-- HTTP tunnel fallback: `offensive-tools/network/chisel/`
+- HTTP tunnel + SOCKS pivoting: `offensive-tools/network/chisel/`
 - Tool routing through SOCKS proxy: proxychains or equivalent OS routing tool (no dedicated repo skill yet)
 
 ### Case E: “Suspected credential relay/poisoning or auth abuse”

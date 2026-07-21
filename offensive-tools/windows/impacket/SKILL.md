@@ -237,7 +237,7 @@ wmiexec.py DOMAIN/admin:pass@TARGET -shell-type powershell
 
 ### smbexec.py
 
-> **Output capture caveat**: smbexec writes output via a file on the target share. When running over tunnels (chisel, ligolo), output may appear blank. Commands ARE executing — verify by redirecting to a file (`cmd > C:\out.txt 2>&1`) and reading it via SMB.
+> **Output capture caveat**: smbexec writes output via a file on the target share. When running over tunnels (chisel, SSH), output may appear blank. Commands ARE executing — verify by redirecting to a file (`cmd > C:\out.txt 2>&1`) and reading it via SMB.
 > Same applies to mimikatz over smbexec/SCM — no console is allocated, so `> file 2>&1` produces an empty file. Use mimikatz's own `log` command instead; see the `mimikatz` skill's Headless execution section.
 
 Command exec via SMB (no shell, one-shot). Creates temp service per command.

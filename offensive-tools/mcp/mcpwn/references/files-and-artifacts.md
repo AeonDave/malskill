@@ -54,8 +54,8 @@ Gotchas (each cost real turns):
 ## Pre-staged payload depots (`/opt/`)
 
 Both images ship transfer-to-target depots so you don't scramble to fetch tooling:
-- `/opt/windows-payloads/` — Windows PE/.NET as ZipCrypto zips (password `mcpwn`, so on-disk AV ignores them): mimikatz, Rubeus, Certify, SharpUp, Seatbelt, JuicyPotatoNG, PrintSpoofer, GodPotato, winPEAS, Snaffler, PowerView/PowerUp, LaZagne, PsExec, procdump, RunasCs, nc64, chisel.exe, ligolo-agent.exe. Unzip on target: `7z x file.zip -pmcpwn`.
-- `/opt/linux-payloads/` — linpeas, LinEnum, lse, linux-exploit-suggester, deepce, pspy, traitor, chisel, ligolo-agent — extracted, ready to serve.
+- `/opt/windows-payloads/` — Windows PE/.NET as ZipCrypto zips (password `mcpwn`, so on-disk AV ignores them): mimikatz, Rubeus, Certify, SharpUp, Seatbelt, JuicyPotatoNG, PrintSpoofer, GodPotato, winPEAS, Snaffler, PowerView/PowerUp, LaZagne, PsExec, procdump, RunasCs, nc64, chisel.exe. Unzip on target: `7z x file.zip -pmcpwn`.
+- `/opt/linux-payloads/` — linpeas, LinEnum, lse, linux-exploit-suggester, deepce, pspy, traitor, chisel — extracted, ready to serve.
 
 Handoff helpers (one call instead of extract-then-upload):
 - `list_payloads({kind})` — enumerate the depots.

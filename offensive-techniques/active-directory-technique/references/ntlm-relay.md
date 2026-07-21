@@ -176,7 +176,7 @@ impacket-wmiexec -k -no-pass domain.local/administrator@<TARGET_FQDN>
 **Cross-subnet coercion notes**:
 - If TARGET is on an internal subnet reachable only through a pivot (VPN, tunnel, compromised host), verify TCP connectivity from TARGET to your listener before assuming relay will work
 - Windows machines with "IP forwarding: disabled" in `ipconfig` may still forward packets if routing entries exist — always test empirically
-- Use tunneling tools (ligolo-ng, chisel, socat) to expose port 445 if direct connectivity fails
+- Use tunneling tools (chisel, socat) to expose port 445 if direct connectivity fails
 - Verify with: trigger coercion → check if ntlmrelayx receives connection (even if auth fails initially)
 
 **Troubleshooting**:

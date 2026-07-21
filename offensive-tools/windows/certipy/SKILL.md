@@ -179,7 +179,7 @@ certipy auth -pfx administrator.pfx -dc-ip DC
 **`certipy auth` → `Object SID mismatch between certificate and user`.** The cert lacks the requester
 SID (or has yours) while the target has one. Fix: re-request embedding the target SID
 (`certipy req ... -sid <victim-SID>`), or exploit ESC16 (CA-wide SID extension disabled) so no SID is
-expected, or PKINIT out-of-band with `PKINITtools/gettgtpkinit.py` (skips the check).
+expected, or use `impacket-getTGT -cert-pem ... -key-pem ...` for raw PKINIT (skips the SID check).
 
 > `certipy account update -upn` needs write on the target's `userPrincipalName`; a self-write ACE does
 > not always cover it (`doesn't have permission to update these attributes`) — confirm with `bloodyAD get writable` first.

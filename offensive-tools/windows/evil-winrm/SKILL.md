@@ -39,6 +39,15 @@ evil-winrm -i dc01.checkpoint.htb -r checkpoint.htb -K /tmp/ticket.ccache
 evil-winrm -i 10.129.20.206 -u 'alex.turner' -p 'Checkpoint2024!' -S
 ```
 
+## Proxychains / MCPwn Agent Gotchas
+
+When running evil-winrm through `proxychains` (e.g. via a chisel SOCKS pivot):
+
+- **Must be interactive**: `proxychains evil-winrm ...` needs a PTY. In MCPwn, use `start_interactive_shell`, not `execute_command`.
+- **`run_in_shell` works for commands** but its completion-marker injection **breaks `download`/`upload`**: the marker string gets appended to the path argument, corrupting it. Use `send_to_shell` + `read_shell_output` for file transfers.
+- **`download` path resolution**: evil-winrm resolves relative to CWD. Absolute paths in the argument get mangled (backslashes stripped). Fix: `cd` to the target directory first, then `download <filename> /local/dest`.
+- **Non-interactive `-c` / single-command mode**: through proxychains it often SIGTERM's before output returns. Use the interactive shell approach instead.
+
 ## Built-In Menu Commands (Interactive Only)
 Once a successful interactive shell is caught via PTY, use `menu` to see options:
 - `upload /local/path [C:\remote\path]` (Remote path is optional, uses current dir)

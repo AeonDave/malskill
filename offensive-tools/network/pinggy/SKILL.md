@@ -157,7 +157,7 @@ Use Pinggy as the public ingress layer; pair it with specialist tools locally.
 | UDP service tests | CLI/Docker UDP tunnel | WireGuard lab, game servers, VoIP/game protocol tooling |
 | Reverse proxy routing | Wildcard domain + multi-forwarding | Traefik, nginx, Kubernetes port-forward, Docker Compose |
 
-When an operation needs full network-layer pivoting, prefer ligolo-ng. When it needs operator-controlled tunneled SOCKS over a compromised pivot, prefer chisel. Use Pinggy when a public SaaS ingress endpoint is acceptable and fast setup matters more than stealth or full routing.
+When an operation needs SOCKS pivoting through a compromised host, prefer chisel. Use Pinggy when a public SaaS ingress endpoint is acceptable and fast setup matters more than stealth or routing.
 
 ## CLI, SDK, Docker, and APIs
 

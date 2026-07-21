@@ -29,7 +29,6 @@ Pure TCP only — no HTTP parsing, no TLS termination, no header rewriting, no a
 | Raw TCP ingress, deterministic port, self-host in one command | **bore** |
 | HTTPS URL with request debugger, header rewrite, basic auth, QR | `pinggy`, `ngrok`, `cloudflared` |
 | OAST / blind-callback collection with web UI + DNS hook | `webhook-site`, `interactsh` |
-| Routed L3 pivot into an internal network from a compromised host | `ligolo-ng` |
 | SOCKS/port-forward over a compromised pivot, no public relay | `chisel`, `ssh -D`, `ssh -R` |
 | Long-lived covert C2 channel | Dedicated C2 (Sliver, Mythic, Adaptix, CS); bore is not designed for stealth |
 
@@ -189,4 +188,4 @@ A self-hosted server with a strong `--secret` plus a narrow `--min-port/--max-po
 
 | File | When to load |
 |---|---|
-| `references/usage-matrix.md` | Full client/server flag matrix, self-host hardening recipe, operator playbooks (reverse shell, payload host, OAST, multi-tenant relay), and side-by-side comparison with pinggy/ngrok/chisel/ligolo-ng/interactsh. |
+| `references/usage-matrix.md` | Full client/server flag matrix, self-host hardening recipe, operator playbooks (reverse shell, payload host, OAST, multi-tenant relay), and side-by-side comparison with pinggy/ngrok/chisel/interactsh. |

@@ -691,6 +691,23 @@ Then:
 
 This is a classic example of a seemingly harmless checksum API becoming a byte oracle.
 
+### Allocator-Residue Order Oracle (blind ASLR, no read primitive)
+
+When the program never prints controllable memory (dispatcher emits only fixed strings), defeat ASLR with a
+side channel over program state instead of a disclosure:
+
+1. Get a hidden pointer into a **comparable** field. Leave a struct field as malloc **residue** the program
+   then treats as a sort key / priority / index: a freed chunk's safe-linked `fd` (`= heap>>12`) or an
+   unsorted-bin `bk` (`= a libc pointer`) that an uninitialized-read path adopts.
+2. Insert known **cut** values around a guessed boundary, then trigger the ordering op (a sort, a min-heap
+   pop sequence, a priority dequeue). **Count observable events** — pops before a sentinel surfaces, loop
+   iterations, or which error fires — = the **rank** of the hidden value vs the cut = one bit.
+3. Binary-search the ASLR page bit by bit; repeat per base (heap, then libc).
+
+Any observable **order/count/branch** that depends on a hidden address is a leak. Fully blind and remote-safe
+(no `/proc`, no disclosure). Reach for it whenever the target compares attacker-adjacent memory but never
+prints it.
+
 ## Exotic runtime notes not yet split out
 
 Load `exotic-arch.md` first for mainstream non-x86-64 architecture guidance. The two patterns below are worth keeping nearby because they appear in pwn corpora but are not yet split into their own dedicated reference.

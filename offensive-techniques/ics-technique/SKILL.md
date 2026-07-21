@@ -291,7 +291,7 @@ Common pivot paths:
   Corporate IT → Remote access jump server → HMI
   Corporate IT → Engineering workstation (VPN tunnel) → PLC
 
-Tunneling tools: chisel, ligolo-ng; proxychains for chaining through compromised EWS.
+Tunneling tools: chisel; proxychains for chaining through compromised EWS.
 ```
 
 ### Credential reuse from device config

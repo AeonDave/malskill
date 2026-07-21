@@ -40,7 +40,7 @@ This area is explicitly about **how to use a specific tool** to reach an objecti
 | `windows/` | bloodhound, certipy, crackmapexec, impacket, mimikatz, rubeus |
 | `vuln-scanners/` | burpsuite, dalfox, nuclei, sqlmap, testssl, trivy |
 | `recon/` | dnsx, feroxbuster, gobuster, httpx, massdns, shodan |
-| `network/` | chisel, ligolo-ng, masscan, mitmproxy, nmap, responder |
+| `network/` | chisel, masscan, mitmproxy, nmap, responder |
 | `cryptography/` | rsactftool, sagemath, cyberchef |
 | `web/` | commix, corsy, jwt-tool, smuggler, xsstrike, zap |
 | `fuzzing/` | aflplusplus, arjun, boofuzz, dotdotpwn, ffuf, restler |

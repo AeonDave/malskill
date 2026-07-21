@@ -49,7 +49,6 @@ Prefer these tool families when the corresponding signal appears:
 - `zap`
 - `sqlmap`
 - `sstimap`
-- `tplmap`
 - `ssrfmap`
 - `nosqlmap`
 - `dalfox`

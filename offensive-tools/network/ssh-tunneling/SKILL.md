@@ -5,7 +5,7 @@ description: "Pivoting and Tunneling via SSH: Dynamic (SOCKS), Local (-L), Remot
 
 # ssh-tunneling (and sshuttle)
 
-**Goal**: Exploit authorized or compromised SSH access to route attack traffic into internal subnets, bypassing firewalls and NAT without needing external binaries like Chisel or Ligolo-ng.
+**Goal**: Exploit authorized or compromised SSH access to route attack traffic into internal subnets, bypassing firewalls and NAT without needing external binaries like Chisel.
 
 ## Cognitive Stance
 
