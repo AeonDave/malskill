@@ -455,6 +455,20 @@ When event logs are cleared, the user profile directory creation in USN journal 
 
 -
 
+## SIEM log hunting and source-host attribution
+
+When a challenge or incident says auditing is incomplete, do not restrict the hunt to `Security.evtx` or 4624/4776. Enumerate the indexed sources and correlate the earliest suspicious action across channels:
+
+1. Normalize `@timestamp` to UTC and preserve the raw event timestamp from `UtcTime`/provider fields.
+2. Search `logs-*` by a narrow time window, then group by `host.name`, `event.code`, provider/channel, user, source IP, and workstation/client fields. Start with counts and selected fields; do not dump the full corpus.
+3. Check non-Security sources in this order when applicable: SQL Server Application/ERRORLOG (18454/18456), TerminalServices RemoteConnectionManager (1149), LocalSessionManager (21/24/25), explicit credentials (4648), Kerberos (4768/4769/4771), PowerShell (4103/4104), Defender (5007/1116/1117), process creation (4688/Sysmon 1), services/tasks/WMI.
+4. Separate destination host from origin host. For RDP, `host.name` is the server receiving the session; `CLIENTNAME` in the session environment and the client/source-IP field identify the origin. A hostname-looking destination is not automatically the answer to “where the login originated”.
+5. Correlate the login with the first user-session artifacts (RDP shell/process creation, profile initialization, `CLIENTNAME`, source IP). Require an exact timestamp and a shared user/session/entity before claiming attribution.
+
+For objective-driven CTF answers, treat the submission endpoint as an oracle: generate only the bounded timestamp representation allowed by the prompt, deduplicate overlapping windows, throttle requests, stop immediately on an explicit success response, and record the exact validated candidate plus its source fields. HTTP 200/400 alone is not proof; use the platform's explicit “owned/accepted” signal.
+
+-
+
 ## Windows Defender MPLog Analysis
 
 **Location:** `C:\ProgramData\Microsoft\Windows Defender\Support\MPLog-*.log`

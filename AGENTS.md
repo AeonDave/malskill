@@ -5,12 +5,15 @@
 Follow this for any request to add or update a skill or reference.
 
 1. Hold the mantra: **brief, clear, specific, useful**. Every skill must help an agent act on its task. Every addition or edit must add concrete value — otherwise drop it. No justification, storytelling, statistics, or filler.
-2. Clarify the exact gap first, then pick the smallest change:
-   - **new skill** — capability has no existing home
+2. **Correctness over completeness.** Ground technical claims (SID-filter rules, CVE behavior, flag/tool semantics) in a real run or primary source. A subtly-wrong rule is worse than an omission because agents act on it — when unsure, state the precise condition, not lore.
+3. Clarify the exact gap first, then pick the smallest change. **Default to enriching:**
+   - **new skill** — only when no existing skill's `description` would ever route a user here
    - **enrich an existing skill** — parent `SKILL.md` is the right place
-   - **new reference** — a distinct subtask needs its own on-demand deep-dive
+   - **new reference** — only when the subtask loads independently of the parent's other references
    - **enrich an existing reference** — deep-dive exists but has a real gap
-3. Read `knowledge/skill-creator/SKILL.md` first, apply the change, validate with `quick_validate.py`, and run `check_changed_files.py` before finishing.
+   - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf/role) is documented once where it is most actionable and cross-referenced from the others, never copied
+   - **wire new depth into routing** — a new reference or major section is dead weight unless the parent `SKILL.md` points to it with an explicit "load when…" trigger
+4. Read `knowledge/skill-creator/SKILL.md` first, apply the change, then validate the changed skill dir — `quick_validate.py` (frontmatter only), `sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `check_changed_files.py` — before finishing.
 
 ## Tooling & Commands
 
@@ -48,7 +51,7 @@ Follow this for any request to add or update a skill or reference.
 
 ## Testing & PRs
 
-- **Validation**: Prefer the smallest relevant validation command first (`quick_validate.py <skill-dir>`). Expand only when the change affects multiple skill directories.
+- **Validation**: `quick_validate.py <skill-dir>` checks frontmatter only — pair it with `sweep_skills.py <skill-dir>` to catch broken links, placeholders, and leaked workstation paths in the body. Expand to the whole category only when the change spans multiple skill directories.
 - **Hygiene**: Run `check_changed_files.py` (prefer this over dense PowerShell one-liners).
 - **Debugging**: If validation fails, inspect the specific frontmatter/body issue before broad rewrites.
 - **PR Titles**: `[skill-name] Short descriptive title`. Make one new skill per PR, or group related fixes together.

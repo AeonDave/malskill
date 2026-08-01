@@ -632,6 +632,10 @@ export KRB5CCNAME=hacker.ccache
 impacket-psexec -k -no-pass CHILD.DOMAIN.LOCAL/hacker@<parent_dc_fqdn>
 ```
 
+### Cross-forest, external boundary (`TREAT_AS_EXTERNAL`/external trust)
+
+Built-in SIDs (512/519/544/551) are filtered, but **user-created target-domain groups with RID ≥ 1000 survive**. Inject a custom high-RID group that grants privilege (e.g. one nested in `Backup Operators`) via `impacket-ticketer -extra-sid <B_SID>-<RID>`. Two traps that look like "filtered": clock skew (`faketime`) and using `ssh -L 445` instead of a SOCKS proxy (breaks impacket SPNEGO). Payoff without a shell: `SeBackupPrivilege` remote read with `FILE_OPEN_FOR_BACKUP_INTENT` (NOT `dir`/`reg save`).
+
 ### Cross-forest Kerberoasting
 
 ```bash
@@ -639,7 +643,7 @@ impacket-psexec -k -no-pass CHILD.DOMAIN.LOCAL/hacker@<parent_dc_fqdn>
 impacket-GetUserSPNs -target-domain OTHERFOREST.LOCAL MYFOREST.LOCAL/user:pass -request
 ```
 
-→ Full trust attack chains, trust key abuse, SID history: `references/domain-trust-attacks.md`.
+→ Full trust attack chains, external-boundary RID≥1000 bypass + SeBackup remote read, trust key abuse, SID history: `references/domain-trust-attacks.md`.
 
 ---
 
@@ -758,5 +762,5 @@ MITRE ATT&CK primary mappings:
 - [references/certificate-abuse.md](references/certificate-abuse.md) — ADCS ESC1-15 attack chains (incl. EKUwu/CVE-2024-49019), certificate auth, CA enumeration, PKINIT, shadow credentials, Golden Certificate, TLS service impersonation (non-PKINIT cert abuse for WSUS/SCCM/ADFS).
 - [references/ad-services-abuse.md](references/ad-services-abuse.md) — AD-integrated DNS (ADIDNS) record injection via LDAP, rogue WSUS server attack chain (DNS poison + TLS cert + SYSTEM exec), MS DNS record format.
 - [references/lateral-movement-ad.md](references/lateral-movement-ad.md) — Protocol × credential type matrix, WMI/DCOM/RDP/WinRM/SMB patterns, detection signatures to avoid.
-- [references/domain-trust-attacks.md](references/domain-trust-attacks.md) — Child-to-parent escalation, cross-forest Kerberoasting, trust key abuse, SID history, Diamond Ticket with ExtraSID.
+- [references/domain-trust-attacks.md](references/domain-trust-attacks.md) — Child-to-parent escalation, cross-forest external-boundary RID≥1000 ExtraSID bypass + SeBackupPrivilege remote read, cross-forest Kerberoasting, trust key abuse, SID history, Diamond Ticket with ExtraSID.
 - [references/domain-persistence.md](references/domain-persistence.md) — AdminSDHolder, Skeleton Key, SSP backdoor, DSRM abuse, DCShadow, Golden Certificate persistence.
