@@ -1,15 +1,15 @@
 ---
 name: mcpwn
-description: "Drive the MCPwn Kali-backed MCP server cleanly and fast: create a session, discover tools via the catalog (list_catalog/get_tools/get_tool/run_tool) instead of guessing names, pick the right execution path (execute_command vs detach+poll_job vs interactive shell), move files with the correct mechanism (write_workspace_file, request_upload/request_download data plane, import_artifact_to_workspace, upload_to_target, list_payloads/get_payload), and bring up connectivity (tunnel_up VPN/proxy/forward, tunnel_revshell, penelope reverse shells, run_in_shell/stabilize_shell). Use whenever running MCPwn / mcpwn_* tools, a Kali MCP, or when a run stalls on timeouts, lost output, missing routes, wrong tool names, or clumsy file transfer."
+description: "Operate the MCPwn Kali/Debian MCP efficiently: manage sessions, discover catalog tools, choose synchronous, detached, or interactive execution, move files through workspace/CAS planes, establish tunnels and shells, and run GDB or Frida debugging in the MCPwn runtime or through explicit host/device transports. Use for MCPwn or Kali MCP work, pwn/CTF and dynamic-analysis sessions, remote targets, connectivity or file-transfer problems, and optional NeuroMatrix-backed emulation/debugging through MCPwn's emulation domain."
 ---
 
 # MCPwn Operator
 
-MCPwn is a Linux-container-backed MCP server (Kali or Debian base — same tools/functions, only the base image differs): **passwordless root** (the container user has `sudo NOPASSWD:ALL` — prefix `sudo` freely, edit root-owned files in place), ~200 security tools behind a catalog, a container workspace, a CAS artifact plane (`:5001`), tunnels, and reverse-shell handling. Use it well by choosing the right execution path, discovering tools instead of guessing, and moving files with the correct mechanism. Wrong choices cause timeouts, lost output, orphaned processes, and wasted turns.
+MCPwn is a Linux-container-backed MCP server (Kali or Debian base — the MCP/catalog contract is the same, while installed runtime tools differ and genuinely heavy tools remain Kali-only): a non-root runtime user with `sudo NOPASSWD:ALL`, ~200 security tools behind a catalog, a container workspace, a CAS artifact plane (`:5001`), tunnels, and reverse-shell handling. Prefix root-only operations with `sudo`. Use the right execution path, discover tools instead of guessing, and move files with the correct mechanism; wrong choices cause timeouts, lost output, orphaned processes, and wasted turns.
 
 **Network sharing is host-OS-dependent:** only a **Linux host** shares its network with the container (`network_mode: host`) — local listeners and the host's `tun0` are directly reachable. On **Windows/macOS** (Docker Desktop) the container is NAT'd, so a listener isn't reachable from the LAN/VPN unless you bring a VPN up *inside* the container (`tunnel_up kind=vpn` → routable `tun0`) or publish via a relay (`reach=public`). Don't assume host reachability off Linux.
 
-**Host routing — mcpwn vs a local Linux (don't burn turns on the wrong host).** mcpwn's edge is the ~200-tool arsenal, connectivity/pivoting, remote targets, and the pre-staged `/opt/*-payloads`. It is **not** the best host for a *local* binary/CTF artifact that must run against a **specific provided libc/loader** while you iterate in gdb: you'd have to push binary+libc+ld into the container (each ≥64 KB file needs the `:5001` PUT, a client-side step the agent can't do inline), and the container's libc **won't match** the challenge's, so every gdb/offset loop pays a transfer + mismatch tax. When a local Linux (WSL/native) already has the artifacts mounted and `gdb`+`pwntools`, drive the whole reverse/exploit-dev loop there; reach into mcpwn's `pwn` domain only when you lack a local Linux, want its bundled pwn tooling (`ROPgadget`/`one_gadget`/pwntools/gdb) without installing, or need to interact with the **remote** service. Decide the host once, up front — a brief catalog peek then a pivot is fine, but don't half-run the loop on both.
+**Choose the debugger locus before attaching.** `local` means the process namespace where MCPwn's API runs; in the standard Docker deployment that is the container, not the Windows/macOS host. Separate hosts require an explicit debugger server/transport, while NeuroMatrix is only needed for emulation. Keep a challenge's matching binary, loader, and libc together in the selected runtime.
 
 ## The Loop
 
@@ -18,6 +18,12 @@ MCPwn is a Linux-container-backed MCP server (Kali or Debian base — same tools
 3. **Execute on the right path** (see decision table below).
 4. **Collect** results; large output lands as a CAS artifact — read the digest, not the whole blob.
 5. **Cleanup** when done: `close_shell`, `delete_job`, `delete_session`.
+
+## Debugging and optional emulation
+
+MCPwn runs GDB and Frida without NeuroMatrix. It can also map its `emulation` domain onto a standalone, client-neutral NeuroMatrix server when emulation is required.
+
+Load [references/debugging-and-emulation.md](references/debugging-and-emulation.md) before attaching to a host process, choosing GDB versus Frida, or composing MCPwn with NeuroMatrix.
 
 ## Execution path — pick correctly (top time-sink)
 
@@ -31,6 +37,8 @@ MCPwn is a Linux-container-backed MCP server (Kali or Debian base — same tools
 
 Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline.
 
+**The detached contract, because it decides what you can run at all:** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** — it runs to completion — and stays interruptible, because `delete_job` SIGKILLs its owned process tree and verifies the kill. That is the path for *any* program MCPwn does not wrap, however long it runs. Inline is the opposite by design: a base timeout clamped to `MCPWN_INLINE_TIMEOUT_CAP` (~120s) so an abandoned call can't strand a process. A detached **catalog** tool is the middle case — bounded by its own route ceiling and only *cooperatively* cancellable (no kill hook), so when a scan must outlive that ceiling, drive the binary through `execute_command(detach=True)` instead.
+
 **Interactive shells: prefer `run_in_shell(id, cmd)` for a discrete command.** It is marker-synced — returns THAT command's output + `exit_code` in ONE call (autodetects posix/powershell/cmd) — so no guess-the-timing `send_to_shell`+`read_shell_output` loop and no command-echo / job-control noise bleeding into the read. Keep `read_shell_output(wait_seconds=N)` for streaming / TUI / a shell you must watch live; `wait_seconds` is server-clamped to ~20s, so **loop it** for longer waits rather than expecting one 60s block. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
 
 ## Moving files — use the right mechanism
@@ -38,7 +46,7 @@ Known-long commands are **rejected synchronously** on `execute_command` — use 
 | Goal | Mechanism |
 |------|-----------|
 | Text you AUTHOR in-context (script/config/exploit) | `write_workspace_file(content_text=...)` — 1 call, already in context, no corruption risk; auto-creates parent dirs |
-| Read/patch a workspace file | `read_workspace_file` / `patch_workspace_file` (no shell, no size cap, atomic) |
+| Read/patch a workspace file | `read_workspace_file` / `patch_workspace_file` (no shell; reads are bounded and paginatable; patches are atomic) |
 | A file that ALREADY EXISTS on disk (any size, binary or text) | `request_upload` → `curl -X PUT --data-binary @f` the raw bytes to the `:5001` URL **from your own local shell** → `import_artifact_to_workspace` (only *after* the 201; skip import if a CAS ref is enough). |
 | Small binary blob generated in-context, not on disk | `write_workspace_file(content_base64=..., sha256=<digest>)` — last resort |
 | Pull a result OUT | `request_download` → `curl` the tokenized `:5001` GET URL from your local shell |
@@ -64,7 +72,7 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 
 ## Catalog domains
 
-15 domains for `get_tools(domain=...)`: `network`, `web`, `pwn`, `crypto`, `forensics`, `pcap`, `mobile`, `cloud`, `web3`, `ics`, `osint`, `llm`, `ml`, `runtime`, `sessions`. Search is tag/alias-aware — query by intent (`rdp`, `smb`, `jwt`, `rop`, `pivot`, `disk image`, `factordb`) not exact tool names.
+16 domains for `get_tools(domain=...)`: `network`, `web`, `pwn`, `crypto`, `forensics`, `pcap`, `mobile`, `cloud`, `web3`, `ics`, `osint`, `llm`, `ml`, `runtime`, `sessions`, `emulation`. Search is tag/alias-aware — query by intent (`rdp`, `smb`, `jwt`, `rop`, `pivot`, `disk image`, `factordb`, `neuromatrix`) not exact tool names.
 
 ## Strict rules
 
@@ -74,7 +82,7 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 - `execute_command` is `sh -c` (dash on a Debian base, bash on Kali) — wrap bashisms in `bash -c '...'` so they don't silently degrade. `start_interactive_shell` has no shell — use `cwd=` (no `cd &&`) or `bash -lc`.
 - `/etc/hosts` is a bind mount — append with `sudo tee -a`, not `sed -i`.
 - Sub-agents don't inherit the MCP client — hand off state as `mcp://artifacts/<sha>`.
-- **Server readiness (non-Linux host):** don't poll `:5002`/`:5001` `/health` to check the server is up — those control ports bind loopback and aren't reliably host-reachable under Docker Desktop. Just call `create_analysis_session` — a successful reply means it's up.
+- **Server readiness and profile ports:** proxy profiles expose MCP `/health` on their published MCP port (normally `:5000`; Debian/macOS defaults to `:5002`) and artifact `/health` on the published artifact port (normally `:5001`). The Kali/macOS dev profile publishes FastMCP directly on host `:5000` -> container `:8080`, so it has no proxy `/health`; validate it with an MCP `initialize` or `create_analysis_session`, and probe artifact health separately. `:8081/mcp` is an optional direct FastMCP diagnostic endpoint on the proxy profiles and must be tested with MCP `initialize`, not `GET /health`.
 - Cleanup: close shells, delete finished jobs, delete the session.
 
 ## Resources
@@ -84,3 +92,4 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 - `references/execution-model.md` — load when a command times out, output is lost/fragmented, a process orphans, or you need the sleep/backgrounding/interactive-shell rules and the short-vs-async-vs-interactive decision in full.
 - `references/files-and-artifacts.md` — load for any non-trivial file movement: the `:5001` upload/download handoff, workspace vs CAS vs import, the `/opt` payload depots, `upload_to_target` (incl. pass-the-hash), and the sub-agent handoff pattern.
 - `references/tunnels-and-shells.md` — load when establishing connectivity or catching a shell: `tunnel_up` kinds and params, `tunnel_revshell` cross-OS reach, penelope/`stabilize_shell`/`run_in_shell`, and raw nc/socat survival tradecraft.
+- `references/debugging-and-emulation.md` — load for GDB/Frida sessions, container-versus-host reachability, debugger-server transports, Frida loader-crash triage, or the optional MCPwn-to-NeuroMatrix emulation bridge.

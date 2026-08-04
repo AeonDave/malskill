@@ -16,22 +16,34 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 
 - Synchronous: the MCP request blocks until exit or timeout.
 - Default timeout 180s; override `timeout=N`. Inline calls are clamped to `MCPWN_INLINE_TIMEOUT_CAP` (~120s) regardless of `timeout`, so raising it only matters together with `detach=True`.
-- Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute. Use `detach=True`.
+- Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute, katana. Use `detach=True`.
 - Output >64 KB auto-saves to a CAS artifact (`output_mode='auto'`), returning an id + preview — don't try to inline it.
+- `timed_out=true` is authoritative and means execution was incomplete; current MCPwn results set `success=false` on timeout while `partial_results` may still preserve useful output. Inspect `timed_out`, `return_code`, and `partial_results` before accepting a result.
 - Use for: `whoami`, `cat`, `ls`, `id`, fast `curl`, short nmap, one-liners.
 
 ## Async jobs — `detach=True` + `poll_job`
 
 - Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=30)` in a loop until `status == "done"`.
-- `long_running=True` catalog tools (ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, mythril_analyze, volatility_analyze) **require** `detach=True`.
-- `delete_job(job_id)`: for `execute_command` jobs → SIGKILL to the Kali process tree; for `run_tool` jobs → soft-cancel (the HTTP call may still finish). Jobs auto-expire after 2h.
-- Do NOT tight-loop `poll_job` over a bare sleep. Offload a long timed wait into ONE detached job: `execute_command("until <cond>; do sleep 30; done", detach=True)` or `execute_command("sleep 2700; echo done", detach=True)` (detach bypasses the inline sleep limit), then poll every few minutes.
+- `long_running=True` catalog tools (ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, volatility_analyze) **require** `detach=True`.
+
+### The two detached paths behave differently — this matters
+
+| | `execute_command(cmd, detach=True)` | `run_tool(name, {...}, detach=True)` |
+|---|---|---|
+| Timeout with no explicit value | **none — runs until it finishes** | the tool's own ceiling still applies |
+| Stopping it | **hard kill**: `delete_job` SIGKILLs the owned process tree and verifies it | cooperative only — no kill hook |
+| Backstop | job reaper hard-kills unfinished jobs at 4h | same reaper, but a live HTTP worker is not interrupted |
+
+- So **anything arbitrary and open-ended belongs on `execute_command(detach=True)`**: no deadline unless you set `timeout=N`, and it is genuinely interruptible on demand. This is the path for a tool MCPwn does not wrap at all.
+- A detached **catalog** tool is still bounded by its route ceiling (`long_running` scanners now allow up to an hour via `MCPWN_LONG_SCAN_TIMEOUT_CAP`; pass `timeout=N` to ask for more than the default). If you need a scan to run past that, drive the binary through `execute_command(detach=True)` instead.
+- `delete_job(job_id)` requests cancellation and removes the record only after stop is observed. For `execute_command` jobs it invokes the hard process-tree kill. A catalog job without a kill hook may return `cancellation_pending=true`, `execution_stopped=false`, and `record_deleted=false`; poll it and retry deletion after it becomes terminal. Do not treat `ok=true` as proof that a pending worker vanished.
+- Do NOT tight-loop `poll_job` over a bare sleep. Offload a long timed wait into ONE detached job: `execute_command("until test -f /tmp/ready; do sleep 30; done", detach=True)` or `execute_command("sleep 2700; echo done", detach=True)`, then poll every few minutes. No `timeout` is needed — a detached run has no deadline of its own.
 
 ## Interactive shell
 
 Lifecycle:
 ```
-start_interactive_shell(session_id, command) → interactive_id
+start_interactive_shell(session_id, command) → interactive_id + pid
 run_in_shell(interactive_id, cmd)             # discrete command → {output, exit_code}
 read_shell_output(interactive_id, wait_seconds=30)  # streaming/TUI only, long-poll, repeat
 signal_interactive_shell(interactive_id, "SIGINT")  # cancel a LOCAL tool (not a remote job)
@@ -52,8 +64,9 @@ close_shell(interactive_id) → log_path
 - **Shell**: `execute_command` = `sh -c` — the base image decides the interpreter (dash on a Debian base, bash on Kali). Bashisms (`$RANDOM`, arrays, `<()`) silently degrade under dash, so wrap `bash -c '<cmd>'` when you rely on them (don't assume the base).
 - **Interactive has no shell**: `start_interactive_shell` execs directly (pexpect). `cd x && cmd` fails; pipes/globs/`$VARS`/**redirections don't expand** — a trailing `2>&1` or `>file` is passed as literal argv, so the target program dies with a confusing `error: unrecognized arguments: 2>&1` (seen with ntlmrelayx/impacket). Use `cwd=` (relative = inside workspace) or wrap `bash -lc '<cmd>'` whenever you need any shell metacharacter.
 - **Inline sleep**: `sleep N` >60s (incl. `sleep 90; cmd`) is auto-rejected → detached job.
+- **Scanner `ports` argument**: pass the spec only — `1-65535`, `80,443`, `T:80,U:53`. nmap's own idioms are accepted too (`-p-`, `p-`, `-` all mean every port) and a redundant `-p` is absorbed, across nmap/rustscan/masscan/httpx. A *different* selector such as `--top-ports 1000` is passed through rather than glued behind `-p`.
 - **pty-only listeners**: `penelope`/`pwncat`/`pwncat-cs` need a controlling TTY — run them via `start_interactive_shell`. Through `execute_command` they're auto-guarded: you get `guard: pty_only_listener` + an `nc` `fallback_command` (not a crash/hang), signalling *relaunch under an interactive shell*.
-- **Inline backgrounding**: a bare `cmd &` under `execute_command` is SIGKILLed when the call returns. For an **indefinite** listener/`http.server`/watcher use `setsid cmd &` or `nohup cmd &` — **not** `detach=True`: a detached job is SIGKILLed at its `timeout` (default 180s, and it honors a small `timeout=N` you pass), so it's for long-but-*finite* work, not a listener you need up for the whole engagement. Anything that can hang → `detach=True` or prefix `timeout N` (a stall burns the whole ~60s transport window).
+- **Inline backgrounding**: MCPwn owns a fresh POSIX process group and cleans it on normal return, timeout, cancellation, and post-launch error. A bare `cmd &` dies; `nohup` alone remains in that group and also dies. Prefer a managed interactive/daemon wrapper for an indefinite listener or watcher. If `setsid` is unavoidable, make the new session leader write its PID to a file in the analysis workspace before `exec`; before deleting the session, validate that PID still belongs to the expected command, terminate the exact process group (`-PID`), escalate only if it survives, and verify no member remains. MCPwn intentionally cannot reap a process that escaped its owned group. A detached job has no deadline unless you pass `timeout=N`, so it suits open-ended work — it stays killable through `delete_job` precisely because it never leaves MCPwn's owned group. Anything that can hang → `detach=True` (and prefix `timeout N` only when you want the command itself to give up).
 - **/etc/hosts**: Docker bind mount — `sed -i` fails EBUSY; use `sudo tee -a /etc/hosts`.
 - **Python**: runtime venv is `/opt/venv-core`; system `python3` is PEP-668 managed. Install with `/opt/venv-core/bin/pip install <pkg>`.
 - **Kerberos skew**: `run_tool("krb_time_probe", {...})` reads the DC clock and emits a `faketime -f +Ns` wrapper on >5 min skew.
