@@ -5,6 +5,7 @@ Load for SDR/IQ inputs, CubeSat links, orbital-mechanics tasks, or ground-segmen
 ## Contents
 
 - SDR reception and gr-satellites
+- ZMQ "SDR modem" endpoints
 - Link layers: AX.25 / KISS
 - CubeSat Space Protocol (CSP)
 - TLE / SGP4 orbital mechanics
@@ -22,6 +23,25 @@ When the artifact is an IQ recording, WAV, or a live SDR task rather than a fram
 - **SatNOGS** provides recorded observations (audio/IQ + waterfall) for thousands of passes — a supplied `.ogg`/`.wav` from SatNOGS is a common challenge input; feed it to `gr-satellites`.
 - Support tools: `inspectrum` (visualize bursts, measure symbol rate), Universal Radio Hacker (interactive demod/deframe), `rtl_433` (ISM), GNU Radio Companion for custom flowgraphs.
 - Identify before decoding: sample format/rate, center frequency, modulation, symbol rate, framing, whitening/randomizer, and FEC. A wrong symbol rate or inverted bit sense is the usual reason a "correct" decoder outputs garbage.
+- **Check the bit budget before assuming a link layer:** `duration x baud` = total bits. A 0.2 s AFSK1200 clip is 240 bits — far too few for an AX.25 preamble, flags, addresses and FCS. When the budget is that tight the bits *are* the message: take mark/space straight to bits and try plain ASCII (MSB-first, then LSB-first) before any NRZI decode, bit de-stuffing, or `0x7E` flag search. Hunting for CRC-valid HDLC frames in such a clip returns nothing and misreads as "my demodulator is broken".
+
+## ZMQ "SDR modem" endpoints
+
+Some tasks expose the radio as a pair of ZeroMQ endpoints instead of a capture file or a TCP frame service ("an SDR modem is available through ZMQ endpoints"). Pin the interface down before investing in waveform design — guessing modulation against an interface you have not characterised burns hours.
+
+- **Confirm it is ZMQ:** a raw TCP read returns the ZMTP greeting `ff 00 00 00 00 00 00 00 00 7f` followed by a version byte.
+- **Identify each socket type by handshake, not by guessing.** ZMTP 3.x carries a `Socket-Type` property and the peer rejects incompatible pairings, so connect with each type in turn and watch the socket monitor for `EVENT_HANDSHAKE_SUCCEEDED` vs `EVENT_HANDSHAKE_FAILED_PROTOCOL`. Compatibility: PUB↔SUB/XSUB, PUSH↔PULL, REQ↔REP/ROUTER, DEALER↔ROUTER/REP/DEALER, PAIR↔PAIR. A peer that is PULL is the uplink (you PUSH); a peer that is PUSH is the downlink (you PULL).
+
+```python
+s = ctx.socket(zmq.PUSH); mon = s.get_monitor_socket(); s.connect(f"tcp://{h}:{p}")
+ev = recv_monitor_message(mon)      # SUCCEEDED => peer is PULL => this is the uplink
+# close the monitor socket before ctx.destroy(), or termination hangs
+```
+
+- **A bound socket is not a running consumer.** Before blaming your modulation, prove the far side actually reads: set a low `SNDHWM`, push fixed-size messages until `EAGAIN`, then keep pushing for ~30 s and measure steady-state throughput. Sending a few hundred messages proves nothing — ZMQ buffers `SNDHWM + peer RCVHWM` (default **1000**) messages with no reader at all, so an early "it accepted everything" reads as success when nothing is listening. Zero steady-state drain means no waveform will ever work.
+- Steady-state drain rate also *characterises* the modem: bytes/s ÷ item size = sample rate, which resolves float32-vs-complex64 and the rate together.
+- A downlink that stays silent while the uplink is genuinely draining means the sink emits only on a successful decode — treat it as a pass/fail decode oracle, not a stream you can characterise passively.
+- **Stream vs message mode changes the payload entirely.** GNU Radio stream ZMQ blocks carry bare little-endian samples; the `*_msg_*` blocks carry **PMT-serialized** PDUs (`pmt::serialize_str`), where a PDU is `cons(metadata, u8vector)`. Tags from `pmt_serial_tags.h`: `PST_NULL 0x06`, `PST_PAIR 0x07`, `PST_UNIFORM_VECTOR 0x0a` (then a uniform-vector subtype byte, `0x00` = u8). Confirm the uniform-vector header field order (element count vs pad byte) against a real captured message before trusting a hand-rolled serializer — a malformed PDU is dropped silently and is indistinguishable from a bad waveform.
 
 ## Link layers: AX.25 / KISS
 
@@ -47,6 +67,14 @@ For pass-prediction, pointing, and position challenges (Hack-A-Sat "AAAA" and gr
 - A **TLE** (two-line element set) plus **SGP4** propagation gives a satellite's position/velocity at any epoch. Use `sgp4`, `skyfield`, or `pyorbital` in Python; `gpredict` interactively.
 - Typical asks: compute position at a stated UTC in **ECEF** (X,Y,Z) or geodetic (lat/lon/alt); compute **azimuth/elevation** from a ground-station lat/lon/alt at a time; find which satellite an antenna pointed at; drive antenna PWM/servo duty cycles from az/el over a pass.
 - Watch coordinate frames (TEME → ECEF/ITRF → geodetic), time systems (UTC vs. GMST), and units (degrees vs. radians). Match the exact frame the challenge asks for.
+
+Pass-window and pointing answers are graded against the server's own sample instants, so match its clock, not just its physics:
+
+- **"Next" window means the next pass that *starts* after now.** If the satellite is already above the mask angle when you connect, skip that pass entirely and use the following one.
+- Bracket the rising edge on a coarse grid (10 s over a 24–48 h horizon), then **bisect to the exact crossing**. A coarse-only search silently misses short grazing passes.
+- **Sample-grid phase is the classic silent failure.** These services mint the TLE at connect time, so the TLE epoch carries the server's sub-second phase and its 1 s output grid is `epoch + n` seconds — *not* whole UTC seconds. Sampling on whole seconds sits up to 1 s off: harmless on a slow pass, fatal on a fast-azimuth one. Anchor with `n = ceil((crossing - sat.epoch.utc_datetime()).total_seconds())`.
+- **A numeric deviation in the reject message is a solvable oracle.** Divide each reported deviation by that quantity's local per-second rate; if elevation and azimuth both imply the same time offset, the bug is timing, not the orbital model — a model error would not produce one consistent offset.
+- Emit values exactly as the example formats them; `str(round(v, 4))` drops trailing zeros, which is usually what is shown.
 
 ```python
 from sgp4.api import Satrec, jday

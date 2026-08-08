@@ -1,18 +1,13 @@
 ---
 name: neuromatrix
-description: "Drive the NeuroMatrix reverse-engineering emulation MCP server: create sessions, discover backend tools via list_catalog/get_tool/run_tool, choose Unicorn/Qiling/QEMU/Renode lanes, upload large binaries through the artifact data plane, manage detached jobs, use session workspaces, expose guest endpoints, collect emulator evidence, and avoid false support claims for kernels, firmware, MCU boards, Windows/macOS assets, ESP8266, and Renode profiles."
-license: MIT
-compatibility: "AgentSkills-compatible agents; local trusted NeuroMatrix MCP server over stdio or SSE; authorized reverse-engineering/emulation labs."
-metadata:
-  version: "1.0"
-  category: tool
+description: "Operate the standalone, client-neutral NeuroMatrix emulation MCP: create isolated sessions, stage CAS artifacts, discover and run Unicorn/Qiling/QEMU/Renode tools, manage jobs and interactive processes, expose guest endpoints, and debug emulated targets with GDB. Use for reverse engineering, user-mode or full-system emulation, firmware/kernel/MCU analysis, guest-service rehosting, runtime-evidence collection, or as the optional emulation provider behind MCPwn or another orchestrator."
 ---
 
 # NeuroMatrix Operator
 
-NeuroMatrix is an MCP server for reverse-engineering emulation. It gives an agent one session/artifact/job/endpoint surface across Unicorn, Qiling, QEMU, and Renode.
+NeuroMatrix is a standalone, client-neutral MCP server for reverse-engineering emulation. It gives any compatible client one session/artifact/job/endpoint surface across Unicorn, Qiling, QEMU, and Renode. It does not depend on MCPwn; MCPwn is one optional orchestrator.
 
-Use it by keeping the direct MCP surface small, discovering backend tools through the catalog, moving large bytes through the artifact data plane, and collecting runtime evidence before claiming support.
+Use the default Streamable HTTP MCP endpoint (`/mcp`) unless the deployment explicitly enables legacy SSE. Keep the direct MCP surface small, discover backend tools through the catalog, move large bytes through the artifact data plane, and collect runtime evidence before claiming support.
 
 ## Safety and trust
 
@@ -29,7 +24,7 @@ Use it by keeping the direct MCP surface small, discovering backend tools throug
 4. **Choose the backend lane.** Use the backend routing table below. If the lane fails because a lower layer is missing, escalate to the backend that models that layer.
 5. **Run with the right lifecycle.** Short catalog tools can run inline. Long-running tools require `run_tool(..., detach=true)` and `poll_job`.
 6. **Collect evidence.** Use memory/register output, disassembly, traces, QEMU console transcripts, QMP/GDB endpoint reachability, Renode UART/peripheral facts, guest service responses, and artifact-backed outputs.
-7. **Clean up.** Close guest endpoints or interactive sessions when appropriate, delete finished jobs, then `destroy_session`.
+7. **Clean up.** Close guest endpoints and interactive sessions, delete finished jobs, then call `destroy_session` synchronously; detached destruction is rejected because the destroy job would own the session it removes. Session destruction drains leased operations, removes mutable workspace state, and preserves immutable CAS artifacts until explicit confirmed deletion. If cleanup fails, inspect the retained `cleanup_failed` session and retry.
 
 ## Direct vs catalog tools
 
@@ -46,6 +41,10 @@ Direct `agent` tools are infrastructure:
 Backend state operations belong behind `run_tool` in `agent` mode. Never guess backend tool schemas; call `get_tool`.
 
 ## Backend routing
+
+The backend identifiers are exactly `unicorn`, `qiling`, `qemu`, and `renode`.
+OVMF, SeaBIOS, and AAVMF are QEMU firmware assets, not backend identifiers; use
+`backend="qemu"` for those lanes and never pass a firmware name as `backend`.
 
 | Need | Backend |
 |---|---|
@@ -65,16 +64,16 @@ For detailed lane choices, load [references/backend-routing.md](references/backe
 | Fast direct infrastructure tool | call it directly |
 | Fast backend catalog tool | `run_tool("name", {...})` |
 | Long-running catalog tool | `run_tool("name", {...}, detach=true)` → `poll_job(job_id, wait_seconds=30)` |
-| Live stdin/stdout process in session workspace | `start_interactive_session` → `read_interactive_session` / `send_interactive_input` |
+| Live stdin/stdout process in session workspace | `start_interactive_session` → keep target `pid` + handle → `read_interactive_session` / `send_interactive_input` |
 | Guest-exposed UART/GDB/QMP/service endpoint | `list_guest_endpoints` → `endpoint_client_context` → external tool or `spawn_endpoint_client` |
 
-Known long-running catalog tools include `qemu_system_start`, `qemu_linux_start`, `qemu_firmware_start`, `qiling_run_os_binary`, `renode_start`, `renode_continue`, `build_initramfs_artifact`, `build_rootfs_disk_artifact`, `build_esp_image_artifact`, `extract_artifact_filesystem`, and trace/export/continue-style tools.
+Known long-running catalog tools include `qemu_start_process`, `qemu_system_start`, `qemu_linux_start`, `qemu_firmware_start`, `qiling_run_os_binary`, `renode_start`, `renode_continue`, `build_initramfs_artifact`, `build_rootfs_disk_artifact`, `build_esp_image_artifact`, `extract_artifact_filesystem`, and trace/export/continue-style tools.
 
 ## File movement
 
 | Goal | Mechanism |
 |---|---|
-| Small text or generated bytes already in context | `upload_file` or workspace file helpers |
+| Small text or generated bytes already in context | `upload_file` |
 | Existing local binary/firmware/kernel/rootfs/disk | `request_upload` → HTTP `PUT --data-binary` → `mcp://artifacts/<sha256>` |
 | Read-only analysis | pass `mcp://artifacts/<sha256>` to `analyze_artifact`, `inspect_binary`, or compatible backend tools |
 | Tool must mutate/execute a real file path | `import_artifact_to_workspace(session_id, artifact_id, executable?)` |
@@ -91,11 +90,24 @@ NeuroMatrix reports reachable guest surfaces as session-scoped endpoint metadata
 
 NeuroMatrix does not provide first-party HTTP/SSH/FTP/Telnet clients. Use the endpoint context to drive external tools, Python virtualenv clients, or uploaded workspace scripts. `spawn_endpoint_client` is for running those client commands with endpoint environment variables pre-populated.
 
+Respect endpoint `scope`. A `neuromatrix_local` loopback address is reachable by a client spawned inside NeuroMatrix, not automatically by a different container or host. Treat `status`, address, and scope as declarations until `status_verified`/`reachability_verified` or a real client handshake supplies evidence.
+
+## Debugging and composition
+
+- `attach_debugger` records session metadata only; it does not launch or connect a debugger.
+- For QEMU full-system or Renode, start the backend GDB stub and use the registered `gdb-remote` endpoint.
+- For QEMU user-mode debugger waits or prompt-driven binaries, import the executable and start the matching `qemu-ARCH` process through `start_interactive_session`; `qemu_start_process` is bounded and has no stdin.
+- Use `endpoint_client_context` before connecting. Run `gdb`/`gdb-multiarch` with `spawn_endpoint_client` when the endpoint is provider-local; custom deployments must make a suitable client available.
+- NeuroMatrix has no native Frida tool. An external client may manage Frida against an explicitly reachable target, but NeuroMatrix remains unaware of that client.
+
+Load [references/debugging-and-composition.md](references/debugging-and-composition.md) for concrete GDB flows, interactive binary-input rules, and the optional MCPwn mapping.
+
 ## Strict rules
 
 - One session per task unless isolation requires more.
 - Always inspect a backend tool schema with `get_tool` before first use.
 - Long-running catalog tools without `detach=true` return a structured error; do not fight the timeout.
+- Use the documented interactive text transport and terminal-state contract; do not infer binary-safe stdin or rewrite a terminal failure as a successful close. `pid` is the target process; `supervisor_pid` is lifecycle infrastructure and is not a debug target.
 - No default kernel, firmware, rootfs, DTB, symbols, or proprietary OS assets are bundled as task evidence. The caller supplies them.
 - Windows/macOS Qiling lanes require legitimate OS assets; Wine/ReactOS-style substitutes are not parity proof.
 - Renode profile discovery is not firmware runtime evidence; prove firmware load, CPU execution, UART/GDB/peripheral behavior, or an expected failure.
@@ -106,6 +118,7 @@ NeuroMatrix does not provide first-party HTTP/SSH/FTP/Telnet clients. Use the en
 ## Resources
 
 - [references/backend-routing.md](references/backend-routing.md) — load when choosing Unicorn/Qiling/QEMU/Renode or deciding whether a failed lane should escalate.
-- [references/artifacts-jobs-endpoints.md](references/artifacts-jobs-endpoints.md) — load for artifact upload/download/import, detached jobs, interactive sessions, and guest endpoint clients.
+- [references/artifacts-jobs-endpoints.md](references/artifacts-jobs-endpoints.md) — load for artifact upload/download/import, detached jobs, workspace cleanup, and guest endpoint clients.
+- [references/debugging-and-composition.md](references/debugging-and-composition.md) — load for QEMU/Renode GDB sessions, debugger endpoint scope, interactive text driving and binary-input limitations, or optional use through MCPwn.
 - [references/evidence-and-limitations.md](references/evidence-and-limitations.md) — load before reporting capability coverage, runtime success, or support limitations.
 

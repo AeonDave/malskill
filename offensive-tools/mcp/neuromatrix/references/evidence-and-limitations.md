@@ -16,6 +16,7 @@ Use this reference before reporting what NeuroMatrix can or cannot do for a targ
 | MCU board execution | firmware loaded, CPU step, reset handler reached, UART/GDB/peripheral evidence |
 | Board/peripheral parity | target-relevant UART/GPIO/timer/storage/network/MMIO behavior observed |
 | Service rehosting | session-scoped endpoint plus external protocol interaction |
+| Debugger session | real stub/client handshake plus register/PC, disassembly, breakpoint, or stepping evidence |
 
 Say which level was proven. Do not compress "profile exists", "process started", and "target behavior worked" into one claim.
 
@@ -57,4 +58,5 @@ When finishing a NeuroMatrix run, report:
 - hooks/stubs/patches/fakes used
 - limitations and next pivot
 - cleanup performed or intentionally left running
+- mutable workspace cleanup result and any immutable artifact intentionally preserved
 

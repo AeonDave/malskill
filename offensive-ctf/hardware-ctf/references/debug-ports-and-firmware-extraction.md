@@ -67,6 +67,21 @@ Validation signals:
 - extracted image contains expected bootloader/kernel/filesystem markers
 - dump can be mounted, carved, or unpacked cleanly
 
+### U-Boot environment recovery
+
+A board that "cannot finish booting" still holds its previous configuration in env storage, and the boot log tells you where:
+
+1. `*** Warning - bad CRC, using default environment` means `printenv` is showing the **compiled-in default**, not the saved config — the stale env is still on the chip, merely not loaded. Author-added defaults such as `env_offset=0x800` name the offset to read.
+2. Enumerate before reading: `i2c bus`, then per bus `i2c dev <n>` and `i2c probe`. `0x50` is the usual EEPROM, `0x68` an RTC (with battery-backed NVRAM), `0x18` a sensor.
+3. Read raw with `i2c md <chip> <off>.2 <len>` (`.2` = 16-bit addressing, length in hex). The env blob is a 4-byte CRC followed by NUL-separated `key=value` pairs ending in a double NUL — parse those bytes yourself rather than trying to make U-Boot accept them.
+4. Redundant env means two copies (commonly `0x0` and `env_offset`). **Diff them** — the differences are exactly the "previous configuration" the task wants.
+
+**Scan each chip's whole address space; spot-checking lies.** A boot log calling one EEPROM "erased" only means the offsets *U-Boot* checked read `0xFF`. Key material can sit anywhere else on that same device — e.g. an `AES_KEY=` / `IV=` / `AES_MODE=` block at `0x100` on the very bus whose env area was blank, while the ciphertext sits on the other bus. Dump the full device on every bus and grep; do not conclude "blank" from two sampled offsets.
+
+**Read ciphertext and key from the same instance.** Emulated/containerised targets often regenerate the key or IV per spawn, so the stored ciphertext changes every boot while the plaintext flag stays constant. Mixing a dump from one instance with key material from another fails silently and looks like a wrong algorithm.
+
+`md`'s address radix is build-dependent: if `md 40000000` prints `02625a00` it parsed the argument as decimal, so pass `0x`-prefixed addresses.
+
 ## SPI flash extraction
 
 Use SPI extraction when the flash chip is identifiable and read access is enough.

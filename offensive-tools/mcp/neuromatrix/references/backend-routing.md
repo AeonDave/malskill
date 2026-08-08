@@ -76,6 +76,8 @@ Main lanes:
 - `qemu_port_forward`: localhost-bound guest service exposure
 - `qemu_gdbserver_start`, QMP tools, monitor tools
 
+`qemu_start_process` is a bounded, catalog-long-running qemu-user runner with no stdin; call it with `detach=true`. Use `start_interactive_session` with the matching `qemu-ARCH` executable for prompts or a user-mode `-g PORT` debugger wait. `qemu_gdbserver_start` configures only the qemu-system lane.
+
 Kernel rule: NeuroMatrix does not bundle a default kernel. Upload the exact kernel/initrd/DTB/config/symbol/rootfs artifacts for the task and preserve their artifact IDs in the evidence.
 
 Firmware rule: OVMF/SeaBIOS/AAVMF assets may be bundled, but boot payloads still come from the caller. Secure Boot/TPM/ESP support is evidence for those configured flows, not broad platform parity.

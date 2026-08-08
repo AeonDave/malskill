@@ -137,6 +137,8 @@ LinPEAS color codes findings:
 
 Also prioritize lines flagged like `99% PE` or equivalent high-confidence markers before spending time on weaker leads.
 
+**Findings are grep excerpts, not proof — read the full file before acting.** LinPEAS often prints only the matching line (e.g. just the `auth ... pam_permit.so` line of `/etc/pam.d/common-auth`, or a single sudoers/cron line), which can read like a misconfiguration or auth bypass the complete file does not actually support. Confirm the whole file first. Its version-based CVE hits (Kernel Exploit Registry, and service LPEs like PackageKit/`pkexec`/sudo) are stronger, verifiable leads — a held-back package version is often the intended path.
+
 ## Post-LinPEAS Workflow
 
 1. **Triage findings** — focus on red/critical items first

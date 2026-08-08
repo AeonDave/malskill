@@ -90,6 +90,9 @@ Independent work should run concurrently, not serially.
 - **Same error regardless of input:** you are at the wrong layer or failing an earlier gate (auth, framing, checksum) before your payload is even parsed.
 - **Big search space:** find the oracle that collapses it (an error that leaks length/position, a timing side channel, a partial match) instead of brute forcing.
 - **Stuck:** re-read the brief for an unused concrete value; it is almost always load-bearing.
+- **Total silence is a different failure from a rejection.** A target that never answers may be broken or not listening, not wrong-input. Before iterating on payloads, prove the far side is alive and consuming: send a deliberately malformed unit and check you still get *some* reaction, verify the peer actually drains what you send (a queue that accepts data proves buffering, not processing), and plant a canary that needs the minimum machinery to echo. Endless silence with zero diagnostics usually means the environment, not the exploit.
+- **Verify the instance is yours before trusting it.** A platform that allows only one live instance at a time will silently replace or expire the previous one while its status still reads "ready", so a cached ip:port can point at a dead or foreign container. Reconnect and match the banner before concluding a technique failed, and serialize work when instances are exclusive.
+- **Re-derive a parameter per instance when the target regenerates it.** If a value changes between spawns (key, IV, nonce, TLE, port), any artifact captured from an earlier instance is poison — collect every dependent input from the same live instance.
 
 ## Resources
 
