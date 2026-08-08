@@ -16,7 +16,7 @@ metadata:
     - dotnet-reversing
     - protocol-reversing
     - vulnerability-hunting
-    - memory-corruption-exploitation
+    - exploitability-triage
     - secrets-extraction
     - custom-vm-reversing
     - anti-analysis-bypass
@@ -37,7 +37,7 @@ metadata:
 - **.NET reversing**: Deobfuscate, understand managed code logic.
 - **Protocol reversing**: Reconstruct proprietary protocols or file formats.
 - **Vulnerability hunting**: Find bugs in closed-source components.
-- **Memory-corruption exploitation**: Convert validated corruption primitives into controlled execution paths and minimal proof artifacts.
+- **Exploitability triage**: Qualify a corruption primitive found during RE, then hand off to `binary-exploitation-technique` for chaining and proof.
 - **Secrets extraction**: Recover keys, tokens, passwords.
 - **Custom VM / obfuscation**: Binary has a bytecode VM, LLVM CFF dispatcher, or VMProtect/Themida packing.
 - **Anti-analysis bypass**: Binary exits under debugger, detects VM, crashes analysis tools, or uses signal-handler tricks.
@@ -100,7 +100,7 @@ Quick assessment to decide approach:
 - `memfd_create` in strace / `/proc/self/fd/` path to `dlopen` → **In-memory loading** (see `references/in-memory-loading.md`)
 - `ljmp 0x33:` / `push 0x33; retf` in 32-bit ELF → **Heaven's Gate Linux** (see `references/anti-analysis.md §Category 8`)
 - Two binary versions for patch analysis / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
-- Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Memory-corruption exploitation** workflow (see `references/binary-exploitation-capability.md`)
+- Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Exploitability triage** (§7b), then hand off to `offensive-techniques/binary-exploitation-technique`
 - Kernel driver/module, hidden artifacts, boot-chain tampering, or EFI/bootloader changes → **Rootkit / bootkit RE** workflow (see `references/rootkit-and-bootkit-re.md`)
 
 ## CLI-first tool preference
@@ -323,48 +323,19 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 
 ---
 
-### 7b. Memory-corruption exploitation capability
+### 7b. Exploitability triage and handoff
 
-**Goal**: Transform a validated memory-corruption primitive into reproducible control and impact evidence.
+**Goal**: From a validated corruption primitive, qualify exploitability and hand a clean primitive to `offensive-techniques/binary-exploitation-technique`; do not build the chain here.
 
-**Operator flow:**
-```
-1. Primitive confirmation: prove what is controlled (PC, stack pivot, arbitrary read/write, object type confusion).
-2. Deterministic reproduction: stabilize crashes with fixed input path, environment, and symbolized traces.
-3. Mitigation mapping: enumerate NX/DEP, ASLR/PIE, canaries, RELRO, CFG/CET, allocator hardening.
-4. Strategy selection:
-   - Control-flow path: return/jump-oriented chain, handler dispatch abuse, or function pointer redirection.
-   - Data-only path: privilege/config/state corruption when direct code execution is unrealistic.
-5. Minimal proof chain:
-   - Stage A: information leak or oracle (if needed).
-   - Stage B: control primitive upgrade (e.g., constrained write → arbitrary write).
-   - Stage C: final impact proof with lowest-risk payload.
-6. Reliability pass: execute multiple trials, record success rate and preconditions.
-7. Evidence pack: inputs, offsets, gadget/function rationale, mitigation notes, and clear boundary conditions.
-```
+**Qualify before handoff:**
+- Prove what is controlled (PC, stack pivot, arbitrary read/write, object/type confusion) and the bug family (overflow/UAF/type confusion/index/format string).
+- Confirm deterministic, attacker-influenced reproduction under a fixed input path — a crash is not yet a primitive.
+- Model the primitive's *repeatability*: read every branch of any state guard (`is_set`, `initialized`, `done`, `idx == fav`). The `else`/already-set branch frequently still performs the gated read/write/free, so an apparently one-shot primitive is a repeatable arbitrary read/write loop. Confirm which branch runs on the second invocation before declaring a path dead.
+- Inventory mitigations (`checksec`, module headers): NX/DEP, ASLR/PIE, canary, RELRO, CFG/CET, allocator hardening — carry this into the handoff.
 
-**Key tricks:**
-- Separate exploitability from severity: first prove control, then prove business impact.
-- Prefer architecture-appropriate calling convention and stack alignment checks before blaming payload quality.
-- Keep a strict chain ledger: each stage must depend only on prior validated primitives.
-- Model the primitive's *repeatability* by reading every branch of any state guard (`is_set`, `initialized`, `done`, `idx == fav`). The `else`/already-set branch frequently still performs the gated read/write/free (a live refresh), so a primitive that looks one-shot is actually a repeatable arbitrary read/write loop. Confirm which branch runs on the second invocation before declaring a leak path dead.
-- Use reversible, low-noise proof actions; avoid destructive state mutation.
+**Tools:** `gdb`+`pwndbg`/`gef`, `x64dbg`, `windbg` for control validation; `angr` for trigger-gating constraints; `radare2`/`ghidra`/`binaryninja` for gadget/function reachability.
 
-**Tool citations:**
-- `gdb`+`pwndbg`/`gef`, `x64dbg`, `windbg` — register/stack/heap control validation.
-- `checksec`, module header inspection — mitigation inventory.
-- `angr` — path and constraint assistance for difficult trigger gating.
-- `radare2`, `ghidra`, `binaryninja` — gadget/function reachability and semantic verification.
-
-**Common pitfalls:**
-- Jumping directly to payload engineering without proving a stable primitive.
-- Using non-deterministic environments, then misclassifying flaky behavior as bypass failure.
-- Ignoring modern control-flow protections (CFG/CET) when selecting chain style.
-- Reporting “execution achieved” without documenting required assumptions and reliability.
-- Declaring a flag-guarded primitive one-shot from the first-call branch alone, without reading the already-set branch that may re-run the operation.
-
-→ Full chain patterns and triage checklists: `references/binary-exploitation-capability.md`.
-→ FSOP (fake FILE vtable exploit): §14. one_gadget selection: §15.
+→ Chain strategy, mitigation-aware planning, and reproducible proof: `offensive-techniques/binary-exploitation-technique`. Concrete recipes (ROP/heap/FSOP/format-string/one_gadget): `offensive-ctf/pwn-ctf/references`.
 
 ---
 
@@ -505,7 +476,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 | .NET reversing | `dnspy`, `de4dot` | Windows |
 | Protocol RE | `ghidra`, `frida`, `mitmproxy` | Depends |
 | Vulnerability hunting | `ghidra`/`binaryninja`, `gdb`, AFL++ | Linux/Windows |
-| Memory-corruption exploitation | `gdb`+`pwndbg`/`gef`, `x64dbg`, `windbg`, `checksec` | Linux/Windows |
+| Exploitability triage (→ `binary-exploitation-technique`) | `gdb`+`pwndbg`/`gef`, `x64dbg`, `windbg`, `checksec` | Linux/Windows |
 | JS/Browser extension | DevTools, `frida`, `mitmproxy` | Browser/Electron |
 | Kernel/crash dump | `windbg` | Windows |
 
@@ -530,7 +501,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 - [references/ransomware-re.md](references/ransomware-re.md) — ransomware crypto workflow: hybrid model, Windows CryptoAPI/CNG/OpenSSL identification, implementation flaw checklist, encrypted-file analysis, public-key extraction, and YARA skeleton.
 - [references/languages.md](references/languages.md) — language/runtime pivots for Go, Rust (crate fingerprinting), Python bytecode (PyInstaller/PyArmor), Nim, VBS/WSH, Unity IL2CPP, and HarmonyOS HAP.
 - [references/binary-diffing.md](references/binary-diffing.md) — binary diff workflow (radiff2, Ghidra VT, BinDiff), FLIRT signature generation, Ghidra FID for stripped library symbol recovery.
-- [references/binary-exploitation-capability.md](references/binary-exploitation-capability.md) — memory-corruption exploitation workflow: primitive validation, mitigation-aware strategy selection, and reproducible proof chain.
+- Exploitability handoff: once a primitive is confirmed, `offensive-techniques/binary-exploitation-technique` owns the chaining methodology and `offensive-ctf/pwn-ctf/references` holds the concrete recipes.
 - [references/rootkit-and-bootkit-re.md](references/rootkit-and-bootkit-re.md) — Windows/Linux kernel-mode RE, driver/module triage, bootkit workflow, hook/callback analysis, and boot-chain evidence.
 - [references/nim-rev.md](references/nim-rev.md) — Nim binary recognition, symbol recovery, GC/memory layout, decompilation patterns, stripped binary workflow.
 - [references/node-v8-snapshots.md](references/node-v8-snapshots.md) — Node.js pkg/SEA/nexe extraction, V8 startup snapshot recovery, JS deobfuscation.

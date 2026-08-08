@@ -288,7 +288,7 @@ For memory-corruption work, record mitigations per module, not just for the main
 | `/GS` | Load Config security cookie plus function prologues | Stack overwrite needs cookie leak/bypass or non-cookie path |
 | CET | Extended DLL characteristics / platform policy | Shadow-stack/IBT affects return/indirect-branch assumptions |
 
-Before claiming exploitability, pivot to `binary-exploitation-capability.md` and preserve:
+Before claiming exploitability, pivot to `../../binary-exploitation-technique/SKILL.md` and preserve:
 
 - exact module and version
 - architecture and subsystem

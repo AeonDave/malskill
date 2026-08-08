@@ -14,7 +14,7 @@ metadata:
 
 Goal: turn FILE-structure corruption into the **right libio dispatch path** for that glibc era, trigger surface, and endgame — not into random `_IO_FILE` cargo cult.
 
-Repository positioning: keep `offensive-coding/heap-exploitation-dev` as the allocator and overlap router, then switch here once success depends more on **libio structure modeling, validated jump-table reuse, wide/codecvt/cookie-file dispatch, or trigger choice** than on heap choreography itself.
+Repository positioning: keep `offensive-coding/heap-exploitation-dev` as the allocator and overlap router, then switch here once success depends more on **libio structure modeling, validated jump-table reuse, wide/codecvt/cookie-file dispatch, or trigger choice** than on heap choreography itself. Engagement methodology and mitigation strategy live in `offensive-techniques/binary-exploitation-technique`; concrete FSOP recipes in `offensive-ctf/pwn-ctf/references/heap-fsop.md`.
 
 ## When to activate
 

@@ -31,6 +31,7 @@ Goal: solve binary-exploitation challenge solving tasks with professional offens
 
 Primary methodology to load:
 
+- `binary-exploitation-technique`
 - `reversing-technique`
 - `vuln-exploit-technique`
 - `fuzzing-technique`
@@ -48,7 +49,9 @@ Prefer these tool families when the corresponding signal appears:
 - `coding/asm-patterns`
 - `coding/asm-testing`
 - `offensive-coding/rop-development-dev`
+- `offensive-coding/stack-exploitation-dev`
 - `offensive-coding/heap-exploitation-dev`
+- `offensive-coding/fsop-dev`
 - `offensive-coding/shellcode-dev`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.

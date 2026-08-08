@@ -119,4 +119,5 @@ If the task is specifically about BOFs, prefer `bof/c-bof` or `bof/cpp-bof` firs
 - [references/tooling-and-labs.md](references/tooling-and-labs.md) — practical usage of pwntools, Capstone, Keystone, Unicorn, debugger loops, and test harness patterns
 - [references/encoders-and-stagers.md](references/encoders-and-stagers.md) — staged payload patterns, bad-byte encoders, polymorphism trade-offs, and failure modes
 - [references/evasion-patterns-from-projects.md](references/evasion-patterns-from-projects.md) — transferable shellcode-dev engineering patterns from real implementations (runtime SSN mapping, recycled syscall gates, DESYNC readiness checks, sleep masking pipelines, CFG-aware gadget handling)
+- Upstream methodology: `offensive-techniques/binary-exploitation-technique` (where shellcode fits in the chain) and `offensive-ctf/pwn-ctf/references/shellcode-filtering.md` (byte-blacklist recipes).
 - Start with `references/platform-workflows.md`; wrong platform assumptions break payloads faster than bad-byte or evasion mistakes.

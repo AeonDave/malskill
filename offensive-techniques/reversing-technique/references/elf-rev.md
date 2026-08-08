@@ -351,7 +351,7 @@ See `in-memory-loading.md` for the full workflow: detection, runtime dump, layer
 
 ## Exploitability handoff
 
-Keep this supplement focused on reversing evidence. When a memory-corruption primitive is confirmed, pivot to `binary-exploitation-capability.md` and, for ELF RELRO/ASLR/pointer-stability decisions, `../../../offensive-ctf/pwn-ctf/references/relro-aslr-relocations.md`.
+Keep this supplement focused on reversing evidence. When a memory-corruption primitive is confirmed, pivot to `../../binary-exploitation-technique/SKILL.md` and, for ELF RELRO/ASLR/pointer-stability decisions, `../../../offensive-ctf/pwn-ctf/references/relro-aslr-relocations.md`.
 
 Minimum handoff evidence:
 
