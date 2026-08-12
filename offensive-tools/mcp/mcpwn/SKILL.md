@@ -29,17 +29,17 @@ Load [references/debugging-and-emulation.md](references/debugging-and-emulation.
 
 | Situation | Path |
 |-----------|------|
-| Short, no stdin, <~3 min (`whoami`, `cat`, `id`, quick `curl`/nmap) | `execute_command(cmd)` |
+| Expected well below 20s, no stdin (`whoami`, `cat`, `id`, quick `curl`) | `execute_command(cmd)` |
 | Long one-shot, no stdin (`nmap -p-`, hashcat, ffuf, sqlmap, hydra, feroxbuster) | `execute_command(cmd, detach=True)` → `poll_job(job_id, wait_seconds=30)` loop |
-| Catalog tool, fast (<30s) | `run_tool("name", {...})` |
-| Catalog tool, slow / tagged `long_running` | `run_tool("name", {...}, detach=True)` → `poll_job` |
+| Catalog tool expected well below 20s | `run_tool("name", {...})` |
+| Slow, uncertain, or `long_running` tool | `run_tool("name", {...}, detach=True)` → `poll_job` |
 | Needs stdin/tty or live streaming (nc, ssh, gdb, REPL, penelope) | `start_interactive_shell` → `run_in_shell`/`read_shell_output` → `close_shell` |
 
 Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline.
 
-**The detached contract, because it decides what you can run at all:** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** — it runs to completion — and stays interruptible, because `delete_job` SIGKILLs its owned process tree and verifies the kill. That is the path for *any* program MCPwn does not wrap, however long it runs. Inline is the opposite by design: a base timeout clamped to `MCPWN_INLINE_TIMEOUT_CAP` (~120s) so an abandoned call can't strand a process. A detached **catalog** tool is the middle case — bounded by its own route ceiling and only *cooperatively* cancellable (no kill hook), so when a scan must outlive that ceiling, drive the binary through `execute_command(detach=True)` instead.
+**The detached contract, because it decides what you can run at all:** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** — it runs to completion — and stays interruptible, because `delete_job` SIGKILLs its owned process tree and verifies the kill. That is the path for *any* program MCPwn does not wrap, however long it runs. Inline execution is capped at 20s by default because some clients serialize calls to one MCP server; `MCPWN_INLINE_TIMEOUT_CAP` may lower it to a 5s minimum but cannot raise it, and a lower long-poll ceiling also lowers it. Process cleanup can add bounded time after the execution timeout, so detach anything duration-uncertain or near 20s. A detached **catalog** tool is the middle case — bounded by its own route ceiling and only *cooperatively* cancellable (no kill hook), so when a scan must outlive that ceiling, drive the binary through `execute_command(detach=True)` instead.
 
-**Interactive shells: prefer `run_in_shell(id, cmd)` for a discrete command.** It is marker-synced — returns THAT command's output + `exit_code` in ONE call (autodetects posix/powershell/cmd) — so no guess-the-timing `send_to_shell`+`read_shell_output` loop and no command-echo / job-control noise bleeding into the read. Keep `read_shell_output(wait_seconds=N)` for streaming / TUI / a shell you must watch live; `wait_seconds` is server-clamped to ~20s, so **loop it** for longer waits rather than expecting one 60s block. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
+**Interactive shells: prefer `run_in_shell(id, cmd)` for a discrete command.** It is marker-synced — returns THAT command's output + `exit_code` in ONE call (autodetects posix/powershell/cmd) — so no guess-the-timing `send_to_shell`+`read_shell_output` loop and no command-echo / job-control noise bleeding into the read. Keep `read_shell_output(wait_seconds=N)` for streaming / TUI / a shell you must watch live; `wait_seconds` is server-clamped to ~20s, so **loop it** for longer waits rather than expecting one longer block. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
 
 ## Moving files — use the right mechanism
 
@@ -82,7 +82,7 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 - `execute_command` is `sh -c` (dash on a Debian base, bash on Kali) — wrap bashisms in `bash -c '...'` so they don't silently degrade. `start_interactive_shell` has no shell — use `cwd=` (no `cd &&`) or `bash -lc`.
 - `/etc/hosts` is a bind mount — append with `sudo tee -a`, not `sed -i`.
 - Sub-agents don't inherit the MCP client — hand off state as `mcp://artifacts/<sha>`.
-- **Server readiness and profile ports:** proxy profiles expose MCP `/health` on their published MCP port (normally `:5000`; Debian/macOS defaults to `:5002`) and artifact `/health` on the published artifact port (normally `:5001`). The Kali/macOS dev profile publishes FastMCP directly on host `:5000` -> container `:8080`, so it has no proxy `/health`; validate it with an MCP `initialize` or `create_analysis_session`, and probe artifact health separately. `:8081/mcp` is an optional direct FastMCP diagnostic endpoint on the proxy profiles and must be tested with MCP `initialize`, not `GET /health`.
+- **Server readiness and profile ports:** use `http://127.0.0.1:5000/mcp` for a local client, not `localhost` or `::1`; Docker Desktop publishes the control plane on IPv4 loopback and an IPv6-first `localhost` can refuse or delay every call. Proxy profiles expose MCP `/health` on their published MCP port (normally `:5000`; Debian/macOS defaults to `:5002`) and artifact `/health` on the published artifact port (normally `:5001`). The Kali/macOS dev profile publishes FastMCP directly on host `:5000` -> container `:8080`, so it has no proxy `/health`; validate it with an MCP `initialize` or `create_analysis_session`, and probe artifact health separately. `:8081/mcp` is an optional direct FastMCP diagnostic endpoint on the proxy profiles and must be tested with MCP `initialize`, not `GET /health`.
 - Cleanup: close shells, delete finished jobs, delete the session.
 
 ## Resources

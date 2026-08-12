@@ -21,7 +21,7 @@ Decide by **source/type, not size** — byte count is a red herring:
 
 ### Large-file upload — the working flow (agent-driven)
 
-The MCP tool surface has no "send bytes" call; the upload is a plain HTTP PUT to the `:5001` data plane. When the agent has a **local shell / HTTP tool that can reach `:5001`** (the usual case — the URL comes back as `http://localhost:5001/...` because the client host or gateway forwards it), the agent does the PUT itself; no human needed.
+The MCP tool surface has no "send bytes" call; the upload is a plain HTTP PUT to the `:5001` data plane. When the agent has a **local shell / HTTP tool that can reach `:5001`** (the usual case — loopback ticket URLs use `http://127.0.0.1:5001/...`), the agent does the PUT itself; no human needed.
 
 1. Compute sha256 + size **client-side** — the file is not on the server yet (`sha256sum f` / `stat -c %s f`).
 2. `request_upload(filename, file_size_bytes, checksum_sha256, session_id)` → `upload_url`, `artifact_id`. Cache hit (server already has that SHA) → `upload_required:false`; skip to step 4.
@@ -48,7 +48,7 @@ Gotchas (each cost real turns):
 
 ## CAS ↔ workspace
 
-- **Read-only analyzers** (`checksec_binary`, `find_rop_gadgets`, `analyze_with_radare2`, `extract_strings`, `pe_inspect`, `readelf_inspect`, `seccomp_analyze`) accept a CAS ref directly via `binary_path` — no import needed.
+- **Read-only analyzers** (`checksec_binary`, `find_rop_gadgets`, `analyze_with_radare2`, `decompile_with_radare2`, `extract_strings`, `pe_inspect`, `readelf_inspect`, `seccomp_analyze`) accept a CAS ref directly via `binary_path` — no import needed.
 - **Workspace-only tools** (`auto_detect_vulnerabilities`, `gdb_*`, `trace_*`, `patchelf_patch`, `upx_unpack`, `run_pwntools_exploit`) require `import_artifact_to_workspace(session_id, artifact_id, executable=True)` first.
 
 ## Pre-staged payload depots (`/opt/`)

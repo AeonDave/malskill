@@ -7,15 +7,16 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 | Situation | Use |
 |-----------|-----|
 | Needs stdin/tty mid-run (nc, ssh, gdb, REPL, penelope) | `start_interactive_shell` |
-| Short, no stdin, <3 min | `execute_command(cmd)` |
-| Long, no stdin, >3 min | `execute_command(cmd, detach=True)` |
-| Catalog tool, fast (<30s) | `run_tool("name", {...})` |
-| Catalog tool, slow (>30s) or `long_running=True` | `run_tool("name", {...}, detach=True)` |
+| Expected well below 20s, no stdin | `execute_command(cmd)` |
+| Long or duration-uncertain, no stdin | `execute_command(cmd, detach=True)` |
+| Catalog tool expected well below 20s | `run_tool("name", {...})` |
+| Slow, uncertain, or `long_running=True` tool | `run_tool("name", {...}, detach=True)` |
 
 ## Short commands — `execute_command`
 
 - Synchronous: the MCP request blocks until exit or timeout.
-- Default timeout 180s; override `timeout=N`. Inline calls are clamped to `MCPWN_INLINE_TIMEOUT_CAP` (~120s) regardless of `timeout`, so raising it only matters together with `detach=True`.
+- Inline execution is capped at 20s by default. `MCPWN_INLINE_TIMEOUT_CAP` may lower it to a 5s minimum but cannot raise it; a lower `MCPWN_MAX_LONG_POLL_SECONDS` also lowers it. Process cleanup can add bounded time after the execution timeout, so use `detach=True` near the ceiling. Detached calls have no deadline unless you pass `timeout=N`.
+- Some MCP clients serialize calls to one server. An inline command delays unrelated session/catalog calls on those clients, so detach anything duration-uncertain or near the ceiling.
 - Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute, katana. Use `detach=True`.
 - Output >64 KB auto-saves to a CAS artifact (`output_mode='auto'`), returning an id + preview — don't try to inline it.
 - `timed_out=true` is authoritative and means execution was incomplete; current MCPwn results set `success=false` on timeout while `partial_results` may still preserve useful output. Inspect `timed_out`, `return_code`, and `partial_results` before accepting a result.
@@ -24,7 +25,7 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 ## Async jobs — `detach=True` + `poll_job`
 
 - Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=30)` in a loop until `status == "done"`.
-- `long_running=True` catalog tools (ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, volatility_analyze) **require** `detach=True`.
+- `long_running=True` catalog tools (including `analyze_with_radare2`, `decompile_with_radare2`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
 
 ### The two detached paths behave differently — this matters
 
@@ -63,7 +64,7 @@ close_shell(interactive_id) → log_path
 
 - **Shell**: `execute_command` = `sh -c` — the base image decides the interpreter (dash on a Debian base, bash on Kali). Bashisms (`$RANDOM`, arrays, `<()`) silently degrade under dash, so wrap `bash -c '<cmd>'` when you rely on them (don't assume the base).
 - **Interactive has no shell**: `start_interactive_shell` execs directly (pexpect). `cd x && cmd` fails; pipes/globs/`$VARS`/**redirections don't expand** — a trailing `2>&1` or `>file` is passed as literal argv, so the target program dies with a confusing `error: unrecognized arguments: 2>&1` (seen with ntlmrelayx/impacket). Use `cwd=` (relative = inside workspace) or wrap `bash -lc '<cmd>'` whenever you need any shell metacharacter.
-- **Inline sleep**: `sleep N` >60s (incl. `sleep 90; cmd`) is auto-rejected → detached job.
+- **Inline sleep**: a declared wait at or above the inline cap (`sleep 20` by default, including compound forms) is rejected → detached job.
 - **Scanner `ports` argument**: pass the spec only — `1-65535`, `80,443`, `T:80,U:53`. nmap's own idioms are accepted too (`-p-`, `p-`, `-` all mean every port) and a redundant `-p` is absorbed, across nmap/rustscan/masscan/httpx. A *different* selector such as `--top-ports 1000` is passed through rather than glued behind `-p`.
 - **pty-only listeners**: `penelope`/`pwncat`/`pwncat-cs` need a controlling TTY — run them via `start_interactive_shell`. Through `execute_command` they're auto-guarded: you get `guard: pty_only_listener` + an `nc` `fallback_command` (not a crash/hang), signalling *relaunch under an interactive shell*.
 - **Inline backgrounding**: MCPwn owns a fresh POSIX process group and cleans it on normal return, timeout, cancellation, and post-launch error. A bare `cmd &` dies; `nohup` alone remains in that group and also dies. Prefer a managed interactive/daemon wrapper for an indefinite listener or watcher. If `setsid` is unavoidable, make the new session leader write its PID to a file in the analysis workspace before `exec`; before deleting the session, validate that PID still belongs to the expected command, terminate the exact process group (`-PID`), escalate only if it survives, and verify no member remains. MCPwn intentionally cannot reap a process that escaped its owned group. A detached job has no deadline unless you pass `timeout=N`, so it suits open-ended work — it stays killable through `delete_job` precisely because it never leaves MCPwn's owned group. Anything that can hang → `detach=True` (and prefix `timeout N` only when you want the command itself to give up).
