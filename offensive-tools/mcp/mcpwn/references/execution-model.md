@@ -16,6 +16,7 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 
 - Synchronous: the MCP request blocks until exit or timeout.
 - Inline execution is capped at 20s by default. `MCPWN_INLINE_TIMEOUT_CAP` may lower it to a 5s minimum but cannot raise it; a lower `MCPWN_MAX_LONG_POLL_SECONDS` also lowers it. Process cleanup can add bounded time after the execution timeout, so use `detach=True` near the ceiling. Detached calls have no deadline unless you pass `timeout=N`.
+- **This ceiling was 120s through v1.3.0 and became 20s in v1.3.1** — a behavioural break the MCP schema cannot express, so an inline call in the 21-120s band just starts timing out. The reason is real: a client that serializes requests to one server turns a 32s inline call into a 32s stall of every other tool, which looks like a disconnection. Move that work to `execute_command(..., detach=True)` + `poll_job(...)`. If your client issues concurrent requests and tolerates a wider request timeout, the operator can set `MCPWN_ALLOW_LONG_INLINE=1` on the server to restore the 120s default (and then raise it further with `MCPWN_INLINE_TIMEOUT_CAP`).
 - Some MCP clients serialize calls to one server. An inline command delays unrelated session/catalog calls on those clients, so detach anything duration-uncertain or near the ceiling.
 - Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute, katana. Use `detach=True`.
 - Output >64 KB auto-saves to a CAS artifact (`output_mode='auto'`), returning an id + preview — don't try to inline it.
@@ -26,6 +27,12 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 
 - Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=30)` in a loop until `status == "done"`.
 - `long_running=True` catalog tools (including `analyze_with_radare2`, `decompile_with_radare2`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
+
+### Duration-uncertain catalog wrappers
+
+- Treat deep decompilation, global analysis, and any wrapper with uncertain duration as asynchronous: dispatch with `detach=True`, poll at bounded intervals, and keep concurrent heavy jobs limited so the backend is not saturated.
+- A caller/MCP request timeout can end the caller's wait without cancelling the backend job. Re-query job and cancellation state before retrying; when cancellation is needed, use `delete_job` and verify that the job reaches a terminal state.
+- If polling reports an unhealthy or unavailable backend, report that condition and stop. Do not restart or rebuild MCPwn/the backend without user direction.
 
 ### The two detached paths behave differently — this matters
 
