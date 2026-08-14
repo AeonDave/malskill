@@ -26,11 +26,14 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 ## Async jobs — `detach=True` + `poll_job`
 
 - Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=30)` in a loop until `status == "done"`.
-- `long_running=True` catalog tools (including `analyze_with_radare2`, `decompile_with_radare2`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
+- `long_running=True` catalog tools (including `analyze_with_radare2`, `decompile_with_radare2`, `pacu_aws_exploit`, `torch_model_inspect`, `keras_model_inspect`, `sklearn_model_inspect`, `vec2text_invert`, `ml_script_execute`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
 
 ### Duration-uncertain catalog wrappers
 
 - Treat deep decompilation, global analysis, and any wrapper with uncertain duration as asynchronous: dispatch with `detach=True`, poll at bounded intervals, and keep concurrent heavy jobs limited so the backend is not saturated.
+- The PyTorch, Keras, and scikit-learn inspectors deserialize formats that can execute code. Treat them as destructive execution, not read-only parsing, and use only authorized artifacts.
+- `torch_model_inspect`, `keras_model_inspect`, `sklearn_model_inspect`, and `vec2text_invert` have no execution deadline unless `timeout` is set to 1–3600 seconds. `ml_script_execute` remains bounded: default 120 seconds, maximum 600.
+- `pacu_aws_exploit` requires a workspace-relative `credentials_file`; `aws_profile` must exist in it or the optional workspace-relative `config_file`, and is imported on every call. Ambient AWS credential sources are disabled; keep secrets out of `module_args`. State is isolated under `.pacu-home/<pacu_session>` inside the analysis workspace. Concurrent use fails fast with `pacu_session_busy`: retry instead of creating a duplicate. Set `create_pacu_session=true` only on the first call, then reuse with `false`. Omit `timeout` for no module deadline or set 1–3600 seconds; always dispatch detached.
 - A caller/MCP request timeout can end the caller's wait without cancelling the backend job. Re-query job and cancellation state before retrying; when cancellation is needed, use `delete_job` and verify that the job reaches a terminal state.
 - If polling reports an unhealthy or unavailable backend, report that condition and stop. Do not restart or rebuild MCPwn/the backend without user direction.
 
@@ -38,12 +41,12 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 
 | | `execute_command(cmd, detach=True)` | `run_tool(name, {...}, detach=True)` |
 |---|---|---|
-| Timeout with no explicit value | **none — runs until it finishes** | the tool's own ceiling still applies |
+| Timeout with no explicit value | **none — runs until it finishes** | route-specific: a default ceiling or no deadline; inspect `get_tool` |
 | Stopping it | **hard kill**: `delete_job` SIGKILLs the owned process tree and verifies it | cooperative only — no kill hook |
 | Backstop | job reaper hard-kills unfinished jobs at 4h | same reaper, but a live HTTP worker is not interrupted |
 
 - So **anything arbitrary and open-ended belongs on `execute_command(detach=True)`**: no deadline unless you set `timeout=N`, and it is genuinely interruptible on demand. This is the path for a tool MCPwn does not wrap at all.
-- A detached **catalog** tool is still bounded by its route ceiling (`long_running` scanners now allow up to an hour via `MCPWN_LONG_SCAN_TIMEOUT_CAP`; pass `timeout=N` to ask for more than the default). If you need a scan to run past that, drive the binary through `execute_command(detach=True)` instead.
+- Catalog deadlines are route-specific. Long-scan wrappers exposing `MCPWN_LONG_SCAN_TIMEOUT_CAP` remain bounded; Radare2 defaults to 120 seconds and accepts 1–270; `ml_script_execute` defaults to 120 and caps at 600; the Pacu/ML exceptions above default to no execution deadline. If a bounded wrapper cannot run long enough, drive the binary through `execute_command(detach=True)`.
 - `delete_job(job_id)` requests cancellation and removes the record only after stop is observed. For `execute_command` jobs it invokes the hard process-tree kill. A catalog job without a kill hook may return `cancellation_pending=true`, `execution_stopped=false`, and `record_deleted=false`; poll it and retry deletion after it becomes terminal. Do not treat `ok=true` as proof that a pending worker vanished.
 - Do NOT tight-loop `poll_job` over a bare sleep. Offload a long timed wait into ONE detached job: `execute_command("until test -f /tmp/ready; do sleep 30; done", detach=True)` or `execute_command("sleep 2700; echo done", detach=True)`, then poll every few minutes. No `timeout` is needed — a detached run has no deadline of its own.
 
