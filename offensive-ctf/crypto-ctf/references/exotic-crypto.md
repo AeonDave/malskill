@@ -1,6 +1,7 @@
 # CTF Crypto - Exotic Algebraic Structures
 
 ## Table of Contents
+- [Hash-Based One-Time Signatures (WOTS+/XMSS/LMS) — Reuse and Dominance Forgery](#hash-based-one-time-signatures-wotsxmsslms--reuse-and-dominance-forgery)
 - [Braid Group DH — Alexander Polynomial Multiplicativity]
 - [Monotone Function Inversion with Partial Output](#monotone-function-inversion-with-partial-output)
 - [Tropical Semiring Residuation Attack]
@@ -11,6 +12,31 @@
 - [Format-Preserving Encryption Feistel Brute-Force]
 - [Icosahedral Symmetry Group Cipher]
 - [Goldwasser-Micali Ciphertext Replication Oracle]
+
+-
+
+## Hash-Based One-Time Signatures (WOTS+/XMSS/LMS) — Reuse and Dominance Forgery
+
+**Recognise it:** a "post-quantum"/"quantum-proof" signature that is an array of ~67 hash words plus a Merkle `auth_path`, `leaf_index`, `pub_seed`, and a committed `root`. Parameters `w=16, len1=64, len2=3` mean the digest is split into 64 nibbles plus a 3-nibble checksum, and word `i` is the hash chain from the secret start, iterated `digits[i]` times.
+
+**Dominance forgery — what one signature already gives you.** A signature over digest `A` publishes chain `i` at index `A_i`. Chains only run forward, so any digest `T` with `T_i >= A_i` for **all** `len` positions is forgeable by continuing each chain `T_i - A_i` steps. The checksum blocks are what stop trivial abuse: raising message nibbles lowers the checksum, so a single signature yields a valid `T` with probability ~`0.53^len` ≈ 2⁻⁵⁹ — do not try to grind this from one sample.
+
+**Reuse is the real break.** If the same leaf ever signs twice, take the per-index minimum: `m_i = min` over samples, keeping that sample's word. `m_i` is the minimum of K uniform draws over `0..w-1`, so K≈64–80 drives almost every `m_i` to 0 — then a chosen digest dominates `m` on the first or second grind and you can sign **anything** for that leaf.
+
+```python
+# per-chain minima across K signatures under one leaf
+for digest, sig in samples:
+    d = digits(digest)
+    for i in range(LEN):
+        if d[i] < mins[i]:
+            mins[i], best[i] = d[i], sig[i]
+# forge for any target whose digits dominate mins
+forged = [chain(best[i], i, mins[i], dt[i] - mins[i], pub_seed) for i in range(LEN)]
+```
+
+**Where reuse comes from — audit the state, not the maths.** These schemes are *stateful*: security holds only while the leaf counter advances monotonically and is durable. The implementation is usually correct; the surrounding system is not. Look for a snapshot/restore, chain reorg, backup rollback, HSM re-seed, container restart, or a "rewind"/"replay" endpoint that resets the counter while the key material persists. Prove it by requesting two signatures across the reset and comparing `leaf_index`. The same reasoning applies to LMS and to any Lamport/Winternitz variant.
+
+**Grind the target, not the key.** When the verifying application hashes attacker-controlled fields (an EIP-712 struct with a free `salt`, a nonce, a memo), grind that field until `digits(target)` dominates `mins`; you never need to invert the signer's domain separation.
 
 -
 

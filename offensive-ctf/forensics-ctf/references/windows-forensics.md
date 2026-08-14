@@ -6,6 +6,8 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 
 ## Table of Contents
 - [Windows Event Logs (.evtx)](#windows-event-logs-evtx)
+- [IIS W3C Access Logs and UTC Anchoring](#iis-w3c-access-logs-and-utc-anchoring)
+- [AD CS and DCSync Event Correlation](#ad-cs-and-dcsync-event-correlation)
 - [Registry Analysis](#registry-analysis)
   - [OEMInformation Backdoor Detection](#oeminformation-backdoor-detection)
 - [SAM Database Analysis](#sam-database-analysis)
@@ -17,6 +19,9 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [WinZip AES Encrypted Archives](#winzip-aes-encrypted-archives)
 - [NTFS Alternate Data Streams](#ntfs-alternate-data-streams)
 - [NTFS MFT Analysis](#ntfs-mft-analysis)
+- [Resident MFT Data and USA Fixup](#resident-mft-data-and-usa-fixup)
+- [Windows Data Deduplication Recovery](#windows-data-deduplication-recovery)
+- [Reused or Deleted MFT Records via USN and `$LogFile`](#reused-or-deleted-mft-records-via-usn-and-logfile)
 - [USN Journal ($J) Analysis](#usn-journal-j-analysis)
 - [SAM Account Creation Timing](#sam-account-creation-timing)
 - [Impacket wmiexec.py Artifacts](#impacket-wmiexecpy-artifacts)
@@ -64,6 +69,50 @@ with evtx.Evtx("Security.evtx") as log:
                 data[d.get('Name')] = d.text
             print(f"User created: {data.get('TargetUserName')}")
 ```
+
+
+## IIS W3C Access Logs and UTC Anchoring
+
+IIS W3C extended-log `date`/`time` fields are UTC even though the line has no
+offset. Treat them as second-precision values; do not apply the analyst
+workstation's local timezone. Anchor the IIS timeline against an independent
+NTFS/USN FILETIME or EVTX `SystemTime` from the same request or file operation,
+then retain the peer artifact's fractional seconds and the raw IIS line.
+Record any timezone/precision assumption explicitly. Separate earlier internal,
+health-check, or background traffic from the first interaction attributable to
+an external actor when the question asks for an actor timeline.
+
+
+## AD CS and DCSync Event Correlation
+
+For AD CS investigations, keep the CA and domain-controller timelines separate
+until fields join them:
+
+| Event | Source | Forensic use |
+|-|-|-|
+| 4900 | CA Security log | Certificate-template security descriptor changed; inspect `NewSecurityDescriptor`, principal, and rights. |
+| 4898 | CA Security log | A certificate template was loaded; inspect `TemplateInternalName` and `TemplateVersion`. |
+| 4886 | CA Security log | Certificate request received; record `RequestId`, requester, template, and requested SAN/subject. |
+| 4887 | CA Security log | Certificate issued; match the issued disposition and `RequestId` to the request. |
+| 4768 | DC Security log | TGT request; `PreAuthType=16` and populated certificate fields indicate PKINIT. |
+
+Correlate a suspected template change (4900/4898) to 4886 and 4887 by
+`RequestId`; do not assume the first request is the certificate later used.
+For the authentication step, compare the certificate serial in the issued
+certificate/4887 record with `CertSerialNumber` in the PKINIT 4768 record. Keep
+the timestamps distinct: the template-change second answers when configuration
+changed, while the matching 4768 answers when the certificate was used.
+
+For DCSync, hunt Security 4662 records with `ObjectServer=DS`,
+`AccessMask=0x100`, and replication extended-right GUIDs in `Properties`:
+
+- `1131f6aa-9c07-11d1-f79f-00c04fc2dcd2` — DS-Replication-Get-Changes
+- `1131f6ad-9c07-11d1-f79f-00c04fc2dcd2` — DS-Replication-Get-Changes-All
+
+Group matching 4662 records by subject, logon/session, object, and a narrow
+time window. The earliest qualifying 4662 is the operation's first-event
+timestamp; later 4662 records are usually continuation/property accesses and
+should not replace that start time.
 
 -
 
@@ -314,6 +363,88 @@ for entry in fs.open_dir("/"):
 # - Attribute 0x10 ($STANDARD_INFORMATION): Contains SI timestamps (modifiable)
 ```
 
+
+## Resident MFT Data and USA Fixup
+
+Small files can store their `$DATA` resident inside the MFT record. Before
+parsing resident content, apply NTFS multi-sector USA (Update Sequence Array)
+fixup: use the record's fixup offset/count, replace each sector-trailer update
+sequence value with the corresponding original two bytes from the USA array,
+then parse attributes. A failed fixup can make valid resident text appear
+truncated or corrupt. USA fixup is separate from the USN journal's Update
+Sequence Number.
+
+
+## Windows Data Deduplication Recovery
+
+An optimized NTFS file no longer has ordinary content in its `$DATA` stream.
+Its MFT record carries an `IO_REPARSE_TAG_DEDUP` (`0x80000013`) resident
+`$REPARSE_POINT` that points into `System Volume Information\Dedup\ChunkStore`.
+Recover the logical bytes from the Dedup metadata and chunk containers; copying
+the reparse-backed placeholder does not recover the document.
+
+### Evidence and timeline order
+
+1. Apply USA fixups to the 1024-byte MFT record and enumerate attributes.
+2. Use `$FILE_NAME` for the filename and DOS attributes. Compute an attribute's
+   absolute MFT offset as `record_number * record_size + attribute_offset`.
+3. Parse the resident Dedup reparse value. The first eight bytes are the standard
+   reparse header (`tag`, data length, reserved). In the observed Windows Server
+   layout, offsets from the **start of the resident value** are: original logical
+   size `0x10`, GUID `0x20`, stream-map offset `0x48`, and stream hash `0x60`.
+   Equivalently, these are `0x08`, `0x18`, `0x40`, and `0x58` from the start of
+   the tag-specific data buffer. Validate tag, value length, and logical size
+   rather than assuming one layout.
+4. Follow the stream-map record in the `Stream` container. Its `Smap` entries
+   provide ordered data-container offsets and cumulative logical lengths; derive
+   each chunk length by subtracting adjacent cumulative values.
+5. At each data-container offset, verify the `Ckhr` header. The common header is
+   `0x58` bytes; its payload length field is at header offset `0x0c`. Append only
+   the payload bytes, in stream-map order.
+6. Require the concatenated length to equal the reparse logical size, then verify
+   the recovered format and a cryptographic hash. For OOXML, also run a complete
+   ZIP integrity check before trusting document properties or text.
+
+Keep the three notions of length distinct: stream-map cumulative logical length,
+chunk-header payload length, and physical container span. A tool that treats the
+container span as payload can silently include the next header or alignment.
+
+### Configuration and job artifacts
+
+Correlate, rather than collapse, the relevant clocks:
+
+| Artifact | Use |
+|-|-|
+| Setup EVTX, Servicing 7/9 | Package state transition start/completion. |
+| System EVTX, SCM 7045 | Feature service registration; often the operational “installed” second. |
+| Dedup Operational 6158/6153 | Job start/completion, saved bytes, optimized-file count, and status. |
+| `Dedup\Settings\dedupConfig.*.xml` | FILETIME-like change time and custom/default excluded extensions. |
+| `Dedup\State\dedupStatistics.xml` | Current optimized-file and savings counters. |
+| Dedup scheduled-task XML | Start boundary, weekly day, recurrence, and next run. |
+
+When a question asks when a feature was “installed,” do not assume CBS completion
+is the intended semantic. Preserve package start, package completion, service
+registration, and management-transaction completion separately; use the task's
+wording or a bounded explicit oracle to select among them. For a weekly scheduled
+task, advance the start boundary to the next matching weekday after acquisition,
+preserving its wall-clock time and documenting the timezone assumption.
+
+
+## Reused or Deleted MFT Records via USN and `$LogFile`
+
+When a USN file reference points to a deleted record or a segment whose current
+MFT row now names another file, treat the live row as a reused record rather
+than as evidence about the old file. Preserve the MFT segment and sequence
+number, parent reference, filename, and USN timestamp. Search `$LogFile` redo/
+undo records for the historical UTF-16 name, namespace operation, file
+reference, and FILETIME. Matching those records to the USN create/rename/delete
+sequence can recover a path and operation time after MFT reuse.
+
+Report the result as reconstructed from USN + `$LogFile` when the original
+`$STANDARD_INFORMATION`/`$FILE_NAME` attributes are no longer present. Keep
+the earliest and completed lifecycle timestamps separately, applying the USN
+semantics below to distinguish allocation/staging from successful write/close.
+
 -
 
 ## USN Journal ($J) Analysis
@@ -345,6 +476,11 @@ def parse_usn_record(data, offset):
 # 0x100=FILE_CREATE, 0x200=FILE_DELETE, 0x1000=NAMED_DATA_OVERWRITE
 # 0x80000000=CLOSE
 ```
+
+USN `FILE_CREATE` marks allocation and can precede the final write. For a
+question asking when creation successfully completed, prefer the complete
+`FILE_CREATE|DATA_EXTEND|CLOSE` record when present, rather than the first
+`FILE_CREATE` record alone. Keep the first record as the earliest staging time.
 
 **Key forensic uses:**
 - Find file creation/deletion times even when logs are cleared

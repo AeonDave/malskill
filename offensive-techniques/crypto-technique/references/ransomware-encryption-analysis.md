@@ -64,6 +64,17 @@ For each encrypted file sample:
 | Not feasible from current evidence | Strong crypto appears correctly used and private key is absent |
 | Inconclusive | Missing memory, sample, original plaintext, or key-exchange evidence |
 
+## Sidecar-wrapped stream-cipher recovery
+
+Some lab and incident artifacts keep a per-file key in a companion sidecar while the ransomware binary embeds a static wrapper key. Confirm the relationship in the **static** key-management path before attempting recovery:
+
+1. Hash and preserve the sample, ciphertext, and sidecar; work from copies or streamed archive members.
+2. Identify the wrapper key in read-only data and the exact sidecar prefix length consumed by the unwrap routine. Do not assume the whole sidecar is key material; stack over-reads and padding are common.
+3. Reimplement only the observed primitive locally: `per_file_key = RC4(wrapper_key, sidecar[:N])`, then `plaintext = RC4(per_file_key, ciphertext)` (substitute the proven primitive/mode when different).
+4. Validate the result with exact length, known headers/record structure, and a cryptographic hash. Repeat on an independent file before claiming a general decryptor.
+
+This lane is static recovery, not malware execution: parse the ELF/PE/archive and emulate or reimplement the narrow key/decrypt routine only. Stop if the routine depends on unmodelled runtime state, filesystem effects, or network behavior; move to the isolated dynamic workflow instead.
+
 ## Evidence requirements
 
 - Exact algorithm and mode identification.

@@ -41,6 +41,17 @@ file binary                                          # "statically linked" typic
 # Even when symbol table is stripped, pclntab often survives
 ```
 
+### 1.2a Garble-obfuscated config closures (static-only)
+
+Garble may replace a Go configuration literal with an obfuscated closure while leaving enough pclntab/type metadata to find the accessor. When strings and packed-IP scans are inconclusive:
+
+1. Recover function boundaries and candidate accessors with pclntab/GoReSym; follow the call site to the sole closure that returns the configuration value.
+2. Treat the result as a Go string pair `(pointer, length)`, not a null-terminated C string. Confirm the conversion helper and returned length in the disassembly.
+3. If the closure is self-contained, use CPU-only Unicorn with the code/data mappings, ABI registers, stack, and narrowly stubbed allocator/conversion calls. Set an instruction limit and stop at the return; do not map syscalls, networking, or the implant's normal runtime.
+4. Decode exactly the returned length and validate it against the call path and expected field type. A printable IP/URL from an arbitrary data scan is not a C2 proof without this control-flow/data-flow chain.
+
+This is static routine emulation, not execution of the Go implant. If the closure requires Go runtime initialization, external state, or side effects, stop and use an isolated user-mode/full-system lane only when the runtime question justifies it.
+
 ---
 
 ### 1.3 Go Memory Layout

@@ -4,6 +4,18 @@
 
 Correlate Windows artifacts that show what executed, when it likely executed, and which user or process context was involved.
 
+## Table of contents
+
+- [Core artifact set](#core-artifact-set)
+- [Triage workflow](#triage-workflow)
+- [LNK analysis cues](#lnk-analysis-cues)
+- [Jump List analysis cues](#jump-list-analysis-cues)
+- [Prefetch interpretation](#prefetch-interpretation)
+- [Windows execution correlation edge cases](#windows-execution-correlation-edge-cases)
+- [Timeline synthesis](#timeline-synthesis)
+- [SAM `F` LastLogon caveat](#sam-f-lastlogon-caveat)
+- [Common pitfalls](#common-pitfalls)
+
 ## Core artifact set
 
 | Artifact | Typical location | What it proves |
@@ -71,6 +83,42 @@ Caveats:
 - Disabled on some servers.
 - File presence is not guaranteed after cleanup.
 - Program name collisions require path and hash corroboration.
+- Prefetch last-run is a launch timestamp, not a process-exit timestamp. Likewise, a USN write to the corresponding `.pf` is Prefetch trace maintenance; use process telemetry or the remote side of a session to establish termination.
+
+## Windows execution correlation edge cases
+
+### Recovering raw UTF-16 Sysmon EVTX slack
+
+An EVTX parser can yield no allocated record for an important Sysmon event even though the file still contains readable UTF-16 strings in record slack or overwritten/adjacent data. Use this only as a recovery pivot:
+
+1. Parse allocated records first and preserve parser errors, skipped-record counts, and event record IDs.
+2. If an expected path, timestamp, or command is absent, scan the EVTX read-only for both UTF-16LE alignments. `strings -el <sysmon.evtx>` or a bounded byte scanner can locate paths, hashes, timestamps, and commands.
+3. Keep the raw byte offset and the surrounding provider/channel, event ID marker, timestamp, image, and command fields. A string hit alone is not a complete event.
+4. Interpret fields only when the Sysmon schema order is intact: Event 1 (`Image`, `CommandLine`), Event 7 (`ImageLoaded`, PE metadata), and Event 11 (`TargetFilename`). Corroborate the recovered hit with a second artifact before reporting execution.
+5. Never execute a recovered image or script. Store decoded strings and queries under the case workspace, not beside the evidence.
+
+Raw slack may contain older or neighboring records, so do not infer record order solely from byte offset. Treat the offset as a reproducibility pointer and report the recovered field sequence plus its corroborating artifact.
+
+### USN native attributes and MFT parent resolution
+
+USN `$J` `FILE_CREATE` (`0x100`) is a change reason, not a type assertion. Parse the USN `FileAttributes` bitmask and resolve both the file reference and parent reference through `$MFT`:
+
+- USN `FILE_ATTRIBUTE_DIRECTORY` (`0x10`) is the native directory attribute.
+- An NTFS MFT record with header flags `0x01` is an in-use file; `0x03` is an in-use directory (`0x02` adds the directory bit).
+- Resolve the parent using the full MFT file reference, including its sequence number, then choose the Win32 `$FILE_NAME` over a DOS alias where both exist.
+- Do not classify an extensionless name as a directory. Confirm the type from USN attributes and MFT flags; a file such as `C:\Windows\<name>` can be an in-use file.
+
+If the MFT snapshot lacks the referenced record or has a reused segment, report the path as unresolved and corroborate with Sysmon Event 11 `TargetFilename`, Prefetch path strings, or another current filesystem source. A resolved parent is stronger than a path guessed from the current directory of a command.
+
+### Prefetch, USN, and Sysmon correlation
+
+Build the execution chain in this order:
+
+1. Use Prefetch for executable identity, last-run times, run count, and referenced paths; retain the volume GUID and hash-bearing filename.
+2. Use USN create/extend/delete records to establish when the executable, Prefetch file, staging directory, and persistence artifacts were written. Resolve parent paths with `$MFT` before grouping records.
+3. Use Sysmon Event 1 for process and command line, Event 7 for loaded-image PE metadata, and Event 11 for file targets. Use PowerShell 4104 or Security 4688 when script/process content is available.
+4. Prefer a direct Sysmon + Prefetch + USN match for high confidence. Treat an MFT creation timestamp as context when the MFT is a stale snapshot or was collected after the activity.
+5. Record gaps explicitly: missing AmCache does not disprove execution, and a Prefetch hit does not by itself identify the process parent or prove persistence.
 
 ## Timeline synthesis
 
@@ -83,6 +131,15 @@ For each suspected execution, produce:
 | Artifact chain | LNK + Prefetch + EVTX 4688 + SRUM |
 | Confidence | High/Medium/Low |
 | Explanation | What each artifact supports and what remains uncertain |
+
+## SAM `F` LastLogon caveat
+
+Some Windows builds and registry parsers expose an account LastLogon value from `SAM\Domains\Account\Users\<RID>\F`. Treat it as an account-state timestamp, not as standalone proof of an interactive session or the latest Security 4624 event:
+
+- Identify the username/RID from the SAM names mapping before reading the `F` value.
+- Convert the parser's FILETIME-derived value to UTC and preserve the hive/source pointer.
+- Corroborate with profile creation, User Profile Service, Terminal Services, or Security events when the question asks for an interactive login.
+- Do not replace a validated account timestamp with a later service logon merely because it appears later in EVTX record order.
 
 ## Common pitfalls
 

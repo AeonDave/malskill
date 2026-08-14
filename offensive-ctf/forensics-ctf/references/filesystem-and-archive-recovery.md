@@ -5,6 +5,7 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 # CTF Forensics - Filesystem and Archive Recovery
 
 ## Table of Contents
+- [Safe Archive Triage and In-Memory Payload Inspection](#safe-archive-triage-and-in-memory-payload-inspection)
 - [LUKS Master Key Recovery from Memory Dump](#luks-master-key-recovery-from-memory-dump)
 - [PRNG Timestamp Seed Brute-Force for Encryption Key Recovery](#prng-timestamp-seed-brute-force-for-encryption-key-recovery)
 - [VBA Macro Encoded Binary Recovery](#vba-macro-encoded-binary-recovery)
@@ -26,6 +27,46 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 - [Recursive Binwalk Chain PNG->PDF->DOCX->PNG->Base64](#recursive-binwalk-chain-png-pdf-docx-png-base64)
 - [Regex-Password Nested Zip Chain with exrex](#regex-password-nested-zip-chain-with-exrex)
 - [See Also](#see-also)
+
+-
+
+## Safe Archive Triage and In-Memory Payload Inspection
+
+Inventory an untrusted archive before extraction. Record member names, declared sizes, compression ratios, encryption state, and total claimed output. Reject absolute paths, drive/device paths, `..` traversal, NTFS alternate-data-stream names, and entries whose resolved destination escapes the case workspace. Do not call `extractall()` on unvalidated members.
+
+For an encrypted ZIP containing a quarantinable executable, hash and analyze the member directly in memory:
+
+```python
+import hashlib
+import zipfile
+import pefile
+
+with zipfile.ZipFile("evidence.zip") as archive:
+    payload = archive.read("collection/path/sample.exe", pwd=b"case-password")
+
+print(hashlib.sha256(payload).hexdigest())
+pe = pefile.PE(data=payload, fast_load=False)
+print(hex(pe.OPTIONAL_HEADER.ImageBase), pe.FILE_HEADER.Machine)
+```
+
+This preserves the original container and avoids materializing malware merely to inspect PE headers, imports, strings, or disassembly. If a tool requires a file, use an isolated execution workspace and record that exception explicitly.
+
+Tar headers may claim huge sparse files even when the compressed archive is small. List names and sizes first, set per-member and total-output limits, and stream only relevant regular files:
+
+```python
+import tarfile
+
+limit = 128 * 1024 * 1024
+with tarfile.open("logs.tar.gz", mode="r|*") as archive:
+    for member in archive:
+        if member.isfile() and member.size <= limit and member.name.endswith("auth.log"):
+            stream = archive.extractfile(member)
+            for line in stream or ():
+                # Apply a bounded evidence search here.
+                pass
+```
+
+Monitor free space before any bulk recovery. If an extraction is aborted, remove only the resolved derived output tree after verifying it remains inside the case workspace; never touch the original archive.
 
 -
 

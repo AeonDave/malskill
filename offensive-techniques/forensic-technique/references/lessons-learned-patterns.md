@@ -6,6 +6,21 @@ Codify reusable investigation lessons from recurring incident patterns.
 
 Use this reference when you need fast, high-confidence answers from mixed artifacts (EVTX, registry hives, MFT, PCAP, memory, firmware dumps, API traces).
 
+## Contents
+
+1. Objective-to-artifact mapping
+2. Windows EVTX and PowerShell
+3. Registry persistence
+4. MFT triage
+5. PCAP extraction
+6. API trace reconstruction
+7. Linux live response
+8. Firmware/OpenWrt
+9. Memory and hibernation
+10. Cloud-sync SQLite WAL history
+11. Native configuration proof
+12. Objective-driven reporting
+
 ## 1) Objective-to-artifact mapping first
 
 Before parsing data, map each objective to the **lowest-cost decisive artifact**.
@@ -115,7 +130,66 @@ Use for active backdoors and compromised servers.
 - Prioritize hidden/injected/module-anomaly indicators.
 - Dump only hypothesis-linked regions/processes to keep chain-of-evidence clean.
 
-## 10) Reporting template for objective-driven forensics
+## 10) Cloud-sync SQLite WAL history
+
+Use when the live sync database shows only the latest object at a path but the
+question depends on an earlier creation or replacement.
+
+1. Preserve and hash the database, `-wal`, and `-shm` as one evidence set; work
+   only on copies.
+2. Parse the WAL as a 32-byte header followed by 24-byte frame headers and
+   page-sized payloads. Accept only the continuous frame chain with matching
+   salts and valid checksums.
+3. Treat a nonzero database-size field in a frame header as a commit boundary.
+   Prefer opening a database copy with a WAL prefix ending at that frame so
+   SQLite materializes the snapshot. For raw page replay, write each page at
+   `(page_number - 1) * page_size`, truncate to the committed page count, and
+   update page 1's big-endian database-size field at bytes 28–31 before query.
+4. Track same-path objects by resource ID, eTag/version, size, and hash. A path
+   is a logical name; it does not prove that two rows describe one incarnation.
+5. Define timestamp semantics before answering "created": local placeholder
+   creation, first hydration, server-side change, download receipt, and a later
+   same-path replacement are distinct events.
+6. Corroborate the selected instant with sync-engine logs and NTFS evidence.
+   For OneDrive, a typical remote-add sequence is receipt, realization work
+   item, create-file intent, placeholder creation, then hydration. USN
+   `FILE_CREATE` independently anchors the local namespace event.
+
+When a OneDrive `.odlgz` stream has an `EBFGONED` wrapper, locate or remove the
+wrapper before gzip decoding and supply the collection's `general.keystore`
+when required by the parser. A raw decompression failure is not proof that the
+log is empty.
+
+## 11) Native configuration proof
+
+Use static bytes and call-site semantics rather than printable-string output
+when a recovered executable supplies an endpoint, target list, or ordered
+configuration.
+
+- Trace the decoder caller to recover the exact pointer, key, and length.
+  Ciphertext may contain NULs and control bytes that ordinary string scanners
+  omit.
+- Convert RVA/VA to file offsets through the section table. For RIP-relative
+  `LEA`, start from the next instruction and then apply any later `ADD`/`SUB`
+  adjustment before dereferencing.
+- Reproduce integer transforms at their real width. Mask after every
+  `NOT`/`ADD`/`SUB`/`XOR`, normalize rotate counts modulo the word size, and
+  handle a zero rotate without shifting by the word size. For `ROL32`, set
+  `n &= 31`; return `x & 0xffffffff` when `n == 0`, otherwise compute
+  `((x << n) | (x >> (32 - n))) & 0xffffffff`. Compare the final value with
+  the use site rather than a decompiler literal.
+- Decode Windows GUIDs from memory with little-endian `Data1`, `Data2`, and
+  `Data3`; the remaining eight bytes retain byte order. Map known-folder GUIDs
+  only after this conversion.
+- Prove list order from the pointer array and loop stride, not from string or
+  GUID placement in the data section. Prove "first endpoint" from call order
+  and path construction, not merely from all decoded hosts and paths.
+
+Record the source offsets, arithmetic width, decoded length, and consuming call
+for every derived value so another analyst can reproduce it without executing
+the sample.
+
+## 12) Reporting template for objective-driven forensics
 
 For each answer include:
 

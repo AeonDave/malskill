@@ -7,7 +7,9 @@ This reference is a debrandized preservation copy of imported CTF-skill material
 ## Table of Contents
 - [Log Analysis](#log-analysis)
 - [Linux Attack Chain Forensics](#linux-attack-chain-forensics)
+- [UAC Bodyfile Timestamp Oracles](#uac-bodyfile-timestamp-oracles)
 - [Docker Image Forensics](#docker-image-forensics)
+- [Linux/Docker Application Correlation](#linuxdocker-application-correlation)
 - [Browser Credential Decryption](#browser-credential-decryption)
 - [Firefox Browser History (places.sqlite)](#firefox-browser-history-placessqlite)
 - [USB Audio Extraction from PCAP](#usb-audio-extraction-from-pcap)
@@ -65,6 +67,19 @@ tshark -r capture.pcap -Y "tftp" -T fields -e tftp.source_file
 
 -
 
+## UAC Bodyfile Timestamp Oracles
+
+UAC collections commonly export a mactime bodyfile with fields `md5|path|inode|mode|uid|gid|size|atime|mtime|ctime|crtime`. Treat the four timestamp columns as raw POSIX epoch seconds until the final report; do not let the analyst host's timezone decide the answer.
+
+For a suspected command whose shell history has no timestamps:
+
+1. Preserve the exact history line and identify the executable it invokes.
+2. Parse **all four** timestamp columns for every row in a bounded window; sort by raw epoch and test whether the candidate second is unique to that executable.
+3. Correlate ordering constraints (for example, an archive-tool access before the transfer-tool access and payload creation after it). Use neighboring filesystem events as bounds, not as a replacement for the command evidence.
+4. Report raw epoch, UTC rendering, local rendering, source path, and field name. Label an executable `atime` as an artifact-level execution/read oracle: it is not a process-start record unless audit, shell, or process evidence independently proves that mapping.
+
+Package installation and collection activity can touch an executable without the attacker command running it, so exclude install-time `ctime`/`crtime` and non-unique directory/cache events. A one-second claim requires a unique field-level match plus command-order support; otherwise report an interval and confidence rather than false precision.
+
 ## Docker Image Forensics
 
 **Pattern:** Sensitive data leaked during Docker build but cleaned in later layers.
@@ -87,6 +102,84 @@ python3 -m json.tool blobs/sha256/<config_hash> | grep -A2 "created_by"
 6. Even if a later layer `rm -f secret.txt`, the `RUN echo "flag{...}" > secret.txt` remains visible
 
 -
+
+## Linux/Docker Application Correlation
+
+Use host networking evidence to identify the service before interpreting application artifacts:
+
+```bash
+ip -brief addr
+ss -lntup
+docker ps -a --no-trunc --format '{{json .}}' > docker-ps.json
+docker inspect $(docker ps -aq) > docker-inspect.json
+docker logs --timestamps <container> > container.log
+```
+
+Correlate the `docker ps` JSON, `docker inspect` JSON, and Docker/application log records. Match each host listener (address and port) to `NetworkSettings.Ports`, `Config.ExposedPorts`, image, command, mounts, and container name in the inspect JSON; confirm the mapping in the container logs. Keep the raw JSON and logs unchanged. For JSON-line application logs, normalize the request fields while retaining the original record, request/trace ID, and sequence:
+
+```bash
+jq -r 'select(type == "object") |
+  [(.timestamp // .time // .ts // ""),
+   (.source_ip // .remote_addr // .client_ip // ""),
+   (.user_agent // .http_user_agent // .ua // ""),
+   (.status // .status_code // ""),
+   (.path // .request_path // .uri // .request_uri // ""),
+   (.request_id // .trace_id // "")] | @tsv' app.jsonl
+```
+
+```bash
+jq -r 'select(.query? or .statement?) |
+  [(.timestamp // .time // .ts // ""),
+   (.request_id // .trace_id // ""),
+   (.query // .statement)] | @tsv' app.jsonl | nl -ba
+```
+
+Number query/statement records in their emitted order, then map that sequence to the command or audit event sharing its request/trace ID and normalized timestamp. If IDs are absent, use the same process/connection and a bounded time window, and label the association inferred; URL/path similarity alone is not an exact match. Preserve ties and original fractional timestamps.
+
+Inspect application caches on a copy. A common wrapper is pickle (outer object) → zlib (embedded bytes) → msgpack (inner record). Pickle is executable serialization: use `pickletools.dis`/`genops` only, never `pickle.loads` or `Unpickler` on untrusted data.
+
+```python
+from pathlib import Path
+import pickletools, zlib, msgpack
+
+raw = Path("cache.bin").read_bytes()
+pickletools.dis(raw)  # structural view; does not execute pickle opcodes
+
+for op, arg, pos in pickletools.genops(raw):
+    if isinstance(arg, (str, bytes)):
+        print(pos, op.name, repr(arg))
+    if op.name in {"BINBYTES", "SHORT_BINBYTES", "BINBYTES8"}:
+        try:
+            record = zlib.decompress(arg)
+            print(msgpack.unpackb(record, raw=False, strict_map_key=False))
+        except (zlib.error, ValueError, msgpack.exceptions.ExtraData,
+                msgpack.exceptions.FormatError) as exc:
+            print(pos, "not a zlib/msgpack payload:", exc)
+```
+
+For a hex-encoded pickle found in source or logs, decode only with `bytes.fromhex` (after removing whitespace), then run the same disassembly:
+
+```python
+hex_text = "".join(hex_text.split())
+pickle_blob = bytes.fromhex(hex_text)
+pickletools.dis(pickle_blob)
+```
+
+Opcode string/byte arguments expose command, host, port, and other reverse-shell parameters without deserialization.
+
+Keep vulnerability attribution chronological: the initial CVE is the flaw evidenced by the first foothold or code-execution event; a later local-privilege or service-pivot flaw is a follow-on CVE. Require affected component/version/configuration and event-level evidence for each label rather than assigning every later action to the initial CVE.
+
+Normalize timestamps before sorting or joining records. Preserve the raw value, parse numeric fractions with `Decimal` rather than binary floats, and honor the requested output precision:
+
+```python
+from decimal import Decimal, ROUND_HALF_UP
+
+def round_epoch(value, places=0):
+    quantum = Decimal(1).scaleb(-places)
+    return Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP)
+```
+
+Use `places=0` for a seconds-only format (nearest second, not truncation); use `places=3` for milliseconds, or the precision requested by the report. Convert timezone-bearing timestamps to one timezone before comparing them.
 
 ## Browser Credential Decryption
 

@@ -6,6 +6,7 @@ Load for SDR/IQ inputs, CubeSat links, orbital-mechanics tasks, or ground-segmen
 
 - SDR reception and gr-satellites
 - ZMQ "SDR modem" endpoints
+- Direct-bit AFSK over I/Q
 - Link layers: AX.25 / KISS
 - CubeSat Space Protocol (CSP)
 - TLE / SGP4 orbital mechanics
@@ -38,10 +39,40 @@ ev = recv_monitor_message(mon)      # SUCCEEDED => peer is PULL => this is the u
 # close the monitor socket before ctx.destroy(), or termination hangs
 ```
 
-- **A bound socket is not a running consumer.** Before blaming your modulation, prove the far side actually reads: set a low `SNDHWM`, push fixed-size messages until `EAGAIN`, then keep pushing for ~30 s and measure steady-state throughput. Sending a few hundred messages proves nothing — ZMQ buffers `SNDHWM + peer RCVHWM` (default **1000**) messages with no reader at all, so an early "it accepted everything" reads as success when nothing is listening. Zero steady-state drain means no waveform will ever work.
-- Steady-state drain rate also *characterises* the modem: bytes/s ÷ item size = sample rate, which resolves float32-vs-complex64 and the rate together.
+Faster: the peer **announces its own type in one connection**, so you can read it directly instead of trying types in turn. Speak raw ZMTP — send the 64-byte greeting (`\xff` + 8 pad + `\x7f`, version `3 1`, mechanism `NULL` padded to 20, then zeros), send any `READY` command, and parse the peer's `READY` for its `Socket-Type` value. This also works when *every* pairing you would have tried is incompatible, which leaves the monitor approach with no positive result to point at.
+
+```
+recv: 041a 05 READY 0b Socket-Type 00000004 PULL   # peer is PULL => you PUSH here
+```
+
+- **A bound socket is not a running consumer.** Set a low `SNDHWM`, fill the queue to `EAGAIN`, then measure newly accepted bytes in fixed windows after saturation. ZMQ can buffer roughly `SNDHWM + peer RCVHWM` messages without an application reader. If cumulative accepted bytes plateaus while `total_bytes / elapsed_time` decays like `1/t`, only a finite buffer was filled; no sustained drain was proven.
+- Infer a sample rate from drain throughput only when the receiver is explicitly real-time paced and the item size is known. An unthrottled GNU Radio flowgraph consumes as fast as scheduling and CPU allow, so network throughput does not identify `float32` versus `complex64` or the configured sample rate.
 - A downlink that stays silent while the uplink is genuinely draining means the sink emits only on a successful decode — treat it as a pass/fail decode oracle, not a stream you can characterise passively.
+- **Treat each ZMQ message as a possible burst/PDU boundary.** Start with one complete waveform per `send()`; arbitrary fixed-size chunking can split a decoder unit even when the bytes are otherwise correct. A downlink may split one burst across messages, so collect until a short quiet interval and concatenate before demodulating. Validate the total against `bits × samples_per_symbol × bytes_per_sample`.
+- Do not flood a stateful endpoint with zeros or format probes before the best candidate. Queued samples can survive long enough to contaminate later tests. If no flush operation exists, restart or reconnect to clean state after a large malformed probe.
 - **Stream vs message mode changes the payload entirely.** GNU Radio stream ZMQ blocks carry bare little-endian samples; the `*_msg_*` blocks carry **PMT-serialized** PDUs (`pmt::serialize_str`), where a PDU is `cons(metadata, u8vector)`. Tags from `pmt_serial_tags.h`: `PST_NULL 0x06`, `PST_PAIR 0x07`, `PST_UNIFORM_VECTOR 0x0a` (then a uniform-vector subtype byte, `0x00` = u8). Confirm the uniform-vector header field order (element count vs pad byte) against a real captured message before trusting a hand-rolled serializer — a malformed PDU is dropped silently and is indistinguishable from a bad waveform.
+
+## Direct-bit AFSK over I/Q
+
+Do not assume an AFSK link adds AX.25, HDLC, NRZI, CLTU, or a sync marker. A short reference recording can establish the whole physical contract:
+
+1. Compute `duration × baud`. If it equals the payload bit count, decode tones directly; there is no room for framing overhead.
+2. For stereo PCM, test whether channel 2 is approximately `±imag(hilbert(channel 1))`. High correlation means the channels are I/Q, not duplicate audio. Form `z = I + 1j*Q` and preserve the sign that yields the expected frequency direction.
+3. Estimate instantaneous frequency with `angle(z[n] * conj(z[n-1])) × sample_rate / (2π)`. Cluster symbol medians to recover the two tones and determine the bit mapping from known plaintext; do not assume mark polarity.
+4. Try every sample phase within one symbol, normal/inverted bits, and MSB/LSB packing. A clean candidate should produce coherent bytes across the whole burst, not just one printable fragment.
+5. Mirror the proven representation on transmit. Common wire forms are little-endian `complex64`, interleaved little-endian signed-16 I/Q, and mono `float32`; the reference artifact decides which one.
+
+For integer samples per symbol, direct analytic-IQ generation is enough:
+
+```python
+bits = np.unpackbits(np.frombuffer(frame, np.uint8), bitorder="big")
+freq = np.where(bits == 1, mark_hz, space_hz)
+phase = np.cumsum(2 * np.pi * np.repeat(freq, samples_per_symbol) / sample_rate)
+burst = np.exp(1j * phase).astype("<c8")
+socket.send(burst.tobytes())       # one complete burst, one message
+```
+
+If one valid uplink produces a structurally valid downlink, freeze the physical-layer hypothesis. Subsequent silence is then a framing or application-state oracle; vary only the smallest unresolved fields instead of resweeping modulation.
 
 ## Link layers: AX.25 / KISS
 
@@ -92,6 +123,33 @@ The ground segment is often the actual target, not the RF link:
 - **NASA cFS (core Flight System)** — flight-software framework; apps talk over the software bus. **Aquila CVEs 2025**: CVE-2025-25373 (MM insecure permissions → **RCE**, CVSS 9.8), CVE-2025-25371 (OSAL path traversal), CVE-2025-25372 (MM segfault via TC), CVE-2025-25374 (app-launch DoS). CVE-2026-5475 buffer overflow in `CFE_SB_TransmitMsg` CCSDS header handler (cFS ≤ 7.0.0). **NOS3** bundles cFS + COSMOS + Yamcs as a full satellite simulator — a single container to practice the whole chain end-to-end.
 - **Kubos** — CubeSat flight-software/mission framework; historic Hack-A-Sat challenges leaned on **over-the-space update flows** whose "authenticating checksum" was a trivial CRC or fixed-key XOR — reverse the client before assuming HMAC.
 - Treat these like any web/service target: default creds, exposed admin panels, insecure command endpoints, and injection into telemetry/command paths. Pair with `web-ctf`/`network-technique` once you are past the space-protocol layer.
+
+### Telemetry-to-dashboard injection (custom operator consoles)
+
+Bespoke ground consoles ship a second ingest path that is not HTTP: a raw TCP/UDP telemetry
+listener. Whatever it stores is later rendered in the operator dashboard, so the protocol port
+is the injection point and the browser is the sink. Check this before hunting for reflected
+web parameters — the web tier often has none.
+
+Working method:
+1. Diff the ingest handler against the renderer. Any field derived from received bytes (a
+   printable-ASCII rendering of the frame, a decoded string parameter, a rejection `reason`)
+   that reaches `innerHTML`/`v-html`/`dangerouslySetInnerHTML` is stored XSS against every
+   connected operator.
+2. **Make the frame pass the protocol validator.** Consoles usually split accepted and
+   rejected frames into separate lists and render only the tab currently selected — an invalid
+   frame lands in a list nobody is looking at. Satisfy the checks exactly (for CCSDS: version
+   and type bits zero, and the length field equal to `len(frame) - 7`), then put the payload in
+   the packet body.
+3. Deliver to an operator who is already authenticated. A control-room session is typically
+   parked on the dashboard indefinitely, so the payload executes **same-origin** in it —
+   `httpOnly` and `SameSite=Strict` on the session cookie stop CSRF but do nothing here.
+
+Then check whether you even need to exfiltrate. These systems commonly access-control the
+*command* endpoint while broadcasting the resulting *state* to every subscriber and exposing
+the same blob on an unauthenticated status/telemetry route. When the privileged action's output
+lands in that shared state, the payload only has to press the button; read the result yourself.
+Payload construction and DOM-sink details: `../../web-ctf/references/browser-attacks.md`.
 
 Full SDLS/SDLS-EP layout, CryptoLib CVEs, cFS CVE table, OpenC3 exploit shape, and kill-chain patterns: `sdls-and-ground-cves.md`.
 

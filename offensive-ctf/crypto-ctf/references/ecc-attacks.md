@@ -216,6 +216,30 @@ d = ((s1 * k - h1) * pow(r, -1, n)) % n  # private key
 
 -
 
+## ECDSA Partially-Known Nonce (Hidden Number Problem)
+
+**Pattern:** nonces are not reused but are *biased* — the top or bottom bits are fixed, leaked, or derived from a counter/timestamp. Every `r` differs, so the reuse check finds nothing. Look for an oracle that discloses nonce structure (`{"high_parts":[...], "low_bits":128}`), a truncated RNG, or `k` built from a short random field.
+
+**Reduction (eliminate the key first — keeps the lattice small).** With `k_i = A_i + u_i` where `A_i` is known and `0 <= u_i < B`, each signature gives `s_i·k_i = h_i + r_i·d (mod n)`. Solve signature 0 for `d`, substitute into signature `i`, and every unknown key term cancels:
+
+```python
+c       = pow(r0, -1, n) * ri % n
+alpha_i = c * s0 % n * pow(si, -1, n) % n
+beta_i  = (hi + c * (s0 * A0 - h0) - si * Ai) % n * pow(si, -1, n) % n
+# u_i = alpha_i * u_0 + beta_i (mod n),  all u < B
+```
+
+Then recover `u_0` as a short vector of the `(m+1)`-dimensional lattice whose rows are
+`[1, alpha_2, …, alpha_m, 0]`, `n·e_i` for each `i`, and `[0, beta_2, …, beta_m, B]`; the target lattice point is `(u_0, …, u_m, B)`. Finally `d = (s0·(A0+u_0) - h0) · r0⁻¹ mod n`.
+
+**How many signatures:** the attack needs `B^m < n^(m-1)`, so with `B = sqrt(n)` (half the bits known) `m >= 3`; use 5–6 for margin. A 1-bit bias needs hundreds and BKZ rather than LLL.
+
+**Validate, don't assume:** derive the public key/address from each candidate `d` and compare against the known signer — LLL returns several short vectors and only one is the key.
+
+**Detection:** a signing oracle that publishes nonce metadata, "biased nonce" wording, nonces described as counter-derived, or many signatures with distinct `r` where reuse recovery fails.
+
+-
+
 ## DSA Nonce Reuse for Private Key Recovery
 
 **Pattern:** Two DSA (Digital Signature Algorithm) signatures sharing the same nonce k (same r value) leak the private key. Identical in principle to ECDSA nonce reuse but uses DSA-specific group parameters.

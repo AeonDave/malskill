@@ -5,7 +5,7 @@ license: VSL-1.0
 compatibility: "Python 3.6+; Linux/macOS/Windows."
 metadata:
   author: AeonDave
-  version: "2.1"
+  version: "2.2"
 ---
 
 # Volatility 3
@@ -275,33 +275,34 @@ python3 vol.py -f memory.raw windows.ssdt
 ## Linux Plugins
 
 ```bash
-# Processes
-python3 vol.py -f memory.raw linux.pslist
-python3 vol.py -f memory.raw linux.pstree
-python3 vol.py -f memory.raw linux.psscan
+# Supplied custom ISF: -s takes the directory containing the JSON, not the JSON path
+python3 vol.py -s /path/to/symbols -f memory.raw linux.pslist.PsList
 
-# Network
-python3 vol.py -f memory.raw linux.netstat
-python3 vol.py -f memory.raw linux.iomem
+# Processes and runtime context
+python3 vol.py -f memory.raw linux.pslist.PsList
+python3 vol.py -f memory.raw linux.pstree.PsTree
+python3 vol.py -f memory.raw linux.psscan.PsScan
+python3 vol.py -f memory.raw linux.psaux.PsAux
+python3 vol.py -f memory.raw linux.envars.Envars
 
-# Files
-python3 vol.py -f memory.raw linux.proc.maps
-python3 vol.py -f memory.raw linux.find_file --path /etc/passwd
-python3 vol.py -f memory.raw linux.find_file --path /path/to/interesting/file
+# Network and files
+python3 vol.py -f memory.raw linux.sockstat.Sockstat
+python3 vol.py -f memory.raw linux.sockscan.Sockscan
+python3 vol.py -f memory.raw linux.lsof.Lsof
+python3 vol.py -f memory.raw linux.proc.Maps
+python3 vol.py -f memory.raw linux.pagecache.Files
 
-# Bash history from memory
-python3 vol.py -f memory.raw linux.bash
-python3 vol.py -f memory.raw linux.bashrc
-
-# Environment variables
-python3 vol.py -f memory.raw linux.envars
-
-# Kernel modules
-python3 vol.py -f memory.raw linux.lsmod
-
-# Dump ELF from memory
-python3 vol.py -f memory.raw linux.proc.maps --pid 1234 --dump
+# Kernel state and rootkit pivots
+python3 vol.py -f memory.raw linux.lsmod.Lsmod
+python3 vol.py -f memory.raw linux.malware.hidden_modules.Hidden_modules
+python3 vol.py -f memory.raw linux.malware.modxview.Modxview
+python3 vol.py -f memory.raw linux.malware.check_modules.Check_modules
+python3 vol.py -f memory.raw linux.kmsg.Kmsg
+python3 vol.py -f memory.raw linux.tracing.tracepoints.CheckTracepoints
+python3 vol.py -f memory.raw linux.tracing.ftrace.CheckFtrace
 ```
+
+Load [references/linux-rootkit-triage.md](references/linux-rootkit-triage.md) when a Linux dump shows hidden modules or processes, incomplete network listings, kernel taints, tracepoint/ftrace hooks, or a supplied custom ISF.
 
 ---
 
@@ -378,14 +379,14 @@ strings file.0xce89890.dat
 
 ```bash
 # Bash history from memory
-python3 vol.py -f memory.raw linux.bash 2>/dev/null
+python3 vol.py -f memory.raw linux.bash.Bash 2>/dev/null
 
 # Find interesting env vars
-python3 vol.py -f memory.raw linux.envars 2>/dev/null | grep -iE "pass|key|flag|secret|token"
+python3 vol.py -f memory.raw linux.envars.Envars 2>/dev/null | grep -iE "pass|key|flag|secret|token"
 
-# Find /etc/shadow in memory
-python3 vol.py -f memory.raw linux.find_file --path /etc/shadow
-python3 vol.py -f memory.raw linux.find_file --inode <inode_from_above>
+# Find and recover cached /etc/shadow pages
+python3 vol.py -f memory.raw linux.pagecache.Files --find /etc/shadow
+python3 vol.py -f memory.raw linux.pagecache.InodePages --find /etc/shadow --dump
 ```
 
 ---
@@ -400,13 +401,14 @@ python3 vol.py -f memory.raw linux.find_file --inode <inode_from_above>
 | Recover deleted file | `windows.filescan` → `windows.dumpfiles --virtaddr` |
 | Dump credentials | v2.28+: `windows.registry.hivelist --dump` → `secretsdump.py LOCAL`; legacy: `windows.hashdump`/`cachedump`/`lsadump` |
 | Find target string in memory | `windows.filescan` grep indicator, then `dumpfiles` |
-| Bash history | `linux.bash` |
-| Suspicious env var | `linux.envars` grep key/flag/pass |
-| Network connections | `linux.netstat` / `windows.netscan` |
+| Bash history | `linux.bash.Bash` |
+| Suspicious env var | `linux.envars.Envars` plus parent/child comparison |
+| Network connections | `linux.sockstat.Sockstat` / `windows.netscan` |
 | Process command line | `windows.cmdline` |
 
 ## Resources
 
 | File | When to load |
 |------|--------------|
-| `references/` | Plugin cheatsheet, Windows/Linux image type notes, symbol troubleshooting |
+| [references/windows-memory-triage-flow.md](references/windows-memory-triage-flow.md) | Windows symbol troubleshooting, Vol2-to-Vol3 translation, injection, MFT, and registry workflows. |
+| [references/linux-rootkit-triage.md](references/linux-rootkit-triage.md) | Custom Linux ISFs, hidden modules, kernel hook attribution, load provenance, C2/process correlation, and environment pivots. |

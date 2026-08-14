@@ -187,8 +187,9 @@ Rubeus.exe shadow /target:user /domain:DOMAIN /dc:DC_IP
 | Certificate request | 4886 | CA Security Log | Normal cert request — check requester + template |
 | Certificate issued | 4887 | CA Security Log | Cert approved |
 | Certificate denied | 4888 | CA Security Log | Request failed/pending |
-| CA template modified | 4899 | CA Security Log | ESC4 — template property changed |
-| CA settings changed | 4900 | CA Security Log | ESC7 — ManageCA action |
+| Certificate template loaded | 4898 | CA Security Log | Inspect template name/version and correlate with enrollment activity |
+| Certificate template updated | 4899 | CA Security Log | Template properties changed |
+| Certificate template security descriptor changed | 4900 | CA Security Log | Inspect the new descriptor, principal, and granted rights |
 | Kerberos TGT w/ cert | 4768 | DC Security Log | PKINIT auth (CertificateInformation populated) |
 | msDS-KeyCredentialLink modified | 5136 | DC Security Log | Shadow credentials attack |
 | NTLM relay to IIS | IIS Access Log | CA Web Server | ESC8 relay — check source IP vs enrolled account |

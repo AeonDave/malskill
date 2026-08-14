@@ -86,6 +86,21 @@ Check:
 
 Treat as priority issues when they are user-controlled or reachable through upgrade logic.
 
+### Metamorphic contracts (CREATE2 code swap at a fixed address)
+
+A metamorphic address is `CREATE2(factory, salt, keccak(initcode))` where the initcode fetches its runtime from the factory at deploy time (classic stub: `5f5f5f5f335afa3d5f5f3e3d5ff3` — `STATICCALL` the caller, return whatever it hands back). The address therefore depends on `salt` only, **not** on the runtime — so the same address can host different code across deployments while every contract that stored it keeps trusting it.
+
+Check three things:
+- **Is `deploy(salt, runtime)` access-controlled?** These factories are frequently `external` with no owner check, so anyone can occupy any free metamorphic address.
+- **Can the resident code be removed?** Redeploying requires an empty account: a `SELFDESTRUCT` in the runtime (still erases code pre-Cancun; on Cancun+ only within the same transaction as creation), or any harness that rolls chain state back past the deployment block.
+- **Who still points at it?** A downgrade is only useful if a privileged consumer stored the address — e.g. a vault holding `antiFraud`/`oracle`/`validator`. Replacing a policy check with a permissive stub removes the control without touching the consumer.
+
+Minimal always-true runtime for a `bool`-returning guard: `60015f5260205ff3` (8 bytes) — stores 1, returns 32 bytes. Enough to satisfy Solidity's `extcodesize` check and decode as `true`.
+
+### Rollback harnesses as an attack surface
+
+A challenge or test rig that exposes a reorg/snapshot/restore endpoint rewinds **more than balances**. Enumerate what it resets: consumed-nonce and used-leaf maps (replay), metamorphic code (downgrade above), and any *off-chain* signer counter. Rolling back a stateful signature scheme's counter re-uses a one-time key — see `../../crypto-ctf/references/exotic-crypto.md` for the WOTS+/XMSS forgery that follows, and `../../crypto-ctf/references/ecc-attacks.md` if the same endpoint leaks nonce structure.
+
 ## Minimal inspection workflow
 
 1. Identify whether the address under test is proxy, implementation, or factory product.

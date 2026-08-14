@@ -6,6 +6,7 @@ Load for sequence-controlled (AD) uplink and for PUS application-layer command/r
 
 - COP-1 roles and variables
 - FARM-1 acceptance logic (the CTF-relevant part)
+- Independent link, packet, and application counters
 - AD / BD / BC frame types
 - BC directives: Unlock and Set V(R)
 - CLCW bit map
@@ -31,6 +32,27 @@ For each received **AD** frame on a virtual channel, FARM compares `N(S)` agains
 - `N(S) > V(R)` (ahead) → **discard**; after the sliding window is exceeded, FARM enters **Lockout** and rejects everything until unlocked.
 
 CTF impact: `V(R)` starts at 0. Your first AD frame must carry `N(S)=0`, the second `N(S)=1`, and so on. If the service also runs an application-level counter in the payload, that counter is independent and must be advanced in step too — the server's error messages tell you each expected value. BD frames bypass this check entirely (use when order does not matter); BC frames carry the recovery directives.
+
+## Independent link, packet, and application counters
+
+Do not collapse counters just because they begin at zero or advance together in one successful trace:
+
+| Layer | Field | Meaning |
+|---|---|---|
+| TC transfer frame | `N(S)` / FARM `V(R)` | Per-VC link ordering; 8-bit, advances for each accepted AD frame. |
+| Space Packet | Sequence Count | Per-APID packet identity; 14-bit and independent of COP-1. |
+| Application | Payload counter/state | Mission-defined command grammar; may advance before, during, or after an ACK. |
+| TM downlink | MCFC, VCFC, packet sequence | Downlink counters; they do not prescribe uplink `N(S)` or packet sequence values. |
+
+When a valid command returns an ACK but the next command is silent:
+
+1. Keep the proven PHY, frame type, SCID, VCID, APID, FECF, and `N(S)=V(R)` fixed.
+2. Parse whether the ACK carries the completed operation's value or the next accepted application value. Test the returned counter and returned+1 as separate hypotheses.
+3. Vary Space Packet sequence count independently; do not use it as a substitute for the application counter.
+4. Recreate clean state per variant. FARM can advance after accepting an AD frame even when the application later rejects its payload, so replaying the same `N(S)` may be discarded as a duplicate and hide the real result.
+5. If clean restart is unavailable, read `N(R)` from a CLCW or resynchronize with BC Unlock / Set V(R) before the next discriminating test.
+
+This produces a small matrix (`application counter × packet sequence`) while preserving the one link value COP-1 requires. Once a structurally valid TM response exists, stop changing modulation and coding layers.
 
 ## AD / BD / BC frame types
 
