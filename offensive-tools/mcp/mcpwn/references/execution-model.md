@@ -15,8 +15,8 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 ## Short commands — `execute_command`
 
 - Synchronous: the MCP request blocks until exit or timeout.
-- Inline execution is capped at 20s by default. `MCPWN_INLINE_TIMEOUT_CAP` may lower it to a 5s minimum but cannot raise it; a lower `MCPWN_MAX_LONG_POLL_SECONDS` also lowers it. Process cleanup can add bounded time after the execution timeout, so use `detach=True` near the ceiling. Detached calls have no deadline unless you pass `timeout=N`.
-- **This ceiling was 120s through v1.3.0 and became 20s in v1.3.1** — a behavioural break the MCP schema cannot express, so an inline call in the 21-120s band just starts timing out. The reason is real: a client that serializes requests to one server turns a 32s inline call into a 32s stall of every other tool, which looks like a disconnection. Move that work to `execute_command(..., detach=True)` + `poll_job(...)`. If your client issues concurrent requests and tolerates a wider request timeout, the operator can set `MCPWN_ALLOW_LONG_INLINE=1` on the server to restore the 120s default (and then raise it further with `MCPWN_INLINE_TIMEOUT_CAP`).
+- Inline execution is capped at 20s. `MCPWN_INLINE_TIMEOUT_CAP` may lower it to a 5s minimum but cannot raise it; a lower `MCPWN_MAX_LONG_POLL_SECONDS` also lowers it. Process cleanup can add bounded time after the execution timeout, so use `detach=True` near the ceiling. Detached calls have no deadline unless you pass `timeout=N`.
+- If an inline command times out at the cap, that work belongs on `detach=True` + `poll_job` — not on a larger timeout. The cap is only liftable server-side, by an operator setting `MCPWN_ALLOW_LONG_INLINE=1` for a client that issues concurrent requests (cap then defaults to 120s and `MCPWN_INLINE_TIMEOUT_CAP` may raise it).
 - Some MCP clients serialize calls to one server. An inline command delays unrelated session/catalog calls on those clients, so detach anything duration-uncertain or near the ceiling.
 - Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute, katana. Use `detach=True`.
 - Output >64 KB auto-saves to a CAS artifact (`output_mode='auto'`), returning an id + preview — don't try to inline it.
@@ -34,7 +34,7 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 - A caller/MCP request timeout can end the caller's wait without cancelling the backend job. Re-query job and cancellation state before retrying; when cancellation is needed, use `delete_job` and verify that the job reaches a terminal state.
 - If polling reports an unhealthy or unavailable backend, report that condition and stop. Do not restart or rebuild MCPwn/the backend without user direction.
 
-### The two detached paths behave differently — this matters
+### The two detached paths behave differently
 
 | | `execute_command(cmd, detach=True)` | `run_tool(name, {...}, detach=True)` |
 |---|---|---|
