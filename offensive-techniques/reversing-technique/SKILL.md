@@ -99,7 +99,9 @@ Quick assessment to decide approach:
 - `pkg/prelude` / `NODE_SEA_FUSE` / `snapshot_blob` in strings → **Node.js/V8 snapshot** (see `references/node-v8-snapshots.md`)
 - `memfd_create` in strace / `/proc/self/fd/` path to `dlopen` → **In-memory loading** (see `references/in-memory-loading.md`)
 - `ljmp 0x33:` / `push 0x33; retf` in 32-bit ELF → **Heaven's Gate Linux** (see `references/anti-analysis.md §Category 8`)
-- Two binary versions for patch analysis / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
+- PCAP / protobuf / gRPC / grpc-web / WebSocket frames / length-prefixed binary RPC → **Protocol reversing** (see `references/protocol-rev.md`)
+- `.crx` / `.xpi` / `manifest.json` / MV3 service worker / `content_scripts` / `externally_connectable` → **Browser extension reversing** (see `references/browser-extension-rev.md`)
+- Two binary versions for patch analysis / a single Microsoft Patch-Tuesday MSU to reconstruct / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
 - Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Exploitability triage** (§7b), then hand off to `offensive-techniques/binary-exploitation-technique`
 - Kernel driver/module, hidden artifacts, boot-chain tampering, or EFI/bootloader changes → **Rootkit / bootkit RE** workflow (see `references/rootkit-and-bootkit-re.md`)
 
@@ -278,6 +280,8 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 - Ignoring encryption → can't read payload without key.
 - Not correlating static + dynamic → missing protocol state machine.
 
+→ gRPC/protobuf/websocket/app-framing specifics and decoder bootstrap: `references/protocol-rev.md`.
+
 ---
 
 ### 7. Vulnerability hunting
@@ -412,6 +416,8 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 - `mitmproxy` (`offensive-tools/network/mitmproxy/`) — intercept and replay browser-initiated requests.
 - `radare2` / `ghidra` — if JS engine (V8) is compiled into a native binary.
 
+→ MV2/MV3 entry points, permission-risk triage, messaging edges, and nativeMessaging / externally_connectable audit: `references/browser-extension-rev.md`.
+
 ---
 
 ## Anti-reverse engineering bypass
@@ -500,7 +506,9 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 - [references/custom-vm.md](references/custom-vm.md) — custom VM reversing, nanomites, self-modifying code, metamorphic decrypt loops, lattice/linear-algebra solving, side-channel attacks, and emulation frameworks.
 - [references/ransomware-re.md](references/ransomware-re.md) — ransomware crypto workflow: hybrid model, Windows CryptoAPI/CNG/OpenSSL identification, implementation flaw checklist, encrypted-file analysis, public-key extraction, and YARA skeleton.
 - [references/languages.md](references/languages.md) — language/runtime pivots for Go, Rust (crate fingerprinting), Python bytecode (PyInstaller/PyArmor), Nim, VBS/WSH, Unity IL2CPP, and HarmonyOS HAP.
-- [references/binary-diffing.md](references/binary-diffing.md) — binary diff workflow (radiff2, Ghidra VT, BinDiff), FLIRT signature generation, Ghidra FID for stripped library symbol recovery.
+- [references/protocol-rev.md](references/protocol-rev.md) — capture-first custom protocol reversing: text vs binary framing, gRPC/protobuf decoding, WebSocket/app-frame separation, and minimal parser outputs.
+- [references/browser-extension-rev.md](references/browser-extension-rev.md) — Chrome/Edge/Firefox extension workflow: MV2/MV3 entry points, permission-risk triage, content-script isolation, messaging edges, storage, and nativeMessaging.
+- [references/binary-diffing.md](references/binary-diffing.md) — binary diff workflow (radiff2, Ghidra VT, BinDiff, ghidriff), FLIRT signature generation, Ghidra FID for stripped library symbol recovery, and Windows Update MSU/CAB acquisition + `PA30` delta reconstruction for n-day patch diffing.
 - Exploitability handoff: once a primitive is confirmed, `offensive-techniques/binary-exploitation-technique` owns the chaining methodology and `offensive-ctf/pwn-ctf/references` holds the concrete recipes.
 - [references/rootkit-and-bootkit-re.md](references/rootkit-and-bootkit-re.md) — Windows/Linux kernel-mode RE, driver/module triage, bootkit workflow, hook/callback analysis, and boot-chain evidence.
 - [references/nim-rev.md](references/nim-rev.md) — Nim binary recognition, symbol recovery, GC/memory layout, decompilation patterns, stripped binary workflow.

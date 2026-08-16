@@ -208,10 +208,51 @@ for entry in data.get('diff', []):
 
 ---
 
+## Category 5: Windows Update acquisition for n-day patch diffing
+
+The diff workflows above assume you already have the two versions. For a Microsoft Patch-Tuesday n-day, obtaining and reconstructing the two full binaries is the hard part — extracted patch files are **deltas, not PEs**.
+
+### Get the update
+
+- Microsoft Update Catalog (`catalog.update.microsoft.com`), search `YYYY-MM <build> x64 cumulative` (e.g. `2024-06 22H2 x64 cumulative`); download the `.msu`.
+- Shortcut for a single binary: **Winbindex** (`winbindex.m417z.com`) links direct downloads of specific file versions, skipping the whole delta dance below.
+
+### Extract
+
+```powershell
+expand.exe -F:* update.msu .\ext\            # -> WSUSSCAN.cab + <name>_PSFX.cab + .xml
+expand.exe -F:* .\ext\*_PSFX.cab .\patch\    # -> component-store tree (slow: tens of thousands of files)
+```
+
+Component folders are prefixed by platform (`amd64`/`x86`/`wow64`/`msil`) and hold differential subfolders:
+- `f` — **forward** delta (base `.1` -> this patch level)
+- `r` — **reverse** delta (this patch level -> base `.1`)
+- `n` — **null** delta (a whole new file, just compressed; apply to an empty buffer)
+
+### Reconstruct full binaries (deltas are not PEs)
+
+A file under `f`/`r`/`n` is a delta: 4-byte little-endian **CRC32** of the body, then `PA30` magic at **offset 4** (legacy `PA19`). Apply with `msdelta.dll!ApplyDeltaB`; the standard tool is wumb0's `delta_patch.py` (`-n` null, `-l` legacy). To produce two diffable versions from one on-disk file, **reverse then forward**:
+
+```powershell
+# find a delta already staged on a live 1:1 host if you don't want to extract two full months
+Get-ChildItem -Recurse C:\Windows\WinSxS\ | ? { $_.Name -eq "ntoskrnl.exe" }
+python delta_patch.py -i ntoskrnl.exe -o ntoskrnl.old.exe .\r\ntoskrnl.exe <prev-month>\f\ntoskrnl.exe
+python delta_patch.py -i ntoskrnl.exe -o ntoskrnl.new.exe .\r\ntoskrnl.exe <this-month>\f\ntoskrnl.exe
+```
+
+Verify each output hash against the `<sha256>` in the paired `.manifest` before diffing. Then feed `ntoskrnl.old.exe`/`.new.exe` into §2 (BinDiff/Ghidra VT/`ghidriff`).
+
+### High-value binary targets
+
+Prioritize by historical LPE/RCE density: `ntoskrnl.exe`, `win32k*.sys`/`win32kfull.sys` (LPE), `afd.sys` (LPE), `clfs.sys` (recurrent 0-day LPE), `http.sys` (RCE), `srv2.sys` (SMB RCE), `ksecdd.sys`, `localspl.dll`/`spoolsv.exe` (spooler), `cldflt.sys`, `mskssrv.sys`. A patched function that adds a bounds/return-value/`WAIT_OBJECT_0` check is the usual fix site.
+
+---
+
 ## Tool citations
 
 - `radare2` / `radiff2` — CLI binary diffing, graph diff output
-- `ghidra` — Version Tracking, Function ID, BSim
-- `IDA Pro` + BinDiff — high-fidelity function matching (commercial)
+- `ghidra` — Version Tracking, Function ID, BSim; `ghidriff` for headless CLI diff reports (`--json-format` for downstream analysis) — see `offensive-tools/rev/ghidra`
+- `IDA Pro` + BinDiff — high-fidelity function matching (commercial); Diaphora as the free IDA/Ghidra alternative
 - FLAIR tools (`pelf`, `sigmake`) — build FLIRT sigs from static libs (ships with IDA)
+- `expand.exe` + `delta_patch.py` (`msdelta!ApplyDeltaB`) — Windows Update MSU/CAB extraction and delta reconstruction
 - `strings`, `nm` — quick anchoring before formal diff
