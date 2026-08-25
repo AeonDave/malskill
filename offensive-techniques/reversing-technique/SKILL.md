@@ -201,7 +201,7 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 ```
 1. Triage: Identify firmware type (router, IoT, BIOS, etc.).
    - Check magic bytes: uImage (0x27051956), vmlinux, squashfs, etc.
-2. Extract: `binwalk -eM firmware.bin` → recursive extraction.
+2. Extract: preserve/hash first, identify the outer format, then follow `references/firmware-rev.md` for isolated, bounded extraction.
 3. Analyze filesystem:
    - `squashfs-root/`: config files, web interfaces, binaries.
    - Search for: hardcoded credentials, backdoor accounts, crypto keys.
@@ -498,7 +498,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 - [references/pe-rev.md](references/pe-rev.md) — PE-only pivots: RVA/raw mapping, data directories, TLS/CRT pre-entry paths, IAT/EAT/delay imports, resources/overlay/Authenticode, unpacking, and mitigation handoff.
 - [references/elf-rev.md](references/elf-rev.md) — ELF-only pivots: program headers, dynamic entries, PLT/GOT/relocations, RELRO/ASLR, symbol versioning, IFUNC/constructors, loader instrumentation, and packer/runtime surfaces.
 - [references/dotnet-rev.md](references/dotnet-rev.md) — managed-assembly workflow: deobfuscation order, resource/config extraction, stage loading, and managed/native handoff.
-- [references/firmware-rev.md](references/firmware-rev.md) — firmware container workflow: recursive extraction, filesystem/control-plane mapping, startup review, and emulation handoff.
+- [references/firmware-rev.md](references/firmware-rev.md) — firmware container workflow: format-first bounded extraction, filesystem/control-plane mapping, startup review, and emulation handoff.
 
 **Problem-specific deep dives:**
 

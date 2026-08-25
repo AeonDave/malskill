@@ -2,6 +2,16 @@
 
 Load this when the artifact is a PCAP, raw capture, WebSocket dump, gRPC/protobuf body, or a client binary whose main unknown is the application protocol rather than the program logic.
 
+## Contents
+
+- [Scope and first split](#scope-and-first-split)
+- [Capture-first triage](#capture-first-triage)
+- [Active HTTP replay contract](#active-http-replay-contract)
+- [Framing patterns that collapse the search space](#framing-patterns-that-collapse-the-search-space)
+- [Static and dynamic recovery](#static-and-dynamic-recovery)
+- [Minimal output contract](#minimal-output-contract)
+- [Common mistakes](#common-mistakes)
+
 ## Scope and first split
 
 Decide the lane before deep reversing:
@@ -29,6 +39,10 @@ Record:
 - whether lengths are big-endian or little-endian, header-inclusive or body-only
 
 For binary captures, align several same-type messages and compare the first 16-32 bytes before naming fields.
+
+## Active HTTP replay contract
+
+For each endpoint, preserve `(scheme, connect address:port, TLS SNI/ALPN, HTTP Host, method, path/query, headers, body bytes)`. Replay one known-good request verbatim before changing one field. A response from the right IP with the wrong virtual host is not a valid oracle, and endpoint contracts can differ: do not reuse a form body on a header-driven endpoint or vice versa. Record raw encoding plus response status, headers, body, and decoded structure. Public captures are compatibility fixtures, not live-instance evidence; use `oracle-verification-technique` for freshness and acceptance.
 
 ## Framing patterns that collapse the search space
 

@@ -7,6 +7,21 @@ Two storage planes plus a target-transfer layer. Pick by size, mutability, and d
 - **Session workspace** — mutable per-session dir (`workspace` from `create_analysis_session`). Tools that write/patch/run (GDB, pwntools, patchelf, unpackers) operate here.
 - **CAS artifacts** — immutable content-addressed blobs on the `:5001` data plane (`/data/artifacts`). Used for large uploads, large tool output, and cross-agent handoff. Referenced as `mcp://artifacts/<sha256>`.
 
+## Provider-scoped bridge handles
+
+When composing MCPwn with NeuroMatrix, treat `list_catalog.provider_identity` as the
+authoritative provider identity and persist it with the returned `provider_ref` for
+every session, artifact, workspace, job, interactive, and endpoint handle. All IDs and
+refs are opaque and provider-scoped. `workspace_ref` is a logical, non-path reference:
+pass it unchanged to a discovered provider tool; never inspect, derive, or exchange a
+provider filesystem path or an MCPwn workspace path.
+
+Keep detached job handles distinct: `operation_id` is the MCPwn bridge job for
+`poll_job`/`delete_job`, while `neuromatrix_job_id` is the native provider job for
+`emulation_operation` and recovery. If provider identity changes, rediscover with
+`list_catalog`, `list_jobs`, and `list_artifacts`, then restage artifacts to obtain new
+provider references and a new `workspace_ref`.
+
 ## Into the server
 
 Decide by **source/type, not size** — byte count is a red herring:
@@ -24,9 +39,9 @@ Decide by **source/type, not size** — byte count is a red herring:
 The MCP tool surface has no "send bytes" call; the upload is a plain HTTP PUT to the `:5001` data plane. When the agent has a **local shell / HTTP tool that can reach `:5001`** (the usual case — loopback ticket URLs use `http://127.0.0.1:5001/...`), the agent does the PUT itself; no human needed.
 
 1. Compute sha256 + size **client-side** — the file is not on the server yet (`sha256sum f` / `stat -c %s f`).
-2. `request_upload(filename, file_size_bytes, checksum_sha256, session_id)` → `upload_url`, `artifact_id`. Cache hit (server already has that SHA) → `upload_required:false`; skip to step 4.
-3. PUT the raw bytes from your local shell, **discarding the body** — the JSON response echoes a huge `preview_base64` that floods context:
-   `curl -s -X PUT --data-binary @f "<upload_url>" -o /dev/null -w "%{http_code}\n"` → expect `201`.
+2. `request_upload(filename, file_size_bytes, checksum_sha256, session_id)` → `upload_url`, `artifact_id`, and any `required_headers`. Cache hit (server already has that SHA) → `upload_required:false`; skip to step 4.
+3. PUT the raw bytes from your local shell, **discarding the body** — the JSON response echoes a huge `preview_base64` that floods context. Send every returned `required_headers`, disable redirects, and accept any 2xx response (201 is typical; 200/204 are valid):
+   `curl -s -X PUT --data-binary @f "<upload_url>" -o /dev/null -w "%{http_code}\n"` → require a 2xx status.
 4. `import_artifact_to_workspace(session_id, artifact_id, executable=True)` to land it in the mutable workspace (required by GDB/pwntools/patchelf/run tools).
 
 Gotchas (each cost real turns):
@@ -44,7 +59,7 @@ Gotchas (each cost real turns):
 
 - `list_artifacts(session_id)` — scope to the session (omitting it returns up to 200 across all sessions).
 - `analyze_artifact(artifact_id)` — size/mime/preview without transferring the blob. Check before downloading.
-- `request_download(artifact_id)` — tokenized single-use GET URL on `:5001`. GET it from your local shell the same way you PUT: `curl -s "<download_url>" -o out.bin` (only a human/other client is needed when the agent can't reach `:5001`).
+- `request_download(artifact_id)` — tokenized single-use GET URL on `:5001`. GET it from your local shell with the returned `required_headers`, redirects disabled, and a 2xx-only check: `curl -s "<download_url>" -o out.bin` (only a human/other client is needed when the agent can't reach `:5001`). Verify the declared size and SHA-256 before using the bytes.
 
 ## CAS ↔ workspace
 

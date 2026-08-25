@@ -1,5 +1,15 @@
 # Binwalk — Firmware Analysis & QEMU Emulation
 
+## Contents
+
+- [Filesystem Types in Firmware](#filesystem-types-in-firmware)
+- [Post-Extraction Analysis](#post-extraction-analysis)
+- [QEMU Emulation](#qemu-emulation)
+- [Entropy Analysis](#entropy-analysis)
+- [Bypassing Encryption](#bypassing-encryption)
+- [Useful Binwalk Flags for Deep Analysis](#useful-binwalk-flags-for-deep-analysis)
+- [Struct Recovery from NVRAM/Config](#struct-recovery-from-nvramconfig)
+
 ## Filesystem Types in Firmware
 
 | Filesystem | Magic / Signature | Tool to Mount/Extract |
@@ -19,7 +29,8 @@
 ### Identify device credentials
 
 ```bash
-EXTRACTED="./_firmware.bin.extracted"
+# Fresh directory produced by the bounded extraction workflow below.
+EXTRACTED="./extracted"
 
 # Password hashes
 find "$EXTRACTED" -name "passwd" -o -name "shadow" 2>/dev/null | \
@@ -163,8 +174,10 @@ strings firmware.bin | grep -E "^[A-Za-z0-9+/]{44}=$"  # Base64 AES-256 key
 # Hexdiff between two firmware versions to find changes
 binwalk -W old_fw.bin new_fw.bin
 
-# Extract with verbose output to track what was found
-binwalk -eM --verbose firmware.bin 2>&1 | tee extraction.log
+# Extract with explicit Binwalk bounds; keep logs inside the monitored output tree
+mkdir -p ./extracted
+binwalk -eM -d 3 -n 5000 -j 268435456 -C ./extracted --verbose firmware.bin \
+  >./extracted/binwalk.log 2>&1
 
 # Scan for specific pattern not in default signatures
 binwalk -R "\x7FELF\x02\x01\x01" firmware.bin  # 64-bit ELF headers

@@ -2,10 +2,21 @@
 
 Load this after `triage.md` when the target is a firmware image, extracted update package, or embedded device filesystem. It focuses on container extraction, filesystem pivots, service startup, web/admin surfaces, and emulation handoff.
 
+## Contents
+
+- [Firmware-first workflow](#firmware-first-workflow)
+- [High-value triage questions](#high-value-triage-questions)
+- [Preserve, identify, then extract within budgets](#1-preserve-identify-then-extract-within-budgets)
+- [Review persistence and trust boundaries early](#2-review-persistence-and-trust-boundaries-early)
+- [Treat the web interface as a control plane](#3-treat-the-web-interface-as-a-control-plane)
+- [Only reverse binaries that matter to the control flow](#4-only-reverse-binaries-that-matter-to-the-control-flow)
+- [Emulate after you know the dependencies](#5-emulate-after-you-know-the-dependencies)
+- [Common pitfalls](#common-pitfalls)
+
 ## Firmware-first workflow
 
 ```text
-container scan -> recursive extraction -> filesystem mapping -> startup/persistence review -> embedded binary pivots -> emulation only if needed
+preserve/hash -> identify outer container -> bounded extraction -> filesystem mapping -> startup/persistence review -> embedded binary pivots -> emulation only if needed
 ```
 
 The goal is to spend time where firmware hides value: configs, init scripts, web handlers, keys, and architecture-specific helpers.
@@ -19,11 +30,15 @@ The goal is to spend time where firmware hides value: configs, init scripts, web
 
 ## Analysis order that saves time
 
-### 1. Extract recursively, then inventory by role
+### 1. Preserve, identify, then extract within budgets
 
 ```bash
-binwalk -eM firmware.bin -C ./extracted/
+sha256sum firmware.bin
+file firmware.bin
+binwalk firmware.bin
 ```
+
+Keep the original immutable and extract into a fresh directory. Prefer the identified format's native extractor; use recursive carving only when needed, with wall-time, depth, file-count, per-file, and total-output limits. Monitor free space and never execute children on the analyst host. For Binwalk-specific bounds, load the `binwalk` skill.
 
 After extraction, map the tree into roles instead of reading everything linearly:
 

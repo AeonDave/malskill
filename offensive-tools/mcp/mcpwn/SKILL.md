@@ -14,10 +14,12 @@ MCPwn is a Linux-container-backed MCP server (Kali or Debian base — the MCP/ca
 ## The Loop
 
 1. **Session first.** `create_analysis_session()` → keep `session_id` + `workspace`. Reuse it for the whole task. Lost it after a context reset? `list_sessions()` / `list_interactive_sessions()` to rediscover, don't spawn a duplicate.
-2. **Discover, never guess.** The **infra tools are always direct** — call them with no discovery: session (`create_analysis_session`/`list_sessions`/`delete_session`), artifacts (`request_upload`/`request_download`/`list_artifacts`/`analyze_artifact`/`import_artifact_to_workspace`), workspace (`write_workspace_file`/`read_workspace_file`/`patch_workspace_file`), storage (`storage_usage`/`prune_*`), execution (`execute_command`), interactive (`start_interactive_shell`/`send_to_shell`/`read_shell_output`/`run_in_shell`/`stabilize_shell`/`close_shell`/`list_interactive_sessions`/`signal_interactive_shell`). Only **DOMAIN** tools (network/web/pwn/…) need discovery: `list_catalog()` → `get_tools(domain=..., query=...)` → `get_tool("name")` (read args) → `run_tool("name", {...})`. Catalog names are hidden until discovered; guessing them wastes turns — but never `list_catalog` to "find" an infra tool.
+2. **Discover, never guess.** The **infra tools are always direct** — call them with no discovery: session (`create_analysis_session`/`list_sessions`/`delete_session`), artifacts (`request_upload`/`request_download`/`list_artifacts`/`analyze_artifact`/`import_artifact_to_workspace`), jobs (`list_jobs`/`poll_job`/`delete_job`), workspace (`write_workspace_file`/`read_workspace_file`/`patch_workspace_file`), storage (`storage_usage`/`prune_*`), execution (`execute_command`), interactive (`start_interactive_shell`/`send_to_shell`/`read_shell_output`/`run_in_shell`/`stabilize_shell`/`close_shell`/`list_interactive_sessions`/`signal_interactive_shell`). Only **DOMAIN** tools (network/web/pwn/…) need discovery: `list_catalog()` → `get_tools(domain=..., query=...)` → `get_tool("name")` (read args) → `run_tool("name", {...})`. Catalog names are hidden until discovered; guessing them wastes turns — but never `list_catalog` to "find" an infra tool.
 3. **Execute on the right path** (see decision table below).
-4. **Collect** results; large output lands as a CAS artifact — read the digest, not the whole blob.
-5. **Cleanup** when done: `close_shell`, `delete_job`, `delete_session`.
+4. **Collect** results; request `output_mode=auto` or `artifact` when complete output may be large. The CAS artifact then preserves the complete streams while inline stdout/stderr remain bounded head/tail previews. `/api/command` defaults to `inline`, so read the digest, byte counts, and truncation flags instead of assuming a complete artifact exists.
+5. **Cleanup** when done: `close_shell`, `delete_job`, `delete_session`. For emulation,
+   prove jobs/endpoints/interactive clients stopped before destruction and explicitly
+   delete only confirmed, unshared provider artifacts.
 
 ## Debugging and optional emulation
 
@@ -25,19 +27,34 @@ MCPwn runs GDB and Frida without NeuroMatrix. It can also map its `emulation` do
 
 Load [references/debugging-and-emulation.md](references/debugging-and-emulation.md) before attaching to a host process, choosing GDB versus Frida, or composing MCPwn with NeuroMatrix.
 
+### NeuroMatrix compatibility boundary
+
+- `list_catalog.provider_identity` is authoritative. Persist it with `provider_ref` for
+  every session, artifact, workspace, job, interactive, and endpoint handle; IDs and refs
+  are opaque and provider-scoped.
+- Keep `operation_id` (the MCPwn bridge job for `poll_job`/`delete_job`) separate from
+  `neuromatrix_job_id` (the native provider job for `emulation_operation`/recovery).
+  Use the explicit native name when the compatibility alias is available.
+- `workspace_ref` is a non-path logical reference: pass it unchanged to provider tools;
+  provider filesystem paths never cross the boundary. On identity mismatch, rediscover
+  and restage instead of replaying stale handles.
+- Recover lost provider jobs/artifacts with `list_jobs`/`list_artifacts`; use
+  `delete_artifact` only for explicitly confirmed, unshared objects. Artifact PUT/GET
+  sends `required_headers`, accepts 2xx only, and disables redirects.
+
 ## Execution path — pick correctly (top time-sink)
 
 | Situation | Path |
 |-----------|------|
 | Expected well below 20s, no stdin (`whoami`, `cat`, `id`, quick `curl`) | `execute_command(cmd)` |
-| Long one-shot, no stdin (`nmap -p-`, hashcat, ffuf, sqlmap, hydra, feroxbuster) | `execute_command(cmd, detach=True)` → `poll_job(job_id, wait_seconds=30)` loop |
+| Long one-shot, no stdin (`nmap -p-`, hashcat, ffuf, sqlmap, hydra, feroxbuster) | `execute_command(cmd, detach=True)` → `poll_job(job_id, wait_seconds=20)` loop |
 | Catalog tool expected well below 20s | `run_tool("name", {...})` |
 | Slow, uncertain, or `long_running` tool | `run_tool("name", {...}, detach=True)` → `poll_job` |
 | Needs stdin/tty or live streaming (nc, ssh, gdb, REPL, penelope) | `start_interactive_shell` → `run_in_shell`/`read_shell_output` → `close_shell` |
 
 Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline.
 
-**The detached contract decides what you can run at all.** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** and stays interruptible — `delete_job` SIGKILLs its owned process tree and verifies the kill. It is the path for any long-running or unwrapped program. Inline is capped at 20s (clients that serialize requests stall on anything longer); `MCPWN_INLINE_TIMEOUT_CAP` only lowers it, to a 5s floor, and only an operator's `MCPWN_ALLOW_LONG_INLINE=1` lifts it. Cleanup adds bounded time after the timeout, so detach anything near 20s or duration-uncertain. A detached catalog job is only cooperatively cancellable, and its wrapper owns the deadline: some routes impose a ceiling, while Pacu module execution and the four duration-uncertain ML inspectors default to no deadline. Inspect `get_tool` for the exact timeout contract; use `execute_command(detach=True)` when arbitrary work must be hard-killable or outlive a wrapper ceiling.
+**The detached contract decides what you can run at all.** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** and stays interruptible — `delete_job` SIGKILLs its owned process tree and verifies the kill. It is the path for any long-running or unwrapped program. Inline is capped at 20s (clients that serialize requests stall on anything longer); `MCPWN_INLINE_TIMEOUT_CAP` only lowers it, to a 5s floor, and only an operator's `MCPWN_ALLOW_LONG_INLINE=1` lifts it. Cleanup adds bounded time after the timeout, so detach anything near 20s or duration-uncertain. A detached catalog job reports `killable=true` while a local subprocess phase is active; pure-Python, remote, and between-command phases remain cooperative and may stay `cancellation_pending`. Its wrapper owns the deadline: inspect `get_tool`, `poll_job`, and `list_jobs`; use `execute_command(detach=True)` when arbitrary work must remain continuously hard-killable or outlive a wrapper ceiling.
 
 **Duration-uncertain catalog wrappers** — especially deep decompilation or global analysis — must use `detach=True`, bounded `poll_job` intervals, and limited concurrent heavy jobs. A caller/MCP request timeout may end the wait without cancelling the backend job; inspect job and cancellation state before retrying or duplicating work. If the backend reports unhealthy/unavailable, report that state and do not restart or rebuild it without user direction.
 
@@ -81,6 +98,7 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 - One session per task; discover before running; read `get_tool` args before first use of any wrapper.
 - Long/known-slow work → `detach=True` + `poll_job`, or an interactive shell. Never inline.
 - Don't hand-read large outputs. Auto-CAS only triggers at ~64 KB, so **bulky sub-64 KB dumps** (a few hundred lines) still print inline and silently burn context when you loop them — the classic tax on iterative analysis of a big read-only artifact (mmap-carving a memory dump, sifting a PCAP/disk image via heredoc scripts). Fix: write results to a workspace file and `grep`/`head` only the slice you need, or force a handoff with `execute_command(..., output_mode="artifact", output_filename="...")`. Extract the few lines that matter; never reprint the whole set each turn. For a long carving/sift loop, quarantine it in a sub-agent that returns a digest.
+- Recursive analysis is always detached. `firmware_analyze` and `auto_malware_hunt` scan only by default; `binwalk_analyze` requires a session when extracting and `unblob_analyze` always requires one. Preserve their unique output directories and explicit depth/file/entry/aggregate-byte controls; do not smuggle output/depth/process overrides through free-form arguments. Treat `files` as extractor output and `analysis_logs` as bounded helper diagnostics.
 - `execute_command` is `sh -c` (dash on a Debian base, bash on Kali) — wrap bashisms in `bash -c '...'` so they don't silently degrade. `start_interactive_shell` has no shell — use `cwd=` (no `cd &&`) or `bash -lc`.
 - `/etc/hosts` is a bind mount — append with `sudo tee -a`, not `sed -i`.
 - Sub-agents don't inherit the MCP client — hand off state as `mcp://artifacts/<sha>`.

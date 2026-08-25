@@ -2,6 +2,11 @@
 
 Use this reference to select the debugger's execution locus and to compose MCPwn with NeuroMatrix without conflating their runtimes.
 
+Before diagnosing a runtime/source mismatch, inspect public `/health`: current images expose
+`build.version` and `build.source_sha256`. Run the repository live suite to compare that
+fingerprint with the checkout. Treat a mismatch as a stale deployment and ask its owner to
+rebuild/recreate it; do not patch around old behavior or restart infrastructure implicitly.
+
 ## Select the locus
 
 | Target | Run the debugger/client | Route |
@@ -49,12 +54,16 @@ MCPwn can run without NeuroMatrix. NeuroMatrix is a standalone, client-neutral M
 
 1. Configure `NEUROMATRIX_MCP_URL` and `NEUROMATRIX_ARTIFACT_BASE_URL` in the MCPwn runtime, then recreate it so the adapter reads them. On Docker Desktop, set `NEUROMATRIX_MCP_URL=http://host.docker.internal:8000/mcp` and `NEUROMATRIX_ARTIFACT_BASE_URL=http://host.docker.internal:5101`; the NeuroMatrix artifact port must differ because MCPwn already owns host port `5001`.
 2. Discover `get_tools(domain="emulation", query="neuromatrix")`.
-3. Call `emulation_discover` and inspect the provider catalog revision and exact remote schemas.
-4. Create a scenario with `emulation_scenario(action="create", backend=..., arch=...)`. Its `scenario_id` is the NeuroMatrix `session_id`.
-5. Stage immutable bytes with `emulation_artifact(action="stage", artifact_ref=..., scenario_id=..., executable=true)`; never pass an MCPwn workspace path as a NeuroMatrix path.
-6. Run a discovered native backend tool through `emulation_run_tool`. For detached work, poll the returned MCPwn bridge operation ID; retain the native NeuroMatrix job ID as the recovery path for `emulation_operation`. If the local bridge watcher times out, remote execution may still continue: inspect `execution_stopped`/`remote_execution_may_continue`, invoke deletion, and retain the bridge until provider cancellation is proven.
-7. Inspect endpoint scope with `emulation_endpoints(action="context", endpoint_id=...)`. Check `client_execution.can_spawn_from_neuromatrix`, `available_clients`, and `client_requirement`; use `emulation_endpoint_client` when the client must execute inside NeuroMatrix.
+3. Call `emulation_discover`; `list_catalog.provider_identity` is authoritative. Retain the full provider identity, catalog revision, exact remote schemas, and every returned `provider_ref`. Pass the provider instance ID on later handle operations so stale handles fail before dispatch; IDs/refs are opaque and provider-scoped.
+4. Create a scenario with `emulation_scenario(action="create", backend=..., arch=...)`. Its `scenario_id` is the NeuroMatrix `session_id`; retain its `provider_ref` and persist the provider identity with it.
+5. Stage immutable bytes with `emulation_artifact(action="stage", artifact_ref=..., scenario_id=..., executable=true)`. Pass the returned opaque, non-path `workspace_ref` unchanged in provider-tool arguments. Never read, derive, or replay a NeuroMatrix filesystem path. Send artifact `required_headers`, accept 2xx only, and disable redirects for PUT/GET.
+6. Run a discovered native backend tool through `emulation_run_tool`. For detached work, persist both handles: `operation_id` is the MCPwn bridge job for `poll_job`/`delete_job`, while `neuromatrix_job_id` is the native provider job for `emulation_operation` and recovery. They are not interchangeable. Recover lost native handles with `emulation_operation(action="list")`/`list_jobs` and provider artifacts with `emulation_artifact(action="list")`/`list_artifacts`. If the local bridge watcher times out, remote execution may still continue: inspect `execution_stopped`/`remote_execution_may_continue`, invoke deletion, and retain the bridge until provider cancellation is proven.
+7. Inspect endpoint scope with `emulation_endpoints(action="context", endpoint_id=...)`; persist the endpoint and any interactive client's `provider_ref`. Check `client_execution.can_spawn_from_neuromatrix`, `available_clients`, and `client_requirement`; use `emulation_endpoint_client` when the client must execute inside NeuroMatrix.
 8. Close endpoint clients/endpoints, cancel or delete jobs, then destroy the scenario synchronously. MCPwn and NeuroMatrix CAS references are provider-scoped; collect an artifact explicitly when moving it between stores.
+
+If any handle operation returns `PROVIDER_IDENTITY_MISMATCH`, stop replaying the old
+references. Refresh `list_catalog`, rediscover sessions/jobs/artifacts/endpoints, and
+restage each input artifact before continuing.
 
 ## Emulated GDB sessions
 
@@ -70,9 +79,9 @@ Interactive input is UTF-8 JSON text, not arbitrary bytes. For packed exploit pa
 
 ## Cleanup proof
 
-Before finishing, verify every lifecycle owner independently:
+Before destruction, perform a cleanup proof and verify every lifecycle owner independently:
 
 - MCPwn: no unintended sessions, jobs, or interactive shells.
 - NeuroMatrix: no unintended sessions, jobs, endpoints, or interactive clients.
 - External host/device: stop and verify any Frida server, GDB stub, tunnel, or forward started outside those registries.
-- Destroying a NeuroMatrix session removes its mutable workspace but preserves immutable CAS artifacts until explicit confirmed deletion.
+- A `cancellation_pending` response is not proof of stop. Reconcile `list_jobs`, close or verify endpoints/interactive clients, and use `list_artifacts` before destroying mutable state. Scenario destroy first deletes only artifacts the live MCPwn bridge uploaded and can prove are unshared. Pre-existing, deduplicated, shared, or rediscovered NeuroMatrix CAS objects remain until explicit confirmed `delete_artifact`.

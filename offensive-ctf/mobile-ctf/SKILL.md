@@ -77,32 +77,11 @@ cat jadx_out/resources/AndroidManifest.xml | grep -i "MAIN\|LAUNCHER" -B2
 
 When `strings` or jadx shows `SecretKeySpec`, `Cipher.getInstance`, or a suspicious short string near crypto imports:
 
-```bash
-# Find the key and algorithm in DEX strings
-strings apk_out/classes.dex | grep -E "^[A-Za-z0-9+/]{8,32}$" | head -20
-# Look for: AES key (16/24/32 chars), IV (16 chars), mode string (AES/ECB/PKCS5Padding)
-
-# Decrypt with Python once key/IV/ciphertext found
-python3 - <<'EOF'
-from Crypto.Cipher import AES
-import base64
-
-key = b'<key_from_apk>'           # exact bytes from hardcoded string
-ct  = base64.b64decode('<b64_ct>') # ciphertext found in app
-iv  = b'\x00'*16                   # ECB has no IV; CBC: extract IV from app
-
-# AES-ECB (most common in easy CTF challenges)
-cipher = AES.new(key, AES.MODE_ECB)
-pt = cipher.decrypt(ct)
-# Strip PKCS7 padding (last byte = pad length, 1..blocksize)
-pad = pt[-1]
-print(pt[:-pad] if 1 <= pad <= 16 else pt)
-
-# AES-CBC
-# cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-# pt = cipher.decrypt(ct)
-EOF
-```
+Trace the byte-exact dataflow from source/charset through decode, concat/repeat,
+slice/pad/truncate, key/IV construction, transformation, ciphertext decode, and
+`doFinal`. Mirror only operations proven in code and validate by re-encryption or a
+known ciphertext. Load `references/apk-crypto-patterns.md` for canonical recipes,
+including provider-sensitive CFB feedback width.
 
 ### Asset and resource analysis
 
@@ -306,5 +285,5 @@ objection -g <package_name> explore
 ## Resources
 
 - [references/android-backup-forensics.md](references/android-backup-forensics.md) — Full .ab extraction workflow, header format variants, SQLite triage, photo inspection patterns.
-- [references/apk-crypto-patterns.md](references/apk-crypto-patterns.md) — AES/DES/RSA hardcoded key patterns, SecretKeySpec extraction, common CTF crypto idioms, Python decrypt templates.
+- [references/apk-crypto-patterns.md](references/apk-crypto-patterns.md) — byte-exact key/IV derivation, provider-sensitive AES modes, hardcoded-key patterns, and Python validation templates.
 - [references/ios-ipa-triage.md](references/ios-ipa-triage.md) — Load for IPA/`.app`/Mach-O artifacts: bundle structure, plist/keychain/SQLite extraction, Mach-O static analysis, FairPlay decryption, and Frida/objection dynamic recovery.

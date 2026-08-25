@@ -12,6 +12,12 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 | Catalog tool expected well below 20s | `run_tool("name", {...})` |
 | Slow, uncertain, or `long_running=True` tool | `run_tool("name", {...}, detach=True)` |
 
+Bounded control-plane calls remain inline even when they accept an explicit wait:
+use `emulation_operation` directly for native job `list`/`poll`/`cancel`, and
+`emulation_endpoint_client` directly for endpoint-client lifecycle operations. Their
+wait values are clamped. Wrapping these calls in another detached catalog job makes
+recovery and cleanup harder and must not be required by tool metadata.
+
 ## Short commands — `execute_command`
 
 - Synchronous: the MCP request blocks until exit or timeout.
@@ -19,18 +25,19 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 - If an inline command times out at the cap, that work belongs on `detach=True` + `poll_job` — not on a larger timeout. The cap is only liftable server-side, by an operator setting `MCPWN_ALLOW_LONG_INLINE=1` for a client that issues concurrent requests (cap then defaults to 120s and `MCPWN_INLINE_TIMEOUT_CAP` may raise it).
 - Some MCP clients serialize calls to one server. An inline command delays unrelated session/catalog calls on those clients, so detach anything duration-uncertain or near the ceiling.
 - Known-long commands are **rejected synchronously** with `long_running_command`: `nmap -sV`/`-sC`/`-p-`, hydra, ffuf, feroxbuster, gobuster, sqlmap, hashcat, john, masscan, amass, nuclei, wpscan, nikto, kerbrute, katana. Use `detach=True`.
-- Output >64 KB auto-saves to a CAS artifact (`output_mode='auto'`), returning an id + preview — don't try to inline it.
-- `timed_out=true` is authoritative and means execution was incomplete; current MCPwn results set `success=false` on timeout while `partial_results` may still preserve useful output. Inspect `timed_out`, `return_code`, and `partial_results` before accepting a result.
+- With `output_mode='auto'`, output >64 KB is saved to a complete CAS artifact and returns an id + preview; `output_mode='artifact'` always requests that handoff. `/api/command` itself defaults to `inline`. Inline stdout and stderr are independently limited to head/tail previews (4 MiB each by default); inspect `stdout_bytes`, `stderr_bytes`, and the truncation flags. Explicit/automatic artifact handoff streams the full captures rather than storing the previews.
+- `timed_out=true` is authoritative and means execution was incomplete; current MCPwn results set `success=false` on timeout. `partial_results=true` also covers a successfully completed command whose inline output was truncated. Inspect `timed_out`, `return_code`, `partial_results`, and truncation flags before accepting a result.
 - Use for: `whoami`, `cat`, `ls`, `id`, fast `curl`, short nmap, one-liners.
 
 ## Async jobs — `detach=True` + `poll_job`
 
-- Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=30)` in a loop until `status == "done"`.
-- `long_running=True` catalog tools (including `analyze_with_radare2`, `decompile_with_radare2`, `pacu_aws_exploit`, `torch_model_inspect`, `keras_model_inspect`, `sklearn_model_inspect`, `vec2text_invert`, `ml_script_execute`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
+- Returns `{job_id}` immediately. `poll_job(job_id, wait_seconds=20)` in a loop until terminal status.
+- `long_running=True` catalog tools (including `firmware_analyze`, `binwalk_analyze`, `unblob_analyze`, `auto_malware_hunt`, `analyze_with_radare2`, `decompile_with_radare2`, `pacu_aws_exploit`, `torch_model_inspect`, `keras_model_inspect`, `sklearn_model_inspect`, `vec2text_invert`, `ml_script_execute`, ffuf, feroxbuster, gobuster, hydra, john, hashcat, sqlmap, amass, zap_active_scan, nuclei_scan, katana_crawl, mythril_analyze, and volatility_analyze) **require** `detach=True`.
 
 ### Duration-uncertain catalog wrappers
 
 - Treat deep decompilation, global analysis, and any wrapper with uncertain duration as asynchronous: dispatch with `detach=True`, poll at bounded intervals, and keep concurrent heavy jobs limited so the backend is not saturated.
+- `firmware_analyze` requires a managed session and scans only by default. The forensics `binwalk_analyze`/`unblob_analyze` extraction paths use the same session-owned bounded model, and `auto_malware_hunt` is scan-only unless `extract=true`. Keep extraction opt-in and detached; these paths bound logs and use unique output directories with depth, file-count, filesystem-entry, and aggregate-byte budgets (plus Binwalk's distinct per-file cap).
 - The PyTorch, Keras, and scikit-learn inspectors deserialize formats that can execute code. Treat them as destructive execution, not read-only parsing, and use only authorized artifacts.
 - `torch_model_inspect`, `keras_model_inspect`, `sklearn_model_inspect`, and `vec2text_invert` have no execution deadline unless `timeout` is set to 1–3600 seconds. `ml_script_execute` remains bounded: default 120 seconds, maximum 600.
 - `pacu_aws_exploit` requires a workspace-relative `credentials_file`; `aws_profile` must exist in it or the optional workspace-relative `config_file`, and is imported on every call. Ambient AWS credential sources are disabled; keep secrets out of `module_args`. State is isolated under `.pacu-home/<pacu_session>` inside the analysis workspace. Concurrent use fails fast with `pacu_session_busy`: retry instead of creating a duplicate. Set `create_pacu_session=true` only on the first call, then reuse with `false`. Omit `timeout` for no module deadline or set 1–3600 seconds; always dispatch detached.
@@ -42,13 +49,22 @@ Three execution paths. Choosing wrong causes timeouts, orphaned processes, or lo
 | | `execute_command(cmd, detach=True)` | `run_tool(name, {...}, detach=True)` |
 |---|---|---|
 | Timeout with no explicit value | **none — runs until it finishes** | route-specific: a default ceiling or no deadline; inspect `get_tool` |
-| Stopping it | **hard kill**: `delete_job` SIGKILLs the owned process tree and verifies it | cooperative only — no kill hook |
-| Backstop | job reaper hard-kills unfinished jobs at 4h | same reaper, but a live HTTP worker is not interrupted |
+| Stopping it | **hard kill**: `delete_job` SIGKILLs the owned process tree and verifies it | dynamic: hard-killable while a local subprocess reports `killable=true`; otherwise cooperative |
+| Backstop | job reaper hard-kills unfinished jobs at 4h | hard-kills an active bound subprocess; otherwise retains truthful pending state for retry |
 
 - So **anything arbitrary and open-ended belongs on `execute_command(detach=True)`**: no deadline unless you set `timeout=N`, and it is genuinely interruptible on demand. This is the path for a tool MCPwn does not wrap at all.
 - Catalog deadlines are route-specific. Long-scan wrappers exposing `MCPWN_LONG_SCAN_TIMEOUT_CAP` remain bounded; Radare2 defaults to 120 seconds and accepts 1–270; `ml_script_execute` defaults to 120 and caps at 600; the Pacu/ML exceptions above default to no execution deadline. If a bounded wrapper cannot run long enough, drive the binary through `execute_command(detach=True)`.
-- `delete_job(job_id)` requests cancellation and removes the record only after stop is observed. For `execute_command` jobs it invokes the hard process-tree kill. A catalog job without a kill hook may return `cancellation_pending=true`, `execution_stopped=false`, and `record_deleted=false`; poll it and retry deletion after it becomes terminal. Do not treat `ok=true` as proof that a pending worker vanished.
+- `delete_job(job_id)` requests cancellation and removes the record only after stop is observed. For `execute_command` jobs it invokes the hard process-tree kill. A catalog job acquires a dynamic kill hook only while its current local subprocess is active; inspect `killable` immediately before deletion. Pure-Python, remote, and between-command phases may return `cancellation_pending=true`, `execution_stopped=false`, and `record_deleted=false`; poll and retry after the worker reaches a bounded checkpoint. `cancellation_pending` is not proof of stop, and neither is `ok=true`; require observed `execution_stopped=true` before destruction or workspace removal.
 - Do NOT tight-loop `poll_job` over a bare sleep. Offload a long timed wait into ONE detached job: `execute_command("until test -f /tmp/ready; do sleep 30; done", detach=True)` or `execute_command("sleep 2700; echo done", detach=True)`, then poll every few minutes. No `timeout` is needed — a detached run has no deadline of its own.
+
+### Provider job identity and recovery
+
+For a detached NeuroMatrix bridge call, persist both handles: `operation_id` is the
+MCPwn bridge job used with `poll_job`/`delete_job`, while `neuromatrix_job_id` is the
+native provider job used with `emulation_operation` and provider recovery. They are
+opaque, provider-scoped values; do not substitute one for the other. If a bridge is
+lost or reports `PROVIDER_IDENTITY_MISMATCH`, rediscover `list_catalog`, `list_jobs`,
+and `list_artifacts`, then restage inputs before retrying provider operations.
 
 ## Interactive shell
 
@@ -56,7 +72,7 @@ Lifecycle:
 ```
 start_interactive_shell(session_id, command) → interactive_id + pid
 run_in_shell(interactive_id, cmd)             # discrete command → {output, exit_code}
-read_shell_output(interactive_id, wait_seconds=30)  # streaming/TUI only, long-poll, repeat
+read_shell_output(interactive_id, wait_seconds=20)  # streaming/TUI only, long-poll, repeat
 signal_interactive_shell(interactive_id, "SIGINT")  # cancel a LOCAL tool (not a remote job)
 close_shell(interactive_id) → log_path
 ```

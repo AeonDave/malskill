@@ -4,6 +4,21 @@ Common cryptographic secret patterns in Android CTF challenges and how to extrac
 
 ---
 
+## Contents
+
+- [Trace the complete key dataflow](#trace-the-complete-key-dataflow)
+- [Pattern 1 — AES with hardcoded SecretKeySpec](#pattern-1--aes-with-hardcoded-secretkeyspec-most-common)
+- [Pattern 2 — Base64-encoded string](#pattern-2--base64-encoded-string-trivial)
+- [Pattern 3 — XOR with hardcoded key](#pattern-3--xor-with-hardcoded-key)
+- [Pattern 4 — RSA with hardcoded private key](#pattern-4--rsa-with-hardcoded-private-key-in-assets)
+- [Pattern 5 — Android Keystore / Tee-backed keys](#pattern-5--android-keystore--tee-backed-keys)
+- [Pattern 6 — Firebase Realtime Database public read](#pattern-6--firebase-realtime-database-public-read)
+- [Quick crypto identification from DEX strings](#quick-crypto-identification-from-dex-strings)
+
+## Trace the complete key dataflow
+
+Follow source literal/response field → hex/Base64 decode → hash/substring/concat → repeat/pad/truncate → charset encoding → cipher mode, IV, and feedback width. Keep text and bytes distinct, record intermediate lengths/prefixes, and validate each layer independently. Never replace the application's key builder with generic zero-padding or hashing.
+
 ## Pattern 1 — AES with hardcoded SecretKeySpec (most common)
 
 **Indicators in jadx/strings:**
@@ -25,16 +40,28 @@ grep -r "SecretKeySpec\|\"AES" jadx_out/ -A3 | head -40
 from Crypto.Cipher import AES
 import base64
 
-key = b'LmBf5G6h9j'                 # 10-byte key → padded or truncated by impl
-# if key is shorter than 16 bytes, check if app pads it:
-key_padded = key.ljust(16, b'\x00')  # zero-pad to 16 bytes
+key = b'<exact_16_24_or_32_byte_key>'  # reproduce the app's derivation exactly
 
 ct = base64.b64decode('...')         # ciphertext from app resources or DEX
-cipher = AES.new(key_padded, AES.MODE_ECB)
+cipher = AES.new(key, AES.MODE_ECB)
 pt = cipher.decrypt(ct)
 # Strip PKCS7 padding
 pad = pt[-1]; pt = pt[:-pad]
 print(pt.decode())
+```
+
+**Java AES/CFB/NoPadding:** confirm the provider's feedback width. PyCryptodome defaults CFB to 8 bits; use `segment_size=128` only when the Java/Android provider resolves the transformation to full-block CFB (`CFB8` maps to 8). `NoPadding` means do not PKCS#5/#7-unpad. Preserve the exact 16-byte IV and ciphertext length, then validate by re-encryption or a known ciphertext. If Java repeats an input until 32 characters, truncates to 32, then UTF-8 encodes it, reproduce that exact sequence.
+
+```python
+from Crypto.Cipher import AES
+
+def decrypt_java_cfb(seed: str, iv: bytes, ciphertext: bytes, *, segment_size: int) -> bytes:
+    """Pass the exact IV/ciphertext bytes recovered from the application."""
+    key = (seed * ((32 + len(seed) - 1) // len(seed)))[:32].encode("utf-8")
+    return AES.new(key, AES.MODE_CFB, iv=iv, segment_size=segment_size).decrypt(ciphertext)
+
+# Use segment_size=128 only after confirming full-block CFB in the Java provider.
+pt = decrypt_java_cfb(recovered_seed, recovered_iv, recovered_ciphertext, segment_size=128)
 ```
 
 **Decrypt — AES CBC:**

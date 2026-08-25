@@ -12,6 +12,23 @@ metadata:
 
 Firmware analysis and extraction — identify and extract embedded files from binary blobs.
 
+## Contents
+
+- [Safe triage before extraction](#safe-triage-before-extraction)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core Flags](#core-flags)
+- [Common Workflows](#common-workflows)
+- [Python API](#python-api)
+- [Emulation after extraction](#emulation-after-extraction)
+- [Resources](#resources)
+
+## Safe triage before extraction
+
+Follow the [firmware workflow](../../../offensive-techniques/reversing-technique/references/firmware-rev.md) before extraction. Binwalk-specific invariant: start with a signature/entropy scan; make `-eM` and `--dd ".*"` opt-in; use a fresh `-C` directory plus `-d`, `-n`, and `-j`; and enforce total output bytes with an external monitor/quota because Binwalk v2 has no total-output flag. `-j` limits each carved input region, but an external extractor may still decompress it into a larger tree.
+
+On MCPwn, use `firmware_analyze` or `binwalk_analyze` with `detach=True`. `firmware_analyze` exposes the external aggregate tree budget; `binwalk_analyze` does so only when `extract=true`, because scan-only mode creates no extraction tree. `unblob_analyze` is also detached and session-owned. `auto_malware_hunt` defaults to scan-only, so request recursive extraction explicitly only after triage.
+
 ## Installation
 
 ```bash
@@ -36,12 +53,11 @@ sudo apt install mtd-utils gzip bzip2 tar arj lhasa p7zip p7zip-full \
 # Scan firmware for signatures
 binwalk firmware.bin
 
-# Extract all found content
-binwalk -e firmware.bin
-# Output in _firmware.bin.extracted/
+# Extract selected signatures with explicit count/per-file bounds
+binwalk -e -n 1000 -j 268435456 -C ./extracted firmware.bin
 
-# Recursive extraction (matryoshka — nested containers)
-binwalk -eM firmware.bin
+# Bounded recursive extraction (only after format-first triage)
+binwalk -eM -d 3 -n 5000 -j 268435456 -C ./extracted firmware.bin
 ```
 
 ## Core Flags
@@ -58,10 +74,12 @@ binwalk -eM firmware.bin
 | `-C DIR` | Set output directory |
 | `-q` | Quiet mode |
 | `-D TYPE:EXT:CMD` | Custom extraction rule |
-| `-l N` | Limit extraction byte size |
-| `--dd ".*"` | Extract everything |
-| `-n` | Length scan (no extraction) |
-| `-H` | Header signature details |
+| `-d N` | Limit recursive extraction depth |
+| `-n N` | Limit number of extracted files |
+| `-j N` | Limit each extracted file's size |
+| `-l N` | Limit input bytes scanned |
+| `--dd ".*"` | Carve every matching signature; high expansion risk |
+| `-H N` | Set the floating-point high entropy-edge threshold for entropy scans (`-E`) |
 | `-m FILE` | Custom magic/signature file |
 
 ## Common Workflows
@@ -79,8 +97,8 @@ binwalk -E firmware.bin
 # Plot to file:
 binwalk -E --save firmware.bin
 
-# 3. Extract recursively
-binwalk -eM firmware.bin -C ./extracted/
+# 3. Extract recursively with explicit bounds
+binwalk -eM -d 3 -n 5000 -j 268435456 firmware.bin -C ./extracted/
 
 # 4. Identify filesystems
 ls ./extracted/
