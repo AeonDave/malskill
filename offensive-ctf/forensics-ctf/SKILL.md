@@ -66,8 +66,10 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 ## Category-specific quick pivots
 
 - Preserve first: identify format, hash evidence, then choose disk, memory, network, or file workflow.
+- For mixed incident bundles, build a UTC timeline and entity graph across identity, process/service, credential-access, lateral-movement, proxy, and DNS/flow records before answering individual questions.
 - Use metadata and timeline pivots before deep carving everything.
 - For stego and signal tasks, test format-native structures before brute-force extraction.
+- For custom malware traffic, separate framing, key derivation, and payload decoding; accept a decode only when it produces a structured message or other artifact-level oracle.
 
 ## Quality gates
 

@@ -24,6 +24,8 @@ For USB/HID/Bluetooth peripheral capture analysis, see [usb-and-peripheral-captu
 - [RADIUS Shared Secret Cracking](#radius-shared-secret-cracking)
 - [RC4 Stream Identification in Shellcode PCAP](#rc4-stream-identification-in-shellcode-pcap)
 - [ICMP Ping Time-Delay Covert Channel](#icmp-ping-time-delay-covert-channel)
+- [Fixed-Width Hex DNS Labels with Per-Label XOR](#fixed-width-hex-dns-labels-with-per-label-xor)
+- [Host-Bound RC4 in Incident Artifacts](#host-bound-rc4-in-incident-artifacts)
 -
 
 ## Packet Interval Timing-Based Encoding
@@ -582,3 +584,78 @@ print(data)
 ```
 
 **Key insight:** ICMP timing covert channels split a continuous latency distribution into discrete bins. The two thresholds matter more than the exact values: any bimodal "fast vs slow" distribution flanked by a "filler" region lets the receiver self-clock. Detect this channel by plotting the histogram of `reply_time - request_time` for all ICMP pairs — legit traffic forms a single Gaussian, covert traffic shows clear modes.
+
+## Fixed-Width Hex DNS Labels with Per-Label XOR
+
+**Pattern:** DNS queries use a stable suffix and random-looking, fixed-width hexadecimal labels. The labels are ordered records, not one continuous hex blob. A malware string, config, or adjacent artifact may disclose a single-byte XOR key and which label position carries data.
+
+**Decoding workflow:**
+
+1. Filter the exact suffix and exclude the bare domain and unrelated service-discovery queries.
+2. Order records by their event timestamp; use capture order only after confirming timestamps are absent or monotonic.
+3. Validate label width and hex syntax. Do not concatenate all label hex and brute-force transforms before testing the per-label hypothesis.
+4. Extract the documented byte position, apply the disclosed XOR key, and concatenate one decoded byte per query:
+
+```python
+import re
+
+suffix = ".t.example.invalid"
+key = 0x17                         # obtain from the supplied artifact, not folklore
+data_byte_offset = 0               # set from the artifact's documented layout
+rows = list(records)
+if rows and all(row.get("timestamp") is not None for row in rows):
+    rows.sort(key=lambda row: row["timestamp"])
+
+labels = []
+for row in rows:                    # otherwise retain the verified input order
+    qname = row["query_name"].rstrip(".")
+    if not qname.lower().endswith(suffix.lower()):
+        continue
+    label = qname[:-len(suffix)]
+    if re.fullmatch(r"[0-9a-fA-F]{8}", label):
+        label_bytes = bytes.fromhex(label)
+        if data_byte_offset >= len(label_bytes):
+            raise ValueError("data byte offset is outside the label")
+        labels.append(label_bytes[data_byte_offset])
+
+decoded = bytes(value ^ key for value in labels)
+print(decoded.decode("ascii"))
+```
+
+**Validation:** require every selected byte to fit the expected encoding and reproduce the same result from the original records. A printable string from a single transform is only a candidate; corroborate the key/position from the binary or logs and use the challenge oracle when available. Preserve query order and record the excluded-query rule.
+
+## Host-Bound RC4 in Incident Artifacts
+
+**Pattern:** A malware capture contains a magic/version header followed by an RC4 payload. The key is derived from host facts recovered elsewhere, commonly an exact string such as `hostname + "_" + volume_serial`, then SHA-1. Case, separator, digest representation, and header length are all significant.
+
+**Workflow:**
+
+1. Recover hostname and volume serial from independent host telemetry; do not infer either from the capture.
+2. Reproduce the key material exactly. Test raw SHA-1 digest bytes versus hexadecimal text only when the implementation/spec leaves that representation ambiguous.
+3. Identify and validate the capture frame before decryption. Decrypt the payload after the header, not the magic/version bytes.
+4. Accept a candidate only if it parses as structured output (JSON, a protocol frame, or a known file), not because it has a high printable ratio.
+
+```python
+import hashlib, json
+from Crypto.Cipher import ARC4
+
+material = f"{hostname}_{volume_serial}".encode("ascii")
+digest = hashlib.sha1(material).digest()
+magic = b"C2SESS"                 # replace with the artifact's observed magic
+header_len = 8                    # derive from the format/version, do not assume blindly
+if len(capture) < header_len or not capture.startswith(magic):
+    raise ValueError("invalid capture framing")
+ciphertext = capture[header_len:]
+
+for key in (digest, digest.hex().encode("ascii")):
+    try:
+        obj = json.loads(ARC4.new(key).decrypt(ciphertext))
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        continue
+    print(obj)
+    break
+else:
+    raise ValueError("no structured RC4 plaintext")
+```
+
+**Evidence rule:** retain the host-fact records, exact key-material expression, header/framing observation, and parsed plaintext. A prior pentest report or string hit is a lead for the derivation; the clean decrypt of the supplied capture is the proof.
