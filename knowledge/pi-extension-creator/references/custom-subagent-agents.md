@@ -1,504 +1,136 @@
-# Custom Subagent Agents
+# Subagent-Style Extensions
 
-Use this when creating, reviewing, or packaging markdown agents for Pi subagent extensions.
+Pi core ships no built-in subagents. A "subagent" is a pattern you build as an extension: a tool that spawns child `pi` processes with isolated context and delegates a task to a named, markdown-defined agent. The official `subagent` example in the Pi repo is the canonical reference. Load this reference when building or tuning that kind of extension, or when writing the markdown agent files it consumes.
 
 ## Contents
 - [Decision Rules](#decision-rules)
-- [Locations and Precedence](#locations-and-precedence)
-- [Agent File Contract](#agent-file-contract)
-- [Supervisor Pattern](#supervisor-pattern)
-- [Context Selection](#context-selection)
+- [Extension Shape](#extension-shape)
+- [Agent Definition Files](#agent-definition-files)
+- [Discovery And Scope](#discovery-and-scope)
+- [Context Isolation](#context-isolation)
+- [Tool Modes](#tool-modes)
 - [Model Routing](#model-routing)
-- [Decomposition and Coaching](#decomposition-and-coaching)
-- [Chains and Fanout](#chains-and-fanout)
-- [Packaging Agents](#packaging-agents)
-- [Extension Differences](#extension-differences)
-- [Security Checks](#security-checks)
+- [Workflow Presets](#workflow-presets)
+- [Design Rules](#design-rules)
+- [Security](#security)
 - [Validation](#validation)
 - [Sources](#sources)
 
 ## Decision Rules
 
-- Pi core does not ship built-in subagents. Treat agents as resources consumed by an installed subagent extension.
-- Default to `nicobailon/pi-subagents` when `npm:pi-subagents` is installed. It supports named agents, builtins, chains, background runs, fork context, package agents, overrides, acceptance gates, and optional intercom.
-- Use `pi-fork` for same-persona branch-aware investigation that should inherit the active session. It does not read markdown agent files.
-- Keep the main Pi session as supervisor unless the user explicitly wants a child that can spawn children.
-- Use a custom agent when a reusable role, tool boundary, model choice, context mode, or output contract is stable across tasks.
-- Use `agentOverrides` for small builtin tweaks. Create a markdown agent with the same runtime name when the role changes substantially.
-- Let supervisor agents choose per-task models. Children may use a different provider/model than the parent when the subagent extension accepts a `model` override.
+- Build a subagent tool when work benefits from an isolated context window, a narrower tool set, or a different model than the main session.
+- Keep the main session as the supervisor. Do not let ordinary children spawn their own children unless an agent explicitly receives a `subagent`-style tool.
+- Use a named markdown agent when a role, tool boundary, model choice, or output contract is stable across tasks. Use an inline task otherwise.
+- Reuse the official subagent example as the baseline; implement only the fields and modes your extension actually needs.
 
-## Locations and Precedence
+## Extension Shape
 
-For `nicobailon/pi-subagents`, discovery is recursive.
+Grounded in the official example (`registerTool` plus `exec`/child process):
 
-| Scope | Path | Use |
-|---|---|---|
-| Project | `.pi/agents/**/*.md` | Repo-specific team agents; highest normal priority. |
-| Project legacy | `.agents/**/*.md` | Legacy project agents; skip `.agents/skills`. |
-| User | `~/.pi/agent/agents/**/*.md` | Personal global agents. |
-| User legacy | `~/.agents/**/*.md` | Personal global agents outside Pi state. |
-| Package | paths from package manifest | Distributable reusable agents. |
-| Builtin | extension bundle | Lowest priority. |
+1. Discover agents fresh on each call so users can edit them mid-session.
+2. Register one tool exposing single/parallel/chain modes.
+3. Spawn a child `pi` per task with the agent's system prompt, tools, and model.
+4. Stream child tool calls and progress through `onUpdate`; pass `signal` so aborting the parent kills the children.
+5. Return dense final output to the model (cap the size), and keep full detail in `details`.
 
-Collision rules:
-- Project beats user.
-- User/project agents beat package and builtin agents.
-- A same-named user or project agent overrides a builtin.
-- Package names can namespace runtime names. Use this for reusable bundles that should not collide with common names.
+Useful helpers from `@earendil-works/pi-coding-agent`: `parseFrontmatter`, `getAgentDir`, `CONFIG_DIR_NAME`.
 
-Official Pi example behavior is narrower:
-- User agents: `~/.pi/agent/agents/*.md`.
-- Project agents: nearest `.pi/agents/*.md`.
-- Default `agentScope` is `user`; project agents load only with `agentScope: "project"` or `"both"`.
+## Agent Definition Files
 
-## Agent File Contract
-
-Minimum `nicobailon/pi-subagents` agent:
+Markdown with YAML frontmatter. Official minimal contract:
 
 ```md
 ---
-name: security-reviewer
-description: Reviews code changes for concrete security risks with evidence
+name: scout
+description: Fast codebase recon; returns compressed context
 tools: read, grep, find, ls, bash
-thinking: high
-systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: false
-defaultContext: fresh
+model: claude-haiku-4-5
 ---
 
-You are a security review subagent.
-
-When invoked:
-1. Inspect the assigned diff, files, or plan.
-2. Verify findings against code, tests, or documented behavior.
-3. Return only actionable findings with evidence.
-
-Output:
-- Blocker: issue, evidence, required fix
-- Warning: issue, evidence, suggested fix
-- Clear: what was checked when no issues are found
+You are a fast codebase scout. Return dense, decision-useful findings.
 ```
 
-Core fields for `nicobailon/pi-subagents`:
+- `name` — required runtime name.
+- `description` — required routing text; say exactly when to delegate here.
+- `tools` — optional allowlist; accept a comma string (`read, bash`) or a YAML list. Omit to inherit the session's normal tools.
+- `model` — optional; when omitted the child inherits the dispatching session's active model and thinking level.
+- Body — the child system prompt.
 
-| Field | Use |
-|---|---|
-| `name` | Required runtime name. Lowercase hyphenated names work best. |
-| `package` | Optional namespace. Runtime name becomes `<package>.<name>`. |
-| `description` | Required routing text. Say exactly when to use the agent. |
-| `tools` | Comma-separated tool allowlist. Omit only when the agent should inherit broadly. Use `mcp:<tool>` for direct MCP tools. |
-| `model` | Optional `provider/model` override. Prefer settings overrides for builtins. |
-| `fallbackModels` | Comma-separated fallback model IDs. |
-| `thinking` | `off`, `minimal`, `low`, `medium`, `high`, or `xhigh`. |
-| `systemPromptMode` | `replace` for a specialist prompt; `append` for a parent-like delegate. |
-| `inheritProjectContext` | `true` to keep `AGENTS.md`/`CLAUDE.md` style project context. |
-| `inheritSkills` | `true` only when the child should see the parent skill catalog. |
-| `skills` / `skill` | Comma-separated skills to inject. Avoid injecting the orchestration skill into ordinary children. |
-| `defaultContext` | `fresh` or `fork`. Explicit launch `context` wins. |
-| `defaultReads` | Comma-separated files the run should read first, such as `context.md, plan.md`. |
-| `defaultProgress` | `true` to maintain progress when workflows expect it. |
-| `output` | Default output path for large or reusable child results. |
-| `extensions` | Comma-separated extension sources loaded in child processes. |
-| `subagentOnlyExtensions` | Extensions available only to subagent children. |
-| `interactive` | `true` for agents intended to use interactive clarify/UI behavior. |
-| `maxSubagentDepth` | Tighten nested delegation depth for agents with `tools: subagent`. |
-| `completionGuard` | `false` disables completion guard behavior when supported. |
+An extension may define and honor extra frontmatter (thinking level, prompt mode, context mode, default reads). Only add a field if your loader reads it; otherwise it is inert.
 
-Prompt body shape:
+## Discovery And Scope
 
-```md
-You are <role>.
+| Scope | Path | Loads |
+|---|---|---|
+| User | `~/.pi/agent/agents/*.md` | Always |
+| Project | `.pi/agents/*.md` | Only with `agentScope: "project"` or `"both"` |
 
-When invoked:
-1. <first concrete action>
-2. <core work>
-3. <deliverable>
+- `agentScope`: `user` (default), `project`, or `both`. With `both`, a project agent overrides a same-named user agent.
+- Prefer `getAgentDir()` to resolve the user agent directory; it honors `PI_CODING_AGENT_DIR`.
 
-Rules:
-- <tool boundary>
-- <scope boundary>
-- <when to escalate>
+## Context Isolation
 
-Output:
-<exact format returned to parent>
-```
+- Each child runs in a separate process with its own context window.
+- Design axis: start the child from a clean session (independent review, scouting, second opinions that must not inherit parent bias) versus seed it with the current session branch (implementation or debugging that depends on the ongoing conversation). Choose per task; the official example uses isolated fresh children.
 
-Design rules:
-- Write the body for a cold child. Restate every non-obvious constraint in the delegated task, body, skill, or default reads.
-- Put "review-only", "read-only", or "single writer thread" boundaries in both `tools` and prose.
-- Do not let every agent see `subagent`. Only fanout/coordinator agents should include it.
-- Prefer lowercase Pi tool names: `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`, `subagent`, `intercom`, `contact_supervisor`.
-- Use `systemPromptMode: replace` for specialists. Use `append` only for a child that should act like the parent plus extra instructions.
+## Tool Modes
 
-## Supervisor Pattern
+Modes exposed by the official example:
 
-Put supervisor behavior in the parent session's instruction files, not in a default child.
+| Mode | Params | Use |
+|---|---|---|
+| Single | `{ agent, task }` | One agent, one task |
+| Parallel | `{ tasks: [...] }` | Independent tasks with bounded concurrency (the example caps 8 tasks / 4 concurrent) |
+| Chain | `{ chain: [...] }` | Sequential; pass prior output through a `{previous}` placeholder |
 
-Good global supervisor file:
-
-```text
-~/.pi/agent/AGENTS.md
-```
-
-Project-specific supervisor file:
-
-```text
-<repo>/AGENTS.md
-```
-
-Supervisor rules:
-
-```md
-# Pi Supervisor Rules
-
-You are the supervisor. Keep ownership of planning, risk control, approvals, and final synthesis.
-
-Use subagents for bounded specialist work:
-- scout for local code reconnaissance
-- researcher for current external facts with sources
-- planner for read-only implementation plans
-- worker for approved implementation
-- reviewer or security-reviewer for independent review
-- oracle for risky decision checks before editing
-
-Use `context: "fork"` when the child needs the current conversation and repo state.
-Use `context: "fresh"` for independent review, scouting, and second opinions.
-
-Default implementation loop:
-clarify -> planner -> worker -> fresh reviewers -> worker -> final synthesis
-
-Do not let children spawn children unless the assigned agent is a controlled fanout agent.
-```
-
-Create a child supervisor only for bounded fanout:
-
-```md
----
-name: supervisor-fanout
-description: Coordinates one bounded parallel subagent pass and returns a synthesized handoff
-tools: read, grep, find, ls, bash, subagent
-thinking: high
-systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: false
-defaultContext: fork
-maxSubagentDepth: 1
----
-
-You coordinate one bounded fanout pass.
-
-Rules:
-- Spawn only the specific child roles needed for the assigned task.
-- Never create open-ended recursive delegation.
-- Prefer fresh reviewers and forked planners/workers only when context matters.
-- Return one synthesized answer with child result IDs, decisions, and next action.
-```
-
-## Context Selection
-
-Use fresh context for:
-- independent code review
-- security review
-- lightweight scouting
-- external research
-- second opinions that should not inherit parent assumptions
-
-Use fork context for:
-- oracle checks over current decisions
-- implementation workers executing an approved plan
-- debugging that depends on the current conversation
-- review of a branch state built up in the parent
-
-`nicobailon/pi-subagents` behavior:
-- `context: "fork"` creates a real branched session from the parent leaf.
-- If any requested agent has `defaultContext: fork` and the call omits `context`, the invocation uses forked context.
-- `context: "fork"` fails fast when the parent session cannot be persisted or branched; it should not silently downgrade.
-
-`pi-fork` behavior:
-- The child receives the active session branch and a final task message.
-- It does not apply a custom agent markdown persona.
-- Use it for dense `Result`, `Output`, `Evidence`, `Learnings` reports from the same persona/context.
+- Parallel: independent scouts, review lenses, competing approaches, non-overlapping legs.
+- Chain: scout -> plan -> implement -> review, or enumerate -> test -> report.
+- Do quick orientation and final synthesis in the parent, not a child.
 
 ## Model Routing
 
-Pi model availability is runtime state. Do not hardcode a global catalog in agent docs.
+- Model availability is runtime state. Inspect with `pi --list-models [filter]`, or `ctx.modelRegistry` in code.
+- Set a per-agent `model`, or omit it to inherit the parent model and thinking level.
+- Express effort as a `:level` suffix on the model id (`provider/model:high`). Thinking levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
+- Cheaper models and `:low` for scouting and formatting; `:medium` for normal implementation; `:high`/`:xhigh` for hard debugging, architecture, and adversarial review.
 
-Ways to inspect models:
-- Shell: `pi --list-models`
-- Filtered shell: `pi --list-models <search>`, for example `pi --list-models sonnet` or `pi --list-models openrouter`
-- Extension/RPC code: use `ctx.modelRegistry.getAvailable()` or the RPC `get_available_models` command when building a structured extension
+## Workflow Presets
 
-Supervisor rules:
-- Pick `provider/model` and thinking effort per delegated task when capability, cost, context, vision, provider trust, reasoning depth, or latency matters.
-- Omit `model` or use `inherit` only when the parent model is already the right fit.
-- Use full `provider/model` strings when available. Bare model IDs are safe only when unique in the registry.
-- In execution calls, express per-task effort as a model suffix, such as `anthropic/claude-sonnet-4-5:high`.
-- In agent markdown or `agentOverrides`, use `thinking` to append a default suffix at runtime unless the model string already has one.
-- Re-check the registry after login/logout, settings changes, package changes, or model failures.
+- Package repeatable flows as prompt templates (`prompts/*.md`) that expand to slash commands and drive the subagent tool in sequence (for example `/implement` = scout -> planner -> worker).
+- Prompt-template frontmatter: `description` (required for discovery), `argument-hint` (optional). The body expands arguments with `$1`, `$@` or `$ARGUMENTS`, and `${1:-default}`.
 
-Selection heuristics:
-- `:off`, `:minimal`, `:low`: grep-heavy scouting, formatting, simple summaries, obvious test triage.
-- `:medium`: normal implementation, investigation, and synthesis that need judgment.
-- `:high`, `:xhigh`: exploit chains, hard debugging, architecture, adversarial review, multi-step implementation.
-- Large context: broad repository review, long logs, many artifacts, cross-file synthesis.
-- Vision: screenshots, diagrams, UI review, image evidence.
-- Trusted/private provider: sensitive source, credentials-adjacent data, client artifacts, exploit material.
+## Design Rules
 
-Per-call examples:
-
-```ts
-subagent({
-  agent: "1337-operator",
-  task: "<hard reasoning packet>",
-  model: "anthropic/claude-sonnet-4-5:high",
-  context: "fresh"
-});
-```
-
-```ts
-subagent({
-  tasks: [
-    { agent: "1337-operator", task: "<cheap repository scout>", model: "github-copilot/gpt-4.1" },
-    { agent: "1337-operator", task: "<exploit-analysis pass>", model: "anthropic/claude-opus-4-5:high" }
-  ],
-  context: "fresh",
-  concurrency: 2
-});
-```
-
-Agent-level fallback example:
-
-```md
----
-name: deep-reviewer
-description: Performs expensive second-pass review when the supervisor requests high confidence
-tools: read, grep, find, ls, bash
-model: anthropic/claude-opus-4-5:high
-fallbackModels: anthropic/claude-sonnet-4-5:high, openrouter/anthropic/claude-sonnet-4.5
-defaultContext: fresh
----
-```
-
-Do not let ordinary operator prompts select new models at will. Operators should report when the assigned model is inadequate because of context size, vision need, reasoning quality, provider/tool constraint, or sensitive-data policy.
-
-## Decomposition and Coaching
-
-Supervisor agents should decompose large work before launching children.
-
-Good child task size:
-- One domain, component, exploit path, test suite, artifact family, or review dimension.
-- One clear deliverable and success signal.
-- Enough work to justify a separate context window.
-- Small enough for the parent to verify without replaying the whole run.
-- Output bounded by `maxOutput`, `outputMode: "file-only"`, or explicit output files when large.
-
-Avoid:
-- One giant "do everything" worker.
-- Many tiny children that only restate setup or duplicate reads.
-- Parallel writers in the same checkout without `worktree: true` or disjoint file ownership.
-- Children coordinating with each other. The parent is the message bus.
-
-Routing:
-- Parallel `tasks`: independent scouts, independent review lenses, subsystem-specific searches, competing approaches, or non-overlapping implementation legs.
-- Sequential `chain`: scout -> plan -> implement -> verify -> review, or enumerate -> test hypothesis -> report.
-- Dynamic fanout: only from bounded structured output; set a maximum item count.
-- Direct parent work: quick orientation, final synthesis, and high-impact verification.
-
-Use model/effort by phase:
-- Scout: cheaper model, `:low`.
-- Planner: balanced model, `:medium` or `:high`.
-- Worker: capable coding model, `:medium` or `:high` depending on risk.
-- Reviewer/oracle/exploitability: strongest suitable model, usually `:high`.
-
-Control capabilities in `npm:pi-subagents`:
-- `status` is the normal peek path for live/background runs. It surfaces run ids, progress, nested status, session/artifact paths, and output/log references when available.
-- `resume` nudges or steers an active/revivable run; use it to narrow scope, add evidence requirements, or redirect a stuck child.
-- `interrupt` stops unsafe, out-of-scope, wrong-target, or repeatedly failing runs.
-- `append-step` adds exactly one tail step to a running async chain; it is not a general rewrite of completed/failed work.
-- Attention notices can tell the parent when to inspect, nudge, or interrupt.
-
-Foreground runs support live progress. In TUI, expanded live detail is a human UI affordance; agent-visible steering should rely on `status`, result details, saved outputs, and control actions.
-
-## Chains and Fanout
-
-Use slash commands for manual workflows:
-
-```text
-/run security-reviewer "Review the current diff"
-/run worker "Implement the approved plan" --fork
-/parallel security-reviewer "review for auth bugs" -> reviewer "review for tests"
-/chain scout "scan auth flow" -> planner "plan the change from {previous}" -> worker
-```
-
-Use tool calls from extensions or parent agent reasoning:
-
-```ts
-subagent({
-  agent: "security-reviewer",
-  task: "Review the current diff for concrete exploitable risks.",
-  context: "fresh",
-  acceptance: "attested",
-});
-```
-
-```ts
-subagent({
-  tasks: [
-    { agent: "security-reviewer", task: "Review auth and secrets handling." },
-    { agent: "reviewer", task: "Review tests and regression risk." }
-  ],
-  context: "fresh",
-  concurrency: 2,
-});
-```
-
-Use `.chain.md` for reusable local or packaged workflows:
-
-```md
----
-name: implement-and-review
-description: Implement an approved plan, review it, then apply selected fixes
----
-
-## worker
-output: implementation.md
-progress: true
-
-Implement the approved plan with minimal edits.
-
-## reviewer
-reads: implementation.md
-output: review.md
-
-Review the implementation for correctness, tests, and scope control.
-
-## worker
-reads: review.md
-
-Apply only the review fixes that are clearly required.
-```
-
-Use JSON chains when you need parallel groups, worktrees, structured output, or acceptance gates.
-
-## Packaging Agents
-
-Package agents when they should install with `pi install`.
-
-Minimal package:
-
-```json
-{
-  "name": "my-pi-agent-pack",
-  "type": "module",
-  "keywords": ["pi-package"],
-  "pi": {
-    "subagents": {
-      "agents": ["./agents"],
-      "chains": ["./chains"]
-    }
-  },
-  "pi-subagents": {
-    "agents": ["./agents"],
-    "chains": ["./chains"]
-  }
-}
-```
-
-Use both `pi.subagents` and `pi-subagents` when targeting mixed installed versions. Keep paths relative and inside the package.
-
-Recommended layout:
-
-```text
-my-pi-agent-pack/
-+-- package.json
-+-- agents/
-|   +-- security-reviewer.md
-|   +-- implementation-worker.md
-+-- chains/
-    +-- implement-and-review.chain.md
-```
-
-Do not package workstation-specific absolute paths, usernames, provider API keys, or local model names unless the package is private and documented.
-
-## Extension Differences
-
-`nicobailon/pi-subagents`:
-- Tool name: `subagent`.
-- Single call uses `{ agent, task }`.
-- Management actions include `list`, `get`, `create`, `update`, `delete`, `status`, `interrupt`, `resume`, `append-step`, `doctor`.
-- Supports project/user/package/builtin agents, recursive discovery, chains, background runs, fork context, worktrees, intercom bridge, acceptance gates, and builtin `agentOverrides`.
-- Package manifests can expose agents through `pi.subagents.agents` or `pi-subagents.agents`.
-
-Official Pi example extension:
-- Tool name: `subagent`.
-- Single call uses `{ agent, task }`.
-- Supports user/project markdown agents with `name`, `description`, `tools`, `model`, and body prompt.
-- Loads project agents only when `agentScope` enables them.
-- Good base for building a small custom extension, not a complete product.
-
-`tintinweb/pi-subagents`:
-- Tool name: `Agent`.
-- Spawn call uses `{ subagent_type, prompt, description }`.
-- Custom agent filename is the agent type; frontmatter `name` is not required in examples.
-- Fields include `display_name`, `tools`, `extensions`, `exclude_extensions`, `skills`, `memory`, `disallowed_tools`, `isolation`, `model`, `thinking`, `max_turns`, `prompt_mode`, `inherit_context`, `run_in_background`, `isolated`, `enabled`.
-
-`@gotgenes/pi-subagents`:
-- Tool name: `subagent`.
-- Spawn call uses `{ subagent_type, prompt, description }`.
-- Focused in-process core with typed service API.
-- Removed some upstream fields; worktree isolation and permission policy live in companion packages.
-- Use `permission:` with `@gotgenes/pi-permission-system` instead of old `disallowed_tools`.
-
-`pi-fork`:
-- Tool name: `fork`.
-- Call uses `{ task, effort? }`.
-- No markdown agents, no persona registry.
-- Configure effort profiles, child extension loading, offline mode, environment, and cost footer under `pi-fork` settings.
-
-## Security Checks
-
-Before creating or enabling project-local agents:
-- Confirm the repo is trusted. Agent files are prompt/code-execution influence.
+- Write agent bodies for a cold child: restate every non-obvious constraint in the task, body, or default reads.
+- Put "read-only" or "review-only" boundaries in both `tools` and prose.
 - Keep writer tools out of reviewers and researchers.
-- Do not expose `subagent` to ordinary children.
-- Prefer `context: fresh` for adversarial review to reduce inherited bias.
-- Prefer `context: fork` for implementation only after the parent has a clear approved plan.
-- Use `worktree: true` for parallel writer agents in the same repo.
-- Add `maxSubagentDepth` to any fanout agent.
-- Do not enable project agents globally for untrusted repos.
-- Keep package agent names namespaced when publishing.
-- Install `pi-intercom` only when live child-to-parent decisions are needed; otherwise avoid extra coordination surface.
+- Do not expose the subagent tool to ordinary children; bound delegation depth.
+- Return decision-useful sections: result, evidence, validation, risks.
+- Prefer a clean child context for adversarial review; seed context only for implementation after an approved plan.
+
+## Security
+
+- Project-local agents (`.pi/agents/*.md`) are repo-controlled prompts that can drive file reads and bash. Treat them as executable influence.
+- Default to user-only agents. Require project trust and confirm before running project agents in untrusted repos (the example gates this and exposes a `confirmProjectAgents` switch).
+- Never inject secrets into child prompts unless the target model or provider is approved to receive them.
+- Pass `signal` so aborting the parent terminates child processes.
 
 ## Validation
 
-Validate custom agents by running:
-
-```text
-/subagents-doctor
-Show me the available subagents.
-/run security-reviewer "Review the current diff"
+```bash
+npm run typecheck
+pi -e .
 ```
 
-Check behavior:
-- The agent appears in discovery with the expected source.
-- A same-named project agent overrides the user/builtin agent.
-- Read-only agents cannot edit files.
-- Writer agents make actual edits instead of returning patch prose.
-- Fresh reviewers do not depend on parent-only context.
-- Forked workers fail clearly if no persisted parent session exists.
-- Background runs can be inspected with `subagent({ action: "status" })`.
-
-For packaged agents:
-- Install from a local path with `pi install ./my-pi-agent-pack`.
-- Confirm package agents appear below user/project overrides.
-- Confirm `.chain.md` or `.chain.json` workflows parse and run.
+- Confirm agents appear in discovery from the expected scope.
+- Confirm a same-named project agent overrides the user agent under `agentScope: "both"`.
+- Confirm read-only agents cannot edit and writer agents make real edits.
+- Confirm single, parallel, and chain modes behave and that Ctrl+C kills children.
+- Confirm workflow prompts expand and run the intended sequence.
 
 ## Sources
 
-- Official Pi extensions documentation: `https://pi.dev/docs/latest/extensions`
-- Official Pi subagent example source: `packages/coding-agent/examples/extensions/subagent/`
-- `nicobailon/pi-subagents`: `https://github.com/nicobailon/pi-subagents`
-- `tintinweb/pi-subagents`: `https://github.com/tintinweb/pi-subagents`
-- `gotgenes/pi-packages` / `@gotgenes/pi-subagents`: `https://github.com/gotgenes/pi-packages`
-- `elpapi42/pi-fork`: `https://github.com/elpapi42/pi-fork`
+- Pi extensions docs: https://pi.dev/docs/latest/extensions
+- Pi skills docs: https://pi.dev/docs/latest/skills
+- Pi prompt-template docs: https://pi.dev/docs/latest/prompt-templates
+- Official subagent example: `packages/coding-agent/examples/extensions/subagent/`

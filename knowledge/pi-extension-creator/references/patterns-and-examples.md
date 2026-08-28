@@ -51,7 +51,7 @@ Avoid broad regex-only gates when an argument parser exists. Put shell/path clas
 
 ## Subprocess Tool
 
-Pattern from `pi-fork` and subagent examples:
+Pattern from the official subagent example:
 
 1. Build a narrow tool schema.
 2. Gather minimal context needed by the child process.
@@ -94,7 +94,7 @@ Implementation rules:
 
 ## Command Rewriter
 
-Pattern from Hypa-style integrations:
+Pattern for wrapping an external binary or runtime:
 
 1. Load config once, resolve binary/runtime path.
 2. Register explicit diagnostic command.
@@ -126,13 +126,11 @@ State rules:
 - Keep large or private data out of `details`; store paths or summaries instead.
 - Use custom rendering for state the user needs to inspect.
 
-When concurrent tool calls can corrupt state, set a sequential execution mode if the current Pi API supports it, or implement a local mutation queue.
+When concurrent tool calls can corrupt state, set `executionMode: "sequential"` on the tool definition, or use `withFileMutationQueue` for read-modify-write file access.
 
 ## Dynamic Resources
 
-Use `resources_discover` when an extension contributes skills, prompts, or themes based on cwd/config.
-
-Return only paths that exist and are intended for the current project.
+Use `resources_discover` when an extension contributes skills, prompts, or themes based on cwd/config. Return `{ skillPaths?, promptPaths?, themePaths? }` with only paths that exist and are intended for the current project.
 
 Do not expose untrusted project resources before project trust is resolved. Project-local extensions load only after trust; user/global extensions can participate in `project_trust`.
 
@@ -172,9 +170,21 @@ Use these sources as pattern references, not as code to paste blindly:
 
 - Official Pi docs: https://pi.dev/docs/latest/extensions
 - Official Pi package docs: https://pi.dev/docs/latest/packages
-- Official examples: https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions
-- `elpapi42/pi-fork`: https://github.com/elpapi42/pi-fork
-- `elpapi42/pi-minimal-subagent`: https://github.com/elpapi42/pi-minimal-subagent
-- `Hypabolic/Hypa` Pi package: https://github.com/Hypabolic/Hypa/tree/main/packages/pi-hypa
+- Official examples dir: https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions
+
+High-signal example files in that directory (v0.84.x):
+
+| Pattern | Example file |
+|---|---|
+| Tool-call gate | `permission-gate.ts`, `protected-paths.ts`, `confirm-destructive.ts` |
+| Runtime tool registration | `dynamic-tools.ts` |
+| Stateful tool + `renderCall`/`renderResult` | `todo.ts` |
+| Custom message vs entry rendering | `message-renderer.ts`, `entry-renderer.ts` |
+| Subprocess/subagent runner | `subagent/`, `interactive-shell.ts` |
+| Chrome/footer/header/editor | `custom-footer.ts`, `custom-header.ts`, `border-status-editor.ts`, `modal-editor.ts` |
+| Dynamic resources | `dynamic-resources/` |
+| Package with npm dependency | `with-deps/` |
+| Custom compaction | `custom-compaction.ts`, `trigger-compact.ts` |
+| Custom provider | `custom-provider-anthropic/`, `custom-provider-gitlab-duo/` |
 
 Normalize imports and APIs against current Pi docs before creating new code.

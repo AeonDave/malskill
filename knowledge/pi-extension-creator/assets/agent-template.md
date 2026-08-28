@@ -1,19 +1,8 @@
 ---
 name: agent-name
 description: Concrete routing sentence for when Pi should delegate to this agent
-# package: optional-namespace
-# tools: read, grep, find, ls, bash
-# model: provider/model-id
-# fallbackModels: provider/model-a, provider/model-b
-# thinking: high
-# systemPromptMode: replace
-# inheritProjectContext: true
-# inheritSkills: false
-# defaultContext: fresh
-# defaultReads: context.md, plan.md
-# defaultProgress: true
-# output: reports/agent-output.md
-# maxSubagentDepth: 1
+tools: read, grep, find, ls, bash
+# model: provider/model-id   # omit to inherit the session model and thinking level
 ---
 
 You are a <role> specializing in <domain>.
@@ -27,7 +16,7 @@ Rules:
 - Stay within the delegated task.
 - Use the listed tools directly; do not print pseudo tool calls.
 - Escalate only when a required decision is missing.
-- Do not spawn subagents unless this agent explicitly has `tools: subagent`.
+- Do not spawn subagents unless this agent's tool set explicitly includes a subagent tool.
 
 Output:
 - Result: concise answer.

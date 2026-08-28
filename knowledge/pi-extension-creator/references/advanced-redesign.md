@@ -40,8 +40,10 @@ Do not describe an advanced redesign as a "theme" in code. Name it as a package 
 |---|---|
 | Change all semantic colors | JSON theme |
 | Load/share theme with an extension | `package.json` `pi.themes` or conventional `themes/` |
-| Switch active theme | `ctx.ui.setTheme(nameOrTheme)` |
+| Switch active theme | `ctx.ui.setTheme(nameOrTheme)` (returns `{ success, error? }`) |
+| Set terminal window/tab title | `ctx.ui.setTitle(text)` |
 | Hide streaming working row | `ctx.ui.setWorkingVisible(false)` |
+| Replace working-row text | `ctx.ui.setWorkingMessage(text)` (omit arg to reset) |
 | Hide spinner only | `ctx.ui.setWorkingIndicator({ frames: [] })` |
 | Rename collapsed thinking | `ctx.ui.setHiddenThinkingLabel(label)` |
 | Add footer status fragments | `ctx.ui.setStatus(key, text)` |
@@ -174,6 +176,7 @@ Widgets:
 Working row:
 
 - `setWorkingVisible(false)` hides the built-in loader row.
+- `setWorkingMessage(text)` replaces the loader text without hiding the row; call with no argument to restore the default.
 - If hidden, show equivalent progress in footer, widget, title, or message renderer.
 - Restore with `setWorkingVisible(true)` when disabling the redesign.
 
@@ -300,10 +303,9 @@ Use these as implementation anchors:
 
 - Pi extension docs: https://pi.dev/docs/latest/extensions
 - Pi theme docs: https://pi.dev/docs/latest/themes
-- Pi TUI design article: https://mariozechner.at/posts/2025-11-30-pi-coding-agent/
+- Pi TUI component docs: https://pi.dev/docs/latest/tui
+- Pi RPC docs: https://pi.dev/docs/latest/rpc
 - Official extension examples: https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions
-- Public footer package pattern: https://github.com/jayshah5696/pi-agent-extensions
-- Public statusline package pattern: https://github.com/rytswd/pi-agent-extensions
 
 Local source paths to verify before coding against a checked-out Pi version:
 

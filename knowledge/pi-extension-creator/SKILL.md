@@ -1,6 +1,6 @@
 ---
 name: pi-extension-creator
-description: "Create, review, package, and troubleshoot Pi coding-agent extensions and Pi packages. Use when asked to build TypeScript extensions for Pi, register tools with pi.registerTool, subscribe to pi.on lifecycle/tool/input/session events, add slash commands, custom UI/widgets/renderers, package resources through package.json pi.extensions/skills/prompts/themes, define custom subagent markdown agents/chains for pi-subagents, install via pi -e or pi install, or adapt examples such as pi-fork, pi-minimal-subagent, Hypa pi-hypa, permission gates, protected paths, subagents, command rewriters, custom providers, and dynamic resources."
+description: "Create, review, package, and troubleshoot Pi coding-agent extensions and Pi packages. Use when asked to build TypeScript extensions for Pi, register tools with pi.registerTool, subscribe to pi.on lifecycle/tool/input/session events, add slash commands, keyboard shortcuts, or CLI flags, build custom UI/widgets/footers/headers/editors and message or tool renderers, contribute skills/prompts/themes, package resources through package.json pi.extensions/skills/prompts/themes, define subagent-style markdown agents in ~/.pi/agent/agents or .pi/agents, install via pi -e or pi install, or implement patterns like permission gates, protected paths, subagents, command rewriters, custom providers, and dynamic resources."
 license: MIT
 metadata:
   author: AeonDave
@@ -20,7 +20,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 ```
 
-Some older public examples use `@mariozechner/*` or `@sinclair/typebox`. Preserve those only when maintaining that codebase. For new code, follow the current docs and local package conventions.
+Older extensions may import from a previous package scope or from `@sinclair/typebox`. Preserve those only when maintaining that codebase. For new code, follow the current docs and local package conventions.
 
 ## Workflow
 
@@ -94,16 +94,19 @@ Use these defaults:
 
 ## Example Selection
 
-Load [references/patterns-and-examples.md](references/patterns-and-examples.md) when choosing structure from real examples:
+Load [references/patterns-and-examples.md](references/patterns-and-examples.md) when choosing structure. It maps common surfaces to the official Pi extension examples:
 
-- `pi-fork`: subprocess runner, context snapshot, effort config, cost footer, custom rendering.
-- `pi-minimal-subagent`: named agent discovery, simple subagent tool, config tri-state for child extensions.
-- `Hypa pi-hypa`: command rewrite gate, diagnostics command, package subdirectory, external runtime dependency.
-- Official examples: permission gates, protected paths, dynamic tools, stateful todo, custom UI, package dependencies, resource discovery.
+- Safety gates and protected paths.
+- Runtime/dynamic tool registration.
+- Stateful tools with custom `renderCall`/`renderResult`.
+- Subprocess and subagent (child-session) runners.
+- Dynamic resource contribution.
+- Packages that bundle npm dependencies.
+- Custom message and entry rendering.
 
 Load [references/advanced-redesign.md](references/advanced-redesign.md) when the request says redesign, advanced theme, UI chrome, statusline, powerline footer, hide/show Pi UI, replace footer/header/editor, or combine a JSON theme with extension behavior.
 
-Load [references/custom-subagent-agents.md](references/custom-subagent-agents.md) when the request says custom agent, subagent persona, supervisor, planner/reviewer/worker/oracle, `.pi/agents`, `~/.pi/agent/agents`, `agentOverrides`, chain, fanout, fork-vs-fresh context, or packaging agents for `pi-subagents`.
+Load [references/custom-subagent-agents.md](references/custom-subagent-agents.md) when the request says custom agent, subagent, supervisor, scout/planner/reviewer/worker roles, `.pi/agents`, `~/.pi/agent/agents`, `agentScope`, markdown agent files, parallel/chain delegation, or child-session context.
 
 ## Packaging
 
@@ -129,9 +132,9 @@ Use peer dependencies for Pi-provided packages and runtime dependencies for ever
 ### references/
 
 - [references/api-surface.md](references/api-surface.md) - Pi extension APIs, event routing, tool signatures, UI modes, rendering, state, and error behavior. Load before implementing API handlers.
-- [references/patterns-and-examples.md](references/patterns-and-examples.md) - Architecture patterns from official examples plus `pi-fork`, `pi-minimal-subagent`, and `Hypa`. Load when choosing a design or reviewing an existing extension.
+- [references/patterns-and-examples.md](references/patterns-and-examples.md) - Architecture patterns mapped to the official Pi extension examples. Load when choosing a design or reviewing an existing extension.
 - [references/advanced-redesign.md](references/advanced-redesign.md) - Theme-vs-extension decision rules, advanced UI chrome replacement, statusline/footer/header/editor patterns, mode limits, and validation. Load before implementing a redesign or advanced theme package.
-- [references/custom-subagent-agents.md](references/custom-subagent-agents.md) - Custom markdown agents, supervisor patterns, frontmatter fields, chains, package manifest entries, and fork integration for Pi subagent extensions. Load before creating or tuning subagent agents.
+- [references/custom-subagent-agents.md](references/custom-subagent-agents.md) - Build subagent-style extensions: markdown agent files, discovery and scope, context isolation, single/parallel/chain delegation, and model routing, grounded in the official Pi subagent example. Load before creating or tuning subagent extensions.
 - [references/package-and-release.md](references/package-and-release.md) - Pi package layout, dependencies, install modes, filtering, release checklist, and validation. Load when packaging or distributing.
 
 ### scripts/
@@ -141,5 +144,5 @@ Use peer dependencies for Pi-provided packages and runtime dependencies for ever
 ### assets/
 
 - [assets/templates/basic-pi-extension/](assets/templates/basic-pi-extension/) - Minimal typed Pi package with `src/index.ts`, `package.json`, `tsconfig.json`, and a small test.
-- [assets/agent-template.md](assets/agent-template.md) - Fill-in markdown template for a `pi-subagents` custom agent. Copy when creating an agent file.
-- [assets/examples/](assets/examples/) - Focused single-file examples for common extension surfaces plus custom subagent agent/chains/package snippets. Copy only when the matching pattern is needed.
+- [assets/agent-template.md](assets/agent-template.md) - Fill-in markdown template for a Pi subagent-style agent (name/description/tools/model). Copy when creating an agent file.
+- [assets/examples/](assets/examples/) - Focused single-file examples for common extension surfaces plus a sample subagent agent and workflow prompt. Copy only when the matching pattern is needed.

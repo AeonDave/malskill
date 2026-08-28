@@ -116,6 +116,19 @@ Runtime packages your extension imports belong in `dependencies`.
 
 Development-only test/typecheck packages belong in `devDependencies`.
 
+To ship a third-party package that itself contributes Pi resources, add it to `dependencies` and `bundledDependencies`, then reference its resources through `node_modules/<pkg>/...` paths in the `pi` manifest:
+
+```json
+{
+  "dependencies": { "helper-package": "^1.0.0" },
+  "bundledDependencies": ["helper-package"],
+  "pi": {
+    "extensions": ["extensions", "node_modules/helper-package/extensions"],
+    "skills": ["skills", "node_modules/helper-package/skills"]
+  }
+}
+```
+
 For git/npm installs, Pi runs npm install for packages with `package.json`. Make postinstall scripts deterministic and safe; avoid surprise network work beyond normal package installation.
 
 If the extension shells out to an external binary:

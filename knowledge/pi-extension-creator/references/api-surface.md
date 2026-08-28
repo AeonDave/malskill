@@ -32,7 +32,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 ```
 
-If maintaining older extensions, check the repo before changing imports. Public examples may still use `@mariozechner/*` or `@sinclair/typebox`.
+If maintaining older extensions, check the repo before changing imports. Older code may still import from a previous package scope or from `@sinclair/typebox`.
 
 ## Factory
 
@@ -55,10 +55,10 @@ Do not start long-lived resources in the factory. Start them lazily and close th
 Core lifecycle:
 
 ```text
-startup -> project_trust -> session_start -> resources_discover
+project_trust -> session_start -> resources_discover
 user prompt -> input -> before_agent_start -> agent_start -> turn_start
 tool use -> tool_execution_start -> tool_call -> tool_result -> tool_execution_end
-turn_end -> agent_end
+turn_end -> agent_end -> agent_settled
 session changes -> session_before_* -> session_shutdown -> session_start
 ```
 
@@ -88,7 +88,8 @@ Useful event choices:
 | Intercept user text before agent run | `input` |
 | Inject per-turn system prompt additions | `before_agent_start` |
 | Add/trim context before provider request | `context` |
-| Inspect provider payload just before HTTP send | `before_provider_request` |
+| Inspect or replace provider payload just before HTTP send | `before_provider_request` |
+| Mutate outgoing request headers in place | `before_provider_headers` |
 | Inspect HTTP response status/headers | `after_provider_response` |
 | Intercept `!`/`!!` user bash commands | `user_bash` |
 | Gate or rewrite tool args | `tool_call` |
@@ -159,6 +160,8 @@ async execute(_id, params, _signal, _onUpdate, ctx) {
 ```
 
 Use `withFileMutationQueue` whenever your tool reads then writes the same file, or when it may run in parallel with built-in `edit`/`write` on the same file.
+
+When a tool must not run concurrently with other invocations of itself (shared in-memory state, ordered side effects), set `executionMode: "sequential"` in the tool definition. The default is `"parallel"`.
 
 For session-resume compat, use `prepareArguments` to fold old call shapes into the current schema:
 
@@ -283,7 +286,7 @@ pi.on("session_start", async (_event, ctx) => {
 });
 ```
 
-Use `pi.appendEntry(customType, data)` for extension-owned state that is not tied to a tool result. Pair it with a custom renderer if users should inspect it.
+Use `pi.appendEntry(customType, data)` for extension-owned session entries that are **not** sent to the model; render them with `pi.registerEntryRenderer(customType, renderer)`. Use `pi.sendMessage({ customType, content, display, details }, { triggerTurn, deliverAs })` for a custom message that **is** sent to the model; render it with `pi.registerMessageRenderer(customType, renderer)`.
 
 ## Rendering
 
@@ -319,6 +322,8 @@ pi.registerMessageRenderer("my-extension", (message, options, theme) => {
 });
 ```
 
+Use `registerMessageRenderer` for custom messages created with `pi.sendMessage` (model-visible). Use `registerEntryRenderer` for custom entries created with `pi.appendEntry` (not model-visible). Both receive `(entry, options, theme)` and must return a TUI `Component`.
+
 Prefer compact collapsed views and useful expanded details.
 
 ## Modes
@@ -353,7 +358,7 @@ pi.registerFlag("plan", { type: "boolean", default: false, description: "Start i
 
 // Send a user message as if typed (always triggers a turn)
 pi.sendUserMessage("Continue from here.");
-// During streaming, specify delivery mode:
+// During streaming, specify delivery mode ("steer" | "followUp"):
 pi.sendUserMessage("/my-command", { deliverAs: "followUp" });
 
 // Manage active tools
@@ -364,7 +369,7 @@ pi.setActiveTools([...active, "my_tool"]); // enable/disable
 // Model and thinking level
 const model = ctx.modelRegistry.find("anthropic", "claude-sonnet-4-5");
 if (model) await pi.setModel(model);
-pi.setThinkingLevel("high"); // "off"|"minimal"|"low"|"medium"|"high"|"xhigh"
+pi.setThinkingLevel("high"); // "off"|"minimal"|"low"|"medium"|"high"|"xhigh"|"max"
 
 // Session name and labels
 pi.setSessionName("refactor-auth");
