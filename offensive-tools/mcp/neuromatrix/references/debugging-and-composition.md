@@ -12,7 +12,7 @@ Use an actual backend path:
 |---|---|---|
 | QEMU full-system Linux/firmware | `qemu_linux_start(gdb=true)`, `qemu_firmware_start(gdb=true)`, or `qemu_gdbserver_start` | registered `gdb-remote` endpoint |
 | Running generic QEMU system VM | `qemu_gdbserver_start` | registered `gdb-remote` endpoint |
-| QEMU user-mode process | `start_interactive_session` with `qemu-ARCH -g PORT <internal_path>` | manually registered/verified endpoint |
+| QEMU user-mode process | `start_interactive_session` with `qemu-ARCH -g PORT <workspace_ref>` | manually registered/verified endpoint |
 | Renode machine | `renode_start_gdbserver` | registered `gdb-remote` endpoint |
 
 `qemu_gdbserver_start` controls the `qemu-system-*` stub. If no VM is running, its planned configuration applies to the next `qemu_system_start`, not to `qemu_start_process`.
@@ -21,7 +21,7 @@ Use an actual backend path:
 
 1. Create a QEMU session for the target architecture.
 2. Upload the executable through the artifact data plane and call `import_artifact_to_workspace(..., executable=true)`.
-3. Start the matching provider-side emulator with `start_interactive_session`, for example `qemu-x86_64-static` with `args=["-g", "1234", "<internal_path>"]`.
+3. Start the matching provider-side emulator with `start_interactive_session`, for example `qemu-x86_64-static` with `args=["-g", "1234", "<workspace_ref returned by import_artifact_to_workspace>"]`. Pass that opaque reference unchanged as a complete argument; NeuroMatrix resolves it inside the active session and rejects cross-session refs. Do not derive or persist a provider-local path.
 4. Register or inspect a `gdb-remote` endpoint whose `scope` matches its real reachability.
 5. Call `endpoint_client_context`; inspect `client_execution.can_spawn_from_neuromatrix`, `available_clients`, and `client_requirement`.
 6. If the endpoint is `neuromatrix_local`, use `spawn_endpoint_client` with an installed `gdb` or `gdb-multiarch`. Substitute the literal host and port returned by `endpoint_client_context`:

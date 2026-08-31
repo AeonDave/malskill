@@ -72,7 +72,7 @@ restage each input artifact before continuing.
 ## Emulated GDB sessions
 
 - QEMU full-system: start or configure the QEMU system GDB stub, inspect its `gdb-remote` endpoint, then spawn the client from a reachable scope. For a `neuromatrix_local` endpoint, use `emulation_endpoint_client(action="spawn", endpoint_id=..., command="/bin/sh", args=["-lc", "gdb -q -nx -batch -ex 'set pagination off' -ex \"target remote ${NEUROMATRIX_ENDPOINT_HOST}:${NEUROMATRIX_ENDPOINT_PORT}\" -ex 'info registers'"])`. NeuroMatrix injects the endpoint variables; do not override reserved `NEUROMATRIX_ENDPOINT_*` names.
-- QEMU user-mode: import the target into the NeuroMatrix workspace, start `qemu-ARCH` interactively with `-g PORT`, register/inspect the endpoint, and run GDB where that provider-local port is reachable.
+- QEMU user-mode: import the target into the NeuroMatrix workspace, pass the returned opaque `workspace_ref` unchanged as the target's exact process argument, start `qemu-ARCH` interactively with `-g PORT`, register/inspect the endpoint, and run GDB where that provider-local port is reachable. Never replace the ref with provider-private `internal_path` metadata.
 - Renode: start its GDB server and use the registered endpoint.
 - NeuroMatrix `attach_debugger` records debugger metadata only. It does not launch GDB, connect a client, start Frida, or inject a process.
 - NeuroMatrix has no native Frida tool. If Frida is appropriate, MCPwn or another client owns the Frida lifecycle and must reach an explicitly exposed target.

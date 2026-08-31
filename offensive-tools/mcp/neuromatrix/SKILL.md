@@ -20,7 +20,7 @@ Use the default Streamable HTTP MCP endpoint (`/mcp`) unless the deployment expl
 
 1. **Connect and create one session.** Use `create_session(backend, arch, os_name?, rootfs?, config?, session_id?)`. Reuse the session for the task. Lost state after context reset? Use `list_sessions`, `list_events`, and `list_guest_endpoints` before creating another one.
 2. **Discover before calling.** In `agent` mode, backend-specific tools are catalog-only. Use `list_catalog(category="backend", backend="<backend>", include_schema=true)` or `get_tool("<name>")`, then call `run_tool("<name>", {...})`.
-3. **Move artifacts correctly.** Existing disk files go through `request_upload` + HTTP `PUT`, then use `mcp://artifacts/<sha256>` directly or `import_artifact_to_workspace` when mutation/execution from a workspace path is needed.
+3. **Move artifacts correctly.** Existing disk files go through `request_upload` + HTTP `PUT`, then use `mcp://artifacts/<sha256>` directly or `import_artifact_to_workspace` when a mutable/executable session file is needed. For provider-side process launchers, pass the returned opaque `workspace_ref` unchanged as an exact `args` entry; never derive `internal_path`.
 4. **Choose the backend lane.** Use the backend routing table below. If the lane fails because a lower layer is missing, escalate to the backend that models that layer.
 5. **Run with the right lifecycle.** Short catalog tools can run inline. Long-running tools require `run_tool(..., detach=true)` and `poll_job`.
 6. **Collect evidence.** Use memory/register output, disassembly, traces, QEMU console transcripts, QMP/GDB endpoint reachability, Renode UART/peripheral facts, guest service responses, and artifact-backed outputs.
