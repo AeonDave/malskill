@@ -4,6 +4,8 @@ Target revision: MCP `2026-07-28`
 Authority: Final MCP specification and official extension specifications  
 Purpose: Normative baseline and migration guardrails; application design patterns live in [patterns.md](patterns.md)
 
+Use the official term **modern MCP** plus the exact revision. “V2” appears only in this repository filename and is not an official protocol label.
+
 ## Contents
 
 - [Status legend](#status-legend)
@@ -230,9 +232,9 @@ Use MCP Apps only when an embedded interactive UI materially improves a workflow
 
 ## Authorization extensions
 
-Status: Official MCP Extension
+Status: Official MCP Extensions — OAuth Client Credentials is Draft; Enterprise-Managed Authorization is Stable
 
-OAuth Client Credentials supports machine-to-machine authentication. Enterprise-Managed Authorization supports centrally controlled enterprise access. Negotiate only the extension required by the deployment, publish fallback or rejection behavior, and do not imply that either is mandatory for generic MCP servers.
+OAuth Client Credentials supports machine-to-machine authentication. Enterprise-Managed Authorization supports centrally controlled enterprise access. Recheck each extension's lifecycle before adoption, negotiate only what the deployment requires, publish fallback or rejection behavior, and do not imply that either is mandatory for generic MCP servers.
 
 ## Authorization hardening
 
@@ -299,5 +301,6 @@ Status: MCP Core 2026-07-28 plus Deprecated / Legacy isolation
 - [Extensions overview](https://modelcontextprotocol.io/extensions/overview)
 - [Tasks overview](https://modelcontextprotocol.io/extensions/tasks/overview)
 - [MCP Apps overview](https://modelcontextprotocol.io/extensions/apps/overview)
+- [Authorization extensions repository and lifecycle](https://github.com/modelcontextprotocol/ext-auth)
 - [OAuth Client Credentials](https://modelcontextprotocol.io/extensions/auth/oauth-client-credentials)
 - [Enterprise-Managed Authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization)

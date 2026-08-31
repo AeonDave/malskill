@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Heuristic static linter for MCP 2026-07-28 server source and docs.
 
-Regex-based and intentionally conservative: it flags native-default use of
-removed/deprecated protocol features and common stateless-core mistakes. Every
-finding is a hint to review, not a proof of a bug. Point it at server code, not
-at this skill's reference docs (which discuss the deprecated features on purpose).
+Regex-based and intentionally limited: it flags suspicious legacy terms and
+common stateless-core omissions. Every finding is a review hint, never proof of
+a bug or conformance. Point it at server code, not this skill's reference docs
+(which discuss deprecated features on purpose).
 
 Usage:
   python check_mcp_conformance.py <file-or-dir> [--format text|json] [--strict]
@@ -24,26 +24,24 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv",
 
 # (rule_id, severity, regex, message)
 LINE_RULES = [
-    ("mcp-session-id", "error", re.compile(r"Mcp-Session-Id", re.I),
-     "Mcp-Session-Id was removed from native 2026-07-28; use explicit server-minted handles"),
-    ("last-event-id", "error", re.compile(r"Last-Event-ID", re.I),
-     "SSE resumability/Last-Event-ID was removed; retry a broken stream as a new request id"),
+    ("mcp-session-id", "warn", re.compile(r"Mcp-Session-Id", re.I),
+     "modern 2026-07-28 servers ignore this legacy header; isolate any compatibility behavior"),
+    ("last-event-id", "warn", re.compile(r"Last-Event-ID", re.I),
+     "modern 2026-07-28 streams are not resumable; isolate any legacy compatibility behavior"),
     ("tasks-list", "error", re.compile(r"tasks/list"),
      "no official tasks/list method exists; expose a custom admin list tool, labelled as custom"),
     ("initialized-notif", "warn", re.compile(r"notifications/initialized"),
-     "the initialize handshake is legacy-only; keep it in a compatibility adapter, not native V2"),
-    ("roots-list", "warn", re.compile(r"roots/list"),
-     "server-initiated roots were removed; use MRTR or pass paths as arguments/resources/config"),
-    ("sampling", "warn", re.compile(r"sampling/createMessage"),
-     "server-initiated sampling was removed; call a model provider directly or use MRTR"),
+     "the initialize handshake is legacy-only; keep it in a compatibility adapter"),
     ("resources-subscribe", "warn", re.compile(r"resources/(?:un)?subscribe"),
      "resources/subscribe was removed; use subscriptions/listen"),
-    ("include-context", "warn", re.compile(r"includeContext"),
+    ("include-context", "warn", re.compile(
+        r"includeContext.{0,40}(?:thisServer|allServers)|"
+        r"(?:thisServer|allServers).{0,40}includeContext", re.I),
      "includeContext thisServer/allServers is deprecated; omit it or use none"),
-    ("http-sse", "warn", re.compile(r"HTTP\+SSE|text/event-stream"),
+    ("http-sse", "warn", re.compile(r"HTTP\+SSE", re.I),
      "HTTP+SSE transport is deprecated; use Streamable HTTP"),
     ("initialize", "info", re.compile(r"(?<![A-Za-z_])initialize(?![A-Za-z_])"),
-     "initialize handshake is legacy in native V2; carry version/capabilities in per-request _meta"),
+     "initialize handshake is legacy in modern MCP; carry version/capabilities in per-request _meta"),
 ]
 
 SENSITIVE_XHDR = re.compile(
@@ -51,7 +49,8 @@ SENSITIVE_XHDR = re.compile(
     re.I | re.S)
 LIST_METHOD = re.compile(
     r"tools/list|prompts/list|resources/list|resources/read|resources/templates/list")
-SERVER_MARKER = re.compile(r"tools/call|tools/list|server/discover")
+SERVER_MARKER = re.compile(
+    r"tools/(?:call|list)|prompts/(?:get|list)|resources/(?:read|list|templates/list)|server/discover")
 
 
 class Finding:
@@ -102,12 +101,15 @@ def scan_file(path, findings, flags):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Heuristic MCP 2026-07-28 conformance linter.")
+    ap = argparse.ArgumentParser(description="Heuristic MCP 2026-07-28 source scanner.")
     ap.add_argument("path", help="File or directory to scan.")
     ap.add_argument("--format", choices=["text", "json"], default="text")
     ap.add_argument("--strict", action="store_true",
                     help="Exit nonzero on any finding, not only errors.")
     args = ap.parse_args(argv)
+    if not os.path.exists(args.path):
+        print(f"error: path does not exist: {args.path}", file=sys.stderr)
+        return 2
 
     findings = []
     flags = {"is_server": False, "has_discover": False}
@@ -115,7 +117,7 @@ def main(argv=None):
         scan_file(path, findings, flags)
     if flags["is_server"] and not flags["has_discover"]:
         findings.append(Finding(args.path, 0, "warn", "discover-missing",
-                        "server exposes tools but no server/discover found; servers MUST implement it"))
+                        "server exposes MCP methods but no server/discover found; servers MUST implement it"))
 
     findings.sort(key=lambda f: (f.path, f.line, f.rule))
     if args.format == "json":

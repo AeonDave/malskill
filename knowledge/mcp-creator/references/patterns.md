@@ -66,7 +66,7 @@ A catalog entry should include:
 
 - stable `name`, concise `description`, `family` or phase, and product `domain`;
 - JSON Schema 2020-12 input and output contracts;
-- read-only, destructive, idempotent, and long-running annotations;
+- relevant ToolAnnotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and, when Tasks is implemented, `execution.taskSupport`;
 - required core capability or extension and fallback behavior;
 - execution class: synchronous, MRTR, Tasks-capable, or custom interactive;
 - confirmation/input behavior;
@@ -396,10 +396,10 @@ Adapters return explicit readiness failures: missing binary, missing credential,
 
 Status: Deprecated / Legacy
 
-Native V2 targets `2026-07-28`. If older peers are required:
+Modern MCP targets `2026-07-28`. If older peers are required:
 
 - isolate handshake, older transport, session, or detached-job compatibility in an adapter;
 - keep native and legacy tests separate;
-- never let compatibility reintroduce hidden connection-affine state into the V2 domain design;
+- never let compatibility reintroduce hidden connection-affine state into the modern domain design;
 - label custom `detach=true`, `job_id`, `poll_job`, and old status vocabulary as server-specific compatibility contracts;
 - prefer negotiated Tasks for interoperable new asynchronous designs.

@@ -24,7 +24,7 @@ Status scope: MCP Core 2026-07-28, Official MCP Extensions, Custom Application P
 
 Validate the server's own documentation and every MCP conformance claim before publication:
 
-- Confirm native V2 text does not require `initialize`, `notifications/initialized`, `Mcp-Session-Id`, hidden session state, or connection affinity.
+- Confirm modern `2026-07-28` text does not require `initialize`, `notifications/initialized`, `Mcp-Session-Id`, hidden session state, or connection affinity.
 - Confirm `server/discover` is documented as server-required and client-optional.
 - Confirm no official `tasks/list` method is claimed.
 - Confirm no deprecated feature is recommended as a new default.
@@ -86,6 +86,7 @@ Status: MCP Core 2026-07-28
 - Reject CR/LF injection and invalid encoded values.
 - Verify sensitive fields, secrets, PII, and bearer handles are never mirrored.
 - Reject an invalid present `Origin` with HTTP 403.
+- For local HTTP, reject an unapproved `Host` even when `Origin` is absent or same-origin.
 - Verify local deployment binds to localhost by default.
 - Break a response stream and retry with a new JSON-RPC request ID.
 - Exercise idempotency protection for duplicate side-effecting retries.
@@ -254,6 +255,8 @@ Status: Deprecated / Legacy
 
 Status scope: quality practice across all implemented categories
 
+Use an independent MCP-aware client, such as the official Inspector or a supported SDK client, through every published transport. A server's own fixtures or smoke test are not conformance evidence.
+
 Document and verify:
 
 - install, build, run, restart, and cleanup procedures;
@@ -267,6 +270,7 @@ Document and verify:
 - artifact/data-plane limits, checksums, URLs, retention, and privacy;
 - Apps fallback and security policy when implemented;
 - environment variables and secret-loading model;
+- when publishing to the [official Registry](https://modelcontextprotocol.io/registry/about): `server.json`, owned namespace/name, package identity, version, transport, and install metadata; keep private-server data and artifacts out of the public metadata registry;
 - known limitations as explicit unsupported cases.
 
 Do not claim readiness until unit, integration, transport, security, cleanup, restart, horizontal-handling, and publication checks pass in the real deployment shape.

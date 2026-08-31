@@ -96,6 +96,7 @@ Useful event choices:
 | Inspect or alter tool result | `tool_result` |
 | React to model change | `model_select` |
 | React to thinking-level change | `thinking_level_select` |
+| Report waiting-for-user vs active work | `ui_prompt_start`, `ui_prompt_end` |
 | Update footer/status after work | `turn_end`, `agent_end` |
 | Prevent or customise compaction | `session_before_compact`, `session_compact` |
 | Prevent or customise tree navigation | `session_before_tree`, `session_tree` |
@@ -235,6 +236,8 @@ if (ctx.hasUI) {
   if (!ok) return;
 }
 ```
+
+Pi emits notification-only `ui_prompt_start` / `ui_prompt_end` events around blocking `ctx.ui` prompts (`select`, `confirm`, `input`, `editor`, `custom`). The event carries `kind` and optional `title`; nested prompts coalesce into one span. Use them from status/footer integrations to show "waiting for user" instead of "running". Handlers are best-effort and not awaited.
 
 Status and widgets:
 

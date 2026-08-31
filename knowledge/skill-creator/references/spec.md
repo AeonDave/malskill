@@ -7,7 +7,7 @@ Quick reference for the SKILL.md format. Source: https://agentskills.io/specific
 | Field | Required | Rules |
 |---|---|---|
 | `name` | Yes | 1–64 chars; lowercase letters, digits, hyphens only; no leading/trailing/consecutive hyphens; must match folder name |
-| `description` | Yes | 1–1024 chars; describes what the skill does and when to use it; no angle brackets |
+| `description` | Yes | 1–1024 chars; describes what the skill does and when to use it |
 | `license` | No | License name or path to a bundled license file |
 | `compatibility` | No | 1–500 chars; environment requirements (OS, packages, network) |
 | `metadata` | No | Arbitrary string key-value map for extra properties |
@@ -28,9 +28,10 @@ Invalid: PDF-Processing  (uppercase)
 ## Description Rules
 
 - Must cover both *what* the skill does and *when* to activate it
-- Use specific keywords: task names, file extensions, activation phrases
+- Include discriminating task contexts, file types, or domain terms; avoid exhaustive keyword lists
 - Keep it under 1 024 characters
-- Single-line or block scalar (`>`) both valid
+- The open specification accepts YAML string forms, including folded block scalars. This repository's `quick_validate.py` requires a plain or quoted string and rejects `description: >`, `>-`, and `>+`.
+- This repository's validator also rejects `<` and `>` in descriptions; that is a local compatibility rule, not an open-spec constraint.
 
 ```yaml
 # Good

@@ -17,8 +17,8 @@ Usage:
   python sweep_skills.py offensive-techniques --ctf-check --top 5
 
 Exit codes:
-  0 = clean or informational-only
-  1 = broken links or workstation paths found
+  0 = no broken links; other findings are informational and require review
+  1 = broken links found
   2 = argument error
 """
 from __future__ import annotations

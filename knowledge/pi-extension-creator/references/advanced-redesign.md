@@ -235,6 +235,7 @@ For live chrome:
 
 - Cache expensive data outside render.
 - Refresh from lifecycle events such as `session_start`, `turn_end`, `tool_result`, `model_select`, and `thinking_level_select`.
+- Reflect a "waiting for user" state from `ui_prompt_start` / `ui_prompt_end` when a custom footer or statusline replaces the built-in working row.
 - Use timers only when event-driven refresh is insufficient.
 - Clear timers on `session_shutdown`.
 - Keep `dispose()` idempotent.

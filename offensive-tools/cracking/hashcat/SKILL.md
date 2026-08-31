@@ -1,6 +1,6 @@
 ---
 name: hashcat
-description: "Auth/lab ref: GPU-accelerated offline password cracking tool supporting 300+ hash types."
+description: "Auth/lab ref: GPU-accelerated offline password recovery for hashes, network captures, and encrypted-volume headers. Use for dictionary, rule, mask, hybrid, and TrueCrypt/VeraCrypt header campaigns."
 license: MIT
 compatibility: "Linux, Windows, macOS."
 metadata:
@@ -50,6 +50,35 @@ hashcat -a 3 -m 1000 hashes.txt ?u?u?u?u?d?d?d?d
 | bcrypt | `3200` | Linux /etc/shadow |
 | SHA512crypt | `1800` | Linux /etc/shadow |
 | WPA-PMKID | `22000` | WiFi |
+
+## TrueCrypt Header Campaigns
+
+For a standard non-system file container, preserve all four 512-byte header candidates before cracking:
+
+```bash
+vol=volume.tc
+size=$(stat -c %s "$vol")
+dd if="$vol" of=header-primary-normal.bin iflag=skip_bytes,count_bytes skip=0 count=512 status=none
+dd if="$vol" of=header-primary-hidden.bin iflag=skip_bytes,count_bytes skip=65536 count=512 status=none
+dd if="$vol" of=header-backup-normal.bin iflag=skip_bytes,count_bytes skip=$((size-131072)) count=512 status=none
+dd if="$vol" of=header-backup-hidden.bin iflag=skip_bytes,count_bytes skip=$((size-65536)) count=512 status=none
+sha256sum header-*.bin
+```
+
+TrueCrypt legacy mode matrix:
+
+| Header PRF | XTS 512 | XTS 1024 | XTS 1536 |
+|---|---:|---:|---:|
+| RIPEMD-160 | `6211` | `6212` | `6213` |
+| SHA-512 | `6221` | `6222` | `6223` |
+| Whirlpool | `6231` | `6232` | `6233` |
+
+- Do not stop at modes ending in `1`; XTS 1024/1536 cascade configurations require the `...2`/`...3` modes.
+- Test primary and backup headers independently. A stale or damaged primary header does not invalidate its backup.
+- Record source offset, mode, candidate set, and potfile per run; a random-looking header or extractor output is not proof of format.
+- VeraCrypt mode families and input formats differ by PRF, legacy/boot mode, and PIM. Confirm them with `hashcat -hh | grep -i veracrypt` and use the extractor's `$veracrypt$...` record instead of assuming a raw TrueCrypt header contract.
+- Start with exact evidence-derived candidates across the complete applicable mode/header matrix before widening rules or masks.
+- Validate any recovered candidate through a read-only mount and filesystem listing; potfile output alone is not a decryption oracle.
 
 ## Mask Characters
 

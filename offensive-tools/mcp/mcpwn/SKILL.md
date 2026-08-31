@@ -35,9 +35,10 @@ Load [references/debugging-and-emulation.md](references/debugging-and-emulation.
 - Keep `operation_id` (the MCPwn bridge job for `poll_job`/`delete_job`) separate from
   `neuromatrix_job_id` (the native provider job for `emulation_operation`/recovery).
   Use the explicit native name when the compatibility alias is available.
-- `workspace_ref` is a non-path logical reference: pass it unchanged to provider tools;
-  provider filesystem paths never cross the boundary. On identity mismatch, rediscover
-  and restage instead of replaying stale handles.
+- `workspace_ref` is a non-path logical reference: pass it unchanged to provider tools.
+  Provider-private workspace/host paths never cross the boundary; guest/target paths
+  returned inside operational output remain caller-visible findings. On identity
+  mismatch, rediscover and restage instead of replaying stale handles.
 - Recover lost provider jobs/artifacts with `list_jobs`/`list_artifacts`; use
   `delete_artifact` only for explicitly confirmed, unshared objects. Artifact PUT/GET
   sends `required_headers`, accepts 2xx only, and disables redirects.
@@ -52,11 +53,11 @@ Load [references/debugging-and-emulation.md](references/debugging-and-emulation.
 | Slow, uncertain, or `long_running` tool | `run_tool("name", {...}, detach=True)` → `poll_job` |
 | Needs stdin/tty or live streaming (nc, ssh, gdb, REPL, penelope) | `start_interactive_shell` → `run_in_shell`/`read_shell_output` → `close_shell` |
 
-Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send `nmap -p-`, brute-force, hashcat, or ffuf inline.
+Known-long commands are **rejected synchronously** on `execute_command` — use `detach=True`. Never send real scans, brute-force, cracking, or fuzzing work inline. Exact informational invocations containing only `-h`/`--help`/`-V`/`--version` remain valid inline; adding operands makes them workload commands again.
 
 **The detached contract decides what you can run at all.** `execute_command(cmd, detach=True)` with no `timeout` has **no deadline** and stays interruptible — `delete_job` SIGKILLs its owned process tree and verifies the kill. It is the path for any long-running or unwrapped program. Inline is capped at 20s (clients that serialize requests stall on anything longer); `MCPWN_INLINE_TIMEOUT_CAP` only lowers it, to a 5s floor, and only an operator's `MCPWN_ALLOW_LONG_INLINE=1` lifts it. Cleanup adds bounded time after the timeout, so detach anything near 20s or duration-uncertain. A detached catalog job reports `killable=true` while a local subprocess phase is active; pure-Python, remote, and between-command phases remain cooperative and may stay `cancellation_pending`. Its wrapper owns the deadline: inspect `get_tool`, `poll_job`, and `list_jobs`; use `execute_command(detach=True)` when arbitrary work must remain continuously hard-killable or outlive a wrapper ceiling.
 
-**Duration-uncertain catalog wrappers** — especially deep decompilation or global analysis — must use `detach=True`, bounded `poll_job` intervals, and limited concurrent heavy jobs. A caller/MCP request timeout may end the wait without cancelling the backend job; inspect job and cancellation state before retrying or duplicating work. If the backend reports unhealthy/unavailable, report that state and do not restart or rebuild it without user direction.
+**Duration-uncertain catalog wrappers** — especially deep decompilation or global analysis — must use `detach=True`, bounded `poll_job` intervals, and limited concurrent heavy jobs. A caller/MCP request timeout may end the wait without cancelling the backend job; inspect job and cancellation state before retrying or duplicating work. If the backend reports unhealthy/unavailable, report that state and do not restart or rebuild it without user direction. Active detached jobs expose lifecycle state, not incremental stdout/stderr; use an interactive stream or a bounded workspace progress file when early output matters. After terminal status, retrieve and persist the result or artifact **before** `delete_job`, because deletion removes the retained payload.
 
 **Interactive shells: prefer `run_in_shell(id, cmd)` for a discrete command.** It is marker-synced — returns THAT command's output + `exit_code` in ONE call (autodetects posix/powershell/cmd) — so no guess-the-timing `send_to_shell`+`read_shell_output` loop and no command-echo / job-control noise bleeding into the read. Keep `read_shell_output(wait_seconds=N)` for streaming / TUI / a shell you must watch live; `wait_seconds` is server-clamped to ~20s, so **loop it** for longer waits rather than expecting one longer block. Full rules, sleep/backgrounding traps, and the interactive lifecycle: load `references/execution-model.md`.
 
@@ -97,6 +98,9 @@ Tunnel kinds, cross-OS reach logic, Windows/AD shell pivots, and raw-channel sur
 
 - One session per task; discover before running; read `get_tool` args before first use of any wrapper.
 - Long/known-slow work → `detach=True` + `poll_job`, or an interactive shell. Never inline.
+- Caller-visible results and command metadata intentionally preserve operational findings such as recovered credentials, private keys, submitted commands, and guest/target paths. Only diagnostic logs and provider-private metadata are redacted best-effort; treat the MCP/chat transcript as sensitive.
+- If a pre-existing secret must not appear in that transcript, do not embed it in an `execute_command` string. Reference a mode-`0600` file, use an stdin-capable interactive session, or use a credential-aware wrapper.
+- Cancellation proves MCPwn's owned local process tree stopped, not that descendants launched through SSH or another remote transport stopped. Bound remote monitors target-side with `timeout -k 2s 90s <command>`, then verify the remote PID is gone.
 - Don't hand-read large outputs. Auto-CAS only triggers at ~64 KB, so **bulky sub-64 KB dumps** (a few hundred lines) still print inline and silently burn context when you loop them — the classic tax on iterative analysis of a big read-only artifact (mmap-carving a memory dump, sifting a PCAP/disk image via heredoc scripts). Fix: write results to a workspace file and `grep`/`head` only the slice you need, or force a handoff with `execute_command(..., output_mode="artifact", output_filename="...")`. Extract the few lines that matter; never reprint the whole set each turn. For a long carving/sift loop, quarantine it in a sub-agent that returns a digest.
 - Recursive analysis is always detached. `firmware_analyze` and `auto_malware_hunt` scan only by default; `binwalk_analyze` requires a session when extracting and `unblob_analyze` always requires one. Preserve their unique output directories and explicit depth/file/entry/aggregate-byte controls; do not smuggle output/depth/process overrides through free-form arguments. Treat `files` as extractor output and `analysis_logs` as bounded helper diagnostics.
 - `execute_command` is `sh -c` (dash on a Debian base, bash on Kali) — wrap bashisms in `bash -c '...'` so they don't silently degrade. `start_interactive_shell` has no shell — use `cwd=` (no `cd &&`) or `bash -lc`.

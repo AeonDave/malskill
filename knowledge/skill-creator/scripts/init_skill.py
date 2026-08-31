@@ -22,55 +22,17 @@ ALLOWED_RESOURCES = {"scripts", "references", "assets"}
 SKILL_TEMPLATE = """\
 ---
 name: {skill_name}
-description: "[TODO: What this skill does and WHEN to activate it — mention file types, task keywords, activation phrases. Max 1024 chars.]"
+description: "[TODO: State what this skill enables, when to use it, and any important boundary. Use natural task language. Max 1024 chars.]"
 ---
 
 # {skill_title}
 
-## Overview
+[TODO: State the task-specific outcome and any boundary another agent cannot infer. Remove this paragraph when done.]
 
-[TODO: 1-2 sentences explaining what this skill enables for the agent.]
+## Workflow
 
-## Structuring This Skill
-
-[TODO: Choose a structure pattern that fits. Delete this section when done.
-
-**Workflow-based** (sequential processes):
-- ## Overview → ## Step 1 → ## Step 2 → ## Troubleshooting
-
-**Task-based** (distinct operations):
-- ## Overview → ## Quick Start → ## Task: X → ## Task: Y
-
-**Reference/guidelines** (standards, policies):
-- ## Overview → ## Guidelines → ## Specifications
-
-**Capabilities-based** (interrelated features):
-- ## Overview → ## Capabilities → ### 1. Feature → ### 2. Feature
-
-Patterns can be mixed. Soft target: keep substantive content around 500 lines — move details to references/. Link/index sections (Reference Files, Resources) do not count.]
-
-## [TODO: First main section]
-
-[TODO: Add content. Include:
-- Concrete step-by-step instructions
-- Code examples where relevant
-- References to scripts and reference files with notes on when to load them]
-
-## Resources
-
-[TODO: List only the resources this skill actually uses. Delete subsections that are not needed.]
-
-### scripts/
-
-[TODO: List each script with a one-line description of what it does and when to run it.]
-
-### references/
-
-[TODO: List each reference file with a one-line description and when the agent should load it.]
-
-### assets/
-
-[TODO: List each asset with a one-line description of how the agent should use it.]
+[TODO: Add only instructions that change execution: decision criteria, constraints, steps, and verification. Match detail to risk. Add an example only when it removes ambiguity.]
+{resource_section}
 """
 
 EXAMPLE_SCRIPT = """\
@@ -172,6 +134,30 @@ def parse_resources(raw: str) -> list[str]:
     return result
 
 
+def render_resource_section(resources: list[str]) -> str:
+    """Render routing placeholders only for requested resource directories."""
+    if not resources:
+        return ""
+
+    guidance = {
+        "scripts": "List each script and the condition for running it.",
+        "references": "Link each reference and state when to read it.",
+        "assets": "List each asset and how it contributes to the output.",
+    }
+    lines = [
+        "",
+        "## Resources",
+        "",
+        "[TODO: Replace each placeholder with exact file-level routing. "
+        "Remove this section if no resources remain.]",
+        "",
+    ]
+    lines.extend(
+        f"- `{resource}/`: [TODO: {guidance[resource]}]" for resource in resources
+    )
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
@@ -199,8 +185,13 @@ def init_skill(
 
     # SKILL.md
     skill_md = skill_dir / "SKILL.md"
+    resource_section = render_resource_section(resources)
     skill_md.write_text(
-        SKILL_TEMPLATE.format(skill_name=skill_name, skill_title=skill_title),
+        SKILL_TEMPLATE.format(
+            skill_name=skill_name,
+            skill_title=skill_title,
+            resource_section=resource_section,
+        ),
         encoding="utf-8",
     )
     print("[OK] Created SKILL.md")
@@ -243,7 +234,7 @@ def init_skill(
         print("  2. Add files to the resource directories as needed")
     else:
         print("  2. Add scripts/, references/, assets/ directories only if needed")
-    print("  3. Run quick_validate.py to check the skill before packaging")
+    print("  3. Run quick_validate.py, sweep_skills.py, and repository hygiene checks")
 
     return skill_dir
 

@@ -5,11 +5,23 @@ Use this reference when creating or substantially refactoring a skill. The goal 
 ## RED/GREEN loop for skills
 
 1. **RED**: write 2-4 realistic failure scenarios where an agent would likely skip the skill, overclaim, over-scope, or take a shortcut.
-2. Run or mentally simulate the scenarios without relying on the new guidance.
+2. Run the scenarios in a clean context when claiming behavioral evidence. Use mental simulation only as design review.
 3. Capture the failure mode precisely: missed trigger, vague step, unsafe shortcut, hallucinated evidence, unusable resource, or exact rationalization.
 4. **GREEN**: strengthen the description, workflow, resources, or examples to close the observed behavior gap.
 5. **REFACTOR**: remove narrow patches, add durable counters for rationalizations, and keep the instruction general.
-6. Validate with `quick_validate.py` and one representative scenario.
+6. Validate structure and rerun every scenario affected by the change.
+
+## Choose evaluation depth
+
+- For a minor editorial change, structural validation and diff review may be enough.
+- For subjective output, run at least one realistic clean-context prompt and review the result qualitatively.
+- For a new, substantial, risky, or objectively verifiable skill, start with 2-3 realistic prompts and expand only when the first results expose useful variation.
+
+For a comparative evaluation, snapshot the pre-edit skill or use no skill as the baseline. Run the same prompt, inputs, model, tools, and configuration against baseline and candidate in isolated output directories. Define the expected output, required behavior, and prohibited outcomes before grading. Use scripts for mechanical artifact checks and human review for qualities that cannot be reduced to pass/fail.
+
+If the skill claims compatibility across models or runtimes, exercise each intended target or state which targets remain unverified.
+
+Keep temporary runs outside the skill directory. Retain fixtures with the skill only when they will be rerun.
 
 ## Good pressure scenarios
 
@@ -23,7 +35,7 @@ Use constraints that expose real agent failures:
 - convenience pressure: “One broad refactor would be easier than a surgical edit.”
 - exhaustion pressure: “The work is basically done and the agent wants to stop.”
 
-Best scenarios combine three or more pressures and force a decision. Use concrete A/B/C choices when compliance is likely to be rationalized away.
+Combine pressures only when the combination reflects the real task. Use concrete A/B/C choices when compliance is likely to be rationalized away.
 
 ## Scenario shape
 
@@ -52,7 +64,7 @@ Do not ask “what does the skill say?” That tests recall, not behavior.
 
 ## Evaluation rubric
 
-Score each scenario:
+Score discipline scenarios:
 
 | Score | Meaning |
 |---|---|
@@ -61,6 +73,8 @@ Score each scenario:
 | 2 | Agent follows the workflow with useful evidence and restraint. |
 
 If any scenario scores 0, revise before finishing. If a scenario scores 1, either revise or document why the remaining gap is acceptable.
+
+For artifact or output-contract tests, use observable assertions instead. Do not grade exact wording, headings, or implementation details unless they are part of the required contract.
 
 ## Rationalization capture
 

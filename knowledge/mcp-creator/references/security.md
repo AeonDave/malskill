@@ -137,9 +137,10 @@ Status: MCP Core 2026-07-28
 
 ## Streamable HTTP headers and transport
 
-Status: MCP Core 2026-07-28
+Status: MCP Core 2026-07-28 plus deployment security practice
 
 - Validate `Origin` on every incoming connection to prevent DNS rebinding; reject an invalid present origin with HTTP 403.
+- For local HTTP, also validate `Host` against the explicit loopback or allowed-host set; Origin checks alone do not stop same-origin DNS rebinding.
 - Bind local services to `127.0.0.1` by default and authenticate remote services.
 - Require `MCP-Protocol-Version` and `Mcp-Method`; require `Mcp-Name` for applicable named operations.
 - Decode Base64 sentinel values and compare every recognized routing header with the body.
@@ -149,7 +150,7 @@ Status: MCP Core 2026-07-28
 - Never mirror secrets or PII; assume proxies log routing headers.
 - Do not trust a gateway's routing decision as body validation at the server.
 - Apply idempotency controls when a broken stream causes a retry with a new request ID.
-- Do not implement `Last-Event-ID` or SSE redelivery as a native V2 security assumption.
+- Do not implement `Last-Event-ID` or SSE redelivery as a modern `2026-07-28` security assumption.
 
 ## Caching
 
@@ -186,6 +187,7 @@ Status: MCP Core 2026-07-28 plus optional authorization extensions
 - Prefer Client ID Metadata Documents (CIMD).
 - When Dynamic Client Registration remains for compatibility, send the appropriate OpenID Connect `application_type`.
 - Validate authorization-server metadata, redirect URIs, and issuer transitions.
+- Validate Protected Resource Metadata plus token resource and audience; never accept a token intended for another MCP resource.
 - Never use `clientInfo`, `serverInfo`, display names, or extension metadata as authentication.
 - Apply extension-specific authorization requirements when using OAuth Client Credentials or Enterprise-Managed Authorization.
 

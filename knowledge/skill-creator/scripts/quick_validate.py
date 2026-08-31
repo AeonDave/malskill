@@ -9,14 +9,14 @@ Validates:
   - No unexpected frontmatter keys
   - Name follows hyphen-case rules and matches folder name
   - Description length and content constraints
-  - No unresolved TODO markers
+  - Reports unresolved TODO markers as warnings
 
 Usage:
     quick_validate.py <skill-directory>
 
 Exit codes:
-    0  Valid (no errors, no TODOs)
-    1  Invalid or TODOs found
+    0  Structurally valid; warnings such as unresolved TODOs may remain
+    1  Structurally invalid
 """
 
 import re
