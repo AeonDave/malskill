@@ -1,390 +1,230 @@
-# Plugin Implementation Patterns
+# Go plugin patterns
 
-Detailed Go code patterns for agent, listener, and service plugins (axc2/v2).
+Use these patterns after pinning the Adaptix source and reading the current `axc2/v2` declarations with `go doc`.
 
----
+## Contents
 
-## Agent — CreateCommand Pattern
+- [Exact entry points](#exact-entry-points)
+- [Agent contract](#agent-contract)
+- [Listener contract](#listener-contract)
+- [Service contract](#service-contract)
+- [Hooks, routes, and storage](#hooks-routes-and-storage)
+- [Loader and activation checks](#loader-and-activation-checks)
 
-`CreateCommand` receives the `args` map from AxScript. Use `adaptix.GetStringArg` etc. instead of raw assertions.
+## Exact entry points
+
+The loader type-asserts the exported symbol to one exact function type:
 
 ```go
-func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
-    command, _ := adaptix.GetStringArg(args, "command")
-    subcommand, _ := adaptix.GetStringArgDefault(args, "subcommand", "")
+// Agent
+func InitPlugin(ts any, moduleDir string, watermark string) adaptix.PluginAgent
 
-    var taskData adaptix.TaskData
-    var msgData  adaptix.ConsoleMessageData
+// Listener
+func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener
 
-    switch command {
-    case "shell":
-        cmdStr, err := adaptix.GetStringArg(args, "command_line")
-        if err != nil {
-            return taskData, msgData, err
-        }
-        packed, _ := PackArray([]interface{}{COMMAND_SHELL, cmdStr})
-        taskData = adaptix.TaskData{Type: adaptix.TASK_TYPE_TASK, Data: packed}
-        msgData  = adaptix.ConsoleMessageData{Message: "Task: shell", Status: adaptix.MESSAGE_INFO}
+// Service
+func InitPlugin(ts any, moduleDir string, serviceConfig string) adaptix.PluginService
+```
 
-    case "download":
-        path, err := adaptix.GetStringArg(args, "file")
-        if err != nil {
-            return taskData, msgData, err
-        }
-        fileId := Ts.TsFileGenID()
-        packed, _ := PackArray([]interface{}{COMMAND_DOWNLOAD, fileId, path})
-        taskData = adaptix.TaskData{Type: adaptix.TASK_TYPE_TASK, Data: packed}
-        msgData  = adaptix.ConsoleMessageData{Message: "Task: download", Status: adaptix.MESSAGE_INFO}
+Return `nil` if `ts` does not implement `adaptix.Teamserver`; a panic in `InitPlugin` can affect the Teamserver process. Add a compile-time assertion beside each implementation:
+
+```go
+var _ adaptix.PluginService = (*Plugin)(nil)
+
+func InitPlugin(ts any, moduleDir, serviceConfig string) adaptix.PluginService {
+    api, ok := ts.(adaptix.Teamserver)
+    if !ok {
+        return nil
     }
-    return taskData, msgData, nil
+    return NewPlugin(api, moduleDir, serviceConfig)
 }
 ```
 
----
+Build on the Teamserver's target OS. Go plugins require compatible Go toolchains, build flags, and shared dependency versions between host and plugin; keep the plugin in the same workspace/module graph when possible.
 
-## Agent — ProcessData Pattern
+## Agent contract
 
 ```go
-func ProcessData(agentData adaptix.AgentData, data []byte) error {
-    var msg Message
-    if err := Unmarshal(data, &msg); err != nil {
-        return err
-    }
-    for _, raw := range msg.Object {
-        var cmd Command
-        Unmarshal(raw, &cmd)
-        switch cmd.Code {
-        case COMMAND_SHELL:
-            taskData := adaptix.TaskData{
-                TaskId:      cmd.TaskId,
-                AgentId:     agentData.Id,
-                MessageType: adaptix.MESSAGE_SUCCESS,
-                Message:     string(cmd.Data),
-                Completed:   true,
-            }
-            Ts.TsTaskUpdate(agentData.Id, taskData)
-
-        case COMMAND_DOWNLOAD_INIT:
-            fileId, _ := UnpackInt64(cmd.Data[:8])
-            name := string(cmd.Data[8:])
-            Ts.TsDownloadAdd(agentData.Id, fileId, name, cmd.TotalSize)
-
-        case COMMAND_DOWNLOAD_DATA:
-            fileId, _ := UnpackInt64(cmd.Data[:8])
-            Ts.TsDownloadUpdate(fileId, adaptix.TRANSFER_STATE_RUNNING, cmd.Data[8:])
-
-        case COMMAND_DOWNLOAD_DONE:
-            fileId, _ := UnpackInt64(cmd.Data[:8])
-            Ts.TsDownloadClose(fileId, adaptix.TRANSFER_STATE_FINISHED)
-        }
-    }
-    return nil
+type PluginAgent interface {
+    GenerateProfiles(BuildProfile) ([][]byte, error)
+    BuildPayload(BuildProfile, [][]byte) ([]byte, string, error)
+    CreateAgent(beat []byte) (AgentData, AgentFunctions, error)
+    AgentRestore(AgentData) AgentFunctions
+    Call(operator string, agentID int64, function, args string)
 }
 ```
 
----
+### Restore is authoritative
 
-## Agent — AgentFunctions Struct
-
-`CreateAgent` initializes per-session state and returns `AgentFunctions`. `AgentRestore` must return an equivalent struct for sessions reloaded from DB. Both use closures over the same state.
+Use one callback factory from both paths:
 
 ```go
-func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.AgentFunctions, error) {
-    agentData, err := ParseBeat(beat)
+func (p *Plugin) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.AgentFunctions, error) {
+    data, err := p.parseRegistration(beat)
     if err != nil {
-        return adaptix.AgentData{}, adaptix.AgentFunctions{}, err
+        return adaptix.AgentData{}, adaptix.AgentFunctions{}, fmt.Errorf("parse registration: %w", err)
     }
-    return agentData, buildFunctions(), nil
+    return data, p.functionsFor(data), nil
 }
 
-func (p *PluginAgent) AgentRestore(agentData adaptix.AgentData) adaptix.AgentFunctions {
-    return buildFunctions()  // must return same set as CreateAgent
-}
-
-func buildFunctions() adaptix.AgentFunctions {
-    return adaptix.AgentFunctions{
-        CreateCommand: CreateCommand,
-        ProcessData:   ProcessData,
-        PackTasks:     PackTasks,
-        Encrypt:       Encrypt,
-        Decrypt:       Decrypt,
-        PivotPackData: PivotPackData,
-        TunnelCB: adaptix.TunnelCallbacks{
-            ConnectTCP: TunnelMessageConnectTCP,
-            ConnectUDP: TunnelMessageConnectUDP,
-            WriteTCP:   TunnelMessageWriteTCP,
-            WriteUDP:   TunnelMessageWriteUDP,
-            Pause:      TunnelMessagePause,
-            Resume:     TunnelMessageResume,
-            Close:      TunnelMessageClose,
-            Reverse:    TunnelMessageReverse,
-        },
-        TerminalCB: adaptix.TerminalCallbacks{
-            Start: TerminalMessageStart,
-            Write: TerminalMessageWrite,
-            Close: TerminalMessageClose,
-        },
-    }
+func (p *Plugin) AgentRestore(data adaptix.AgentData) adaptix.AgentFunctions {
+    return p.functionsFor(data)
 }
 ```
 
----
+Use the callback factory and incompatible-data policy defined by the [agent state machine](architecture-and-lifecycle.md#agent). Keep sufficient versioned state in `AgentData.CustomData` for that reconstruction.
 
-## Listener — Agent Registration & Callback Flow
+Populate every callback that the agent supports. `adaptix.NewAgent` replaces missing required callbacks with error-returning stubs, so nil fields defer a defect until runtime rather than disabling the feature cleanly.
 
-### Registration (external listener)
+Before parsing a beat or callback:
+
+1. enforce a maximum frame size;
+2. check the minimum header length;
+3. decode length fields without overflow;
+4. verify each declared segment fits the remaining buffer;
+5. reject trailing data unless the protocol explicitly permits it.
+
+### Command arguments
+
+Use the v2 argument helpers, then apply domain constraints:
 
 ```go
-func (l *Listener) serveHTTP(w http.ResponseWriter, r *http.Request) {
-    body, _ := io.ReadAll(r.Body)
+path, err := adaptix.GetStringArg(args, "path")
+if err != nil {
+    return adaptix.TaskData{}, adaptix.ConsoleMessageData{}, fmt.Errorf("path: %w", err)
+}
 
-    // Attempt to look up existing agent by UID
-    uid := extractUID(body)
-    agentId, exists := Ts.TsAgentIdByUID(uid)
-
-    if !exists {
-        // New agent registering
-        agentData, err := Ts.TsAgentCreate(AgentCrc, uid, body, l.Name, r.RemoteAddr, false)
-        if err != nil {
-            http.Error(w, "bad beat", 400)
-            return
-        }
-        agentId = agentData.Id
-    }
-    Ts.TsAgentSetTick(agentId, l.Name)
-
-    // Process inbound data
-    if len(body) > UIDLen {
-        Ts.TsAgentProcessData(agentId, body[UIDLen:])
-    }
-
-    // Build response with hosted tasks
-    packed, _, err := Ts.TsAgentGetHostedAll(agentId, MaxDataSize)
-    if err != nil || len(packed) == 0 {
-        packed, _ = Ts.TsAgentBuildEmptyTasks(agentId)
-    }
-    w.Write(packed)
+mode := adaptix.GetStringArgDefault(args, "mode", "read")
+if mode != "read" && mode != "stat" {
+    return adaptix.TaskData{}, adaptix.ConsoleMessageData{}, fmt.Errorf("unsupported mode %q", mode)
 }
 ```
 
-### Internal listener (pivot)
+`GetStringArgDefault` returns one value. `GetBoolArg` also returns one value and cannot distinguish absent from false; decode into a typed struct when presence matters. `GetFileArg` returns decoded bytes, which still need a size limit.
+
+Unknown commands must produce an explicit error. Check byte lengths before diagnostic previews or slices; avoid patterns such as `data[:8]` unless `len(data) >= 8` is established.
+
+### Payload build
+
+`BuildProfile.AgentConfig` is client-supplied JSON. Decode it into a typed, versioned schema and reject excess size, unknown fields, unsafe paths, and unsupported enum combinations before starting a process.
 
 ```go
-func (l *Listener) InternalHandler(data []byte) (int64, error) {
-    uid := extractUID(data)
-    agentId, exists := Ts.TsAgentIdByUID(uid)
-    if !exists {
-        agentData, err := Ts.TsAgentCreate(AgentCrc, uid, data, l.Name, "", true)
-        if err != nil {
-            return 0, err
-        }
-        return agentData.Id, nil
+func decodeBuildConfig(raw string) (BuildConfig, error) {
+    const maxConfig = 64 << 10
+    if len(raw) > maxConfig {
+        return BuildConfig{}, fmt.Errorf("agent config exceeds %d bytes", maxConfig)
     }
-    return agentId, Ts.TsAgentProcessData(agentId, data[UIDLen:])
+
+    var cfg BuildConfig
+    dec := json.NewDecoder(strings.NewReader(raw))
+    dec.DisallowUnknownFields()
+    if err := dec.Decode(&cfg); err != nil {
+        return BuildConfig{}, fmt.Errorf("decode agent config: %w", err)
+    }
+    var extra any
+    if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+        return BuildConfig{}, errors.New("agent config contains trailing data")
+    }
+    return cfg, cfg.Validate()
 }
-// Note: return type is int64 (agent ID), not string — v2 change
 ```
 
----
-
-## Service — Call and CallRPC Dispatch
+Use a per-build working directory and one cleanup owner:
 
 ```go
-func (p *PluginService) Call(operator string, function string, args string) {
-    switch function {
-    case "compile":
-        go func() {  // fire-and-forget; do work async
-            var req CompileRequest
-            json.Unmarshal([]byte(args), &req)
-            result := compile(req)
-            resultJson, _ := json.Marshal(result)
-            Ts.TsPluginServiceSendDataClient(operator, ServiceName, string(resultJson))
-        }()
-
-    case "status":
-        Ts.TsPluginServiceSendDataAll(ServiceName, `{"status":"ok"}`)
-    }
+workDir, err := os.MkdirTemp("", "adaptix-build-*")
+if err != nil {
+    return nil, "", fmt.Errorf("create build directory: %w", err)
 }
-
-// CallRPC: synchronous — caller blocks until this returns
-func (p *PluginService) CallRPC(operator string, function string, args string) (string, error) {
-    switch function {
-    case "validate":
-        var req ValidationRequest
-        if err := json.Unmarshal([]byte(args), &req); err != nil {
-            return "", err
-        }
-        ok := validate(req)
-        return fmt.Sprintf(`{"valid":%v}`, ok), nil
-    }
-    return "", fmt.Errorf("unknown function: %s", function)
-}
+defer os.RemoveAll(workDir)
 ```
 
-### Important: routing
+Copy required sources into that directory, generate configuration there, invoke an allowlisted executable directly, and read the expected output from the same directory. Do not map a client string to an executable or pass generated shell text to `sh -c`.
 
-- `ax.service_command(name, fn, data)` → `Call(operator, fn, data)` — fire-and-forget
-- `ax.service_command_rpc(name, fn, data)` → `CallRPC(operator, fn, data)` — sync return
-- Service `name` in AxScript, `TsPluginServiceSendDataClient`, and `config.yaml:service_name` must match exactly.
-- Do not call `TsPluginServiceCallWait` on the same service from inside its own `Call/CallRPC` — deadlocks.
+Return `content, filename, nil` from `BuildPayload` and follow the canonical [build ownership](architecture-and-lifecycle.md#build-ownership); do not deliver or close the outer build channel from the plugin.
 
----
+`TsAgentBuildExecute(builderID, workingDir, env, program, args...)` inherits the Teamserver environment when `env` is nil. A non-nil `env` replaces the whole environment; merge or construct all required variables explicitly.
 
-## Adding a New Command (End-to-End)
+Builds can overlap. Never share a mutable source tree, output path, process environment, or package-level build state.
 
-1. **ax_config.axs** — define command and args: `let cmd = ax.create_command("mycmd", ...)` + add to group
-2. **pl_utils.go** — add `COMMAND_MYCMD` constant + request/response structs
-3. **pl_main.go CreateCommand** — add `case "mycmd":` — marshal args → `TaskData.Data`
-4. **pl_main.go ProcessData** — add `case COMMAND_MYCMD:` — unmarshal response, call Ts methods
-5. **Implant** — add handler in implant `tasks.go` / `tasks.cpp` / `tasks.rs`
-6. **AgentRestore** — if CreateCommand uses new state, ensure AgentRestore returns it
-7. Validate: `go vet ./...`
-
-## Wrapper Service (Post-Build Pipeline)
+## Listener contract
 
 ```go
-func InitPlugin(ts any, moduleDir string, serviceConfig string) adaptix.PluginService {
-    Ts = ts.(adaptix.Teamserver)
-    hookId = Ts.TsEventHookOnPost("agent.generate", "wrapper_post_build",
-        func(event any) error {
-            ev := event.(*AgentGenerateEvent)
-            ev.Payload = transform(ev.Payload)   // modify in-place
-            return nil
-        })
-    return &PluginService{}
+type PluginListener interface {
+    Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
+    Call(operator, listenerName, function, args string)
+}
+
+type ExtenderListener interface {
+    Start() error
+    Edit(config string) (ListenerData, []byte, error)
+    Stop() error
+    GetProfile() ([]byte, error)
+    InternalHandler(data []byte) (int64, error)
 }
 ```
 
-## Build Channel Pattern
+Validate configuration completely in `Create` before reserving external resources. Give each returned instance its own mutex, context/cancel pair, wait group, server/socket handles, and immutable identity.
 
-Used when `BuildPayload` needs to stream progress to the UI:
+Lifecycle rules:
+
+- `Start` initializes a fresh context and resources, publishes running state only after success, and cleans up a partial start on error.
+- `Stop` swaps the instance to stopped, cancels work, closes owned handles, waits with a bound, and is safe when already stopped.
+- `Edit` validates first; either apply an explicitly safe live change or stop/reconfigure/restart with clear rollback behavior.
+- `GetProfile` returns a versioned agent-facing transport schema. Include only implant-required bootstrap/keying material, exclude server-only secrets such as TLS private keys, and treat the result as sensitive.
+- `InternalHandler` validates input before delegating to `TsAgentCreate` or `TsAgentProcessData` and returns an `int64` agent ID.
+
+Set `AgentData.Async` according to transport behavior. Polling HTTP/DNS-style sessions are asynchronous; persistent linked/TCP-style sessions are normally synchronous. Verify this choice against the current in-tree listener closest to the protocol.
+
+Apply the current [listener state machine](architecture-and-lifecycle.md#listener), including its start-failure verification rule.
+
+## Service contract
 
 ```go
-func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [][]byte) ([]byte, string, error) {
-    Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Compiling...")
-    err := Ts.TsAgentBuildExecute(profile.BuilderId, buildDir, nil, "make", "all")
-    if err != nil {
-        Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_ERROR, err.Error())
-        return nil, "", err
-    }
-    content, _ := os.ReadFile(filepath.Join(buildDir, "output.bin"))
-    Ts.TsAgentBuildSendFile(profile.BuilderId, "agent.bin", content)
-    Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Done")
-    // TsAgentBuildClose is called by the server after BuildPayload returns
-    return content, "agent.bin", nil
+type PluginService interface {
+    Call(operator, function, args string)
+    CallRPC(operator, function, args string) (string, error)
 }
 ```
 
----
-
-## Agent — CreateCommand Pattern
-
-Every command in `ax_config.axs` needs a matching case in `CreateCommand`:
+Decode a common envelope with a required operation and request ID. Keep the dispatch table explicit:
 
 ```go
-func (ext *Extender) CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
-    command, _ := args["command"].(string)
-    subcommand, _ := args["subcommand"].(string)
-
-    switch command {
-    case "shell":
-        cmdStr, _ := args["command_line"].(string)
-        // Marshal into wire format, return TaskData with .Data = serialized bytes
-    case "download":
-        path, _ := args["remote_path"].(string)
-        // ...
-    }
-    return taskData, messageData, nil
+switch function {
+case "job.start":
+    p.startJob(operator, args)
+case "job.cancel":
+    p.cancelJob(operator, args)
+default:
+    p.sendError(operator, requestID(args), "unsupported operation")
 }
 ```
 
-## Agent — ProcessData Pattern
+`Call` has no return channel. Send asynchronous JSON results with `TsPluginServiceSendDataClient(operator, serviceName, data)` or, only when intended, `TsPluginServiceSendDataAll`. Include `request_id`, terminal state, and a stable error code.
 
-```go
-func (ext *Extender) ProcessData(agentData adaptix.AgentData, data []byte) error {
-    var msg Message
-    Unmarshal(data, &msg)
-    for _, raw := range msg.Object {
-        var cmd Command
-        Unmarshal(raw, &cmd)
-        switch cmd.Code {
-        case COMMAND_SHELL:
-            Ts.TsTaskUpdate(agentData.Id, taskData)
-        case COMMAND_DOWNLOAD:
-            Ts.TsDownloadUpdate(agentData.Id, downloadData)
-        }
-    }
-    return nil
-}
-```
+`CallRPC` returns JSON directly. Apply the canonical [failure contract](architecture-and-lifecycle.md#failure-contract): use an internal deadline where work is cancellable, bound concurrent calls, and define the late-result policy.
 
-## Listener — Agent Registration & Callback Flow
+The connector already invokes service calls concurrently. Do not start an unbounded goroutine per request. Protect plugin maps and state; avoid holding locks across Teamserver calls or slow I/O.
 
-### Registration flow
+## Hooks, routes, and storage
 
-```
-receive beat → Ts.TsAgentCreate() → return sessions
-```
+Event hook handlers receive `any`, while concrete event payloads live in Teamserver-internal packages. Do not import those internal types or publish source-coupled assertions as a stable extender API. For a required hook, inspect the pinned emitter, validate the dynamic value conservatively, and unregister the hook during plugin-owned teardown.
 
-### Callback flow
+Use namespaced endpoint paths and unregister them on teardown. Non-raw endpoint handlers receive an already-buffered body with no plugin-selected maximum; use a raw handler when an explicit request limit is required. Prefer authenticated endpoints. Public endpoints need a concrete protocol requirement and their own authentication/anti-replay design.
 
-```
-receive packet → decrypt → Ts.TsAgentProcessData() → get tasks
-→ Ts.TsAgentGetHostedAll() → encrypt → respond
-```
+Use a constant extender storage namespace. Treat keys and values as untrusted, version serialized records, and bound their size. The namespace argument routes data; it is not an authorization boundary.
 
-## Service — Call Dispatch Pattern
+## Loader and activation checks
 
-```go
-func (p *Plugin) Call(operator string, function string, args string) {
-    switch function {
-    case "compile":
-        var req CompileRequest
-        json.Unmarshal([]byte(args), &req)
-        // process...
-        Ts.TsServiceSendDataClient(serviceName, operator, "compile_done", resultJson)
-    case "load_settings":
-        // ...
-    }
-}
-```
+Agent and listener registration require their AxScript file. A service may load when its AxScript is absent, but the server logs a warning and clients will not receive its UI definition. Loader errors are logged and startup continues.
 
-### Important: service name routing
+After activation, verify all applicable evidence:
 
-The name in `ax.service_command(...)` (axscript) and `TsServiceSendDataClient/TsServiceSendDataAll` (plugin) must match `config.yaml → service_name` exactly. Mismatches cause silent routing failures.
+- successful plugin open and exact `InitPlugin` signature;
+- expected agent/listener/service catalog entry;
+- AxScript command metadata on the server;
+- UI availability after reconnect/resync;
+- one success and one deliberate failure path;
+- cleanup behavior or documented Teamserver restart requirement.
 
----
-
-## Adding a New Command (End-to-End)
-
-1. **ax_config.axs**: `let cmd = ax.create_command("mycmd", "desc", "mycmd arg1")` + add to group
-2. **pl_utils.go**: Add `COMMAND_MYCMD` constant + request/response structs
-3. **pl_main.go CreateCommand**: Add `case "mycmd":` — marshal args into wire struct
-4. **pl_main.go ProcessData**: Add `case COMMAND_MYCMD:` — unmarshal response, call Ts methods
-5. **Implant**: Add handler in implant `tasks.go` / `tasks.cpp` / `tasks.rs`
-6. Validate: `go vet`, check placeholder leaks
-
-## Adding a New Protocol
-
-1. Run `.\generator.ps1 -Mode protocol` → creates `protocols/<name>/`
-2. Implement `crypto.go.tmpl` (encrypt/decrypt), `constants.go.tmpl`, `types.go.tmpl`
-3. Update `meta.yaml`
-4. Add `pl_main.go.tmpl` / `pl_transport.go.tmpl` overrides if needed
-5. Add implant overlays in `implant/` if needed (Go root, C++ in `cpp/`, Rust in `rust/`)
-6. Generate agent + listener with `-Protocol <name>`, validate with `go vet`
-
-## Wrapper Service (Post-Build Pipeline)
-
-1. Generate: `.\service\generator.ps1 -Name <name> -Wrapper`
-2. Implement stages in `pl_wrapper.go`
-3. Hook `agent.generate` event to intercept payload after build
-4. `Ts.TsServiceSendDataClient()` for per-client updates
-
-## Multi-Language Build Support
-
-`pl_build.go` switches on `Language` field:
-- Go: `go build` with cross-compilation env vars
-- C++: `make` with MinGW/Clang toolchain
-- Rust: `cargo build` with target flags, optional LLVM obfuscation via linker-plugin-lto
-
-Rust LLVM obfuscation requires: `-C link-arg=-fuse-ld=lld` and `-C link-arg=-Wl,-mllvm,<flag>` routing.
+For runtime removal, follow the [service state machine](architecture-and-lifecycle.md#service) and verify the documented restart/teardown path.

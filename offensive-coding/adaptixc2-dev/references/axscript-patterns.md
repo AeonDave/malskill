@@ -1,386 +1,257 @@
-# AxScript Patterns
+# AxScript UI patterns
 
-Detailed code patterns for AxScript (.axs) UI, commands, events, and data flow.
+Use this reference for payload-builder forms, listener forms, service docks/dialogs, and UI-to-plugin calls. Confirm individual methods in `BridgeApp.h`, `BridgeForm.h`, `BridgeMenu.h`, `BridgeEvent.h`, and the wrapper headers at the pinned revision.
 
----
+## Contents
 
-## Three .axs Lifecycles
+- [Design for two runtimes](#design-for-two-runtimes)
+- [Payload-builder form](#payload-builder-form)
+- [Listener create/edit form](#listener-createedit-form)
+- [Service dock with asynchronous work](#service-dock-with-asynchronous-work)
+- [Bounded synchronous service request](#bounded-synchronous-service-request)
+- [Agent and listener plugin calls](#agent-and-listener-plugin-calls)
+- [Service command metadata](#service-command-metadata)
+- [UI acceptance checks](#ui-acceptance-checks)
 
-### Agent .axs lifecycle
+## Design for two runtimes
 
-Agent `.axs` files must define two functions and register menus/events at top level:
+Agent and service `.axs` files are evaluated in two places:
 
-```javascript
-// REQUIRED: Define CLI commands. Called by framework with the listener type string.
-function RegisterCommands(listenerType) {
-    let cmd_shell = ax.create_command("shell", "Run shell cmd", "shell whoami", "Task: shell");
-    cmd_shell.addArgString("cmd_params", true, "Command");
+- Teamserver Goja builds command and service-command metadata. Client UI methods are mostly stubs there.
+- Qt `QJSEngine` creates real forms, menus, events, and plugin bridge requests.
 
-    let cmd_sleep = ax.create_command("sleep", "Set sleep", "sleep 5s 20");
-    cmd_sleep.addArgInt("jitter", false, "Jitter %");
+Listener `.axs` is loaded only by the Qt client on the verified baseline; the Teamserver registers listener metadata without evaluating its script.
 
-    let win = ax.create_commands_group("<agent_name>", [cmd_shell, cmd_sleep]);
-    let unix = ax.create_commands_group("<agent_name>", [cmd_sleep]);
+Keep top-level work limited to definitions and declarative registrations that both runtimes support. Do not read/write files, require an active profile, issue plugin calls, open dialogs, or create service UI at top level.
 
-    // MUST return this structure:
-    return {
-        commands_windows: win,
-        commands_linux:   unix,
-        commands_macos:   unix
-    };
-}
+Use only these lifecycle entry points:
 
-// REQUIRED: Build the "Generate Agent" dialog form.
-function GenerateUI(listeners_type) {
-    let container = form.create_container();
-    let layout = form.create_gridlayout();
-    // ... build form ...
-    let panel = form.create_panel();
-    panel.setLayout(layout);
+| Extender | Entry point | Invocation |
+|---|---|---|
+| Agent | `RegisterCommands(listenerType)` | Teamserver metadata registration |
+| Agent | `GenerateUI(listenerTypes)` | Client requests a payload-builder form |
+| Listener | `ListenerUI(modeCreate)` | Client creates or edits a listener |
+| Service | `RegisterServiceCommands()` | Teamserver service command registration |
+| Service | `InitService()` | Client calls it automatically after loading the service script |
+| Any plugin UI | `data_handler(...)` | Client receives plugin-pushed data |
 
-    // MUST return this structure:
-    return {
-        ui_panel:     panel,
-        ui_container: container,
-        ui_height:    400,
-        ui_width:     600
-    };
-}
+There is no `ServiceUI()` lifecycle call. Do not invoke `InitService()` or another UI function manually at the end of the file.
 
-// TOP-LEVEL: Register menus and events (imperative, outside functions)
-let action_fb = menu.create_action("Download", function(files) { ... });
-menu.add_filebrowser(action_fb, ["<agent_name>"]);
-event.on_filebrowser_list(function(id, path) { ax.execute_browser(id, "ls " + path); }, ["<agent_name>"]);
-event.on_filebrowser_disks(function(id) { ax.execute_browser(id, "disks"); }, ["<agent_name>"]);
-event.on_processbrowser_list(function(id) { ax.execute_browser(id, "ps list"); }, ["<agent_name>"]);
-```
+## Payload-builder form
 
-### Listener .axs lifecycle
-
-Listener `.axs` files must define one function:
+`GenerateUI` returns a panel plus a container. The client serializes every element placed in the container and sends that JSON as `BuildProfile.AgentConfig`.
 
 ```javascript
-// REQUIRED: Build the listener configuration form.
-function ListenerUI(mode_create) {
-    let container = form.create_container();
-    let layout = form.create_gridlayout();
+function GenerateUI(listenerTypes) {
+    const arch = form.create_combo();
+    arch.addItems(["amd64", "arm64"]);
 
-    let txtHost = form.create_textline("0.0.0.0");
-    let spinPort = form.create_spin();
-    spinPort.setRange(1, 65535);
-    spinPort.setValue(443);
+    const format = form.create_combo();
+    format.addItems(["exe", "dll"]);
 
-    layout.addWidget(form.create_label("Bind Host:"), 0, 0, 1, 1);
-    layout.addWidget(txtHost, 0, 1, 1, 1);
+    const layout = form.create_gridlayout();
+    layout.addWidget(form.create_label("Architecture"), 0, 0, 1, 1);
+    layout.addWidget(arch, 0, 1, 1, 1);
+    layout.addWidget(form.create_label("Format"), 1, 0, 1, 1);
+    layout.addWidget(format, 1, 1, 1, 1);
 
-    container.put("host", txtHost);
-    container.put("port", spinPort);
+    const container = form.create_container();
+    container.put("schema_version", form.create_textline("1"));
+    container.put("arch", arch);
+    container.put("format", format);
 
-    let panel = form.create_panel();
+    const panel = form.create_panel();
     panel.setLayout(layout);
-
     return {
-        ui_panel:     panel,
+        ui_panel: panel,
         ui_container: container,
-        ui_height:    300,
-        ui_width:     500
+        ui_height: 260,
+        ui_width: 520
     };
 }
 ```
 
-### Service .axs lifecycle
+The keys in `container.put` are the wire schema. Keep them stable and version the schema. The Go builder must still validate all values; disabled or hidden widgets are not a security boundary.
 
-Service `.axs` files must define three functions and end with the boot call:
+`form.create_selector_file()` serializes selected file content as base64, not the local path. Bound the encoded and decoded size server-side and avoid placing secrets in long-lived UI configuration.
+
+The current payload dialog does not surface every build-socket error through its visible controls. Treat Teamserver build logs and the received artifact as completion evidence, not a quiet client dialog.
+
+## Listener create/edit form
+
+`ListenerUI(true)` is create mode; `ListenerUI(false)` is edit mode. Disable immutable identity/bind fields during edit and let the container restore existing JSON values.
 
 ```javascript
-var serviceName = "<ServiceNameV2>";   // must match config.yaml → service_name
-var g_output_widget = null;
-
-// REQUIRED: Called once when plugin loads.
-function InitService() {
-    ax.log("Service loaded.");
-    ax.service_command(serviceName, "load_settings", null);
-    let action = menu.create_action("Open Tool", function() { buildMainWindow(); });
-    menu.add_main_axscript(action);
-}
-
-// REQUIRED: Called after InitService. Usually minimal.
-function ServiceUI() {
-    ax.log("Service UI ready.");
-}
-
-// REQUIRED: Receives async responses from Go plugin.
-function data_handler(data) {
-    let response = JSON.parse(data);
-    switch (response.action) {
-        case "load_settings_result":
-            break;
-        case "compile_log":
-            if (g_output_widget !== null) g_output_widget.appendText(response.output);
-            break;
-        case "compile_done":
-            if (response.success && response.file_content) {
-                let path = ax.prompt_save_file(response.file_name || "output.exe");
-                if (path && path !== "") ax.file_write_binary(path, response.file_content);
-            }
-            break;
+function ListenerUI(modeCreate) {
+    const host = form.create_combo();
+    const interfaces = ax.interfaces();
+    for (const address of interfaces) {
+        host.addItem(address);
     }
+    host.setEnabled(modeCreate);
+
+    const port = form.create_spin();
+    port.setRange(1, 65535);
+    port.setValue(8443);
+    port.setEnabled(modeCreate);
+
+    const timeout = form.create_spin();
+    timeout.setRange(1, 300);
+    timeout.setValue(30);
+
+    const layout = form.create_gridlayout();
+    layout.addWidget(form.create_label("Bind host"), 0, 0, 1, 1);
+    layout.addWidget(host, 0, 1, 1, 1);
+    layout.addWidget(form.create_label("Bind port"), 1, 0, 1, 1);
+    layout.addWidget(port, 1, 1, 1, 1);
+    layout.addWidget(form.create_label("Timeout (s)"), 2, 0, 1, 1);
+    layout.addWidget(timeout, 2, 1, 1, 1);
+
+    const container = form.create_container();
+    container.put("host_bind", host);
+    container.put("port_bind", port);
+    container.put("timeout", timeout);
+
+    const panel = form.create_panel();
+    panel.setLayout(layout);
+    return {ui_panel: panel, ui_container: container, ui_height: 260, ui_width: 520};
+}
+```
+
+UI editability and server editability must agree. If a live field cannot be changed safely, keep it disabled in edit mode and reject changes in the plugin.
+
+## Service dock with asynchronous work
+
+Use `form.create_ext_dock` or `form.create_ext_dialog`; there is no global main-menu API for launching a service script. `InitService` is called automatically by the client.
+
+```javascript
+const SERVICE = "artifact-index";
+let serviceUi = null;
+
+function InitService() {
+    if (serviceUi !== null) {
+        serviceUi.dock.show();
+        return;
+    }
+
+    const query = form.create_textline();
+    const run = form.create_button("Search");
+    const output = form.create_textmulti();
+    output.setReadOnly(true);
+
+    const layout = form.create_vlayout();
+    layout.addWidget(query);
+    layout.addWidget(run);
+    layout.addWidget(output);
+
+    const dock = form.create_ext_dock("artifact-index.results", "Artifact index", "right");
+    dock.setLayout(layout);
+    serviceUi = {dock: dock, output: output, pending: {}};
+
+    form.connect(run, "clicked", function() {
+        const requestId = ax.random_string(24, "hex");
+        serviceUi.pending[requestId] = true;
+        output.appendText("[pending] " + requestId);
+        ax.plugin_service_command(SERVICE, "search.start", {
+            request_id: requestId,
+            query: query.text()
+        });
+    });
+
+    dock.show();
 }
 
-// REQUIRED: Boot statement — must be last line in the file.
-ServiceUI();
-```
+function data_handler(data) {
+    let message;
+    try {
+        message = JSON.parse(data);
+    } catch (error) {
+        ax.log_error(SERVICE + ": invalid response JSON");
+        return;
+    }
 
-**Key data flow**: `ax.service_command()` is fire-and-forget. Go plugin's `Call()` processes the request, pushes results back via `TsServiceSendDataClient()` → arrives at `data_handler(data)` as JSON. All communication is asynchronous.
-
----
-
-## UI Layout Patterns
-
-### GroupBox + Panel (standard section pattern)
-
-Every form section uses this pattern — **always `groupbox.setPanel(panel)`**, never `setLayout` directly on groupbox:
-
-```javascript
-let grid = form.create_gridlayout();
-grid.addWidget(form.create_label("Name:"), 0, 0, 1, 1);
-grid.addWidget(txtName, 0, 1, 1, 1);
-
-let panel = form.create_panel();
-panel.setLayout(grid);
-
-let grp = form.create_groupbox("Section Title", false);  // false = not checkable
-grp.setPanel(panel);
-```
-
-### Checkable GroupBox (toggle section)
-
-```javascript
-let grp = form.create_groupbox("Use Proxy", true);   // true = checkable
-grp.setPanel(panel);
-grp.setChecked(false);
-form.connect(grp, "clicked", function(checked) { panel.setEnabled(checked); });
-container.put("use_proxy", grp);  // serializes as boolean
-```
-
-### ScrollArea (tall forms)
-
-```javascript
-let mainLayout = form.create_vlayout();
-mainLayout.addWidget(grp1);
-mainLayout.addWidget(grp2);
-
-let innerPanel = form.create_panel();
-innerPanel.setLayout(mainLayout);
-
-let scroll = form.create_scrollarea();
-scroll.setPanel(innerPanel);      // NOTE: setPanel(), not setWidget()
-
-let outerLayout = form.create_vlayout();
-outerLayout.addWidget(scroll);
-let outerPanel = form.create_panel();
-outerPanel.setLayout(outerLayout);
-```
-
-### Stack + Segmented Control (tab interface)
-
-> `create_segcontrol` is NOT in official docs — discovered in source code.
-
-```javascript
-let controller = form.create_segcontrol();
-controller.addItems(["Main", "Headers", "Advanced"]);
-
-let stack = form.create_stack();
-stack.addPage(panel1);
-stack.addPage(panel2);
-stack.setCurrentIndex(0);
-
-form.connect(controller, "currentIndexChanged", function() {
-    stack.setCurrentIndex(controller.currentIndex());
-});
-```
-
-### Dialog types
-
-```javascript
-// Standard modal dialog
-let dialog = form.create_dialog("Title");
-dialog.setSize(600, 400);
-dialog.setLayout(layout);
-dialog.setButtonsText("Save", "Cancel");
-let accepted = dialog.exec();
-
-// Extended dialog (for service/tool windows)
-let ext = form.create_ext_dialog("Title");
-ext.setSize(600, 400);
-ext.setButtonsText("Close", "");   // "" hides cancel button
-ext.exec();
-```
-
----
-
-## Signal Connection Patterns
-
-```javascript
-// Button click
-form.connect(btn, "clicked", function() { /* ... */ });
-
-// Checkbox toggle → show/hide dependent fields
-form.connect(chk, "stateChanged", function() {
-    let checked = chk.isChecked();
-    lbl.setVisible(checked);
-    txt.setVisible(checked);
-});
-
-// Combo selection change
-form.connect(combo, "currentTextChanged", function(text) {
-    chk.setEnabled(text.toLowerCase() !== "bin");
-});
-
-// Checkable groupbox toggle
-form.connect(grp, "clicked", function(checked) { panel.setEnabled(checked); });
-
-// Segmented control tab switch
-form.connect(segctrl, "currentIndexChanged", function() {
-    stack.setCurrentIndex(segctrl.currentIndex());
-});
-
-// Mutual exclusion between checkboxes
-form.connect(chkA, "stateChanged", function() {
-    if (chkA.isChecked()) { chkB.setChecked(false); chkB.setEnabled(false); }
-    else { chkB.setEnabled(true); }
-});
-```
-
----
-
-## Container + File Selector Pipeline
-
-```javascript
-let fileSelector = form.create_selector_file();
-fileSelector.setPlaceholder("/path/to/file.dll");
-
-let container = form.create_container();
-container.put("dll_content", fileSelector);
-
-// Check if file was selected:
-if (!container.get("dll_content")) {
-    ax.show_message("Error", "File is required.");
-    return;
+    if (!message.request_id || !serviceUi) {
+        return;
+    }
+    delete serviceUi.pending[message.request_id];
+    serviceUi.output.appendText(JSON.stringify(message));
 }
-
-// Extract base64 content:
-let json = JSON.parse(container.toJson());
-let base64Data = json.dll_content;
 ```
 
----
+`ax.plugin_service_command(service, command, objectOrNull)` is asynchronous. Its HTTP acknowledgement is discarded by the bridge; the plugin must send completion through `TsPluginServiceSendDataClient` or `TsPluginServiceSendDataAll`, which invokes `data_handler(data)`.
 
-## Command Definitions
+Show pending, success, error, timeout, and disconnected states explicitly. Keep a request ID because responses can arrive out of order or after the initiating view changes.
+
+## Bounded synchronous service request
+
+Use the wait form only for quick, bounded queries:
 
 ```javascript
-let cmd = ax.create_command("name", "description", "example", "task message");
+const response = ax.plugin_service_wait(
+    "artifact-index",
+    "status.get",
+    {request_id: ax.random_string(24, "hex")},
+    3000
+);
 
-// Argument types:
-cmd.addArgString("name", true, "help");          // positional, required
-cmd.addArgString("path", false, "help");          // positional, optional
-cmd.addArgString("path", ".", "help");            // optional with default "."
-cmd.addArgInt("count", true, "help");             // integer
-cmd.addArgInt("count", "help", 10);               // optional with default
-cmd.addArgBool("-v", "verbose");                  // flag
-cmd.addArgBool("-v", "verbose", true);            // flag with default
-cmd.addArgFlagInt("-n", "num", false, "help");
-cmd.addArgFile("payload", true, "help");          // file → base64
-cmd.addArgFlagString("-o", "output", false, "help");
-cmd.addArgFlagFile("-f", "file", true, "help");
-cmd.addSubCommands([sub1, sub2]);
-
-// PreHook — rewrite command before execution
-cmd.setPreHook(function(id, cmdline, parsed_json, ...parsed_lines) {
-    let real_cmd = "ps run -o C:\\Windows\\System32\\cmd.exe /c " + parsed_json["cmd_params"];
-    ax.execute_alias(id, cmdline, real_cmd, "Running shell via ps");
-});
-
-// PostHook — process result after agent returns
-cmd.setPostHook(function(hooktask) {
-    // hooktask: { agent, type, message, text, completed, index }
-    return hooktask;
-});
-
-// Register per-OS command groups (returned by RegisterCommands or registered separately)
-let win = ax.create_commands_group("<agent>", [cmd1, cmd2]);
-win.setDefaultEnabled(true);   // group visible by default; false = hidden unless explicitly enabled
-
-// Groups returned from RegisterCommands are auto-registered.
-// To register additional groups separately (e.g. for platform-specific add-ons):
-ax.register_commands_group(win, ["<agent>"])  // second arg: agent name filter array
+if (!response.ok) {
+    ax.log_error("status.get: " + response.error);
+} else {
+    const result = response.result;
+    ax.log("service state: " + JSON.stringify(result));
+}
 ```
 
----
+The method returns `{ok: false, error}` or `{ok: true, result, raw}`; it does not throw on normal transport/plugin failure. It is synchronous on the client path and can block UI responsiveness. Apply the [timeout and late-result contract](architecture-and-lifecycle.md#failure-contract).
 
-## Menus and Events
+## Agent and listener plugin calls
+
+Both calls are asynchronous and accept an object or null:
 
 ```javascript
-// Context menus
-menu.add_filebrowser(action, ["<agent>"]);
-menu.add_session_agent(action, ["<agent>"]);
-menu.add_processbrowser(action, ["<agent>"], ["windows"]);
-menu.add_downloads_running(action, ["<agent>"]);
-menu.add_tasks_job(action, ["<agent>"]);
-
-// Events
-event.on_filebrowser_list(handler, ["<agent>"]);
-event.on_new_agent(handler, ["<agent>"]);
-event.on_ready(handler);
-event.on_interval(handler, seconds);
+ax.plugin_agent_command(String(agentId), "cache.refresh", {request_id: requestId});
+ax.plugin_listener_command(listenerName, "stats.get", {request_id: requestId});
 ```
 
----
+Replies arrive at type-specific handlers:
 
-## Key ax.* Functions
+```javascript
+function data_handler(agentId, data) { /* agent AxScript */ }
+function data_handler(listenerName, data) { /* listener AxScript */ }
+function data_handler(data) { /* service AxScript */ }
+```
 
-- `ax.execute_command(id, cmdline)` — issue command to agent
-- `ax.execute_command_hook(id, cmdline, hook)` — execute with PostHook
-- `ax.execute_command_handler(id, cmdline, handler)` — execute with Handler
-- `ax.execute_alias(id, displayCmdline, actualCmd, message)` — show one command, run another
-- `ax.execute_alias_hook(id, displayCmdline, actualCmd, message, hook)` — alias with PostHook
-- `ax.execute_alias_handler(id, displayCmdline, actualCmd, message, handler)` — alias with Handler
-- `ax.execute_browser(id, cmd)` — browser command
-- `ax.service_command(svcName, function, data)` — send command to Go service plugin (fire-and-forget)
-- `ax.service_command_rpc(svcName, function, data)` — synchronous RPC; returns Go CallRPC result JSON
-- `ax.agents()` / `ax.ids()` / `ax.agent_info(id, prop)` — session data
-- `ax.credentials()` / `ax.credentials_add(...)` / `ax.credentials_add_list(arr)` — credential management
-- `ax.targets()` / `ax.targets_add(...)` / `ax.targets_add_list(arr)` — target management
-- `ax.bof_pack(types, args)` — BOF argument packing (`b`=bytes, `h`=short, `i`=int, `z`=cstr, `Z`=wstr, `B`=binary)
-- `ax.console_message(id, msg, type, text)` — output to console
-- `ax.open_browser_files(id)` / `ax.open_browser_process(id)` / `ax.open_remote_shell(id)` / `ax.open_remote_terminal(id)` — UI actions
-- `ax.show_message(title, msg)` / `ax.prompt_save_file(name)` / `ax.prompt_confirm(title, msg)` — dialogs
-- `ax.file_read(path)` / `ax.file_write_text(path, text)` / `ax.file_write_binary(path, b64)` — file I/O
-- `ax.random_string(len, set)` / `ax.hash(algo, len, data)` — utilities
-- `ax.encode_data(algo, data, key)` / `ax.decode_data(algo, b64, key)` — codec
-- `ax.convert_to_code(lang, b64data, varName)` — shellcode formatter
-- `ax.validate_command(id, cmd)` — returns `{valid, message, is_pre_hook, has_output, has_post_hook, parsed}`
-- `ax.agent_set_impersonate(id, impersonate, elevated)` / `ax.copy_to_clipboard(text)` — session helpers
-- `ax.log(msg)` / `ax.log_error(msg)` — logging
-- `ax.get_project()` / `ax.ticks()` — project info + timing
+Use string agent IDs when the source value is available as text. The current client converts the agent ID to a JavaScript number when invoking the agent `data_handler`, so values beyond JavaScript's safe-integer range remain a client limitation; do not round-trip them through arithmetic.
 
----
+## Service command metadata
 
-## .axs UI Gotchas
+Register service console commands on the server runtime without issuing a service call during registration:
 
-| Gotcha | Detail |
-|--------|--------|
-| **`setPanel()` not `setLayout()`** | GroupBox and ScrollArea use `.setPanel(panel)`. Never call `.setLayout()` on them directly. |
-| **`getEnabled()` not `isEnabled()`** | To read enabled state, use `widget.getEnabled()`. Asymmetric with `widget.setEnabled(bool)`. |
-| **`setItems()` vs `addItems()`** | `combo.setItems([])` clears then sets. `combo.addItems([])` appends. Use `setItems()` inside signal handlers. |
-| **`fromJson()` exists but rare** | `container.fromJson(jsonStr)` recovers widget values from JSON. Manual restoration with `.setText()` etc. is more common. |
-| **File selector in container** | `container.put("key", fileSelector)` serializes file content as **base64**. Must `JSON.parse(container.toJson())` to extract. |
-| **Checkable groupbox as boolean** | `container.put("key", checkableGroupbox)` serializes as `true/false`. |
-| **`addArg*` default overloads** | `addArgString(name, true, desc)` = required. `addArgString(name, false, desc)` = optional. `addArgString(name, ".", desc)` = optional with default. |
-| **`ServiceUI()` boot call** | Must be the last line of a service `.axs` file. Without it, the service won't initialize. |
-| **`data_handler` is async-only** | `ax.service_command()` is fire-and-forget. No return value. Results come back via `TsServiceSendDataClient()` → `data_handler(data)`. |
-| **`create_dialog` vs `create_ext_dialog`** | `create_dialog` is in official docs. `create_ext_dialog` is NOT — discovered in source code. |
-| **`create_segcontrol`** | NOT in official docs — discovered in source code. Use with caution. |
-| **Separator / spacer names** | `form.create_hline()`, `form.create_vline()`, `form.create_vspacer()`, `form.create_hspacer()`. |
-| **Splitter creation** | Official: `form.create_vsplitter()` / `form.create_hsplitter()`, not `form.create_splitter(orientation)`. |
-| **PostHook requires connection** | PostHook callbacks need the originating client to stay connected. Disconnection loses responses. |
+```javascript
+function RegisterServiceCommands() {
+    const status = ax.create_command("status", "Show service status");
+    const group = ax.create_commands_group("artifact-index", [status]);
+    ax.register_service_commands(group);
+}
+```
+
+For agent commands, return the OS-specific command-group object expected by the current in-tree agent scripts. `setDefaultEnabled` is currently a server-side command-group builder method; use it only inside `RegisterCommands`, not client-executed code.
+
+## Menus, files, and timers
+
+- `menu` supports contextual registrations such as `add_session_agent`, `add_session_browser`, `add_filebrowser`, `add_targets`, `add_credentials`, and `add_payload_store`. It does not expose `add_main` or `add_main_axscript`.
+- Use `ax.file_read` and `ax.file_write(path, data, append)`. There are no `file_write_text` or `file_write_binary` methods.
+- `ax.prompt_save_file(filename, caption, filter)` takes the suggested filename first.
+- `event.on_timeout` and `event.on_interval` return IDs; remove retained timers with `event.remove(id)` when the view is closed or no longer owns them.
+- `encode_data`/`encode_file` support `hex`, `base64`, `base32`, `zip`, and `xor`. Text algorithms return strings; binary algorithms return `ArrayBuffer`-like data. Verify shape before composition.
+
+## UI acceptance checks
+
+Test every applicable runtime:
+
+1. For agent/service scripts, Teamserver Goja loads the file and publishes intended command metadata; for listeners, verify listener catalog metadata without a Goja expectation.
+2. Client reconnect/resync receives the file, Qt `QJSEngine` executes it, and the script creates exactly one dock/dialog or builder/listener form.
+3. Submitted container JSON matches the Go schema, including file size behavior.
+4. One plugin error and one malformed pushed result produce visible, bounded failure states.
+5. Closing/reopening does not duplicate docks, signal connections, or timers.
+6. Async responses remain correlated when two requests complete out of order.

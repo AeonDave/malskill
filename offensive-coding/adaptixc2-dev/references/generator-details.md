@@ -1,120 +1,70 @@
-# axtool & Spec Reference
+# `axtool` templates, packaging, and activation
 
-Full field reference for `axtool.spec` (package spec) and `adaptix.spec` (project spec), plus `axtool` CLI commands for scaffolding, building, and installing extenders.
+Use `axtool` from the same pinned Adaptix checkout as the Teamserver. Go plugins and the current build/install flow target Linux-like environments; run build and activation checks in the actual Teamserver environment.
 
----
+## Contents
 
-## Table of Contents
-1. [axtool CLI Commands](#axtool-cli-commands)
-2. [adaptix.spec — Project Spec](#adaptixspec--project-spec)
-3. [axtool.spec — Package Spec](#axtoolspec--package-spec)
-4. [Install State](#install-state)
-5. [Template Placeholder System](#template-placeholder-system)
+- [Build and identify the tool](#build-and-identify-the-tool)
+- [Scaffold](#scaffold)
+- [Project spec](#project-spec-adaptixspec)
+- [Package spec](#package-spec-axtoolspec)
+- [Install commands](#install-commands)
+- [Activation](#activation)
+- [Provenance and safe operation](#provenance-and-safe-operation)
+- [Preflight and rollback record](#preflight-and-rollback-record)
 
----
-
-## axtool CLI Commands
+## Build and identify the tool
 
 ```bash
-# Scaffold from templates-extender (fetches github.com/Adaptix-Framework/templates-extender@main by default)
-axtool template agent   <name> [--from <src>]
-axtool template listener <name> [--from <src>] [--protocol <proto>]
-axtool template service  <name> [--from <src>]
-axtool template axscript <name> [--from <src>]
-# --from: local path or github.com/org/repo@ref
-# If name omitted, uses current directory name
-# Creates <name>/ with: axtool.spec, config.yaml, go.mod, Makefile, pl_main.go, ax_config.axs
-
-# Extender management (requires adaptix.spec path or project root as first arg)
-axtool adaptix.spec ext install                        # install all packages: in adaptix.spec
-axtool adaptix.spec ext install github.com/org/repo@v1 # install a remote package
-axtool adaptix.spec ext install ./path/to/pkg          # install from local path
-axtool adaptix.spec ext install <src> --name <extname> # install one extender from multi-item repo
-axtool adaptix.spec ext install -d                     # also install apt deps
-axtool adaptix.spec ext install --from packages.yaml   # install from a packages file
-axtool adaptix.spec ext list                           # list installed extenders
-axtool adaptix.spec ext uninstall <name>               # uninstall an extender
-
-# Server
-axtool adaptix.spec server build                       # build all packages + server binary
-axtool adaptix.spec server build -d                    # also install apt deps
-axtool adaptix.spec server daemon install              # install systemd unit
-axtool adaptix.spec server daemon start|stop|restart
-
-# Client
-axtool adaptix.spec client build
-axtool adaptix.spec client build -d
+go -C AdaptixTools build -o dist/axtool .
+./AdaptixTools/dist/axtool --help
+git rev-parse HEAD
 ```
 
-### What `ext install` does
+Project commands take the project/spec path as the first argument. There is no `--spec` flag:
 
-1. Clones / copies source into `server_dir/plugin_dir/<name>`
-2. Adds `./plugin_dir/<name>` to `AdaptixServer/go.work`
-3. Runs `build:` commands from `axtool.spec` in the plugin source directory
-4. Deploys `release.dir` (or `release.globs` files) into `ext_dir/<name>/`
-5. Writes `<ext_prefix>/<name>/<config>` entry into the runtime `profile.yaml`
-6. Records install state in `AdaptixServer/.installed_plugins.yaml`
-
----
-
-## adaptix.spec — Project Spec
-
-Located at the repository root (the directory containing `AdaptixServer/` and `AdaptixClient/`).
-
-### Fields
-
-| Field | Required | Relative to | Description |
-|-------|----------|-------------|-------------|
-| `server_version` | yes | — | Compared against plugin `min_server_version` (e.g. `"v2.0"`) |
-| `server_dir` | no | project root | Teamserver sources + `go.work`. Default: `AdaptixServer` |
-| `plugin_dir` | yes | `server_dir` | Where plugin sources are placed. Example: `extenders` |
-| `ext_dir` | yes | project root | Deployed extender releases. Example: `dist/extenders` |
-| `profile` | no | project root | Runtime profile patched by axtool. Default: sibling of `ext_dir` |
-| `ext_prefix` | no | — | Path prefix for profile entries as seen from server CWD. Default: basename of `ext_dir` |
-| `axscript_dir` | no | project root | AxScript kit install root. Default: sibling of `ext_dir` named `axscripts` |
-| `axscript_prefix` | no | — | Prefix for `Teamserver.axscripts` entries |
-| `client_dir` | no | project root | GUI client sources. Default: `AdaptixClient` |
-| `dist_dir` | no | project root | Binary staging dir. Default: `dist` |
-| `packages` | no | — | Default package list for `ext install` |
-| `deps` | no | — | Host apt packages (only apt implemented) |
-| `systemd` | no | — | Defaults for `server daemon` |
-
-### packages[] fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `source` | yes | Local path, `github.com/org/repo@ref`, or git URL |
-| `path` | no | Subdirectory inside source that contains `axtool.spec` |
-| `name` | no | Install only this extender from a multi-item package |
-| `plugin_dir` | no | Override top-level `plugin_dir` for this package |
-
-### deps format
-
-```yaml
-deps:
-  common:
-    apt: [git, make, build-essential]
-  server:
-    apt: [libssl-dev, mingw-w64, g++-mingw-w64]
-  client:
-    apt: [cmake, qt6-base-dev, qt6-websockets-dev]
+```bash
+./AdaptixTools/dist/axtool adaptix.spec ext list
 ```
 
-### systemd fields
+Template commands do not take `adaptix.spec`.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `name` | `adaptixserver` | Unit basename → `/etc/systemd/system/<name>.service` |
-| `user` | root | Process user |
-| `group` | root | Process group |
-| `debug` | false | Append `-debug` to ExecStart |
-| `user_mode` | false | Install as systemd user unit |
+## Scaffold
 
-### Full example
+From the directory that should own the new package:
+
+```bash
+axtool template agent example-agent
+axtool template listener example-listener --protocol https
+axtool template service example-service
+axtool template axscript example-ui
+```
+
+Agent, listener, and service scaffolds default to the mutable `templates-extender@main`. For reproducible work, use `--from` with a reviewed local checkout pinned to a full commit. The AxScript scaffold is generated locally; its `--from` value is currently ignored.
+
+The current scaffold replacement keys are:
+
+| Type | Keys replaced by `axtool` |
+|---|---|
+| all Go extenders | `_SO_FILE_HERE_` |
+| agent | `_AGENT_`, `_RANDOM_HEX_8_`, `adaptix_agent_NAME` |
+| listener | `_LISTENER_`, `_PROTOCOL_`, `adaptix_listener_NAME_PROTOCOL`, `listener_LISTENER_` |
+| service | `_SERVICE_`, `adaptix_service_NAME_PROTOCOL` |
+
+After scaffolding, replace the generated author/description placeholders and check for unresolved keys:
+
+```bash
+rg -n "_SO_FILE_HERE_|_AGENT_|_RANDOM_HEX_8_|adaptix_agent_NAME|_LISTENER_|_PROTOCOL_|adaptix_listener_NAME_PROTOCOL|listener_LISTENER_|_SERVICE_|adaptix_service_NAME_PROTOCOL" .
+```
+
+The scaffolder creates `axtool.spec`; it does not prove that the copied template matches the pinned Teamserver contracts. Run the contract gate and compile before adding behavior.
+
+## Project spec: `adaptix.spec`
+
+Paths are relative to the directory containing `adaptix.spec`, except `plugin_dir`, which is relative to `server_dir`.
 
 ```yaml
 server_version: "v2.0"
-
 server_dir: AdaptixServer
 client_dir: AdaptixClient
 plugin_dir: extenders
@@ -124,220 +74,155 @@ ext_dir: dist/extenders
 axscript_dir: dist/axscripts
 profile: dist/profile.yaml
 
-systemd:
-  name: adaptix
-  user: root
-
-deps:
-  common:
-    apt: [git, make, build-essential]
-  server:
-    apt: [libssl-dev, mingw-w64]
-  client:
-    apt: [cmake, qt6-base-dev]
-
 packages:
-  - source: ./AdaptixServer/extenders/beacon_listener_http
-  - source: ./AdaptixServer/extenders/beacon_agent
+  - source: ./AdaptixServer/extenders/example-service
 ```
 
----
+Required fields are `server_version`, `plugin_dir`, and `ext_dir`. Common optional fields are `profile`, `ext_prefix`, `axscript_dir`, `axscript_prefix`, `client_dir`, `dist_dir`, `packages`, `deps`, and `systemd`.
 
-## axtool.spec — Package Spec
+`packages[]` accepts `source`, optional `path`, optional item `name`, and optional `plugin_dir` override. Local `source` values are currently resolved against the process working directory, not the spec directory. Run package operations from the project root and pre-resolve every local path.
 
-Located at the root of each plugin or kit repository (or a monorepo listing several items).
+Do not depend on `repo_root` to relocate project operations: the current code resolves it into a layout field but no downstream command consumes that field.
 
-### Extender fields
+## Package spec: `axtool.spec`
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | `[a-z0-9][a-z0-9_-]*`; matches directory name under source and release trees |
-| `version` | yes | Version string |
-| `type` | yes | `listener` \| `agent` \| `service` |
-| `description` | no | Human-readable summary |
-| `author` | no | Attribution |
-| `min_server_version` | no | Soft check vs project `server_version`; fails unless `--ignore-version` |
-| `requires` | no | Other plugin names; warn if missing from install state |
-| `source` | no | Subdirectory of the package that is this plugin's root (multi-plugin repos) |
-| `deps.apt` | no | Extra apt packages for this plugin |
-| `build` | yes | Ordered shell commands run via `sh -c` in the plugin source directory |
-| `release` | yes | Exactly one of `dir` or `globs` |
-
-### release fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `dir` | one of | Directory under plugin source; entire contents deployed to `ext_dir/<name>/` |
-| `globs` | one of | Glob patterns relative to plugin source |
-| `config` | no | Config path relative to release root. Default: auto-detect shallowest `config.yaml` |
-
-After build, axtool verifies the release contains:
-1. A config file (`config.yaml` or `release.config`)
-2. At least one `*.so` file
-
-### AxScript kit fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | Kit id; install directory name under `axscript_dir` |
-| `version` | yes | Version string |
-| `entry` | yes | Main `.axs` path relative to kit root |
-| `source` | no | Subdirectory of the package that is the kit root |
-| `release` | no | Optional `dir` or `globs`; default = copy whole tree except `.git` |
-
-Profile registration for kits:
-```text
-Teamserver.axscripts:
-  - <axscript_prefix>/<name>/<entry>
-```
-
-### Single plugin example (`release.dir`)
+### One extender
 
 ```yaml
 extenders:
-  - name: beacon_agent
-    version: 1.0.0
-    type: agent
+  - name: example-service
+    version: 0.1.0
+    type: service
     min_server_version: "v2.0"
-    requires: [beacon_listener_http]
-    deps:
-      apt: [mingw-w64, g++-mingw-w64]
     build:
       - make
     release:
       dir: dist/
+      config: config.yaml
 ```
 
-### In-place plugin example (`release.globs`)
+Required extender fields:
+
+| Field | Contract |
+|---|---|
+| `name` | `[a-z0-9][a-z0-9_-]*`, unique in the spec |
+| `version` | non-empty package version |
+| `type` | `agent`, `listener`, or `service` |
+| `build` | at least one command |
+| `release` | exactly one of `dir` or `globs` |
+
+Optional fields include `description`, `author`, `min_server_version`, `requires`, `source`, and `deps.apt`. `requires` currently warns when a dependency is absent; it does not order or install dependencies.
+
+Build commands run in the installed source directory through `sh -c` and inherit the host environment. Treat the entire spec and source as executable trusted input. Prefer a small checked-in build script, pinned dependencies, and direct validation of its outputs.
+
+The release must contain at least one `.so` and a config file. `release.config` is relative to the collected release root; without it, `axtool` auto-detects the shallowest `config.yaml` or `config.yml`.
+
+### Multi-item package
 
 ```yaml
 extenders:
-  - name: mcp_server
-    version: 1.0.0
-    type: service
-    build:
-      - make
-    release:
-      globs:
-        - config.yaml
-        - mcp_server.so
-        - ax_config.axs
-```
-
-### Multi-plugin monorepo example
-
-```yaml
-extenders:
-  - name: my_agent
-    version: 1.0.0
+  - name: example-agent
+    version: 0.1.0
     type: agent
-    source: ./my_agent
+    source: agent
     build: [make]
-    release: { dir: dist/ }
+    release: {dir: dist/}
 
-  - name: my_listener
-    version: 1.0.0
+  - name: example-listener
+    version: 0.1.0
     type: listener
-    source: ./my_listener
+    source: listener
     build: [make]
-    release: { dir: dist/ }
+    release: {dir: dist/}
 ```
 
-### AxScript kit example
+Install one item with `--name`. `source` paths must stay within the reviewed package even if current validation appears to accept a broader path.
+
+### AxScript kit
 
 ```yaml
 scripts:
-  - name: extension-kit
-    version: 1.0.0
-    entry: extension-kit.axs
+  - name: example-ui
+    version: 0.1.0
+    entry: example-ui.axs
     min_server_version: "v2.0"
 ```
 
----
+The entry must be a relative `.axs` path. With no release selector, the package tree is copied except `.git`. Keep the kit minimal so unrelated files are not deployed.
 
-## Install State
+## Install commands
 
-File: `AdaptixServer/.installed_plugins.yaml` — managed by axtool; do not hand-edit.
-
-Per entry: `name`, `version`, `type`, `source`, `commit`, `source_path`, `release_path`, `profile_entry`, `installed_at`.
-
-`type` may be `listener`, `agent`, `service`, or `axscript`.
-
----
-
-## Template Placeholder System
-
-Templates from `github.com/Adaptix-Framework/templates-extender` use these placeholders — all must be replaced before the plugin builds:
-
-| Placeholder | Replacement |
-|-------------|-------------|
-| `_NAME_` | lowercase plugin name (e.g. `beacon`) |
-| `_LISTENER_1_`, `_LISTENER_2_` | listener registration names in `config.yaml` |
-| `_AGENT_` | agent registration name in `go.mod` |
-| `_PROTOCOL_` | transport protocol string (set via `--protocol` flag) |
-
-After `axtool template`, verify:
+Use one source mode:
 
 ```bash
-grep -r '_[A-Z][A-Z_]*_' *.go *.yaml go.mod
-# Expect zero results
+# Explicit local package
+axtool adaptix.spec ext install ./path/to/package
+
+# One item in a multi-item package
+axtool adaptix.spec ext install ./path/to/package --name example-service
+
+# All packages declared in adaptix.spec
+axtool adaptix.spec ext install --packages
+
+# A separate packages YAML
+axtool adaptix.spec ext install --from packages.yaml
 ```
 
----
+Calling `ext install` without a source, `--packages`, or `--from` is an error. `-d` installs declared apt dependencies; review the package list first and use it only on a disposable or managed host.
 
-## Placeholder System
+For an extender, install normally:
 
-All must be substituted — zero survivors in output:
+1. resolves/copies source under `server_dir/plugin_dir` when needed;
+2. adds the source module to `AdaptixServer/go.work`;
+3. executes each build command;
+4. collects and verifies release files;
+5. deploys to `ext_dir/<name>`;
+6. adds `<ext_prefix>/<name>/<config>` to `Teamserver.extenders`;
+7. writes `AdaptixServer/.installed_plugins.yaml`.
 
-| Placeholder | Value | Context |
-|-------------|-------|---------|
-| `__NAME__` | lowercase name | All files |
-| `__NAME_CAP__` | Capitalized | Class names |
-| `__WATERMARK__` | 8-char hex | Agent config |
-| `__PACKAGE__` | `main`/`crypto`/`protocol` | Go package name |
-| `__BUILD_TOOL__` | From toolchain YAML | Build command |
-| `__PROTOCOL__` | Protocol name | Wire format |
-| `__PROTOCOL_CAP__` | Capitalized protocol | Listener names |
-| `__LISTENER_TYPE__` | `external`/`internal` | Listener behavior |
+An AxScript kit deploys under `axscript_dir/<name>` and registers `<axscript_prefix>/<name>/<entry>` under `Teamserver.axscripts`.
 
-## Protocol Overlay Mechanism
+## Activation
 
-Protocols live in `protocols/<name>/` and can override plugin templates:
+Installation edits disk state; it does not prove runtime load. The predictable activation path is a cold Teamserver restart with working directory equal to `dist_dir`:
 
-1. `types.go.tmpl` + `constants.go.tmpl` → merged into `pl_utils.go` (repackaged as `main`)
-2. `crypto.go.tmpl` → injected into `src_<name>/crypto/crypto.go` (repackaged as `crypto`)
-3. `pl_main.go.tmpl` → **replaces** base `pl_main.go` entirely
-4. `pl_transport.go.tmpl` → replaces listener transport
-5. `pl_internal.go.tmpl` → replaces internal listener handler
-6. `pl_build_<lang>.go.tmpl` → replaces build handler for that language
-7. `implant/` overlays → merged into implant source tree
-
-## Toolchains
-
-Default safe toolchains: Go → `go-standard`, C++ → `mingw`, Rust → `cargo`.
-
-Toolchain YAML format:
-```yaml
-name: go-standard
-language: go
-compiler:
-  binary: go
-build:
-  command: "go build"
-  env: { CGO_ENABLED: "0" }
-  flags: ["-trimpath"]
-  ldflags: "-s -w"
-targets:
-  - { goos: linux, goarch: amd64, suffix: "_linux_amd64" }
-  - { goos: windows, goarch: amd64, suffix: "_windows_amd64.exe" }
+```bash
+cd dist
+./adaptixserver -profile profile.yaml
 ```
 
-## Evasion Gate
+Then verify:
 
-Generated with `-Evasion` flag. Scaffolds `evasion/` directory with a `Gate` interface (5 methods). Markers in templates:
+- the profile entry resolves from that working directory;
+- loader logs show the expected config, `.so`, AxScript, and exact `InitPlugin` signature;
+- the agent/listener/service catalog contains the extender;
+- the client reconnects/resyncs and displays expected commands/UI;
+- one real request reaches the plugin and produces its terminal state.
 
-- Go: `// __EVASION_IMPORT__`, `// __EVASION_FIELD__`, `// __EVASION_INIT__`
-- C++: `// __EVASION_INCLUDE__`, `// __EVASION_MEMBER__`, `// __EVASION_CTOR__`
-- Rust: `// __EVASION_MOD__`, `# __EVASION_FEATURES__` (must stay inside `[features]` in Cargo.toml)
+Loader failures do not necessarily stop Teamserver startup. A ready process is insufficient evidence. For runtime service removal use the canonical [service state machine](architecture-and-lifecycle.md#service); already-connected clients may also need reconnect/resync to receive changed service AxScript state.
 
-Without `-Evasion`: all markers are stripped, no `evasion/` directory.
+## Provenance and safe operation
+
+- Pin git sources to a reviewed full commit. Branches/tags can move, and the current state file records only a shortened commit string.
+- Inspect `axtool.spec` before installation; `build` executes shell commands.
+- Pre-resolve `--path`, package `source`, project paths, `plugin_dir`, and profile/release targets and require containment under the intended roots. Current validation is not a complete containment boundary.
+- Run one `axtool` mutation at a time. State, profile, and `go.work` writes have no cross-process lock or atomic commit.
+- Commit or back up profile, `go.work`, state, and existing release/source trees before `--force`. Rollback is best effort and destructive force cleanup is not transactional.
+- Treat `.installed_plugins.yaml` as install bookkeeping, not a provenance seal. Independently record full source commit, tool commit, checksums, Go version, and build flags.
+- Avoid printing `profile show`, `profile get all`, or generated service files into shared logs; profile fields may contain passwords or tokens.
+- Validate systemd unit name, user, group, binary, working directory, and profile path as trusted values before installation.
+- Back up and verify both certificate and key before `--force-cert`; partial pre-existing pairs can be replaced.
+
+## Preflight and rollback record
+
+Before mutation, capture:
+
+```bash
+git status --short
+git rev-parse HEAD
+go version
+go -C AdaptixServer env GOOS GOARCH GOVERSION
+go -C AdaptixServer list -m all
+```
+
+After installation, record release checksums, profile diff, `go.work` diff, state entry, catalog/load evidence, and restart procedure. If activation fails, restore the known-good files/release and restart; do not assume `ext uninstall` reverses an interrupted or forced install completely.
