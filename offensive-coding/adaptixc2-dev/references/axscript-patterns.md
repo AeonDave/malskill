@@ -307,9 +307,13 @@ cmd.setPostHook(function(hooktask) {
     return hooktask;
 });
 
-// Register per-OS command groups
+// Register per-OS command groups (returned by RegisterCommands or registered separately)
 let win = ax.create_commands_group("<agent>", [cmd1, cmd2]);
-let unix = ax.create_commands_group("<agent>", [cmd1, cmd2]);
+win.setDefaultEnabled(true);   // group visible by default; false = hidden unless explicitly enabled
+
+// Groups returned from RegisterCommands are auto-registered.
+// To register additional groups separately (e.g. for platform-specific add-ons):
+ax.register_commands_group(win, ["<agent>"])  // second arg: agent name filter array
 ```
 
 ---
@@ -342,7 +346,8 @@ event.on_interval(handler, seconds);
 - `ax.execute_alias_hook(id, displayCmdline, actualCmd, message, hook)` — alias with PostHook
 - `ax.execute_alias_handler(id, displayCmdline, actualCmd, message, handler)` — alias with Handler
 - `ax.execute_browser(id, cmd)` — browser command
-- `ax.service_command(svcName, function, data)` — send command to Go service plugin
+- `ax.service_command(svcName, function, data)` — send command to Go service plugin (fire-and-forget)
+- `ax.service_command_rpc(svcName, function, data)` — synchronous RPC; returns Go CallRPC result JSON
 - `ax.agents()` / `ax.ids()` / `ax.agent_info(id, prop)` — session data
 - `ax.credentials()` / `ax.credentials_add(...)` / `ax.credentials_add_list(arr)` — credential management
 - `ax.targets()` / `ax.targets_add(...)` / `ax.targets_add_list(arr)` — target management

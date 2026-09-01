@@ -269,9 +269,8 @@ ax.get_project()    // returns project name/info
 ax.convert_to_code(language, b64data, variableName)
 // language: "c", "csharp", "python", "powershell", "vbscript"
 
-// Console output
-ax.console_message(agentId, messageType, text)
-// messageType: "info", "error", "success"
+// Console output — typeStr: "info"|"error"|"success"|"" (raw); clearText: plain text for search/export
+ax.console_message(agentId, message, typeStr, clearText)
 
 // Dialogs
 ax.show_message(title, message)
@@ -294,11 +293,13 @@ ax.script_dir()                                // script directory path
 ### Service Communication
 
 ```javascript
-// Send command to Go service plugin (fire-and-forget)
+// Fire-and-forget: Go plugin receives in Call(operator, function, args)
+// Results arrive at data_handler(data) via TsPluginServiceSendDataClient/All
 ax.service_command(serviceName, function, data)
-// Go plugin receives in Call(operator, function, args)
-// Go plugin sends results back via TsServiceSendDataClient()
-// → arrives at data_handler(data) as JSON string
+
+// Synchronous RPC: Go plugin receives in CallRPC(operator, function, args)
+// Returns the JSON string returned by CallRPC; throws on error or timeout
+ax.service_command_rpc(serviceName, function, data)
 ```
 
 ---

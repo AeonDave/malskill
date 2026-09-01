@@ -4,12 +4,12 @@ description: "Auth/lab dev: AdaptixC2 extenders; agents, listeners, services, Ax
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "2.0"
 ---
 
 # AdaptixC2 Development
 
-Workflows and patterns for building extenders (agents, listeners, services) for the AdaptixC2 framework and maintaining the Template-Generators scaffold system.
+Workflows and patterns for building extenders (agents, listeners, services) for AdaptixC2 v2.0 and managing them with the `axtool` CLI.
 
 ---
 
@@ -23,7 +23,7 @@ AdaptixC2 has three extension points — all are Go plugins (`.so`, `-buildmode=
 | **Listener** | Network transport + agent traffic handler | `InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener` |
 | **Service** | Auxiliary pipeline (wrapper, hook, tool) | `InitPlugin(ts any, moduleDir string, serviceConfig string) adaptix.PluginService` |
 
-The Teamserver loads plugins via `plugin.Open()`, calls `InitPlugin`, registers commands from `ax_config.axs`, and stores instances in safe maps. The axc2 v1.2.0 module defines all interfaces.
+The Teamserver loads plugins via `plugin.Open()`, calls `InitPlugin`, and registers commands from `ax_config.axs`. **Module: `github.com/Adaptix-Framework/axc2/v2` v2.0.13** (Go 1.26.5; requires `axsafe` v0.0.0-…).
 
 ---
 
@@ -33,49 +33,56 @@ The Teamserver loads plugins via `plugin.Open()`, calls `InitPlugin`, registers 
 
 ```
 <name>_agent/
+├── axtool.spec          # Package spec (name/version/type/build/release)
 ├── config.yaml          # extender_type: "agent"
 ├── ax_config.axs        # AxScript UI + command definitions
-├── go.mod               # requires axc2 v1.2.0
-├── Makefile             # go build -buildmode=plugin
-├── pl_main.go           # InitPlugin, PluginAgent, ExtenderAgent
-├── pl_build.go          # GenerateProfiles, BuildPayload
-├── pl_utils.go          # Wire types, crypto, helpers
+├── go.mod               # requires axc2/v2 v2.0.13
+├── Makefile             # go build -buildmode=plugin → dist/
+├── pl_main.go           # InitPlugin, PluginAgent impl
+├── pl_packer.go         # PackTasks, PivotPackData
+├── pl_utils.go          # Wire types, crypto, pack helpers
 └── src_<name>/          # Implant source tree
 ```
 
-### Required interfaces
+### v2 Plugin interfaces (`axc2/v2`)
 
 ```go
+// InitPlugin returns a PluginAgent; Teamserver is obtained via ts.(adaptix.Teamserver)
 type PluginAgent interface {
     GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error)
     BuildPayload(profile adaptix.BuildProfile, agentProfiles [][]byte) ([]byte, string, error)
-    CreateAgent(beat []byte) (adaptix.AgentData, adaptix.ExtenderAgent, error)
-    GetExtender() adaptix.ExtenderAgent
+    CreateAgent(beat []byte) (adaptix.AgentData, adaptix.AgentFunctions, error)
+    AgentRestore(agentData adaptix.AgentData) adaptix.AgentFunctions  // NEW in v2
+    Call(operator string, agentId int64, function string, args string) // NEW in v2
 }
 
-type ExtenderAgent interface {
-    CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error)
-    ProcessData(agentData adaptix.AgentData, decryptedData []byte) error
-    Encrypt(data []byte, key []byte) ([]byte, error)
-    Decrypt(data []byte, key []byte) ([]byte, error)
-    PackTasks(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
-    TunnelCallbacks() adaptix.TunnelCallbacks
-    TerminalCallbacks() adaptix.TerminalCallbacks
-    PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
+// AgentFunctions replaces the v1 ExtenderAgent interface — a struct of function values
+type AgentFunctions struct {
+    CreateCommand func(AgentData, map[string]any) (TaskData, ConsoleMessageData, error)
+    ProcessData   func(AgentData, []byte) error
+    PackTasks     func(AgentData, []TaskData) ([]byte, error)
+    Encrypt       func([]byte, []byte) ([]byte, error)
+    Decrypt       func([]byte, []byte) ([]byte, error)
+    PivotPackData func(pivotId string, data []byte) (TaskData, error)
+    Delivery      DeliveryFunc                  // optional direct delivery bypass
+    TunnelCB      TunnelCallbacks
+    TerminalCB    TerminalCallbacks
 }
 ```
 
+**Key v2 changes**: `ExtenderAgent` is gone; `AgentFunctions` is a plain struct. `CreateAgent` now returns `AgentFunctions` (not the interface). `AgentRestore` rebuilds function closures for agents reloaded from DB. `Call` handles direct RPC from other plugins or AxScript.
+
 ### Workflow: new agent from scratch
 
-1. Decide language (Go/C++/Rust) and wire protocol
-2. Generate scaffold: `.\agent\generator.ps1 -Name <name> -Watermark <hex8> -Protocol <proto> -Language <lang> -Toolchain <tc>`
-3. Implement `CreateCommand` switch cases — one per command in `ax_config.axs`
-4. Implement `ProcessData` response handler — one per response code
-5. Implement `GenerateProfiles` — serialize listener profiles into agent config blobs
+1. Generate scaffold: `axtool template agent <name>`  (fetches from `Adaptix-Framework/templates-extender`)
+2. Fill placeholders in `axtool.spec`, `config.yaml`, `go.mod`
+3. Implement `CreateCommand` switch — one case per command in `ax_config.axs`
+4. Implement `ProcessData` response handler — one case per response code
+5. Implement `GenerateProfiles` — serialize listener profiles into config blobs for the implant
 6. Implement `BuildPayload` — invoke build toolchain, return compiled binary
-7. Implement implant source in `src_<name>/`
-8. Validate: `go mod tidy && go vet ./...`
-9. Check placeholders: `Select-String -Path *.go -Pattern '__[A-Z_]+__'`
+7. Implement `AgentRestore` — return same `AgentFunctions` struct from closed-over state
+8. Implement implant source in `src_<name>/`
+9. Validate: `go mod tidy && go vet ./...`
 
 ### config.yaml
 
@@ -100,36 +107,38 @@ See [references/plugin-patterns.md](references/plugin-patterns.md) for CreateCom
 
 ```
 <name>_listener/
+├── axtool.spec          # Package spec
 ├── config.yaml          # extender_type: "listener"
 ├── ax_config.axs        # UI form for listener creation
 ├── go.mod, Makefile
-├── pl_main.go           # InitPlugin, PluginListener
-├── pl_transport.go      # Network transport
-├── pl_crypto.go         # Encrypt/Decrypt
-└── pl_internal.go       # Internal listener (optional)
+├── pl_main.go           # InitPlugin, PluginListener impl
+└── pl_transport.go      # Network transport
 ```
 
-### Required interfaces
+### v2 Listener interfaces
 
 ```go
 type PluginListener interface {
-    Create(name string, config string, customData []byte) (adaptix.ExtenderListener, adaptix.ListenerData, []byte, error)
+    Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
+    Call(operator string, listenerName string, function string, args string) // NEW in v2
 }
 
 type ExtenderListener interface {
     Start() error
+    Edit(config string) (ListenerData, []byte, error)
     Stop() error
-    Edit(config string) (adaptix.ListenerData, []byte, error)
     GetProfile() ([]byte, error)
-    InternalHandler(data []byte) (string, error)  // internal listeners only
+    InternalHandler(data []byte) (int64, error)  // return type changed to int64 in v2
 }
 ```
 
+**Key v2 changes**: `PluginListener.Call` added for direct RPC. `InternalHandler` now returns `(int64, error)` — the agent ID — instead of `(string, error)`.
+
 ### Workflow: new listener
 
-1. Generate scaffold: `.\listener\generator.ps1 -Name <name> -Protocol <proto> -ListenerType external`
-2. Implement `Create()` — parse JSON config, validate, build transport
-3. Implement `Start()` — bind network, serve HTTP/TCP/DNS/etc.
+1. Generate scaffold: `axtool template listener <name> --protocol <proto>`
+2. Implement `Create()` — parse JSON config, validate, build transport; `customData != nil` means restore from DB
+3. Implement `Start()` — bind network, serve HTTP/TCP/DNS/SMB
 4. Implement agent registration + callback flow (see [references/plugin-patterns.md](references/plugin-patterns.md))
 5. Implement `Stop()` — graceful shutdown
 6. Implement `GetProfile()` — serialize crypto keys + config for agent embedding
@@ -138,7 +147,7 @@ type ExtenderListener interface {
 ### Listener types
 
 - **external**: Binds a network port. Agent connects directly.
-- **internal**: No network port. Used for pivot/linked agents. `InternalHandler()` processes relayed data.
+- **internal**: No network port. Used for pivot/linked agents. `InternalHandler()` processes relayed data, returns `agentId int64`.
 
 ### config.yaml
 
@@ -159,26 +168,30 @@ protocol: "http"
 
 ```
 <name>_service/
+├── axtool.spec          # Package spec
 ├── config.yaml          # extender_type: "service"
-├── ax_config.axs        # Optional UI + service commands
+├── ax_config.axs        # Optional service commands
 ├── go.mod, Makefile
-└── pl_main.go           # InitPlugin, PluginService
+└── pl_main.go           # InitPlugin, PluginService impl
 ```
 
-### Required interface
+### v2 Service interface
 
 ```go
 type PluginService interface {
     Call(operator string, function string, args string)
+    CallRPC(operator string, function string, args string) (resultJSON string, err error)  // NEW in v2
 }
 ```
 
+**Key v2 changes**: `CallRPC` enables synchronous request/response. Use `Call` for fire-and-forget and `CallRPC` when the AxScript caller needs an immediate return value (`ax.service_command_rpc()`).
+
 ### Workflow: new service
 
-1. Generate scaffold: `.\service\generator.ps1 -Name <name>` (add `-Wrapper` for post-build pipeline)
-2. Implement `Call()` — dispatch by `function` name, parse `args` JSON
-3. Use Teamserver hooks for event-driven behavior: `TsEventHookRegister()`
-4. For wrapper services: hook `agent.generate` to intercept and transform payloads
+1. Generate scaffold: `axtool template service <name>`
+2. Implement `Call()` — dispatch by `function` name, parse `args` JSON, send results back via `Ts.TsPluginServiceSendDataClient()`
+3. Implement `CallRPC()` — same dispatch, return result as JSON string
+4. For wrapper/post-build hooks: register `TsEventHookRegister("agent.generate", ...)` in `InitPlugin`
 
 ### config.yaml
 
@@ -191,7 +204,7 @@ service_config: |
   custom_key: value
 ```
 
-See [references/plugin-patterns.md](references/plugin-patterns.md) for service dispatch pattern and wrapper pipeline.
+See [references/plugin-patterns.md](references/plugin-patterns.md) for service dispatch pattern, CallRPC, and wrapper pipeline.
 
 ---
 
@@ -222,102 +235,191 @@ See [references/axscript-api.md](references/axscript-api.md) for complete functi
 
 ## 5 — Teamserver Interface & Data Types
 
-The `Teamserver` interface (type-asserted from `ts any` in `InitPlugin`) provides all server-side operations.
+The `Teamserver` interface (type-asserted from `ts any` in `InitPlugin`) provides all server-side operations. See [references/teamserver-api.md](references/teamserver-api.md) for the full signature table.
 
 ### Most-used methods
 
 ```go
 // Agent lifecycle
-Ts.TsAgentCreate(agentCrc, agentId string, beat []byte, listenerName, externalIP string, async bool) (adaptix.AgentData, error)
-Ts.TsAgentProcessData(agentId string, bodyData []byte) error
+Ts.TsAgentCreate(agentCrc string, agentUid []byte, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
+Ts.TsAgentProcessData(agentId int64, bodyData []byte) error
 Ts.TsAgentUpdateData(newAgentData adaptix.AgentData) error
-Ts.TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
+Ts.TsAgentGetHostedAll(agentId int64, maxDataSize int) ([]byte, adaptix.StatTasks, error)
+Ts.TsAgentCommandGroupSet(agentId int64, groupId string, enabled bool) error
+
+// Build
+Ts.TsAgentBuildCreateChannel(buildData string, wsconn adaptix.WebSocketConn, creator string) error
+Ts.TsAgentBuildExecute(builderId string, workingDir string, env []string, program string, args ...string) error
+Ts.TsAgentBuildLog(builderId string, status int, message string) error
+Ts.TsAgentBuildSendFile(builderId string, filename string, content []byte) error
+Ts.TsAgentBuildClose(builderId string)
 
 // Tasks
-Ts.TsTaskCreate(agentId, cmdline, client string, data adaptix.TaskData)
-Ts.TsTaskUpdate(agentId string, data adaptix.TaskData)
+Ts.TsTaskCreate(agentId int64, cmdline string, client string, taskData adaptix.TaskData)
+Ts.TsTaskUpdate(agentId int64, data adaptix.TaskData)
 
-// Downloads
-Ts.TsDownloadAdd(agentId, fileId, fileName string, totalSize int) error
-Ts.TsDownloadUpdate(agentId, fileId string, data []byte) error
-Ts.TsDownloadClose(agentId, fileId string) error
+// Downloads / Uploads
+Ts.TsDownloadAdd(AgentId int64, fileId int64, fileName string, fileSize int64) error
+Ts.TsDownloadUpdate(fileId int64, state int, data []byte) error
+Ts.TsDownloadClose(fileId int64, reason int) error
+Ts.TsUploadAddContent(agentId int64, fileId int64, remotePath string, content []byte, canceled bool, kind int, artname string, arttype string) error
 
-// Services
-Ts.TsServiceSendDataClient(serviceName, client, function, args string) error
-Ts.TsServiceSendDataAll(serviceName, function, args string) error
+// Plugin-to-plugin communication
+Ts.TsPluginServiceSendDataClient(operator string, service string, data string)
+Ts.TsPluginServiceSendDataAll(service string, data string)
+Ts.TsPluginServiceCallWait(serviceName string, operator string, function string, args string, timeoutMs int) (resultJSON string, err error)
+Ts.TsPluginAgentCall(agentId int64, operator string, function string, args string)
+Ts.TsPluginListenerCall(listenerName string, operator string, function string, args string)
 
 // Events
-Ts.TsEventHookRegister(event string, phase int, priority int, handler func(...)) (string, error)
+Ts.TsEventHookRegister(eventType string, name string, phase int, priority int, handler func(event any) error) string
+Ts.TsEventHookOnPre(eventType string, name string, handler func(event any) error) string
+Ts.TsEventHookOnPost(eventType string, name string, handler func(event any) error) string
+Ts.TsEventHookUnregister(hookID string) bool
+
+// Custom HTTP endpoints
+Ts.TsEndpointRegister(method, path string, handler func(username string, body []byte) (int, []byte)) error
+Ts.TsEndpointRegisterPublic(method, path string, handler func(body []byte) (int, []byte)) error
+
+// Persistent extender storage
+Ts.TsExtenderDataSave(extenderName, key string, data []byte) error
+Ts.TsExtenderDataLoad(extenderName, key string) ([]byte, error)
+Ts.TsExtenderDataDelete(extenderName, key string) error
+Ts.TsExtenderDataKeys(extenderName string) ([]string, error)
 ```
 
-### Key type gotchas
+### Key type facts (v2)
 
-- `AgentData.Sleep` is `uint` (seconds) — convert with `time.ParseDuration()` then cast
-- `AgentData.Pid` is `string` — convert with `fmt.Sprintf("%d", pid)`
-- `AgentData.Os` uses `adaptix.OS_WINDOWS=1`, `OS_LINUX=2`, `OS_MAC=3` — never `OS_MACOS`
-- `BuildProfile.AgentConfig` is JSON string from `container.toJson()` in GenerateUI
+- `AgentData.Id` is **`int64`** — not `string` as in v1
+- `AgentData.UID` is `[]byte` — passed to `TsAgentCreate` as `agentUid`
+- `AgentData.Sleep` is `uint` (seconds)
+- `AgentData.Pid`/`Tid` are `string`
+- `AgentData.Os`: `adaptix.OS_WINDOWS=1`, `OS_LINUX=2`, `OS_MAC=3` (never `OS_MACOS`)
+- `TsAgentGetHostedAll` returns `([]byte, StatTasks, error)` — three values in v2
+- `TsDownloadAdd` takes `fileId int64` and `fileSize int64` (not `int`)
+- `TsAgentBuildExecute` takes `env []string` (new param) before `program`
+- Helper functions in `helpers.go`: `adaptix.GetStringArg`, `GetIntArg`, `GetBoolArg`, `GetFileArg`, `GetFloatArg` + `*Default` variants — use these instead of raw type assertions
 
 See [references/teamserver-api.md](references/teamserver-api.md) for full method signatures and data types.
 
 ---
 
-## 6 — Template Generators
+## 6 — axtool — Scaffold & Extender Management
 
-The scaffold system at `AdaptixC2-Template-Generators/` generates plugin + implant boilerplate.
+`axtool` is the v2 CLI that replaces all v1 PowerShell generators. It manages scaffolding, building, installing, and profiling extenders.
 
-### Generation commands (PowerShell)
+### Scaffolding a new plugin
 
-```powershell
-# Agent
-.\agent\generator.ps1 -Name <name> -Watermark a1b2c3d4 -Protocol <proto> -Language <lang> -Toolchain <tc>
-# With evasion gate
-.\agent\generator.ps1 -Name <name> -Watermark a1b2c3d4 -Protocol <proto> -Language <lang> -Toolchain <tc> -Evasion
+```bash
+# Creates <name>/ with axtool.spec, config.yaml, go.mod, Makefile, pl_main.go, ax_config.axs
+axtool template agent   <name>                        # agent scaffold
+axtool template listener <name> --protocol <proto>    # listener scaffold (proto used as placeholder)
+axtool template service  <name>                       # service scaffold
+axtool template axscript <name>                       # AxScript kit scaffold
 
-# Listener
-.\listener\generator.ps1 -Name <name> -Protocol <proto> -ListenerType external
-
-# Service
-.\service\generator.ps1 -Name <name>
-# Service with wrapper pipeline
-.\service\generator.ps1 -Name <name> -Wrapper
+# --from: override template source (local path or github.com/org/repo@ref)
+# If name is omitted, uses the current directory name
 ```
 
-See [references/generator-details.md](references/generator-details.md) for placeholder system, protocol overlays, toolchain YAML format, and evasion gate details.
+Template source defaults to `github.com/Adaptix-Framework/templates-extender@main`.
+
+### Package specs
+
+Every plugin needs an **`axtool.spec`** at its root:
+
+```yaml
+extenders:
+  - name: my_agent           # [a-z0-9][a-z0-9_-]*; matches install directory name
+    version: 1.0.0
+    type: agent              # listener | agent | service
+    min_server_version: "v2.0"
+    requires: [my_listener_http]
+    deps:
+      apt: [mingw-w64, g++-mingw-w64]
+    build:
+      - make                 # ordered shell commands run in the plugin source dir
+    release:
+      dir: dist/             # deploy entire dist/ contents to ext_dir/<name>/
+      # globs: [config.yaml, my_agent.so]  # alternative: explicit file list
+```
+
+The project root needs an **`adaptix.spec`**:
+
+```yaml
+server_version: "v2.0"
+server_dir: AdaptixServer
+client_dir: AdaptixClient
+plugin_dir: extenders            # relative to server_dir
+
+dist_dir: dist
+ext_dir: dist/extenders
+axscript_dir: dist/axscripts
+profile: dist/profile.yaml
+
+packages:
+  - source: ./AdaptixServer/extenders/my_listener_http
+  - source: ./AdaptixServer/extenders/my_agent
+```
+
+### Build and install
+
+```bash
+# Install all packages from adaptix.spec
+axtool adaptix.spec ext install
+
+# Install a single remote package
+axtool adaptix.spec ext install github.com/org/repo@v1
+
+# Install only one extender from a multi-item repo
+axtool adaptix.spec ext install github.com/org/repo@v1 --name my_agent
+
+# Install with apt dep resolution
+axtool adaptix.spec ext install -d
+
+# Build the server
+axtool adaptix.spec server build
+
+# List installed extenders
+axtool adaptix.spec ext list
+```
+
+After install, axtool:
+1. Adds `./plugin_dir/<name>` to `AdaptixServer/go.work`
+2. Runs `build:` commands in the plugin source directory
+3. Deploys `release.dir` to `ext_dir/<name>/`
+4. Writes `<ext_prefix>/<name>/<config>` into the runtime `profile.yaml`
+
+Install state is tracked in `AdaptixServer/.installed_plugins.yaml` — do not hand-edit.
+
+See [references/generator-details.md](references/generator-details.md) for full axtool.spec and adaptix.spec field reference.
 
 ---
 
 ## 7 — Validation Workflow
 
-### Go validation (WSL preferred on Windows)
+### Go validation
 
-```powershell
-wsl bash -lc 'cd /mnt/d/Sources/AdaptixC2-Template-Generators/output/<dir> && /usr/local/go/bin/go mod tidy && /usr/local/go/bin/go vet ./...'
+```bash
+# From plugin root (WSL preferred on Windows for Linux .so targets)
+go mod tidy && go vet ./...
+
+# Or via wsl
+wsl bash -lc 'cd /mnt/d/Sources/.../my_agent && /usr/local/go/bin/go mod tidy && /usr/local/go/bin/go vet ./...'
 ```
 
-### Placeholder leak check
+### Placeholder leak check (templates-extender placeholders)
 
-```powershell
-Select-String -Path output\<dir>\*.go -Pattern '__[A-Z_]+__'
-# Zero matches expected
+```bash
+# Template uses _NAME_, _LISTENER_1_, etc. — zero survivors expected after scaffold fill
+grep -r '_[A-Z][A-Z_]*_' *.go
 ```
-
-### Rust shellcode / wrapper validation
-
-Use this when a Rust agent is wrapped into shellcode by a service such as Ashura:
-
-- Keep transport, crypto, profile decode, and task protocol shared across EXE/DLL/shellcode builds. If shellcode needs a platform primitive, hide it behind the same public return type (for example a Winsock connect helper that returns `TcpStream`) instead of forking the whole HTTP path.
-- Treat reflective-loader entry policy as part of the payload contract. Some Rust shellcode builds intentionally call exported `DllMain` first with `reserved != 0`, then call a reflective start export; switching to PE `AddressOfEntryPoint` / CRT startup can regress even when it looks more loader-correct.
-- Add short runtime breadcrumbs around the suspected boundary before changing architecture: profile decode, session encode, DNS/resolve, connect, write, status, headers, decrypt.
-- After loader changes, regenerate generated shellcode artifacts (`make srdi` or the repo's equivalent). Source edits to the loader are not enough.
-- Validate both `cargo check` and a real `cargo build --target x86_64-pc-windows-gnu --lib`; `cargo check` can miss final import/link problems such as new `windows-sys` feature bindings.
-- Validate shellcode and non-shellcode feature sets separately, then build the Go plugin with `-buildmode=plugin`.
 
 ### Parity checks
 
-- Every `create_command()` in `ax_config.axs` → matching `CreateCommand` case in `pl_main.go`
+- Every command object built in `ax_config.axs` → matching `CreateCommand` case in `pl_main.go`
 - Every `CreateCommand` case → matching `ProcessData` handler
-- BOF types must survive protocol overlay into `pl_utils.go`
-- Protocol `pl_main.go.tmpl` overrides must pass `go vet`
+- `AgentRestore` must return functionally equivalent `AgentFunctions` to `CreateAgent`
+- `TsAgentGetHostedAll` returns three values — always capture `StatTasks` or discard with `_`
 
 ---
 
@@ -325,28 +427,36 @@ Use this when a Rust agent is wrapped into shellcode by a service such as Ashura
 
 | Forbidden | Correct |
 |-----------|---------|
-| Edit `output/` by hand in regeneration workflow | Fix template, re-generate |
 | `adaptix.OS_MACOS` | `adaptix.OS_MAC` |
 | `SessionInfo.Sleep` (string) → `AgentData.Sleep` (uint) | `time.ParseDuration(si.Sleep)` then cast |
 | `ProcessId` (int) → `AgentData.Pid` (string) | `fmt.Sprintf("%d", params.ProcessId)` |
-| `# __EVASION_FEATURES__` outside `[features]` | Keep marker inside `[features]` TOML section |
-| Adding command to `ax_config.axs` without handler | Add `CreateCommand` + `ProcessData` simultaneously |
-| Module ref without implementation file | Create implementation file simultaneously |
+| `AgentData.Id` as string (v1 habit) | `AgentData.Id` is `int64` in v2 |
+| `TsAgentGetHostedAll(id, size)` without capturing `StatTasks` | Capture all 3 return values; discard `_` |
+| `TsAgentBuildExecute` without `env []string` param | Pass `nil` or explicit env |
+| `TsDownloadAdd(id, id, name, int)` v1 signature | v2: `(int64, int64, string, int64)` |
+| `PluginService.Call` without `CallRPC` | Implement both; return `""` if RPC not needed |
+| `ExtenderAgent` v1 interface | Use `AgentFunctions` struct with function values |
+| Adding command to `ax_config.axs` without `AgentRestore` update | `AgentRestore` closure must expose same functions |
+| `TsServiceSendDataClient/All` (v1 names) | `TsPluginServiceSendDataClient/All` in v2 |
 | Stubs that compile but do nothing at runtime | Implement fully or remove entirely |
 
 ---
 
 ## 9 — Learned Pitfalls
 
+- **v2 ID types**: All agent IDs are `int64` everywhere — Teamserver methods, `TaskData.AgentId`, `AgentData.Id`. Passing a string from v1 habit compiles but routes wrong.
+- **AgentRestore contract**: `AgentRestore` is called on server restart for every persisted session. If it returns an `AgentFunctions` with nil fields the agent silently stops functioning. Ensure all closures capture a valid `Ts` reference.
+- **TsAgentGetHostedAll 3-return**: Ignoring the `StatTasks` return with a single variable panics at compile. Always `data, _, err := ...` or capture all three.
+- **TsPluginServiceSendDataClient vs v1**: v1 had `TsServiceSendDataClient(serviceName, client, fn, args)`. v2 is `TsPluginServiceSendDataClient(operator, service, data)` — argument order changed, `data` is a flat string not split function+args.
+- **CallRPC deadlock**: Do not call `TsPluginServiceCallWait` from inside a `Call/CallRPC` handler of the same service — it will deadlock. Use goroutines for chained calls.
+- **Event hook IDs**: `TsEventHookRegister` returns a `hookID string` (not `(string, error)` as in v1). Store it and call `TsEventHookUnregister(hookID)` in cleanup.
+- **go.work membership**: `axtool ext install` adds the plugin to `go.work`. Manual plugin directories not listed in `go.work` will cause build errors during `go build ./...` at the server root.
 - **C++ clang compat**: Casting member-fn-ptr to `void*` is a GCC extension. Use `__builtin_return_address(0)`.
 - **C++ Makefiles with .c files**: Clang rejects `-std=c++17` for C files. Compile C_SOURCES separately with `-std=c11`.
 - **Rust linker-plugin-lto**: Requires `lld`. Route `-mllvm` flags as `-Wl,-mllvm,<arg>`.
-- **Rust evasion Cargo.toml**: `# __EVASION_FEATURES__` must be inside `[features]` to avoid duplicate sections.
 - **PE hardening**: Never inflate VirtualSize when diluting entropy — only extend RawSize.
-- **Section names**: Don't use `.rsrc` as import padding — conflicts with resource injection.
-- **COFF string encryption**: GCC statement expressions with static guards don't work in PIC blobs.
 - **Shellcode regression debugging**: Keep a known-good runtime path alive before introducing a shellcode-only fork. Prefer one small boundary adapter plus markers over replacing shared protocol code.
-- **Reflective Rust entrypoints**: Do not assume `AddressOfEntryPoint` is safer than exported `DllMain`; test the specific loader/payload contract and preserve the path that reaches `WraithReflectiveStart`.
+- **Reflective Rust entrypoints**: Do not assume `AddressOfEntryPoint` is safer than exported `DllMain`; test the specific loader/payload contract.
 
 ---
 
@@ -354,11 +464,11 @@ Use this when a Rust agent is wrapped into shellcode by a service such as Ashura
 
 | File | When to load |
 |---|---|
-| [references/plugin-patterns.md](references/plugin-patterns.md) | CreateCommand/ProcessData patterns, adding commands end-to-end, protocol/wrapper/build workflows |
-| [references/axscript-patterns.md](references/axscript-patterns.md) | AxScript lifecycle examples, UI layout, signals, commands, containers, gotchas |
+| [references/plugin-patterns.md](references/plugin-patterns.md) | CreateCommand/ProcessData/AgentFunctions patterns, adding commands end-to-end, listener callback flow, service dispatch and CallRPC |
+| [references/axscript-patterns.md](references/axscript-patterns.md) | AxScript lifecycle examples, UI layout, signals, commands, command groups, hooks, gotchas |
 | [references/axscript-api.md](references/axscript-api.md) | Complete AxScript function reference with signatures |
-| [references/teamserver-api.md](references/teamserver-api.md) | Full Teamserver method signatures and data types |
-| [references/generator-details.md](references/generator-details.md) | Placeholders, protocol overlays, toolchain YAML, evasion gate |
-| Online docs | https://adaptix-framework.gitbook.io/adaptix-framework/development/ |
-| Extension-Kit | https://github.com/Adaptix-Framework/Extension-Kit |
-| axc2 module | `github.com/Adaptix-Framework/axc2` v1.2.0 |
+| [references/teamserver-api.md](references/teamserver-api.md) | Full Teamserver method signatures, data types, and v2 gotchas |
+| [references/generator-details.md](references/generator-details.md) | axtool.spec / adaptix.spec full field reference, template placeholder system |
+| Online docs | https://adaptix-framework.gitbook.io/adaptix-framework/development/ (may lag source) |
+| Templates | https://github.com/Adaptix-Framework/templates-extender |
+| axc2/v2 module | `github.com/Adaptix-Framework/axc2/v2` v2.0.13 |
