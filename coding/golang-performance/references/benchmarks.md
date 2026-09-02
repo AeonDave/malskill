@@ -2,16 +2,33 @@
 
 ## Basic benchmark skeleton
 
+Go 1.24+ has `for b.Loop() { ... }` which is the preferred shape: it hides the timer around
+setup/cleanup, and the compiler refuses to eliminate the loop body, so you no longer need
+`b.ResetTimer` or sink variables to defeat dead-code elimination.
+
 ```go
 func BenchmarkThing(b *testing.B) {
     b.ReportAllocs()
+    input := makeInput()
 
-    setup := makeInput()
-    b.ResetTimer()
-
-    for i := 0; i < b.N; i++ {
-        _ = Thing(setup)
+    for b.Loop() {
+        _ = Thing(input) // compiler-safe: DCE disabled inside b.Loop
     }
+}
+```
+
+Legacy `b.N`-style is still supported and required on pre-1.24 toolchains:
+
+```go
+func BenchmarkThingLegacy(b *testing.B) {
+    b.ReportAllocs()
+    input := makeInput()
+    b.ResetTimer()
+    var sink Result
+    for i := 0; i < b.N; i++ {
+        sink = Thing(input) // sink prevents dead-code elimination
+    }
+    _ = sink
 }
 ```
 

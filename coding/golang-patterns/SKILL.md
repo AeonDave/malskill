@@ -2,10 +2,10 @@
 name: golang-patterns
 description: "Idiomatic Go patterns, best practices, and conventions for building robust, readable, and maintainable Go code. Use when writing, reviewing, or refactoring Go (APIs, packages, errors, interfaces, concurrency, and code style)."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline). Optional tools: gofmt, goimports, staticcheck, golangci-lint."
+compatibility: "Go 1.22+ (guidance baseline; notes flag features from Go 1.19–1.25). Optional tools: gofmt, goimports, staticcheck, golangci-lint, gopls, govulncheck, gosec."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Go Patterns
@@ -85,3 +85,5 @@ Load on demand (progressive disclosure):
 - `references/api-and-structs.md` — receiver rules, functional options, embedding
 - `references/package-layout.md` — project layout, package naming, dependency injection
 - `references/tooling.md` — gofmt/goimports, vet, staticcheck, golangci-lint guidance
+- `references/security-review.md` — use when auditing Go for security bugs: untrusted input, panics/DoS, TLS defaults, secrets, supply chain (`govulncheck`, `gosec`)
+- `references/unsafe-cgo.md` — use for `unsafe.Pointer` rules, `syscall`/`x/sys`, cgo boundaries, and static/cross-compiled offensive-tooling builds

@@ -2,10 +2,10 @@
 name: golang-performance
 description: "Go performance workflow: benchmark and profile (pprof/trace), identify hotspots, reduce allocations/GC and contention, and verify improvements with repeatable measurement. Use only after you have evidence the Go code is the bottleneck."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline). Tools: go test, go tool pprof, go tool trace. Optional: benchstat (golang.org/x/perf/cmd/benchstat), perf (Linux)."
+compatibility: "Go 1.22+ (guidance baseline; benchmark examples note Go 1.24 `b.Loop`). Tools: go test, go tool pprof, go tool trace. Optional: benchstat (golang.org/x/perf/cmd/benchstat), perf (Linux), cargo-pgo-free PGO via `-pgo=auto` (Go 1.21+)."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Go Performance
@@ -80,6 +80,7 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
 - Latency spikes without CPU spike -> block profile
 - Lock contention suspicion -> mutex profile
 - Scheduler/pathological latency behavior -> runtime trace
+- Shipped binary that is already profile-tuned and needs final runtime/build tuning -> `compiler-and-runtime-tuning.md`
 
 ---
 
@@ -100,3 +101,4 @@ Load these references on demand:
 - `references/benchmarks.md` — stable benchmarks, -benchmem, benchstat, hygiene
 - `references/allocations-gc.md` — allocation patterns, slice retention, sync.Pool guidance
 - `references/contention.md` — mutex/block profiles, contention patterns, backpressure
+- `references/compiler-and-runtime-tuning.md` — use when benchmark/profile fixes have landed and you need PGO, GOGC/GOMEMLIMIT, GOMAXPROCS, or shipped-binary build flags

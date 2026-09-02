@@ -2,10 +2,10 @@
 name: golang-testing
 description: "Go testing patterns for unit tests, table-driven tests, subtests, test helpers, mocking/fakes, benchmarks, fuzzing, and coverage. Use when writing or reviewing Go tests to improve correctness, stability, and maintainability."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline). Tools: go test, go tool cover. Optional: race detector (-race), fuzzing (built-in), benchmark stats (benchstat)."
+compatibility: "Go 1.22+ (guidance baseline; notes Go 1.24 `testing/synctest` GOEXPERIMENT and 1.25 stable). Tools: go test, go tool cover. Optional: race detector (-race), fuzzing (built-in), benchmark stats (benchstat), go.uber.org/goleak, testing/synctest."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Go Testing
@@ -72,5 +72,6 @@ Load on demand:
 - `references/mocking-fakes.md` — interfaces for dependencies, fakes vs mocks, examples
 - `references/http-testing.md` — httptest patterns and JSON assertions
 - `references/bench-fuzz.md` — benchmarks and fuzzing best practices
+- `references/fuzzing-and-race.md` — use for `go test -fuzz` campaigns, corpus/minimization, race detector, `goleak`, and `testing/synctest` deterministic goroutine tests
 - `references/coverage-ci.md` — cover profiles, coverpkg notes, CI integration cautions
 - `references/commands.md` — go test command recipes (race, timeout, count, patterns)

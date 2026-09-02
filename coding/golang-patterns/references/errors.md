@@ -63,6 +63,25 @@ At transport/API boundaries (HTTP/RPC/CLI), map internal errors to stable catego
 Wrap once per boundary transition (storage -> service -> transport), not on every line.
 Over-wrapping can make root-cause chains noisy.
 
+## Aggregating errors (Go 1.20+)
+
+Use `errors.Join` when several independent operations can each fail and you want them all reported.
+The chain is preserved: `errors.Is`/`errors.As` still match each joined error.
+
+```go
+var errs []error
+for _, item := range items {
+    if err := process(item); err != nil {
+        errs = append(errs, fmt.Errorf("item %s: %w", item.ID, err))
+    }
+}
+if err := errors.Join(errs...); err != nil {
+    return fmt.Errorf("batch: %w", err)
+}
+```
+
+Prefer over `multierr` / hand-rolled aggregators unless the extra API is genuinely needed.
+
 ## References
 
 - https://go.dev/blog/errors-are-values
