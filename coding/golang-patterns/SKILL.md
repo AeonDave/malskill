@@ -1,11 +1,11 @@
 ---
 name: golang-patterns
-description: "Idiomatic Go patterns, best practices, and conventions for building robust, readable, and maintainable Go code. Use when writing, reviewing, or refactoring Go (APIs, packages, errors, interfaces, concurrency, and code style)."
+description: "Idiomatic Go patterns, best practices, and conventions for building robust, readable, and maintainable Go code. Use when writing, reviewing, or refactoring Go (APIs, packages, errors, interfaces, concurrency, code style), choosing a dispatch or plugin mechanism, or building low-level/offensive Go with `unsafe`, `cgo`, syscall dispatch, or RE-resistant static builds."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline; notes flag features from Go 1.19–1.25). Optional tools: gofmt, goimports, staticcheck, golangci-lint, gopls, govulncheck, gosec."
+compatibility: "Go 1.22+ (guidance baseline; notes flag features from Go 1.19–1.25). Optional tools: gofmt, goimports, staticcheck, golangci-lint, gopls, govulncheck, gosec, garble."
 metadata:
   author: AeonDave
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Go Patterns
@@ -20,6 +20,7 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 - Reviewing PRs for idioms, readability, and maintainability
 - Refactoring for cleaner error handling and smaller interfaces
 - Designing concurrency flows with cancellation and backpressure
+- Choosing a dispatch/plugin mechanism, adding modules to a compiled binary, or building low-level/offensive Go tooling
 
 ---
 
@@ -87,3 +88,5 @@ Load on demand (progressive disclosure):
 - `references/tooling.md` — gofmt/goimports, vet, staticcheck, golangci-lint guidance
 - `references/security-review.md` — use when auditing Go for security bugs: untrusted input, panics/DoS, TLS defaults, secrets, supply chain (`govulncheck`, `gosec`)
 - `references/unsafe-cgo.md` — use for `unsafe.Pointer` rules, `syscall`/`x/sys`, cgo boundaries, and static/cross-compiled offensive-tooling builds
+- `references/dispatch-and-plugins.md` — use when choosing `dyn` interfaces vs enum dispatch, building registries and command dispatchers, or adding modules to a compiled binary (`plugin`, `hashicorp/go-plugin`, `wazero`/`extism`, `yaegi`, `selfupdate`, `tableflip`)
+- `references/offensive-lowlevel.md` — use for RE-resistance, symbol/metadata stripping, `garble`/`GoReSym`, string obfuscation, syscall dispatch strategy, and in-memory execution
