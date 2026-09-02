@@ -14,6 +14,7 @@ architectures (registries, runtime loading, scripting), or structuring command d
 - [In-memory loading](#in-memory-loading)
 - [Sandboxed alternatives: WASM and IPC](#sandboxed-alternatives-wasm-and-ipc)
 - [Embedded scripting](#embedded-scripting)
+- [Self-update and hot-reload](#self-update-and-hot-reload)
 - [Command dispatcher pattern](#command-dispatcher-pattern)
 
 ## Choosing a dispatch mechanism
@@ -158,6 +159,55 @@ When behavior must change without recompiling, embed an interpreter instead of s
 
 Script engines beat plugin loaders for operator-configurable logic (tasking, decision tables);
 compiled plugins win on performance and type safety.
+
+## Self-update and hot-reload
+
+Two distinct problems: **replace the whole binary** vs **swap behavior in-process**.
+
+Whole-binary replace:
+
+- `self_update` (jaemk/self_update) — Rust-side counterpart of Go's `selfupdate`: pulls GitHub /
+  GitLab / Gitea / Bitbucket releases, verifies the release-published SHA-256 (enabled by the
+  `checksums` feature), optionally verifies a zipsign signature (`signatures` feature), extracts,
+  atomically swaps the binary. `verify_archive` / `verify_binary` hooks let you plug in an external
+  attestation (`gh attestation verify`, `cosign verify-blob`) or a smoke test before the swap.
+- `axoupdater` — the `cargo-dist` companion updater; consumes the `cargo-dist` release-receipt
+  format. Reach for it when the release pipeline is already `cargo-dist`.
+- `velopack` — installer + auto-update framework with delta packages, background apply, and
+  Win/macOS/Linux support. Heavier than `self_update`; useful for GUI / installer-owning apps.
+- Rule: **no self-update without signature verification** — an integrity digest catches corruption
+  but not a forge that replaces the asset. Use `signatures` (zipsign) or an external attestation.
+
+In-process reload for servers (zero-downtime restart, not "hot code swap"):
+
+- `arc-swap` (`ArcSwap<T>`) — atomic `Arc` swap for the "read-mostly, occasionally update" case:
+  live config, routing tables, TLS keying material. Lock-free, wait-free reads:
+
+  ```rust
+  use arc_swap::ArcSwap;
+  use std::sync::Arc;
+
+  static CONFIG: once_cell::sync::Lazy<ArcSwap<Config>> =
+      once_cell::sync::Lazy::new(|| ArcSwap::from_pointee(Config::default()));
+
+  // SIGHUP handler or admin RPC: parse new config, then atomically swap in.
+  CONFIG.store(Arc::new(new_config));
+
+  // Everywhere else: cheap read.
+  let cfg = CONFIG.load(); // Guard<Arc<Config>>, deref to &Config
+  ```
+
+- `listenfd` + `systemfd` — the Rust equivalent of the Go `tableflip` shape: `systemfd` opens the
+  listening sockets and execs your binary with them attached; on restart it re-execs and the same
+  fds are handed to the new process, so no connection is dropped. Standard dev-loop pattern for
+  actix/axum servers behind `cargo watch`.
+- `sd-notify` — talk to systemd's notify protocol from Rust: send `READY=1` when initialisation
+  finishes and `RELOADING=1` during a config reload (systemd v253+ also wants a `MonotonicUsec=`
+  update). Pairs with `Type=notify` service units for true zero-downtime reloads under systemd.
+
+For actual in-process capability swaps, one of the plugin mechanisms above is the right tool —
+`libloading` when host and plugin ship together, `abi_stable`/`stabby` when the plugin outlives the
+host's build, WASM/scripting for untrusted or user-provided modules.
 
 ## Command dispatcher pattern
 
