@@ -18,6 +18,7 @@ if ([string]::IsNullOrWhiteSpace($SourceRoot)) {
 $SourceRoot = (Resolve-Path -LiteralPath $SourceRoot).Path
 
 $ValidatorScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\quick_validate.py"
+$BatchValidatorScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\validate_all.py"
 $PackagerScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\package_skill.py"
 $DiscoveryExclusions = @(
     'dist',
@@ -372,10 +373,17 @@ function Get-InstallArchiveTarget([string]$DestinationRoot, [object]$Skill, [str
 }
 
 function Validate-SelectedSkills([object[]]$SelectedSkills) {
-    foreach ($skill in $SelectedSkills) {
-        Write-Step "Validating $($skill.RelativePath)"
-        Invoke-PythonScript -ScriptPath $ValidatorScript -ScriptArgs @($skill.FullPath)
+    if (-not $SelectedSkills -or $SelectedSkills.Count -eq 0) {
+        return
     }
+
+    Write-Step ("Validating {0} skill(s) in a single Python process" -f $SelectedSkills.Count)
+    $batchArgs = New-Object System.Collections.Generic.List[string]
+    foreach ($skill in $SelectedSkills) {
+        $batchArgs.Add('--skill-dir')
+        $batchArgs.Add($skill.FullPath)
+    }
+    Invoke-PythonScript -ScriptPath $BatchValidatorScript -ScriptArgs $batchArgs.ToArray()
 }
 
 function Remove-ExistingSkillDirectory([string]$TargetPath) {

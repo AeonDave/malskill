@@ -8,13 +8,20 @@ from an explicit root path passed as an argument.
 
 Usage:
     python knowledge/skill-creator/scripts/validate_all.py [<repo-root>] [--exclude <dir> ...]
+    python knowledge/skill-creator/scripts/validate_all.py --skill-dir <path> [--skill-dir <path> ...]
 
-    --exclude <dir>   Exclude any skill path whose components include <dir>.
-                      Can be repeated. Defaults to excluding '.import'.
+    --exclude <dir>     Exclude any skill path whose components include <dir>.
+                        Can be repeated. Defaults to excluding '.import'.
+    --skill-dir <path>  Validate an explicit skill directory instead of
+                        discovering under a root. Can be repeated. When any
+                        --skill-dir is given, discovery and --exclude are
+                        skipped and any positional root is ignored.
 
 Examples:
     python knowledge/skill-creator/scripts/validate_all.py
     python knowledge/skill-creator/scripts/validate_all.py . --exclude .import --exclude vendor
+    python knowledge/skill-creator/scripts/validate_all.py \
+        --skill-dir coding/rust-patterns --skill-dir coding/golang-patterns
 
 Exit codes:
     0  All skills valid (warnings allowed)
@@ -48,10 +55,11 @@ def find_skill_dirs(root: Path, excludes: set[str]) -> list[Path]:
     return sorted(results)
 
 
-def _parse_args() -> tuple[Path, set[str]]:
+def _parse_args() -> tuple[Path, set[str], list[Path]]:
     args = sys.argv[1:]
     repo_root = _DEFAULT_ROOT
     excludes: set[str] = {".import"}  # default
+    skill_dirs: list[Path] = []
 
     i = 0
     positional_consumed = False
@@ -60,22 +68,40 @@ def _parse_args() -> tuple[Path, set[str]]:
             i += 1
             if i < len(args):
                 excludes.add(args[i])
+        elif args[i] == "--skill-dir":
+            i += 1
+            if i < len(args):
+                skill_dirs.append(Path(args[i]).resolve())
         elif not positional_consumed and not args[i].startswith("--"):
             repo_root = Path(args[i]).resolve()
             positional_consumed = True
         i += 1
 
-    return repo_root, excludes
+    return repo_root, excludes, skill_dirs
 
 
 def main() -> None:
-    repo_root, excludes = _parse_args()
+    repo_root, excludes, explicit_skill_dirs = _parse_args()
 
-    if not repo_root.is_dir():
-        print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
-        sys.exit(1)
+    if explicit_skill_dirs:
+        # Preserve caller-supplied order but drop duplicates.
+        seen: set[Path] = set()
+        skill_dirs: list[Path] = []
+        for d in explicit_skill_dirs:
+            if d in seen:
+                continue
+            seen.add(d)
+            skill_dirs.append(d)
+        # Anchor relative paths against the current working directory when possible;
+        # this keeps output readable regardless of caller CWD.
+        display_anchor = Path.cwd()
+    else:
+        if not repo_root.is_dir():
+            print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
+            sys.exit(1)
+        skill_dirs = find_skill_dirs(repo_root, excludes)
+        display_anchor = repo_root
 
-    skill_dirs = find_skill_dirs(repo_root, excludes)
     if not skill_dirs:
         print("No skill directories found.", file=sys.stderr)
         sys.exit(1)
@@ -86,7 +112,10 @@ def main() -> None:
     failures: list[tuple[str, str]] = []
 
     for skill_dir in skill_dirs:
-        rel = skill_dir.relative_to(repo_root)
+        try:
+            rel = skill_dir.relative_to(display_anchor)
+        except ValueError:
+            rel = skill_dir
         valid, message = validate_skill(skill_dir)
         if not valid:
             print(f"  FAIL  {rel}: {message}")
