@@ -1,11 +1,11 @@
 ---
 name: rust-patterns
-description: "Idiomatic Rust patterns and best practices for readable, safe, maintainable Rust: ownership, borrowing, API design, enums/traits, error handling, iterators, module layout, and tooling. Use when writing or reviewing `.rs` code, refactoring crates, porting non-idiomatic code into Rust, or designing Rust APIs."
+description: "Idiomatic Rust patterns and best practices for readable, safe, maintainable Rust: ownership, borrowing, API design, enums/traits, error handling, iterators, concurrency, dynamic dispatch/plugins, and low-level/offensive patterns. Use when writing or reviewing `.rs` code, refactoring crates, porting non-idiomatic code into Rust, designing Rust APIs, or building Rust tooling that needs runtime composition or RE-resistance."
 license: MIT
-compatibility: "Rust stable baseline (2024 edition-friendly). Tools: cargo, rustfmt, clippy, rustdoc. Optional: rust-analyzer."
+compatibility: "Rust stable baseline (2024 edition-friendly). Tools: cargo, rustfmt, clippy, rustdoc. Optional: rust-analyzer, Miri (nightly), cargo-audit/cargo-deny for security review."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.3"
 ---
 
 # Rust Patterns
@@ -19,7 +19,9 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 - Writing or refactoring `.rs` modules, libraries, CLIs, or services
 - Reviewing Rust PRs for ownership, borrowing, API shape, and common footguns
 - Porting code from C/C++/Go/Python into idiomatic Rust
-- Improving error handling, trait design, iterators, module boundaries, or docs
+- Improving error handling, trait design, iterators, module boundaries, concurrency, or docs
+- Choosing a dispatch/plugin mechanism, or building low-level/offensive Rust with `unsafe`, FFI,
+  or RE-resistant builds
 
 ---
 
@@ -78,6 +80,8 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 - Prefer adapting one unstable primitive over forking a full protocol or workflow. Example shape: `connect_with_timeout(...) -> io::Result<TcpStream>` can use `std::net` normally and a Windows FFI helper only in a constrained build mode.
 - Use feature gates to remove incompatible definitions, not just unreachable call sites, when signatures or imports differ by build mode.
 - After adding Windows FFI bindings or `windows-sys` features, run a real target build; `cargo check` can pass before the linker sees missing imports or feature flags.
+- For raw-pointer, `unsafe`, uninitialized-memory, or ABI work, keep `unsafe` minimal behind a safe API and document invariants; load `references/unsafe-and-ffi.md`.
+- When auditing untrusted-input handling, `unsafe` soundness, or a dependency tree for security bugs, load `references/security-review.md`.
 
 ## Resources
 
@@ -88,3 +92,10 @@ Load on demand:
 - `references/errors-and-results.md` — use when designing recoverable errors or cleaning up panic-prone code
 - `references/collections-and-iterators.md` — use when choosing collections or refactoring loops into clearer iterator code
 - `references/tooling-and-docs.md` — use when reviewing formatting, clippy, rustdoc, features, and crate hygiene
+- `references/concurrency.md` — use when choosing shared-state, channel, or async patterns
+- `references/dynamic-dispatch-and-plugins.md` — use when choosing `dyn` vs generics vs enum dispatch,
+  building plugin registries, loading code at runtime, or structuring command dispatchers
+- `references/unsafe-and-ffi.md` — use for `unsafe` blocks, raw pointers, provenance, uninitialized memory, `repr(C)`/ABI, or C FFI boundaries
+- `references/offensive-lowlevel.md` — use for RE-resistance, string obfuscation, memory protection,
+  `no_std` entry points, inline asm/syscalls, or malware-style modular architecture
+- `references/security-review.md` — use when auditing Rust for security bugs: untrusted input, panics/DoS, integer overflow, secrets, or supply-chain risk

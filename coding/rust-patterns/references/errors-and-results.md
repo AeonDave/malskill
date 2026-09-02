@@ -16,6 +16,24 @@ Use this reference when deciding how Rust code should fail, recover, and carry c
 
 Rule of thumb: typed errors in library boundaries, aggregated errors at executable boundaries.
 
+```rust
+// library boundary — typed
+#[derive(thiserror::Error, Debug)]
+pub enum StorageError {
+    #[error("record not found: {id}")]
+    NotFound { id: u64 },
+    #[error("io")]
+    Io(#[from] std::io::Error),
+}
+
+// executable boundary — aggregated
+fn run() -> anyhow::Result<()> {
+    let cfg = read_config().context("load config")?;
+    // ...
+    Ok(())
+}
+```
+
 ## Panic hygiene
 
 - `panic!`, `unwrap`, and `expect` belong in tests, prototypes, or justified invariants

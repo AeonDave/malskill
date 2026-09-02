@@ -15,6 +15,8 @@ Use this reference when choosing collections or cleaning up loop-heavy Rust.
 - Prefer a manual loop when stateful control flow or error handling would become harder to read
 - Avoid collecting intermediate `Vec`s unless you truly need ownership or random access
 - Use `filter_map`, `find_map`, `flat_map`, and `try_fold` to compress common patterns cleanly
+- `collect()` targets any `FromIterator` type — annotate the destination when ambiguous, and a
+  `collect()` over `Result<T, E>` items short-circuits on the first error into `Result<Vec<T>, E>`
 
 ## Footguns to avoid
 

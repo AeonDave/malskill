@@ -1,11 +1,11 @@
 ---
 name: rust-testing
-description: "Rust testing patterns for unit, integration, async, doc, property, snapshot, and benchmark-adjacent tests. Use when writing or reviewing tests for `.rs` code, reducing flakiness, designing fixtures/fakes, or improving CI confidence in Rust crates and workspaces."
+description: "Rust testing patterns for unit, integration, async, doc, property, snapshot, fuzz, and benchmark-adjacent tests. Use when writing or reviewing tests for `.rs` code, reducing flakiness, designing fixtures/fakes, improving CI confidence, or hardening `unsafe`, FFI, and parser-heavy code with Miri and sanitizers."
 license: MIT
-compatibility: "Rust stable baseline. Tools: cargo test. Optional: cargo nextest, proptest, insta, mockall, tokio, cargo llvm-cov."
+compatibility: "Rust stable baseline. Tools: cargo test. Optional: rstest, pretty_assertions, mockall, tokio (test-util), proptest, insta, trybuild, cargo nextest, cargo llvm-cov, cargo-mutants. Nightly: cargo-fuzz/Miri/sanitizers."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.3"
 ---
 
 # Rust Testing
@@ -20,6 +20,7 @@ Use this skill when tests are part of the change, when flakiness needs to die qu
 - Refactoring brittle or slow Rust tests
 - Introducing fakes, mocks, property tests, or snapshot tests
 - Tightening CI feedback with coverage, nextest, or command selection
+- Hardening parsers, `unsafe`, or FFI code against arbitrary input with fuzzing, Miri, or sanitizers
 
 ---
 
@@ -66,8 +67,9 @@ Use this skill when tests are part of the change, when flakiness needs to die qu
 
 Load on demand:
 
-- `references/unit-and-integration.md` — use when deciding what belongs beside the code vs under `tests/`
+- `references/unit-and-integration.md` — use when deciding what belongs beside the code vs under `tests/`, when picking `rstest` over table loops, `should_panic` discipline, or `trybuild` compile-fail tests
 - `references/async-and-boundaries.md` — use when testing async code, time, IO, and network boundaries
-- `references/property-snapshot-and-mocks.md` — use when example-based tests are not enough or output is bulky
-- `references/coverage-and-ci.md` — use when wiring coverage, nextest, or stable CI gates
+- `references/property-snapshot-and-mocks.md` — use when example-based tests are not enough, when output is bulky, or when scripting `mockall` expectations
+- `references/fuzzing-and-sanitizers.md` — use to hunt panics, memory-safety bugs, and UB on arbitrary input (cargo-fuzz, arbitrary, AFL, Miri, sanitizers)
+- `references/coverage-and-ci.md` — use when wiring coverage, nextest profiles, mutation testing, or stable CI gates
 - `references/commands.md` — use for the most common Rust test commands and selectors
