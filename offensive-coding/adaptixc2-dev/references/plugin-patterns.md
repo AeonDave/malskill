@@ -42,6 +42,43 @@ func InitPlugin(ts any, moduleDir, serviceConfig string) adaptix.PluginService {
 
 Build on the Teamserver's target OS. Go plugins require compatible Go toolchains, build flags, and shared dependency versions between host and plugin; keep the plugin in the same workspace/module graph when possible.
 
+## Extender source layout
+
+Verified against `AdaptixServer/extenders/{gopher_agent,beacon_agent,beacon_listener_http}` on the pinned baseline. Names are conventions, not framework requirements, but current tooling and reference extenders assume them:
+
+```text
+extenders/<name>_agent/
+    config.yaml         # extender_type, agent_name, watermark, listeners
+    ax_config.axs       # AxScript: RegisterCommands, GenerateUI
+    axtool.spec         # package metadata
+    go.mod / go.sum     # module adaptix_agent_<name>
+    Makefile            # builds dist/agent_<name>.so + implant
+    pl_main.go          # InitPlugin, PluginAgent methods, AgentFunctions wiring
+    pl_utils.go         # helpers (build env, formatting)
+    pl_packer.go        # optional (beacon pattern): shellcode packing
+    pl_sideloading.go   # optional (beacon pattern): sideloading
+    src_<name>/         # implant source tree with its own Makefile
+
+extenders/<name>_listener_<proto>/
+    config.yaml         # extender_type, listener_name, listener_type, protocol
+    ax_config.axs       # AxScript: ListenerUI
+    axtool.spec
+    go.mod / go.sum     # module adaptix_listener_<name>_<proto>
+    Makefile            # builds dist/listener_<name>_<proto>.so
+    pl_main.go          # InitPlugin, PluginListener, ExtenderListener methods
+    pl_transport.go     # transport + agent registration flow
+
+extenders/<name>_service/
+    config.yaml         # extender_type, service_name, service_config
+    ax_config.axs       # optional AxScript: RegisterServiceCommands + docks/dialogs
+    axtool.spec
+    go.mod / go.sum     # module adaptix_service_<name>
+    Makefile
+    pl_main.go          # InitPlugin, PluginService (Call + CallRPC)
+```
+
+No service extender ships in-tree on the verified baseline; the loader (`AdaptixServer/core/extender/ex_service.go`) is active and expects the layout above.
+
 ## Agent contract
 
 ```go
@@ -226,5 +263,15 @@ After activation, verify all applicable evidence:
 - UI availability after reconnect/resync;
 - one success and one deliberate failure path;
 - cleanup behavior or documented Teamserver restart requirement.
+
+### Command / handler parity gate
+
+Run before the compile gate. These couplings are enforced only at runtime and produce silent no-ops on mismatch:
+
+- every `ax.create_command("name", ...)` in `ax_config.axs` -> one `case "name":` in `CreateCommand`;
+- every `case` in `CreateCommand` that emits a task -> one response branch in the `ProcessData` dispatch;
+- every entry in `config.yaml -> listeners: [...]` of an agent -> a real installed listener whose `config.yaml -> listener_name` matches exactly;
+- `config.yaml -> extender_file` -> the Makefile `.so` output byte-for-byte;
+- every `ax.plugin_agent_command`/`ax.plugin_listener_command`/`ax.plugin_service_command` name in AxScript -> one handled branch in the plugin's `Call`/`CallRPC`.
 
 For runtime removal, follow the [service state machine](architecture-and-lifecycle.md#service) and verify the documented restart/teardown path.

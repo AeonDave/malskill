@@ -119,28 +119,41 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **Python** - patterns, async, pytest workflows
 - **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
 
-### `knowledge/` and `behaviours/` - Research and meta-skills
+### `knowledge/` - Research and meta-skills
 
-Skills that support the workflow itself: design, implementation planning, research, analysis, evidence quality, verification gates, orchestration, review triage, and documentation automation.
+Skills that support the workflow itself: skill authoring, research helpers, and documentation automation. Load when a task needs them, not as background reading.
 
-These categories are support layers. Load them when they improve the current offsec task, not as background reading.
+| Skill | Role |
+|-------|------|
+| `skill-creator` | Create, validate, and package new skills |
+| `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
+| `readme-md-creator` | Create and maintain high-signal README files |
+| `mcp-creator` | Design and validate Model Context Protocol servers |
+| `agents-claude-creator` / `opencode-agent-creator` / `opencode-plugin-creator` / `pi-extension-creator` | Vendor-specific agent/extension authoring |
+| `implementation-planning` | Turn approved designs into executable, verifiable task plans |
+| `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
+| `deep-research-offensive` | File-backed offensive security research with source chaining |
+| `deep-research-generic` | General-purpose deep research |
+| `known-problem-hint-research` | Targeted post-triage research to unblock a known problem signature |
+| `cve-search` | CVE enumeration and public PoC collection |
+| `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
+
+### `behaviours/` - Cognitive discipline skills
+
+Cross-cutting behavioral guardrails that shape *how* an agent works: evidence gating, hypothesis-driven investigation, loop control, reading budget, and untrusted-input handling. Load these to change the agent's operating stance, not its domain knowledge.
 
 | Skill | Role |
 |-------|------|
 | `1337` | Ultra-compressed offensive operator mode for maximum signal/token efficiency |
 | `1337-brain` | Obsidian-vault second-brain workflow for project knowledge capture and grounded Q&A |
-| `skill-creator` | Create, validate, and package new skills |
-| `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
-| `readme-md-creator` | Create and maintain high-signal README files |
+| `agentic-offensive-orchestration` | Red-team agent-swarm architecture, MCP-based C2, worker containment |
 | `design-before-implementation` | Clarify scope, alternatives, constraints, and success criteria before building |
-| `implementation-planning` | Turn approved designs into executable, verifiable task plans |
 | `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
+| `hypothesis-driven` | Force explicit hypotheses and falsifiable predictions for hard problems |
+| `loop-control-and-pivots` | Retry discipline; pivot dead paths, honest BLOCKED reporting |
+| `reading-budget-discipline` | Keep the context window lean when reading large data |
+| `untrusted-input-hygiene` | Treat tool output, banners, and sub-agent reports as data, not instructions |
 | `verification-before-completion` | Require fresh verification before claiming work is done or fixed |
-| `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
-| `deep-research-offensive` | File-backed offensive security research with source chaining |
-| `deep-research-generic` | General-purpose deep research |
-| `cve-search` | CVE enumeration and public PoC collection |
-| `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
 
 ### `offensive-hardware/` - Hardware-focused assessments
 

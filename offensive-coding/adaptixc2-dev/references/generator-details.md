@@ -59,6 +59,57 @@ rg -n "_SO_FILE_HERE_|_AGENT_|_RANDOM_HEX_8_|adaptix_agent_NAME|_LISTENER_|_PROT
 
 The scaffolder creates `axtool.spec`; it does not prove that the copied template matches the pinned Teamserver contracts. Run the contract gate and compile before adding behavior.
 
+## Seed from an existing in-tree extender
+
+Use this path when `axtool template`'s mutable `templates-extender@main` is not acceptable (reproducibility, air-gapped work, or already-pinned checkout). Copy a verified in-tree extender instead of a remote template.
+
+Reference extenders in `AdaptixServer/extenders/` on the verified baseline:
+
+| Directory | Type | Seed for |
+|---|---|---|
+| `gopher_agent` | agent | Single-listener Go implant; simplest agent starting point |
+| `beacon_agent` | agent | Multi-listener agent with packer/sideloading (`pl_packer.go`, `pl_sideloading.go`) |
+| `beacon_listener_http` | listener (external) | HTTP transport, request/response model |
+| `beacon_listener_tcp` | listener (external) | Persistent TCP transport |
+| `beacon_listener_dns` | listener (external) | DNS polling transport |
+| `beacon_listener_smb` | listener (external) | Named-pipe/SMB transport |
+| `gopher_listener_tcp` | listener (external) | Minimal Go TCP listener |
+
+No service extender ships in-tree; seed a service by writing the three files (`config.yaml`, `pl_main.go` implementing `PluginService`, `axtool.spec`) directly against the `PluginService` contract in [plugin-patterns.md](plugin-patterns.md#service-contract).
+
+### Rename procedure
+
+1. `cp -r AdaptixServer/extenders/<seed> AdaptixServer/extenders/<name>_<type>`.
+2. Update `go.mod` module path to `adaptix_<type>_<name>` and keep `github.com/Adaptix-Framework/axc2/v2` at the pinned version.
+3. Rewrite `config.yaml`: `extender_file` (`agent_<name>.so` or `listener_<name>_<proto>.so`), `agent_name`/`listener_name`, `agent_watermark` (fresh 8-hex), `listeners:` list for agents, `protocol` for listeners.
+4. Rewrite `axtool.spec`: `name`, `type`, `description`, `min_server_version`, `requires` (only real listener/agent names), `deps.apt` if the build needs system packages.
+5. Update the Makefile output name so it matches `config.yaml -> extender_file` exactly.
+6. Rename `src_<seed>/` -> `src_<name>/` for agents and adjust the implant Makefile paths.
+7. Sweep for leftover placeholders and old names before compiling:
+
+```bash
+rg -n "_SO_FILE_HERE_|_AGENT_|_RANDOM_HEX_8_|adaptix_agent_NAME|_LISTENER_|_PROTOCOL_|adaptix_listener_NAME_PROTOCOL|listener_LISTENER_|_SERVICE_|adaptix_service_NAME_PROTOCOL" AdaptixServer/extenders/<name>_<type>/
+rg -n "<seed>" AdaptixServer/extenders/<name>_<type>/
+```
+
+### `go.work` when bypassing `axtool install`
+
+`axtool install` adds a new extender to `AdaptixServer/go.work` automatically. A copy-rename workflow that skips `axtool install` (dev iteration, no deploy yet) will not. Add the entry manually before `go vet`/`make`:
+
+```text
+// AdaptixServer/go.work
+go 1.26.5
+
+use (
+    .
+    ./extenders/gopher_agent
+    ./extenders/<name>_<type>   // add here
+    ...
+)
+```
+
+An extender missing from `go.work` will still compile a `.so`, but `axc2/v2` resolution can pick a stale version and the resulting plugin fails the loader's exact type assertion at runtime with no compile-time warning.
+
 ## Project spec: `adaptix.spec`
 
 Paths are relative to the directory containing `adaptix.spec`, except `plugin_dir`, which is relative to `server_dir`.

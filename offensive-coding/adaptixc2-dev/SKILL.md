@@ -90,6 +90,19 @@ Use explicit schemas at every JSON boundary. Reject unknown operations, missing 
 - Go plugins cannot be safely unloaded from the process. Registry removal is not resource teardown; design cleanup before supporting runtime unload.
 - Treat extender binaries and `axtool` specs as trusted code. Do not run unreviewed packages or mutable build inputs.
 
+### Wrong-type traps (axc2/v2 v2.0.13)
+
+Verified against `axc2/v2@v2.0.13/adaptix_struct.go`. Common misuses that compile but corrupt runtime state:
+
+| Field / constant | Real type | Trap |
+|---|---|---|
+| `AgentData.Sleep`, `AgentData.Jitter` | `uint` (seconds) | Do not parse from a duration string in-plugin; convert once at the boundary. |
+| `AgentData.Pid`, `AgentData.Tid` | `string` | Format from numeric sources with `fmt.Sprintf("%v", ...)`; do not cast. |
+| `AgentData.Id` and every `agentId` on `Teamserver`/`Call`/`InternalHandler` | `int64` | Never a string. In JavaScript treat it as opaque string when it may exceed `Number.MAX_SAFE_INTEGER`. |
+| `OS_MAC` (constant `3`) | `int` | No `OS_MACOS` symbol exists. |
+| `PluginService` | interface with `Call` **and** `CallRPC` | An implementation with only `Call` will not satisfy the loader type assertion. |
+| `config.yaml` -> `extender_file` | filename string | Must equal the Makefile `.so` output byte-for-byte; a mismatch loads nothing and the server log is the only signal. |
+
 ## Verification gates
 
 Run focused tests for pure domain code, then compile with the exact Teamserver toolchain and dependency graph. At minimum, exercise:

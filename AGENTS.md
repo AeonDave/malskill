@@ -2,7 +2,7 @@
 
 ## Skill change workflow
 
-Follow this for any request to add or update a skill or reference.
+Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill structure, frontmatter rules, and validation flow that every change below depends on.
 
 1. Hold the mantra: **brief, clear, specific, useful**. Every skill must help an agent act on its task. Every addition or edit must add concrete value — otherwise drop it. No justification, storytelling, statistics, or filler.
 2. **Correctness over completeness.** Ground technical claims (SID-filter rules, CVE behavior, flag/tool semantics) in a real run or primary source. A subtly-wrong rule is worse than an omission because agents act on it — when unsure, state the precise condition, not lore.
@@ -13,7 +13,7 @@ Follow this for any request to add or update a skill or reference.
    - **enrich an existing reference** — deep-dive exists but has a real gap
    - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf/role) is documented once where it is most actionable and cross-referenced from the others, never copied
    - **wire new depth into routing** — a new reference or major section is dead weight unless the parent `SKILL.md` points to it with an explicit "load when…" trigger
-4. Read `knowledge/skill-creator/SKILL.md` first, apply the change, then validate the changed skill dir — `quick_validate.py` (frontmatter only), `sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `check_changed_files.py` — before finishing.
+4. After the edit, validate the changed skill dir — `quick_validate.py` (frontmatter only), `sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `check_changed_files.py` — before finishing.
 
 ## Tooling & Commands
 
@@ -34,7 +34,8 @@ Follow this for any request to add or update a skill or reference.
 - `offensive-coding/`: Offensive development (BOFs, loaders, EDR evasion, OS internals).
 - `offensive-hardware/`: Hardware-focused assessments (device compromise, firmware extraction).
 - `offensive-ctf/`: Challenge-derived patterns. Use as a support layer for real-world tasks when artifacts or workflows match; avoid platform-specific writeup culture.
-- `knowledge/`: Meta-skills (skill-creator, research helpers, orchestration).
+- `knowledge/`: Meta-skills (skill-creator, research helpers, orchestration, doc automation).
+- `behaviours/`: Cross-cutting discipline skills (evidence gates, hypothesis-driven work, loop control, reading budget, verification, untrusted-input hygiene, operator modes).
 - `coding/`, `ai/`, `hardware/`: Support categories.
 
 ## Skill Structure & Conventions
