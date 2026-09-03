@@ -9,6 +9,8 @@ Hard constraints discovered through testing. Each entry caused a crash, detectio
 | `masked_syscall` (RSP manipulation) in TP worker thread | RSP corruption → crash or undefined behavior | TP workers have non-standard stack layout; RSP tricks that work on main thread fail |
 | `spoofed_syscall` (NtContinue) in console-attached process | Crash (exception dispatch conflict) | Console subsystem has its own exception handling that conflicts with NtContinue context replay |
 | `spoofed_syscall` in any non-main thread | Crash | Synthetic stack frame references main thread's `BaseThreadInitThunk` frame; TP workers have different unwind chains |
+| SilentMoonwalk `.pdata` spoof on CET-enforced ntdll (Windows 11 24H2+) | `#CP` control-protection fault at terminal `RET`; kernel unwinder shadow-stack mismatch even when no CPU fault | Query `GetProcessMitigationPolicy(ProcessUserShadowStackPolicy)`. If enforced, disable SMW and use `NtContinue` spoof (kernel writes both stacks coherently). Detail: `kernel-telemetry.md` → CET |
+| Identical synthetic call-stack repeated across many syscalls | CrowdStrike Falcon 8.5+ (2025) ML flags "call-stack pattern rigidity" | Vary gadget selection across the ntdll gadget pool per SMW build; or skip SMW in tool_mode (backed EXE) where real ntdll stacks are legitimate |
 
 ## Memory Allocation
 
@@ -29,6 +31,8 @@ Hard constraints discovered through testing. Each entry caused a crash, detectio
 | Bare `C3` ETW patch | Caller may observe non-zero garbage in `rax` | Use `33 C0 C3` (`xor eax,eax; ret`) for stable `STATUS_SUCCESS` |
 | HWBP VEH + Donut/Fritter `-g 1` (guard page VEH) | One handler shadows the other | Both register first-chance VEH; only one fires. Use `-g 0` |
 | Fritter `-g 0` required, not `-g 1` | Guard page AV conflicts with HWBP single-step | Same VEH priority collision |
+| AMSI provider re-registration (register malicious CLSID under `\CurrentControlSet\Services\WinDefend\AMSI`) | 2025 Defender + S1 monitor AMSI provider CLSID changes | Do not use in production; deterministic 2025 detection. Prefer no-AMSI-touch in tool_mode |
+| Usermode ETW patch on `ntdll!EtwEventWrite` for kernel ETW-TI events | No effect | ETW-TI provider fires from **kernel** context. See `kernel-telemetry.md` → Windows Kernel-Fired Signals |
 
 ## Console / Tool Mode
 
@@ -116,6 +120,8 @@ Hard constraints discovered through testing. Each entry caused a crash, detectio
 |------------|-------------|---------|
 | All threads use obfuscated_sleep | Deadlock or crash when EDR's own Sleep hook is in the chain | Only beacon thread should encrypt/decrypt; other threads must call original Sleep through trampoline |
 | Protection change on image-backed section during sleep | ETW kernel callback fires | Use private or section-backed memory for sleep target, not module-stomped DLL |
+| Fixed-interval `NtDelayExecution` + identical spoofed stack + zero business activity during sleep + syscall burst on wake | Elastic Defend 9.0+ "Hunt-Sleeping-Beacons" rule fires after 3–5 iterations | Jitter delay (min-max range), vary SMW gadget selection per cycle, or interleave benign file/registry reads to break the "idle then burst" pattern. Tool_mode avoids entirely (one-shot) |
+| VEH registration for W^X write interception | `RtlAddVectoredExceptionHandler` is hooked by S1/Defender; registration itself logged | Skill §0 minimalism gate: prefer private RWX + XOR re-encrypt over dual-view W^X on hardened targets |
 
 ## Indirect / Callback-based Execution
 
@@ -166,3 +172,17 @@ Distinct from S1 findings. Never combine these three patterns with any usermode-
 | **Removing `panic_abort`** from a Rust build | Reintroduces Rust unwinding strings (`attempt to divide by zero`, `library/core/src/…`) | Static string signature |
 
 **Rule**: always use `build-std = ["std", "panic_abort"]` + `panic = "immediate-abort"`. Do PEB walks and AMSI resolution on the TP worker thread, never inside a hook body. Never zero the PE header in-place; if header removal is needed, do it in a fresh copy in unmodified memory.
+
+## Linux Sensor Coverage Constraints
+
+Load `linux-edr-evasion.md` for the full model. Selected traps that map to Windows-analog mistakes:
+
+| Constraint | Failure mode | Context |
+|------------|-------------|---------|
+| Assuming io_uring bypasses all monitoring | Falco ≥ 0.40, Tetragon LSM mode, Elastic Defend 8.13+ hook `io_uring_enter` or `security_file_open` | Verify sensor version; LSM BPF (`bpftool prog list \| grep lsm`) neutralizes io_uring evasion entirely |
+| `memfd_create("beacon", ...)` with memorable name | Elastic Defend 9.4.0+ correlates memfd name in sequence rules; `memfd:beacon` in `/proc/<pid>/maps` | Empty name (`""`) minimizes signal; still fires for the Elastic sequence detection |
+| Same-pid `write` + `fexecve` on memfd | "Fileless execution sequence" rule fires deterministically | Parent writes memfd, `posix_spawn` execs from a child — breaks same-pid correlation |
+| Dynamic-linked payload for LD_PRELOAD-hooked host | libc-wrapper rootkits (Symbiote-family) hook every open/read/execve | Compile static (musl) — defeats LD_PRELOAD-based tracing at build time |
+| BPF map poisoning without `security_bpf_map` LSM check | On LSM-enforced hosts, `bpf(BPF_MAP_UPDATE_ELEM)` returns `-EPERM` and the failure itself is logged | Check `bpftool prog list \| grep lsm` before attempting; fall back to non-map-based approach |
+| Kernel module drop with `MODULE_SIG_FORCE=y` + `lockdown=integrity` | `finit_module` fails with `-EKEYREJECTED`; failure logged by auditd | Verify `cat /sys/kernel/security/lockdown` and `zgrep MODULE_SIG_FORCE /boot/config-$(uname -r)` before LKM path |
+| ptrace-based injection with `kernel.yama.ptrace_scope >= 2` | `PTRACE_ATTACH` fails without CAP_SYS_PTRACE | Use `/proc/<pid>/mem` write or `process_vm_writev` if same-UID; otherwise pivot |

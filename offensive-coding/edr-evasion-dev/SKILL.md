@@ -1,15 +1,31 @@
 ---
 name: edr-evasion-dev
-description: "Auth/lab dev: Windows detection-resilience research; syscall dispatch, stack traces, sleep-state, memory permissions, ETW/AMSI telemetry tradeoffs."
+description: "Auth/lab dev: Windows + Linux detection-resilience research; syscall dispatch, stack/call-chain spoofing, sleep-state, memory permissions, ETW/AMSI + eBPF/io_uring/LD_PRELOAD telemetry tradeoffs, kernel-visible signals, and cross-platform loader OPSEC with signal-cost budgeting."
 license: MIT
 metadata:
   author: kRustyLoader
-  version: "2.2"
+  version: "2.3"
 ---
 
 # EDR Evasion — Universal Patterns & Constraints
 
-Field-tested principles for Windows EDR/AV evasion. Verified against S1, Defender, and CrowdStrike (2026). Project-agnostic — applies to any loader, implant, or tool runner targeting Windows 10/11.
+Field-tested principles for Windows and Linux EDR/XDR evasion. Windows content verified against S1, Defender, CrowdStrike (2026). Linux content covers Falco, Tetragon, Tracee, Aqua, Elastic Defend, CrowdStrike Falcon Linux, SentinelOne Linux (2024-2026). Project-agnostic — applies to any loader, implant, or tool runner.
+
+---
+
+## Cross-Platform Routing
+
+Depth in this `SKILL.md` is Windows. Load references based on the target OS.
+
+| Target profile | Load |
+|---|---|
+| Windows 10/11 loader, implant, tool | This body §0–§14 + [`references/constraints.md`](references/constraints.md) |
+| Windows 11 24H2+ with CET on ntdll | Same + [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — read §CET before choosing spoof strategy |
+| Linux host with Falco / Tetragon / Tracee / Elastic Defend / any eBPF EDR | [`references/linux-edr-evasion.md`](references/linux-edr-evasion.md) — do **not** port Windows patterns |
+| Designing a new loader / auditing an existing one (either OS) | [`references/best-practices.md`](references/best-practices.md) — signal-cost budget, minimalism gate, CI-under-test |
+| Deciding what you can never suppress from userspace | [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — kernel-fired ETW-TI, LSM BPF, auditd |
+
+**Golden rule for cross-OS work**: usermode evasion primitives never transfer. Indirect syscalls, ETW patching, SilentMoonwalk, HWBP are Windows-only. LD_PRELOAD, io_uring, memfd, BPF map poisoning are Linux-only. What transfers is the doctrine: evasion minimalism, signal-cost budget, staged loader hygiene, telemetry-first design (see `best-practices.md`).
 
 ---
 
@@ -145,6 +161,8 @@ Flow: `push r12/r13 → lea r12,[continuation] → mov r13,rsp → mov rsp,synth
 | Lock ordering | `E10_LOCK` → `SPOOF_BUF_LOCK` (never reverse). Contention → fallback to `indirect_syscall` |
 | Beacon only | Tool_mode (backed EXE) skips SMW entirely (F9) |
 | Init timing | After `init_stack_spoof_phase1`, before ntdll unhooking |
+| **CET (Windows 11 24H2+)** | `.pdata`-coherent frames pass user-mode unwinding but do **not** populate the shadow stack. On CET-enforced ntdll the terminal `RET` faults `#CP`, or the kernel unwinder's shadow-stack check fails. Query `GetProcessMitigationPolicy(ProcessUserShadowStackPolicy)`; if enforced, disable SMW and route through `NtContinue` spoof (kernel writes both stacks coherently). Detail: [`references/kernel-telemetry.md`](references/kernel-telemetry.md) → CET section |
+| **CS 2025 call-stack rigidity** | CrowdStrike Falcon 8.5+ builds full call stacks per syscall and flags pattern rigidity — 1000s of syscalls with identical synthetic frames trip the ML model. Vary gadget selection across the SMW gadget pool (or skip SMW on backed-EXE tool_mode) |
 
 ---
 
@@ -500,13 +518,15 @@ ML classifiers use section size ratios. `.text` must be larger than any single d
 
 Full detail: [`references/process-injection.md`](references/process-injection.md).
 
-**Avoid classic CRT** (`OpenProcess → VirtualAllocEx → WriteProcessMemory → CreateRemoteThread`) — fully hooked.
+**Avoid classic CRT** (`OpenProcess → VirtualAllocEx → WriteProcessMemory → CreateRemoteThread`) — fully hooked. `ObRegisterCallbacks` pre-op reduces handle masks below `PROCESS_VM_WRITE` from non-allowlisted callers ([`references/kernel-telemetry.md`](references/kernel-telemetry.md) → `ObRegisterCallbacks`); usermode cannot re-elevate.
 
 **Early Bird APC**: `CreateProcess(CREATE_SUSPENDED)` → alloc RW → write → protect RX → `QueueUserAPC` → `ResumeThread`. Fires before EDR DLL loads. Variant — **Early Cryo Bird**: freeze via `NtSetInformationJobObject(JOBOBJECT_FREEZE_INFORMATION)` to avoid `CREATE_SUSPENDED` indicator.
 
 **Thread hijacking**: `SuspendThread` → `GetThreadContext` → set `ctx.Rip` → `SetThreadContext` → `ResumeThread`. Use indirect syscalls (`NtGetContextThread`/`NtSetContextThread`). **Waiting Thread Hijacking** variant: target thread already in `NtDelayExecution` — no `SuspendThread` needed.
 
-**PPID spoofing**: `STARTUPINFOEX` + `UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)` → child appears spawned from trusted parent. EDR kernel callback detects PID mismatch — mitigate with token impersonation of spoofed parent.
+**Threadless injection (DLL notification callback / EPI)**: register a DLL notification callback (`LdrRegisterDllNotification`), map payload into a legitimate `SEC_IMAGE` DLL, redirect the DLL entry point — no `NtCreateThreadEx` call, no thread-create kernel callback. Fires on next legitimate `LoadLibrary` in the target process. Detail in [`references/process-injection.md`](references/process-injection.md) → Threadless Injection.
+
+**PPID spoofing**: `STARTUPINFOEX` + `UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)` → child appears spawned from trusted parent **in the PEB**. Kernel `PsSetCreateProcessNotifyRoutineEx` receives the real creator PID from `PspInsertProcess` and Security 4688 records the real parent; EDRs that ingest either detect the mismatch. Mitigate with token impersonation of spoofed parent (limits impact to usermode readers).
 
 ---
 
@@ -560,5 +580,8 @@ Full disproven-assumptions table, CS-specific regressions, and the confirmed-red
 |------|-------------|
 | [`references/constraints.md`](references/constraints.md) | Hard constraints, failure modes, crash causes, disproven assumptions, and CS-specific regressions. Load when debugging a crash or deciding to add/remove an evasion feature. |
 | [`references/etw-patching.md`](references/etw-patching.md) | Detailed ETW byte-patch pattern: why `NtWriteVirtualMemory` on self differs from `VirtualProtect`, required restore window, and patch payload details. |
-| [`references/process-injection.md`](references/process-injection.md) | Full Early Bird APC / Thread Hijacking / PPID Spoofing details and decision matrix. |
+| [`references/process-injection.md`](references/process-injection.md) | Full Early Bird APC / Thread Hijacking / PPID Spoofing / Threadless Injection / Poolparty details and decision matrix. |
 | [`references/anti-analysis.md`](references/anti-analysis.md) | Full anti-debug, anti-VM, IAT hygiene, and entropy management tables. |
+| [`references/linux-edr-evasion.md`](references/linux-edr-evasion.md) | Linux tradecraft: sensor fingerprinting, io_uring, memfd + fexecve, LD_PRELOAD hygiene, LKM vs eBPF rootkit tradeoff, LSM BPF ceiling, container/userns escapes, anti-ptrace, persistence signal-cost, C2 hiding. Load for any Linux target. |
+| [`references/kernel-telemetry.md`](references/kernel-telemetry.md) | Signals emitted from kernel context that no usermode patch can suppress. Windows: ETW-TI event set, `PsSetCreate*NotifyRoutine`, `ObRegisterCallbacks`, minifilter IRPs, CET/shadow stack. Linux: LSM BPF hooks, auditd, IMA/EVM. Load when planning a technique and answering "can this ever be quiet?" |
+| [`references/best-practices.md`](references/best-practices.md) | Cross-platform doctrine: signal-cost budget, evasion minimalism gate, threat modeling, staged loader hygiene, build/CI hygiene, sample rotation, VT hygiene, cleanup lifecycle, anti-patterns ledger. Load when designing a new loader or auditing an existing one. |

@@ -1,5 +1,7 @@
 # Anti-Analysis Hardening — Detail
 
+Windows-side detail. Linux anti-debug / anti-sandbox tradecraft (PTRACE_TRACEME, `/proc/self/status`, static musl, seccomp probe, KVM/CPUID detection) is in [`linux-edr-evasion.md`](linux-edr-evasion.md) §6.
+
 Run ALL checks before any evasion/payload setup — generating signals in a sandbox is equivalent to detection.
 
 Primary doctrine: **near-zero IOC by design**. Every passive read-only check generates zero telemetry. Every invasive check (syscalls, DR mutation, thread info queries) generates at least one observable event. The goal is a check layer that is indistinguishable from a normal process at the kernel event level.
