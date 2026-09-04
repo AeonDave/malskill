@@ -54,6 +54,24 @@ else
 
 **Weakness**: fails immediately if `stub[0] == 0xE9` (JMP hook) or any inline patch.
 
+**Win11 24H2 layout** (verified live, ntdll 26100): the `mov r10,rcx; mov
+eax,SSN` prologue is unchanged (Hell's Gate SSN read still works), but a
+`F6 04 25 08 03 FE 7F 01 75 03` filter (`test byte ptr
+[0x7FFE0308],1; jne int2E`) sits between the SSN and the
+`syscall;ret`, which now lives at **+0x12**:
+
+```
+  +0   4C 8B D1        mov r10, rcx
+  +3   B8 SSN32        mov eax, SSN
+  +8   F6 04 25 ...    test byte ptr [KUSER_SHARED_DATA+0x308], 1
+  +10  75 03           jne +0x15 (int 2E fallback)
+  +12  0F 05 C3        syscall; ret   <- gadget scans at stub+0x12 still match
+  +15  CD 2E C3        int 2E; ret
+```
+
+Gadget scans that locate `0F 05 C3` at a fixed offset (e.g. +0x12) keep
+working on 24H2; scans hardcoding the Win10 `syscall` offset (+8) break.
+
 ---
 
 #### 2. Halo's Gate (2021 — Sektor7)
