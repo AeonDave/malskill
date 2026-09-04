@@ -23,15 +23,20 @@ on the goal.
 ## The rules
 
 1. **3-strikes → dead**: after ~3 evidence-based attempts at one approach, mark the path dead. Do not
-   re-trigger it blindly; quote the failure and switch to a **different** test, not a repeat.
-2. **Pivot on evidence**: `failed path → quote the exact failure → next shortest path`. Each retry
+   re-trigger it blindly; quote the failure and switch to a **different** test, not a repeat. New
+   evidence or partial progress resets the count — strikes track *repeated identical failure*, not a
+   path that is still yielding signal.
+2. **Fail fast on non-retryable failures**: some errors never resolve by repetition — auth/permission
+   denials, 404/not-found, malformed-input or unsupported-feature rejections. Spend zero retries: fix
+   the cause, pivot, or surface `[BLOCKED: need X]` at once instead of burning the 3-strikes budget.
+3. **Pivot on evidence**: `failed path → quote the exact failure → next shortest path`. Each retry
    must change a variable, not just re-run hope.
-3. **Don't grind side quests**: a secondary problem gets one bounded attempt (see Budgets). If it
+4. **Don't grind side quests**: a secondary problem gets one bounded attempt (see Budgets). If it
    doesn't yield, surface `[BLOCKED: need X]` and pivot to productive work rather than sinking the
    run into it.
-4. **Hold the objective**: every step ties to the success signal. If you've drifted onto a
+5. **Hold the objective**: every step ties to the success signal. If you've drifted onto a
    sub-problem, name the drift and return to the goal (or escalate for the missing capability).
-5. **Escalate honestly**: when genuinely stuck after the recovery pass, pivots, and local tests, load the narrowest
+6. **Escalate honestly**: when genuinely stuck after the recovery pass, pivots, and local tests, load the narrowest
    hint/research support skill or hand back an honest blocker **with everything derived so far**
    (offsets, leaks, partial output) — never a fabricated success.
 

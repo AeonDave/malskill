@@ -20,7 +20,7 @@ Use this skill when a conclusion could mislead an operator, reviewer, or report 
 
 ## Evidence ladder
 
-Prefer the strongest evidence that is practical and authorized:
+Prefer the strongest evidence that is practical and authorized. Scale the bar to the claim's stakes: high-impact, irreversible, or report-bound claims demand the top tiers; reversible local notes do not.
 
 1. **Fresh reproduction**: exact command/API/action rerun in the current environment. Reproduce twice for racy, timing-sensitive, or stochastic behavior.
 2. **Primary artifact**: logs, packet capture, crash trace, hash, file path, HTTP transcript, debugger output. Prefer machine-readable log/transcript over screenshots — screenshots are mutable, croppable, and OCR-lossy; keep them only as supporting context.
@@ -36,6 +36,14 @@ Prefer the strongest evidence that is practical and authorized:
 4. Downgrade wording if evidence is partial or stale.
 5. Preserve reproduction details: command, input, timestamp/context, output, and limitations.
 6. Separate confirmed facts from operator judgment and recommended next steps.
+
+## Self-check before asserting
+
+Your own reasoning is the most common source of an unverified claim. Before emitting a conclusion, run one falsification pass on your own draft:
+
+- List each load-bearing assertion; for any that no primary artifact backs, verify it or label it a lead — reasoning is not evidence.
+- Flag any claim you would not stake a fresh reproduction on, and downgrade its wording to match.
+- Treat your own prior output and any subagent report as an unverified lead until re-checked against a primary artifact (see `references/offensive-evidence-gates.md`).
 
 ## Wording discipline
 

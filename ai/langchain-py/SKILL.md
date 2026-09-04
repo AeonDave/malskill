@@ -1,14 +1,14 @@
 ---
 name: langchain-py
-description: "Build and maintain production-grade LangChain Python systems (LangChain 1.2.x baseline) with create_agent, middleware, tools, structured output, and multi-agent architectures (subagents, handoffs, router, skills). Activate for Python agent design, debugging, migrations from older APIs, context engineering, and Tavily-backed web search integration."
+description: "Build and maintain production-grade LangChain Python systems (LangChain 1.3.x / LangGraph 1.2.x baseline) with create_agent, middleware, tools, structured output, and multi-agent architectures (subagents, handoffs, router, skills). Activate for Python agent design, debugging, migrations from older APIs, context engineering, and Tavily-backed web search integration."
 license: MIT
-compatibility: "Python 3.10+. LangChain 1.2.x baseline, LangGraph 1.1+."
+compatibility: "Python 3.10+. LangChain 1.3.x baseline, LangGraph 1.2.x+."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
-# LangChain Python (v1.2-focused)
+# LangChain Python (v1.3-focused)
 
 Practical workflow for building reliable LangChain systems with **correct 1.x APIs** and strong multi-agent design.
 
@@ -24,12 +24,14 @@ Practical workflow for building reliable LangChain systems with **correct 1.x AP
 
 ## Version baseline (important)
 
-Assume **LangChain 1.2.x** semantics unless user explicitly requests another version.
+Assume **LangChain 1.3.x** semantics (langchain-core on the 1.4.x line) with **LangGraph 1.2.x** unless the user explicitly requests another version.
 
 - Prefer `from langchain.agents import create_agent`
 - Prefer middleware-based dynamics (`dynamic_prompt`, `wrap_model_call`, `wrap_tool_call`)
 - Use `Command(update=...)` for state updates in tools/handoffs
-- Treat old `langgraph.prebuilt.create_react_agent` snippets as migration candidates
+- Treat old `langgraph.prebuilt.create_react_agent` snippets as migration candidates — the `langgraph.prebuilt` module is deprecated; canonical home is `langchain.agents`
+- Legacy chain abstractions (`LLMChain`, `initialize_agent`, `AgentExecutor`, old memory classes) live in **`langchain-classic`**; `AgentExecutor` reaches **end of maintenance December 2026** — migrate to `create_agent` or a raw LangGraph `StateGraph`
+- LangGraph 1.2 adds per-node execution controls (timeouts, error-recovery policies, graceful shutdown hooks), the streaming API v3 (typed per-channel projections), and beta `DeltaChannel` for incremental checkpoint writes on large state
 
 If uncertain, load `references/version-scope.md` first.
 
@@ -91,7 +93,7 @@ Load `references/tavily-integration.md` for concrete patterns.
 ## Outcome expectations
 
 - Architecture choice is explicit and justified.
-- Generated code is valid for LangChain 1.2.x.
+- Generated code is valid for LangChain 1.3.x / LangGraph 1.2.x.
 - Multi-agent context boundaries are intentional and testable.
 - Tooling and middleware are minimal but sufficient for reliability.
 
@@ -101,7 +103,7 @@ Load `references/tavily-integration.md` for concrete patterns.
 
 Load on demand:
 
-- `references/version-scope.md` — 1.2 scope, migration-critical rules, changelog highlights
+- `references/version-scope.md` — 1.3.x / LangGraph 1.2.x scope, migration-critical rules, changelog highlights
 - `references/multi-agent-patterns.md` — pattern selection and tradeoffs
 - `references/handoffs-and-command.md` — state-machine handoffs, `Command`, message validity
 - `references/subagents-supervisor.md` — supervisor/subagent layering and information flow

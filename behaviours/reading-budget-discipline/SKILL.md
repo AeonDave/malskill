@@ -1,6 +1,6 @@
 ---
 name: reading-budget-discipline
-description: "Keep the context window lean when reading large data. Use before opening big files, logs, dumps, PCAPs, decompiler output, research corpora, or a folder of worker artifacts. Enforces grep-first + windowed reads, extract-don't-hoard, and context quarantine (delegate a huge read to a sub-agent that returns a digest)."
+description: "Keep the context window lean and fight context rot: pull only the decisive lines instead of loading data back in full. Use before opening or searching a big file, log, dump, PCAP, decompiler output, or research page; before pasting large command/tool output inline; before reading a whole file or directory to find one fact; when consolidating a folder of worker artifacts; and in long multi-step sessions where tool output silently accumulates and buries earlier context. Enforces grep-first + windowed reads, preview-before-full-read, tail-by-byte-offset, extract-don't-hoard, and context quarantine (delegate a huge read to a sub-agent that returns a digest)."
 license: MIT
 compatibility: "AgentSkills-compatible reading/context guidance for coding, research, forensics, and security work."
 metadata:
@@ -12,6 +12,9 @@ metadata:
 
 Your context is finite; the data isn't. Reading it all back is the failure mode. Pull only the
 decisive lines.
+
+Quality degrades as the window fills — attention thins and earlier facts get lost in the middle — so
+this applies across a long session where tool output accumulates, not only to single big reads.
 
 ## Activation triggers
 

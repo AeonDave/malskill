@@ -4,7 +4,7 @@ description: "PyTorch model inspection and checkpoint workflow for loading tenso
 compatibility: "Linux, Windows, macOS; Python 3; PyTorch installed; GPU optional but often useful"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PyTorch
@@ -63,8 +63,22 @@ with torch.no_grad():
 
 - Use `map_location="cpu"` first unless you explicitly need GPU execution.
 - Prefer `state_dict`-style loading and inspection over whole-model pickle blobs when possible.
-- If your version supports it, prefer `weights_only=True` for safer tensor-only loads from trusted workflows.
+- **PyTorch ≥ 2.6 defaults `torch.load(weights_only=True)`.** State-dicts referencing extra globals (NumPy reconstructors, torchvision classes, `omegaconf.ListConfig`, etc.) raise `WeightsUnpickler error: Unsupported global: GLOBAL ...` — allowlist them explicitly:
+
+```python
+import torch
+from torch.serialization import add_safe_globals, safe_globals
+import numpy as np
+
+add_safe_globals([np.core.multiarray._reconstruct])         # process-wide
+# or scope it:
+with safe_globals([np.core.multiarray._reconstruct]):
+    state = torch.load("weights.pth", map_location="cpu")
+```
+
+  Pass `weights_only=False` only when the file is trusted — it re-enables arbitrary code execution via pickle. For untrusted weights, prefer `safetensors` files (`safetensors.torch.load_file`), which cannot execute code.
 - `eval()` and `torch.no_grad()` belong together for stable inspection and reduced memory noise.
+- For structural inspection without materializing tensors, load under `torch._subclasses.fake_tensor.FakeTensorMode` — gives shape/dtype/stride from the checkpoint without allocating memory.
 
 ## Caveats
 

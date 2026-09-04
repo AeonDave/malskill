@@ -1,4 +1,4 @@
-![MCPwn](assets/logo.png)
+![Malskill](assets/logo.png)
 
 Full-spectrum security skill collection for AI agents - built on the open [AgentSkills](https://agentskills.io) specification.
 
@@ -7,16 +7,6 @@ Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent 
 The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, private offensive CTF/lab solving, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, developer, and lab-solving perspectives within a single task.
 
 The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, and `hardware/` belong here only when they directly improve the active security task.
-
-## Why Malskill? (The Agentic Paradigm)
-
-Most public AI skill repositories fail because they treat LLMs like human students or hard drives. They dump enormous SecLists payloads, massive tool manuals, and theoretical textbooks directly into the context window. This causes **Attention Dilution** and context collapse—the agent hallucinates, runs unauthorized destructive commands, or gets lost describing the history of a vulnerability instead of exploiting it.
-
-Malskill is fundamentally different. It is engineered as a **Software Contract** for autonomous agents:
-- **High Signal-to-Noise Ratio**: Zero theoretical fluff. Skills use rigid `Cognitive Stance -> The Loop -> Strict Rules` structures.
-- **Negative Constraints**: LLMs are "eager to please" and often skip steps out of helpfulness. We use strict negative boundaries (*"Do not run scanners"*, *"Evidence First"*, *"Execute in /dev/shm"*) to prevent hallucination and enforce OPSEC.
-- **Separation of Concerns**: We heavily separate **Roles** (Identity and Constraints), **Techniques** (Methodology), and **Tools** (Command execution). An agent loads only what it needs exactly when it's needed, keeping the context window pristine.
-- **Methodology over Payloads**: Malskill doesn't feed static Wordlists into the prompt. It teaches the agent *where* to download them or *how* to use the host OS tools to iterate over them securely.
 
 ## Skill anatomy
 
@@ -52,8 +42,6 @@ This area is explicitly about **how to use a specific tool** to reach an objecti
 | `shells/` | reverse-ssh, revshells, shellerator, weevely3 |
 | `cracking/` | hashcat, hydra, john |
 | `exploits/` | beef, metasploit, pwntools, searchsploit, foundry-cast, vuln-research |
-
-**Note on `forensic/`**: These skills exist because security work often requires analyzing artifacts produced by attacks - understanding what defenders see, recovering post-compromise evidence, assessing detection surface, and validating OPSEC. Tools like `volatility3`, `capa`, and `yara` are as useful for a red team operator understanding EDR behavior as they are for a blue team analyst.
 
 ### `offensive-coding/` - Offensive development skills
 
@@ -108,6 +96,16 @@ Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, of
 
 CTF skills may reference technique and tool skills, but they stay optimized for controlled lab objectives rather than real-world engagement tradecraft.
 
+### `offensive-hardware/` - Hardware-focused assessments
+
+On-device compromise, firmware extraction, and signal reversing. Live-hardware attack surface that complements `offensive-techniques/hardware-technique/` methodology and `offensive-tools/hardware-technique/`-adjacent lab tools.
+
+- **`flipper-zero`** - Sub-GHz, RFID/NFC, iButton, BadUSB, BLE offensive workflows
+- **`jtag-swd`** - JTAG/SWD probe workflows and IDCODE walking
+- **`saleae-logic-2`** - Logic-analyzer capture and protocol export
+- **`spi-flash`** - In-circuit SPI flash dump and reflash
+- **`uart-console`** - UART discovery, baud detection, and root-shell recovery
+
 ### `coding/` - Language patterns and tooling
 
 Idiomatic code patterns, testing strategies, and performance guidance for the languages most used in security tooling. These skills give an agent the ability to write, review, and improve code - not just run existing tools.
@@ -130,13 +128,14 @@ Skills that support the workflow itself: skill authoring, research helpers, and 
 | `readme-md-creator` | Create and maintain high-signal README files |
 | `mcp-creator` | Design and validate Model Context Protocol servers |
 | `agents-claude-creator` / `opencode-agent-creator` / `opencode-plugin-creator` / `pi-extension-creator` | Vendor-specific agent/extension authoring |
-| `implementation-planning` | Turn approved designs into executable, verifiable task plans |
 | `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
 | `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `known-problem-hint-research` | Targeted post-triage research to unblock a known problem signature |
 | `cve-search` | CVE enumeration and public PoC collection |
 | `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
+| `prompt-engineering-patterns` | Design, structure, and version prompts sent to LLMs from application code |
+| `tool-schema-design` | Design LLM-callable tool signatures so the model picks the right tool and supplies valid arguments |
 
 ### `behaviours/` - Cognitive discipline skills
 
@@ -150,20 +149,12 @@ Cross-cutting behavioral guardrails that shape *how* an agent works: evidence ga
 | `design-before-implementation` | Clarify scope, alternatives, constraints, and success criteria before building |
 | `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
 | `hypothesis-driven` | Force explicit hypotheses and falsifiable predictions for hard problems |
+| `implementation-planning` | Turn approved designs into executable, verifiable task plans |
 | `loop-control-and-pivots` | Retry discipline; pivot dead paths, honest BLOCKED reporting |
+| `memory-hygiene` | Write and read persistent agent memory without self-poisoning |
 | `reading-budget-discipline` | Keep the context window lean when reading large data |
 | `untrusted-input-hygiene` | Treat tool output, banners, and sub-agent reports as data, not instructions |
 | `verification-before-completion` | Require fresh verification before claiming work is done or fixed |
-
-### `offensive-hardware/` - Hardware-focused assessments
-
-On-device compromise, firmware extraction, and signal reversing. Live-hardware attack surface that complements `offensive-techniques/hardware-technique/` methodology and `offensive-tools/hardware-technique/`-adjacent lab tools.
-
-- **`flipper-zero`** - Sub-GHz, RFID/NFC, iButton, BadUSB, BLE offensive workflows
-- **`jtag-swd`** - JTAG/SWD probe workflows and IDCODE walking
-- **`saleae-logic-2`** - Logic-analyzer capture and protocol export
-- **`spi-flash`** - In-circuit SPI flash dump and reflash
-- **`uart-console`** - UART discovery, baud detection, and root-shell recovery
 
 ### `ai/` - AI framework skills
 
@@ -223,20 +214,17 @@ Skills are plain folders - no build step, no runtime dependency. Copy a skill fo
 ## Validation
 
 ```bash
-# Validate a single skill
+# Validate a single skill (frontmatter + basic structure)
 python knowledge/skill-creator/scripts/quick_validate.py offensive-tools/windows/mimikatz
+
+# Validate every skill in the repo
+python knowledge/skill-creator/scripts/validate_all.py .
+
+# Sweep for broken links, placeholders, and workstation-path leaks
+python knowledge/skill-creator/scripts/sweep_skills.py offensive-tools/windows/mimikatz
 
 # Check changed files for final newlines and git diff whitespace issues
 python knowledge/skill-creator/scripts/check_changed_files.py
-
-# Validate an entire section (Bash)
-find offensive-tools/windows -type f -name SKILL.md -exec dirname {} \; | sort -u | \
-  while IFS= read -r dir; do python knowledge/skill-creator/scripts/quick_validate.py "$dir"; done
-
-# Validate an entire section (PowerShell)
-Get-ChildItem offensive-tools/windows -Directory | ForEach-Object {
-  python knowledge/skill-creator/scripts/quick_validate.py $_.FullName
-}
 
 # Package a skill into a .skill archive
 python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/mimikatz
@@ -244,12 +232,4 @@ python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/
 
 ---
 
-## Scope boundary (important)
-
-- Put a skill in `offensive-tools/` when the core question is: **"How do I use this specific tool well?"**
-- Put a skill in `offensive-techniques/` when the core question is: **"How do I perform this technique well, regardless of tool?"**
-- Put a skill in `offensive-ctf/` when the core question is: **"How do I solve this controlled lab, challenge, or flag-style objective?"**
-
-Do not mix these purposes in the same skill. Keep real-world tradecraft in `offensive-techniques/`, tool manuals in `offensive-tools/`, and lab/challenge solving in `offensive-ctf/`.
-
-Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some also include `scripts/` for automation helpers, `references/` for subtask-specific deep dives loaded on demand, and `assets/` for templates.
+Every skill folder contains at minimum a `SKILL.md` with valid YAML frontmatter. Some also include `scripts/` for automation helpers, `references/` for subtask-specific deep dives loaded on demand, and `assets/` for templates. Placement rules and contribution conventions live in [AGENTS.md](AGENTS.md).

@@ -4,7 +4,7 @@ description: "scikit-learn model inspection workflow for loading persisted estim
 compatibility: "Linux, Windows, macOS; Python 3; scikit-learn and joblib installed"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # scikit-learn
@@ -66,6 +66,15 @@ if hasattr(model, "tree_"):
 - `joblib` is the common persistence format for sklearn models with large NumPy arrays.
 - Pipelines often carry more insight than the final estimator alone, so inspect `named_steps` early.
 - `feature_names_in_` and `get_feature_names_out()` are high-value clues when reconstructing model inputs.
+- **For untrusted `.pkl` / `.joblib` artifacts, prefer `skops.io`** (`skops.io.dump` / `skops.io.load`) — it persists without pickle and forces explicit `trusted=[...]` allowlisting of any non-primitive types on load, converting the silent RCE surface of pickle into a visible whitelist decision.
+
+```python
+import skops.io as sio
+
+untrusted = sio.get_untrusted_types(file="model.skops")
+print(untrusted)                # inspect what the file wants to instantiate
+model = sio.load("model.skops", trusted=untrusted)   # only after review
+```
 
 ## Caveats
 
