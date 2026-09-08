@@ -193,6 +193,21 @@ ls /var/mobile/Containers/Data/Application/<UUID>/Library/
 | MASVS-PLATFORM | Exported components, intent handling, WebView |
 | MASVS-CODE | Code tampering, debugging, root/jailbreak detection |
 
+## Hybrid Android triage cue
+
+Keep this layer at routing depth. When a sample shows both loader and native signs, treat it as a hybrid app and pivot to offensive-coding skills for implementation-level work.
+
+- Managed entry: `classes*.dex` Java/Kotlin orchestration
+- Native boundary: `System.loadLibrary`, `JNI_OnLoad`, `.so` checks/unpackers
+- Runtime payload: `DexClassLoader` / `InMemoryDexClassLoader` second-stage code
+- Instrumentation bridge: Frida hooks Java + native loader points
+
+Deep-dive and patch path:
+
+- `smali-dex-patching/references/dynamic-dex-and-native-loaders.md`
+- `android-jni-ndk`
+- `frida`
+
 ## Modern platform gotchas
 
 Android:
@@ -201,6 +216,7 @@ Android:
 - **Runtime broadcast receivers** on Android 14+ (targetSdk ≥ 34) must pass `RECEIVER_EXPORTED` or `RECEIVER_NOT_EXPORTED` to `registerReceiver` — grep for these flags to map dynamic IPC exposure.
 - **`adb backup`** restricted since Android 12; requires `android:debuggable=true`. Most production apps yield an empty archive — pivot to root+`tar` of `/data/data/<pkg>/` or Frida file dump.
 - **Xposed original** is dead; use **LSPosed** (Zygisk module) on Android 8.1–15 for system-wide hooking modules.
+- **Full IPC attack surface** — Intent redirection, `PendingIntent` hijacking, exported ContentProvider (SQLi, path traversal in `openFile`), Service caller-UID/signature bypass, `onNewIntent` state pollution, WebView `addJavascriptInterface` gadgets → [references/android-ipc-attack-surface.md](references/android-ipc-attack-surface.md).
 
 iOS:
 - **TrustCache** + **CoreTrust** enforce signed-binary allow-lists in the kernel; unsigned/adhoc binaries need a jailbreak or a TrollStore-style CoreTrust bypass (patched in iOS 17.0). No `bfinject`/`Needle` era techniques apply.

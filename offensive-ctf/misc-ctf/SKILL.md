@@ -82,7 +82,7 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 - [references/encodings.md](references/encodings.md) — preserved, debrandized imported technique material.
 - [references/games-and-vms-2.md](references/games-and-vms-2.md) — preserved, debrandized imported technique material.
 - [references/games-and-vms-3.md](references/games-and-vms-3.md) — preserved, debrandized imported technique material.
-- [references/games-and-vms-4.md](references/games-and-vms-4.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms-4.md](references/games-and-vms-4.md) — preserved, debrandized imported technique material. Load when the artifact is a retro console VRAM/ROM dump, tile-based graphics, CHR banks, or custom pixel-font encoding.
 - [references/games-and-vms.md](references/games-and-vms.md) — preserved, debrandized imported technique material.
 - [references/linux-privesc.md](references/linux-privesc.md) — preserved, debrandized imported technique material.
 - [references/pyjails.md](references/pyjails.md) — preserved, debrandized imported technique material.

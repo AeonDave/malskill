@@ -209,3 +209,71 @@ npiet piet.png                          # prints the flag
 **Key insight:** Recognise bytebeat by (a) a `t` variable, (b) bitshifts mixed with modulo, (c) output of size 8-bit unsigned integer. `%`, `|`, `&`, `^`, `>>`, `<<` on `t` are the bytebeat signature. No decoding needed — just play it.
 
 ---
+
+## Retro Console VRAM / Tile-Graphics Forensics
+
+**Pattern:** A binary artifact is a VRAM capture or ROM dump from a real or fictional tile-based console (NES, Game Boy, SNES, or custom). The task is to reconstruct what was on screen by parsing the pattern table (CHR tiles), name table (tile map), and optionally attributes/palettes.
+
+### Core concepts
+
+| Term | Meaning |
+|------|---------|
+| **CHR / pattern table** | Bitmap font: each tile is an 8×8 pixel glyph stored as N bytes (NES: 16 bytes = 2 bit-planes × 8 rows; Game Boy: 16 bytes interleaved; 1bpp custom: 8 bytes) |
+| **Name table / tile map** | Grid of tile indices; each byte (or word) selects which CHR tile appears at that screen position |
+| **Bank** | A page of tiles (typically 16 or 256); a mapper chip switches banks to show different graphics; a "hidden bank" may contain secret content |
+| **Plane** | A bit-plane within a tile; combining planes gives multi-bit pixel values (colors); plane 1 all-zero = effectively 1bpp |
+
+### Triage checklist
+
+1. **Identify magic / header.** Custom formats have a short header (magic bytes, version, tile count or CHR offset, name-table offsets). Parse all header fields as both counts and file offsets — a field that equals a valid file offset likely IS one.
+2. **Determine tile stride.** Try 8 bytes (1bpp) and 16 bytes (2bpp / NES CHR). Render the first few tiles as 8×8 ASCII art. If every other tile is blank, the stride is probably doubled (2 planes, second plane all-zero).
+3. **Find the CHR start offset.** A header field may give the byte offset where tile data begins. If the first tile at that offset is all-zero, tile index 0 = blank (space). **This shifts every index by 1** compared to assuming tiles start right after the header — misidentifying tile 0 cascades into every glyph being wrong.
+4. **Count tiles and identify banks.** If the header says N tiles and a "tiles per bank" field exists, tiles are split into `N / tiles_per_bank` banks (e.g., 32 tiles / 16 per bank = 2 banks). Each bank is independently indexable 0..(tiles_per_bank−1).
+5. **Identify glyphs.** Render each tile as 8×8 `#`/`.` art. Map to ASCII characters. Common pitfall: **N and K look similar in 8×8 fonts** — the diagonal direction matters: top-left→bottom-right = N; center-out diagonals = K.
+6. **Decode the name table.** Use the header offsets to find the name table region. Each byte is a tile index into the current bank. Render as text using the glyph map. Blank tiles (index 0 if tile 0 = blank) are spaces.
+7. **Check for hidden banks / planes.** If the story mentions a hidden bank or secret content:
+   - Look for non-zero data in tile plane 1 (normally all-zero in captured tiles).
+   - Check post-tile data regions for additional tile index sequences.
+   - A second bank's glyph set may include digits (0–9), punctuation (`_`, `{`, `}`), and leet-speak substitutions (0→O, 1→I, 3→E, 5→S).
+
+### Decoder template
+
+```python
+import struct
+
+def render_tile(plane0_bytes):
+    """Render 8×8 1bpp tile as ASCII lines."""
+    return [''.join('#' if (b & (0x80 >> x)) else '.'
+                    for x in range(8)) for b in plane0_bytes[:8]]
+
+def decode_vram(data):
+    # Parse header (adapt field offsets to the specific format)
+    chr_offset = struct.unpack_from('<I', data, 0x0c)[0]  # byte offset to tile data
+    nt_offset  = struct.unpack_from('<I', data, 0x10)[0]  # name-table offset
+    tile_size  = 16  # bytes per tile (2 planes × 8 rows)
+    num_tiles  = (nt_offset - chr_offset) // tile_size
+
+    # Parse tiles (plane 0 only for 1bpp)
+    tiles = [data[chr_offset + i*tile_size : chr_offset + i*tile_size + 8]
+             for i in range(num_tiles)]
+
+    # Build glyph map per bank — render each tile, assign character
+    for i, t in enumerate(tiles):
+        if any(b != 0 for b in t):
+            print(f"Tile {i}:")
+            for line in render_tile(t):
+                print(f"  {line}")
+
+    # Decode name table
+    glyph_map = {}  # fill after visual inspection: {index: 'A', ...}
+    pos = nt_offset
+    msg = []
+    while pos < len(data) and data[pos] <= max(glyph_map.keys(), default=255):
+        msg.append(glyph_map.get(data[pos], '?'))
+        pos += 1
+    print(''.join(msg).strip())
+```
+
+**Key insight:** The single most expensive mistake is getting the CHR start offset wrong by even one tile width. If the header has a field that doubles as both a count and a valid file offset, test the offset interpretation: tile 0 should be blank (all-zero) if index 0 is used as whitespace in the name table. Verify by checking that the name table produces readable text. Leet-speak flags (`BURN3D_1N_PH05PH0R` → "burned in phosphor") are common in custom-font challenges — decode the font first, read the substitution second.
+
+---

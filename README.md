@@ -52,6 +52,7 @@ Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, sy
 - **Exploit and payload development**: `heap-exploitation-dev`, `rop-development-dev`, `shellcode-dev`
 - **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, and memory layout knowledge
 - **Assembly patterns**: `asm-offensive-patterns` - x86-64/ARM64 patterns tuned for shellcode, syscall stubs, and evasion primitives
+- **Android RE**: `smali-dex-patching` - APK patch/rebuild/resign cycle, smali syntax, common bypass patterns (root, pinning, license, integrity)
 - **C2**: `adaptixc2-dev` - framework-specific development
 
 ### `offensive-techniques/` - Methodology and tradecraft skills
@@ -115,6 +116,7 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **Rust** - ownership, API design, performance, unsafe patterns
 - **Go** - idiomatic patterns, concurrency, performance
 - **Python** - patterns, async, pytest workflows
+- **Kotlin / Android** - idiomatic Kotlin (null-safety, coroutines, sealed hierarchies, Java interop), Android testing (JUnit/Robolectric/Compose/screenshot/instrumented), Kotlin performance (Macrobenchmark, Baseline Profiles, R8 full mode, Compose recomposition, Perfetto), Android JNI/NDK bridging (16 KB pages, `@FastNative`/`@CriticalNative`, Rust-on-Android)
 - **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
 
 ### `knowledge/` - Research and meta-skills

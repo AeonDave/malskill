@@ -256,4 +256,12 @@ session.detach()
 | File | When to load |
 |------|--------------|
 | [references/hooks-catalog.md](references/hooks-catalog.md) | Ready-made hook scripts for common scenarios |
-| [references/android-ios.md](references/android-ios.md) | Mobile-specific instrumentation patterns |
+| [references/android-ios.md](references/android-ios.md) | Mobile-specific instrumentation: SSL bypass, root bypass, Gadget embedding, JNI/native hooking, anti-Frida evasion |
+
+## See Also
+
+- `mobile-technique` — full mobile pentest methodology; routes here for dynamic instrumentation
+- `smali-dex-patching` — static APK patching alternative; load `smali-dex-patching/references/hooking-vs-patching.md` to decide which approach
+- `android-jni-ndk` — JNI mechanics, NDK debugging, Rust-on-Android; needed when reversing native `.so` loaded via Frida hooks
+- `smali-dex-patching/references/dynamic-dex-and-native-loaders.md` — hybrid loader patterns (DexClassLoader + native bootstrap + second-stage recovery)
+- `reversing-technique` — when Frida tracing leads to a native binary requiring static RE (Ghidra/IDA/r2)
