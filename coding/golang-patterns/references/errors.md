@@ -11,13 +11,21 @@ if err != nil {
 }
 ```
 
-## Use errors.Is / errors.As
+## Use errors.Is / errors.As / errors.AsType
 
 ```go
 if errors.Is(err, sql.ErrNoRows) {
     // handle not found
 }
 
+if ve, ok := errors.AsType[*ValidationError](err); ok { // Go 1.26+
+    // typed match; still walks Join/wrap trees
+}
+```
+
+Prefer `errors.AsType[E](err)` (Go 1.26+) over `errors.As(err, &target)` for a known concrete or interface error type: it is type-safe, returns `(E, bool)`, and still walks the wrap tree (including `errors.Join`). Keep `errors.As` when the target type is computed or you must match a non-error interface.
+
+```go
 var ve *ValidationError
 if errors.As(err, &ve) {
     // handle typed error
@@ -46,6 +54,16 @@ If you truly must ignore an error, make it obvious and rare.
 ```go
 _ = f.Close() // best-effort cleanup; error handled elsewhere
 ```
+
+Go 1.25 restored spec-correct nil checks that 1.21–1.24 delayed. This now panics when Open fails:
+
+```go
+f, err := os.Open(path)
+name := f.Name() // nil deref if err != nil
+if err != nil { return err }
+```
+
+Check `err` before using the value. Code that "worked" on 1.21–1.24 can fail after the jump to 1.25+.
 
 ## Retryable vs non-retryable
 

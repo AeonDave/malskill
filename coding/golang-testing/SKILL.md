@@ -2,10 +2,10 @@
 name: golang-testing
 description: "Go testing patterns for unit tests, table-driven tests, subtests, test helpers, mocking/fakes, benchmarks, fuzzing, and coverage. Use when writing or reviewing Go tests to improve correctness, stability, and maintainability."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline; notes Go 1.24 `testing/synctest` GOEXPERIMENT and 1.25 stable). Tools: go test, go tool cover. Optional: race detector (-race), fuzzing (built-in), benchmark stats (benchstat), go.uber.org/goleak, testing/synctest."
+compatibility: "Go 1.22+ (guidance baseline; `testing/synctest` is GA in Go 1.25, `synctest.Sleep` in Go 1.27). Tools: go test, go tool cover. Optional: race detector (-race), fuzzing (built-in), benchmark stats (benchstat), go.uber.org/goleak, testing/synctest."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Go Testing
@@ -17,6 +17,7 @@ This skill is about writing tests that are **reliable**, **readable**, and **use
 - Writing new tests for functions, packages, or APIs
 - Refactoring tests for clarity and reduced flakiness
 - Adding benchmarks or fuzz tests
+- Stabilizing concurrent or time-dependent tests (`testing/synctest`)
 - Improving coverage without gaming the metric
 
 ---
@@ -25,7 +26,7 @@ This skill is about writing tests that are **reliable**, **readable**, and **use
 
 - Prefer **table-driven tests** for coverage and readability.
 - Use **t.Helper()** and **t.Cleanup()** to keep failures actionable.
-- Tests should be deterministic: avoid `time.Sleep()` unless unavoidable.
+- Tests should be deterministic: prefer `testing/synctest` over `time.Sleep` when the code under test uses `time` primitives.
 - Prefer **fakes** (in-memory implementations) over heavy mocks.
 - Use `t.Parallel()` only when the test is truly isolated.
 - Keep test data local and explicit; avoid hidden cross-test coupling.
@@ -48,7 +49,7 @@ This skill is about writing tests that are **reliable**, **readable**, and **use
 1. Write/adjust focused unit tests first (table + subtests).
 2. Run targeted test selection to confirm behavior quickly.
 3. Add race detector and coverage checks.
-4. For instability, reproduce with repeated runs (`-count`) and isolate state/time dependencies.
+4. For instability, reproduce with repeated runs (`-count`) and isolate state/time dependencies (`synctest` for `time`-based concurrency).
 5. Add benchmarks/fuzz tests when behavior or performance risk justifies them.
 
 ---
@@ -70,8 +71,8 @@ Load on demand:
 - `references/unit-tests.md` — TDD loop, table tests, subtests, parallel subtests
 - `references/helpers-fixtures.md` — helpers, TempDir, Cleanup, testdata, golden files
 - `references/mocking-fakes.md` — interfaces for dependencies, fakes vs mocks, examples
-- `references/http-testing.md` — httptest patterns and JSON assertions
+- `references/http-testing.md` — httptest patterns, `NewTestServer` (Go 1.27+), JSON assertions
 - `references/bench-fuzz.md` — benchmarks and fuzzing best practices
-- `references/fuzzing-and-race.md` — use for `go test -fuzz` campaigns, corpus/minimization, race detector, `goleak`, and `testing/synctest` deterministic goroutine tests
+- `references/fuzzing-and-race.md` — load for `go test -fuzz` campaigns, race detector, `goleak`, `goroutineleak` profiles, and `testing/synctest` (`Test`/`Wait`/`Sleep`)
 - `references/coverage-ci.md` — cover profiles, coverpkg notes, CI integration cautions
 - `references/commands.md` — go test command recipes (race, timeout, count, patterns)

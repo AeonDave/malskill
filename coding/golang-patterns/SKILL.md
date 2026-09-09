@@ -2,10 +2,10 @@
 name: golang-patterns
 description: "Idiomatic Go patterns, best practices, and conventions for building robust, readable, and maintainable Go code. Use when writing, reviewing, or refactoring Go (APIs, packages, errors, interfaces, concurrency, code style), choosing a dispatch or plugin mechanism, or building low-level/offensive Go with `unsafe`, `cgo`, syscall dispatch, or RE-resistant static builds."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline; notes flag features from Go 1.19–1.25). Optional tools: gofmt, goimports, staticcheck, golangci-lint, gopls, govulncheck, gosec, garble."
+compatibility: "Go 1.22+ (guidance baseline; notes flag features through Go 1.27). Optional tools: gofmt, goimports, staticcheck, golangci-lint, gopls, govulncheck, gosec, garble."
 metadata:
   author: AeonDave
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Go Patterns
@@ -38,7 +38,7 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 ## Outcome expectations
 
 - Public APIs are small, explicit, and boring to maintain.
-- Error handling is consistent and machine-checkable with `errors.Is/As`.
+- Error handling is consistent and machine-checkable with `errors.Is` / `errors.AsType`.
 - Concurrency flows always have cancellation and backpressure.
 - Tooling baseline (`gofmt`, tests, vet/race) is easy to run in CI.
 
@@ -57,7 +57,7 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 ## Quick review checklist
 
 - Naming: MixedCaps for exported, no underscores, packages short and lower-case
-- Errors: `fmt.Errorf("context: %w", err)`, `errors.Is/As` used correctly
+- Errors: `fmt.Errorf("context: %w", err)`, `errors.Is` / `errors.AsType` (Go 1.26+) used correctly
 - Context: `ctx` is first param; cancellation propagates; no `context.Context` stored in structs
 - Interfaces: accept interfaces, return concrete types; no “kitchen-sink” interfaces
 - Concurrency: goroutines have a stop condition; channels are closed by senders; backpressure exists
@@ -80,12 +80,14 @@ If your task is primarily measurement/profiling/optimization, use `golang-perfor
 Load on demand (progressive disclosure):
 
 - `references/effective-go.md` — distilled Effective Go + Code Review Comments pointers
-- `references/errors.md` — wrapping, sentinel vs typed errors, validation, retryable errors
-- `references/interfaces.md` — interface placement, design patterns, optional behavior
-- `references/concurrency.md` — cancellation, errgroup, leaks, worker pools, backpressure
-- `references/api-and-structs.md` — receiver rules, functional options, embedding
+- `references/language.md` — load when using loop-var/range-over-func semantics, `new(expr)`, self-referential constraints, generic methods, embedded-field keys, or 1.27 type inference
+- `references/json-v2.md` — load when adding or migrating JSON (`encoding/json` vs `encoding/json/v2`, `omitzero`, stricter defaults)
+- `references/errors.md` — wrapping, sentinel vs typed errors, `errors.AsType`, validation, retryable errors
+- `references/interfaces.md` — interface placement, design patterns, optional behavior, generic-method vs interface-method rule
+- `references/concurrency.md` — cancellation, errgroup, leaks, worker pools, backpressure, timer-channel semantics
+- `references/api-and-structs.md` — receiver rules, functional options, embedding, ServeMux patterns
 - `references/package-layout.md` — project layout, package naming, dependency injection
-- `references/tooling.md` — gofmt/goimports, vet, staticcheck, golangci-lint guidance
+- `references/tooling.md` — gofmt/goimports, vet, `go fix`, language version via the `go` directive
 - `references/security-review.md` — use when auditing Go for security bugs: untrusted input, panics/DoS, TLS defaults, secrets, supply chain (`govulncheck`, `gosec`)
 - `references/unsafe-cgo.md` — use for `unsafe.Pointer` rules, `syscall`/`x/sys`, cgo boundaries, and static/cross-compiled offensive-tooling builds
 - `references/dispatch-and-plugins.md` — use when choosing `dyn` interfaces vs enum dispatch, building registries and command dispatchers, or adding modules to a compiled binary (`plugin`, `hashicorp/go-plugin`, `wazero`/`extism`, `yaegi`, `selfupdate`, `tableflip`)

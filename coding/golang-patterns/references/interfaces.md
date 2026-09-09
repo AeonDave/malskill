@@ -36,6 +36,12 @@ func WriteAndMaybeFlush(w io.Writer, p []byte) error {
 
 Avoid returning interfaces just to hide the implementation. Prefer returning a concrete type and keep the interface at the edge (caller side).
 
+## Generic methods do not satisfy interfaces (Go 1.27+)
+
+A concrete method may declare type parameters (`func (T) M[P any]()`). Interface methods **cannot**. `T` does not implement `interface{ M() }` just because `T.M[int]` happens to have that signature — implementation looks at declared methods, not instantiations.
+
+Keep interface methods non-generic. Put the generic helper on the concrete type. See `language.md`.
+
 ## Interface size heuristic
 
 If an interface exceeds 3–4 methods, challenge whether it actually models multiple responsibilities.

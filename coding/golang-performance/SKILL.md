@@ -2,10 +2,10 @@
 name: golang-performance
 description: "Go performance workflow: benchmark and profile (pprof/trace), identify hotspots, reduce allocations/GC and contention, and verify improvements with repeatable measurement. Use only after you have evidence the Go code is the bottleneck."
 license: MIT
-compatibility: "Go 1.22+ (guidance baseline; benchmark examples note Go 1.24 `b.Loop`). Tools: go test, go tool pprof, go tool trace. Optional: benchstat (golang.org/x/perf/cmd/benchstat), perf (Linux), cargo-pgo-free PGO via `-pgo=auto` (Go 1.21+)."
+compatibility: "Go 1.22+ (guidance baseline; notes flag runtime/GC/pprof features through Go 1.27). Tools: go test, go tool pprof, go tool trace. Optional: benchstat (golang.org/x/perf/cmd/benchstat), perf (Linux), PGO via `-pgo=auto` (Go 1.21+)."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Go Performance
@@ -79,7 +79,8 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
 - High allocation churn / GC pressure -> allocs profile
 - Latency spikes without CPU spike -> block profile
 - Lock contention suspicion -> mutex profile
-- Scheduler/pathological latency behavior -> runtime trace
+- Scheduler/pathological latency behavior -> runtime trace (flight recorder for rare events)
+- Growing goroutine count / suspected stuck workers -> `goroutineleak` profile, then the full goroutine profile
 - Shipped binary that is already profile-tuned and needs final runtime/build tuning -> `compiler-and-runtime-tuning.md`
 
 ---
@@ -97,8 +98,8 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
 
 Load these references on demand:
 
-- `references/profiling.md` — pprof + trace collection and analysis commands
+- `references/profiling.md` — pprof + trace + `goroutineleak` + flight recorder
 - `references/benchmarks.md` — stable benchmarks, -benchmem, benchstat, hygiene
-- `references/allocations-gc.md` — allocation patterns, slice retention, sync.Pool guidance
+- `references/allocations-gc.md` — allocation patterns, Green Tea GC, slice retention, sync.Pool
 - `references/contention.md` — mutex/block profiles, contention patterns, backpressure
-- `references/compiler-and-runtime-tuning.md` — use when benchmark/profile fixes have landed and you need PGO, GOGC/GOMEMLIMIT, GOMAXPROCS, or shipped-binary build flags
+- `references/compiler-and-runtime-tuning.md` — load when code-level fixes have landed and you need PGO, GOGC/GOMEMLIMIT, GOMAXPROCS/cgroup, GC/cgo/thread knobs, or shipped-binary build flags

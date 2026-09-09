@@ -4,7 +4,8 @@
 
 Go 1.24+ has `for b.Loop() { ... }` which is the preferred shape: it hides the timer around
 setup/cleanup, and the compiler refuses to eliminate the loop body, so you no longer need
-`b.ResetTimer` or sink variables to defeat dead-code elimination.
+`b.ResetTimer` or sink variables to defeat dead-code elimination. Go 1.26 stopped preventing
+inlining **inside** `b.Loop`; convert remaining `b.N` benches — the old inlining tax is gone.
 
 ```go
 func BenchmarkThing(b *testing.B) {

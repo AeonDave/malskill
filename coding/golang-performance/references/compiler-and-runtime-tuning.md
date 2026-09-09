@@ -8,6 +8,8 @@ the profile-and-benchstat cycle in `benchmarks.md` first — these knobs are the
 - [Escalation order](#escalation-order)
 - [GOGC and GOMEMLIMIT](#gogc-and-gomemlimit)
 - [GOMAXPROCS](#gomaxprocs)
+- [Green Tea GC and cgo](#green-tea-gc-and-cgo)
+- [Threads, timers, SIMD](#threads-timers-simd)
 - [Profile-guided optimization](#profile-guided-optimization)
 - [Build flags for shipped binaries](#build-flags-for-shipped-binaries)
 - [GODEBUG runtime knobs](#godebug-runtime-knobs)
@@ -38,10 +40,54 @@ Every step is measured; skipping the measurement step is why "the optimization d
 
 ## GOMAXPROCS
 
-- Defaults to the number of logical CPUs. Under Linux cgroup quotas, that number can be higher than
-  the effective CPU quota — a container with 2 vCPUs but a quota of 1 will over-schedule.
-- Set explicitly in containers: `GOMAXPROCS=$(nproc)` or link `go.uber.org/automaxprocs` to read the
-  cgroup and set it at `init`. Fixes runaway scheduler contention on constrained hosts.
+Go 1.25+ (still the 1.27 default): if `GOMAXPROCS` is **unset**, the runtime picks
+`min(logical CPUs, affinity, Linux cgroup CPU quota)`, never below 2 unless the machine/affinity
+is below 2. Fractional quotas round **up**. Kubernetes **limits** map to the cgroup quota;
+**requests** are ignored. The runtime refreshes at most once per second (`updatemaxprocs`).
+
+Do **not** set `GOMAXPROCS` or call `runtime.GOMAXPROCS` in containers just to "match the limit"
+— that **disables** cgroup awareness and periodic updates. Drop `automaxprocs` on 1.25+ unless
+you are pinning a value on purpose.
+
+- Need the default back after an explicit set: `runtime.SetDefaultGOMAXPROCS()` (Go 1.25+).
+- Opt out of cgroup / updates: `GODEBUG=containermaxprocs=0` and/or `updatemaxprocs=0` (Linux
+  cgroup path only for the former). Language version ≤1.24 keeps the old `NumCPU` default.
+- `errgroup.SetLimit(runtime.GOMAXPROCS(0))` remains a valid fan-out cap; read the current value,
+  don't write it.
+
+## Green Tea GC and cgo
+
+Go 1.26+ uses the Green Tea GC by default. GC-heavy programs typically see **10–40% less GC
+overhead** (not wall-clock of the whole process). Extra ~10% GC-overhead cut is documented on
+Ice Lake / Zen 4+ via vector scan. Do **not** add these percentages to the 1.27 allocator or
+cgo numbers.
+
+Go 1.26 allowed `GOEXPERIMENT=nogreenteagc`; Go 1.27 release notes do not document that opt-out.
+If a GC regression appears, measure with `GODEBUG=gctrace=1` and file an issue — don't cargo-cult
+the 1.25 experiment flag (`greenteagc`) on 1.26+.
+
+Go 1.26 cut **baseline cgo call overhead ~30%**. Calls still bind an M; batch them. Details of
+the cgo pointer rules are in `golang-patterns` `unsafe-cgo.md`.
+
+Go 1.27 size-specialized malloc: some allocations **under 80 bytes** cost up to ~30% less;
+allocation-heavy programs see about **~1%** overall. Binary grows ~60 KB.
+`GOEXPERIMENT=nosizespecializedmalloc` disables it (expected gone in 1.28).
+
+## Threads, timers, SIMD
+
+- `runtime.LockOSThread` pins the goroutine to its OS thread. Use for C APIs that store
+  thread-local state, not to "force parallelism". Unlock with `UnlockOSThread` in the same
+  goroutine. Extra cgo threads are still expensive after the 1.26 overhead cut.
+- Timer/ticker channels are unbuffered as of `go 1.23` and **cannot** be reverted in Go 1.27
+  (`asynctimerchan` removed). See `golang-patterns` `concurrency.md`.
+- Experimental SIMD (`GOEXPERIMENT=simd`): Go 1.26 `simd/archsimd` (arch-specific);
+  Go 1.27 also `simd` (portable, size-agnostic, emulated where needed). API is **unstable**.
+  Use portable `simd` for numeric kernels you must ship across amd64/arm64/wasm; drop to
+  `archsimd` only for a width/instruction the portable subset lacks. Always keep a scalar
+  `//go:build !goexperiment.simd` path until the experiment graduates.
+- `runtime/metrics` (Go 1.26+) exposes `/sched/goroutines-*`, `/sched/threads:threads`,
+  `/sched/goroutines-created:goroutines` — prefer these over scraping goroutine profiles for
+  dashboards.
 
 ## Profile-guided optimization
 
@@ -97,6 +143,8 @@ Runtime observability first, tuning second. Set via env var; do not hardcode.
   investigations.
 - `GODEBUG=schedtrace=1000,scheddetail=1` — scheduler dump every 1 s; use when goroutines look
   stalled or scheduler-bound.
+- `GODEBUG=tracebacklabels=0` — Go 1.27+ modules include pprof goroutine labels in traceback
+  headers; disable if labels may contain secrets.
 - `GODEBUG=allocfreetrace=1` — extremely verbose per-alloc trace; for narrow reproducers only.
 - `GODEBUG=madvdontneed=1` — makes the runtime return memory to the OS eagerly (RSS drops faster
   post-load). Trades TLB refills for smaller RSS; measure both.

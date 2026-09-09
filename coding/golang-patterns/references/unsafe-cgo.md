@@ -92,8 +92,9 @@ s := unsafe.String(unsafe.SliceData(b), len(b))
 `cgo` is a full language boundary with its own rules — cheap in code, expensive at runtime and
 build time.
 
-- **Cost**: each cgo call is ~10x a Go call and blocks the current M (may spawn a new one). Batch
-  calls; do not put `C.foo()` in a tight loop.
+- **Cost**: each cgo call still blocks the current M (may spawn a new one) and is far more
+  expensive than a Go call. Go 1.26 reduced baseline cgo-call overhead by ~30%; **still batch**
+  — do not put `C.foo()` in a tight loop. See `golang-performance` `compiler-and-runtime-tuning.md`.
 - **Pointer rules** (enforced by `GODEBUG=cgocheck=1`, on by default; `cgocheck=2` catches more):
   - A Go pointer passed to C must not point to memory containing other Go pointers.
   - C code must not store a Go pointer past the return of the call (the GC may move the object).

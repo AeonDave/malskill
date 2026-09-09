@@ -79,7 +79,8 @@ Go prevents memory corruption but not resource exhaustion or panics-as-crash:
   bypasses escaping — treat every call as a review item.
 - **Deserialization**: decode into a typed struct, then validate the decoded value. `encoding/gob`
   and third-party formats that instantiate arbitrary types on read are hostile territory — avoid
-  on attacker-controlled input.
+  on attacker-controlled input. `encoding/json/v2` (Go 1.27) rejects invalid UTF-8 and duplicate
+  names by default — prefer it for untrusted JSON; see `json-v2.md`.
 - **SSRF**: validate host/scheme against an allowlist after parsing (`url.Parse`); block private and
   link-local ranges when fetching user-supplied URLs.
 - **Typed-nil trap**: an interface holding a `(*T)(nil)` is **not** `== nil`. Return `nil`
@@ -116,10 +117,13 @@ leaks that DoS a service. Baseline defenses:
 
 - `go test -race ./...` in CI on the packages that see concurrent access; race findings are real,
   not flakes.
-- `go vet` includes `waitgroup` and (via gopls) `waitgroupgo` — `WaitGroup.Add` inside a new
-  goroutine races with `Wait`. Move `Add` before `go func()`, or use `wg.Go(...)` (Go 1.25+).
-- Goroutine leaks are memory exhaustion in disguise; hunt them with `pprof/goroutine?debug=2` and
-  the `go.uber.org/goleak` gate in tests (see `golang-testing`).
+- `go vet` includes `waitgroupgo` (Go 1.27 name; previously `waitgroup`) — `WaitGroup.Add`
+  inside a new goroutine races with `Wait`. Move `Add` before `go func()`, or use `wg.Go(...)`
+  (Go 1.25+).
+- Goroutine leaks are memory exhaustion in disguise. Hunt stuck channel/`sync` waits with
+  `/debug/pprof/goroutineleak` (Go 1.27; see `golang-performance` `profiling.md`) and gate
+  tests with `go.uber.org/goleak` (see `golang-testing`). The leak profile does **not** see
+  I/O blocks or primitives still reachable from a global.
 
 ## Supply chain
 

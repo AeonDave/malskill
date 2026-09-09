@@ -12,6 +12,8 @@
 - Using unbuffered channels on high-throughput paths
 - Spawning unbounded goroutines (burst load)
 - Holding locks while doing I/O
+- `GOMAXPROCS` far above the cgroup CPU limit (Go 1.25+ usually prevents this unless you set
+  `GOMAXPROCS` yourself — see `compiler-and-runtime-tuning.md`)
 
 ## Patterns that help
 
@@ -31,7 +33,6 @@ Use a semaphore or worker pool to cap goroutines.
 ```go
 sem := make(chan struct{}, max)
 for _, item := range items {
-    item := item
     sem <- struct{}{}
     go func() {
         defer func() { <-sem }()

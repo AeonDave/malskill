@@ -28,6 +28,9 @@ go test -count=10 ./...
 # Disable test cache when investigating flakes
 go test -count=1 ./...
 
+# Go 1.27+: stdversion vet check is on by default (stdlib APIs vs go.mod go line).
+# A failure means raise the go directive, add a build tag, or stop using that API.
+
 # Benchmarks
 go test -run=^$ -bench=. -benchmem ./...
 

@@ -11,7 +11,7 @@ benchmarks and one-off fuzz examples, see `bench-fuzz.md`; for `-race` in CI, se
 - [Writing a fuzz target](#writing-a-fuzz-target)
 - [Corpus, minimization, reproduction](#corpus-minimization-reproduction)
 - [The race detector in anger](#the-race-detector-in-anger)
-- [Goroutine leaks: goleak](#goroutine-leaks-goleak)
+- [Goroutine leaks: goleak vs goroutineleak](#goroutine-leaks-goleak-vs-goroutineleak)
 - [testing/synctest for deterministic goroutine tests](#testingsynctest-for-deterministic-goroutine-tests)
 
 ## When to fuzz vs when to property-test
@@ -94,10 +94,10 @@ lane.
   goroutine (see `waitgroup` analyzer), reading a `time.Time` field without a lock, sharing an
   `http.Request` across goroutines.
 
-## Goroutine leaks: goleak
+## Goroutine leaks: goleak vs goroutineleak
 
 Panics and races are visible; leaks look like "slow memory growth". `go.uber.org/goleak` turns
-package-level leaks into test failures.
+package-level leaks into test failures (any leftover goroutine when the test ends).
 
 ```go
 package mypkg
@@ -115,35 +115,51 @@ func TestMain(m *testing.M) {
 Add per-test with `defer goleak.VerifyNone(t)` for finer scope. Options let you ignore
 framework-owned goroutines (e.g. `goleak.IgnoreTopFunction`).
 
+`goleak` is a test-end census. The runtime `goroutineleak` **profile** (Go 1.27; collect via
+`/debug/pprof/goroutineleak` — see `golang-performance` `profiling.md`) proves a subset of
+goroutines can never wake (stuck on an unreachable channel/`sync` primitive). Use both: goleak
+in CI, the profile on a running service. Neither sees "blocked on I/O forever" as a leak.
+
 ## testing/synctest for deterministic goroutine tests
 
-`testing/synctest` runs a function inside a "bubble" with a **fake clock** — every `time.Sleep`,
-`time.After`, `context.WithTimeout` advances instantly, and `synctest.Wait` blocks until every
-goroutine in the bubble is idle. It makes timing-driven concurrent tests deterministic and fast.
+`testing/synctest` runs the test body in an isolated **bubble** with a fake clock (starts at
+midnight UTC 2000-01-01). `time.Sleep`, timers, and `context.WithTimeout` use that clock. Time
+advances only when every goroutine in the bubble is **durably blocked**.
 
-- Go 1.24: experimental; requires `GOEXPERIMENT=synctest go test ./...`.
-- Go 1.25+: stable in the standard library, no build flag.
+- Go 1.24: experimental `synctest.Run`; required `GOEXPERIMENT=synctest`. **Removed in Go 1.26.**
+- Go 1.25+: `synctest.Test(t, func(t *testing.T) { ... })` and `synctest.Wait()` — no build flag.
+- Go 1.27+: `synctest.Sleep(d)` is `time.Sleep(d)` then `Wait()` — use it when the test itself
+  sleeps the same duration as the system under test, so the SUT settles before you assert.
 
 ```go
 func TestRetry(t *testing.T) {
-    synctest.Run(func() {
-        ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+    synctest.Test(t, func(t *testing.T) {
+        ctx, cancel := context.WithTimeout(t.Context(), time.Hour)
         defer cancel()
 
         done := make(chan error, 1)
-        go func() { done <- RetryLoop(ctx) }() // uses time.After internally
+        go func() { done <- RetryLoop(ctx) }()
 
-        synctest.Wait() // wait until every goroutine in the bubble is blocked
-        // Now assert observable state without racing against real time.
+        synctest.Wait() // every other bubbled goroutine is durably blocked
+        // assert observable state; clock has not required wall time
     })
 }
 ```
 
-Rules:
+`Test` waits for all bubbled goroutines to exit; deadlock fails the test. Do not call `Test`
+from inside a bubble. The inner `*testing.T`: `Cleanup` runs inside the bubble; `Context()` is
+bubbled; **do not** call `T.Run`, `T.Parallel`, or `T.Deadline`.
 
-- The bubble panics if you try to interact with a bubbled channel from outside — keep everything
-  the test observes inside `synctest.Run`.
-- Only `time` package sleeps/timers are faked. `runtime.Gosched`, `os.Sleep`, or a real network
-  syscall still block for real.
-- Prefer over `time.Sleep`-based tests everywhere the code under test uses `time` primitives;
-  removes an entire class of CI flakes.
+Durable blocks (can only be woken from inside the bubble): bubbled channel send/recv, select of
+only those, `time.Sleep`, `sync.Cond.Wait`, `WaitGroup.Wait` when `Add`/`Go` ran in the bubble.
+
+**Not** durable: `Mutex` lock, network/syscall I/O, `os.Sleep`. A goroutine blocked on real I/O
+prevents the bubble from going idle — tests hang or deadlock. Do not use loopback TCP inside
+`synctest`; use `net.Pipe` or `httptest.NewTestServer` (Go 1.27, in-memory net) — see
+`http-testing.md`.
+
+Isolation: operating on a bubbled channel/timer from outside panics. Package-level
+`var wg sync.WaitGroup` cannot associate with a bubble; `var wg = new(sync.WaitGroup)` can.
+`Wait` is not concurrent — one caller at a time.
+
+Prefer synctest over `time.Sleep` flakes whenever the production code uses `time` primitives.

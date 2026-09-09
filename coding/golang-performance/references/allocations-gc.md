@@ -9,6 +9,25 @@ In hot paths, fewer allocations usually means:
 
 Measure first with `/debug/pprof/allocs` and `b.ReportAllocs()`.
 
+Do not stack independent release-note percentages. Green Tea (Go 1.26+ default) cuts **GC
+overhead** 10–40% on GC-heavy programs; the 1.27 small-object allocator is a separate ~1%
+on alloc-heavy programs; `io.ReadAll` (Go 1.26) is often ~2× faster with about half the
+memory. Attribute each to a measured profile.
+
+Go 1.24+ maps use Swiss Tables. Don't micro-optimize around the old hashmap; if lookup of a
+large comparable key dominates, intern with `unique.Make` (see `golang-patterns`
+`effective-go.md`) rather than rewriting hashing.
+
+Go 1.25+/1.26 allocate more slice backing arrays on the **stack**. Faster, but incorrect
+`unsafe.Pointer` into a slice is more likely to explode — bisect with
+`golang.org/x/tools/cmd/bisect -compile=variablemake`, or disable with
+`-gcflags=all=-d=variablemakehash=n`. Prefer `io.ReadAll` as-is on 1.26+; it already
+returns a minimally sized buffer.
+
+`weak.Pointer[T]` (Go 1.24) for caches that must not keep values alive: `Value()` returns
+`nil` after collection. Pair with `runtime.AddCleanup`, not `SetFinalizer`. Not a general
+map key.
+
 ---
 
 ## Common allocation sources

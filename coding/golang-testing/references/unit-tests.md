@@ -49,7 +49,6 @@ Use `t.Parallel()` only when tests are isolated and do not share state.
 
 ```go
 for _, tt := range tests {
-    tt := tt
     t.Run(tt.name, func(t *testing.T) {
         t.Parallel()
         // ...
@@ -57,7 +56,14 @@ for _, tt := range tests {
 }
 ```
 
+Go 1.22+ (`go` directive 1.22 or later): loop vars are per-iteration — do **not** write
+`tt := tt`. Keep that capture only when the module language version is older than 1.22
+(see `golang-patterns` `language.md`).
+
 Tip: any shared global (env vars, temp dirs, time, net ports) can break parallelism.
+
+Timing-dependent concurrent tests belong in `synctest.Test`, not `time.Sleep` — see
+`fuzzing-and-race.md`.
 
 ## Determinism checklist
 
