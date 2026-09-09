@@ -62,9 +62,9 @@ overhead** (not wall-clock of the whole process). Extra ~10% GC-overhead cut is 
 Ice Lake / Zen 4+ via vector scan. Do **not** add these percentages to the 1.27 allocator or
 cgo numbers.
 
-Go 1.26 allowed `GOEXPERIMENT=nogreenteagc`; Go 1.27 release notes do not document that opt-out.
-If a GC regression appears, measure with `GODEBUG=gctrace=1` and file an issue — don't cargo-cult
-the 1.25 experiment flag (`greenteagc`) on 1.26+.
+Go 1.26 allowed `GOEXPERIMENT=nogreenteagc`. Go 1.27 release notes do not document that opt-out;
+do not rely on it. If a GC regression appears, measure with `GODEBUG=gctrace=1` and file an
+issue — don't cargo-cult the 1.25 experiment flag (`greenteagc`) on 1.26+.
 
 Go 1.26 cut **baseline cgo call overhead ~30%**. Calls still bind an M; batch them. Details of
 the cgo pointer rules are in `golang-patterns` `unsafe-cgo.md`.
@@ -78,16 +78,16 @@ allocation-heavy programs see about **~1%** overall. Binary grows ~60 KB.
 - `runtime.LockOSThread` pins the goroutine to its OS thread. Use for C APIs that store
   thread-local state, not to "force parallelism". Unlock with `UnlockOSThread` in the same
   goroutine. Extra cgo threads are still expensive after the 1.26 overhead cut.
-- Timer/ticker channels are unbuffered as of `go 1.23` and **cannot** be reverted in Go 1.27
-  (`asynctimerchan` removed). See `golang-patterns` `concurrency.md`.
+- Timer/ticker channels are always unbuffered on a 1.27+ toolchain (`asynctimerchan` removed).
+  On 1.23–1.26 they follow the `go` line. See `golang-patterns` `concurrency.md`.
 - Experimental SIMD (`GOEXPERIMENT=simd`): Go 1.26 `simd/archsimd` (arch-specific);
   Go 1.27 also `simd` (portable, size-agnostic, emulated where needed). API is **unstable**.
   Use portable `simd` for numeric kernels you must ship across amd64/arm64/wasm; drop to
   `archsimd` only for a width/instruction the portable subset lacks. Always keep a scalar
   `//go:build !goexperiment.simd` path until the experiment graduates.
-- `runtime/metrics` (Go 1.26+) exposes `/sched/goroutines-*`, `/sched/threads:threads`,
-  `/sched/goroutines-created:goroutines` — prefer these over scraping goroutine profiles for
-  dashboards.
+- `runtime/metrics` (Go 1.26+) exposes `/sched/goroutines:goroutines`,
+  `/sched/goroutines-created:goroutines`, `/sched/threads/total:threads` — prefer these over
+  scraping goroutine profiles for dashboards.
 
 ## Profile-guided optimization
 

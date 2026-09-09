@@ -2,6 +2,9 @@
 
 ## Benchmarks
 
+Go 1.24+: prefer `for b.Loop() { ... }` (hides the timer, defeats DCE). Details in
+`golang-performance` `benchmarks.md`. Legacy `b.N` still works:
+
 ```go
 func BenchmarkThing(b *testing.B) {
     b.ReportAllocs()

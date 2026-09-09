@@ -53,8 +53,8 @@ stdlib.
   a record out to several handlers (Enabled is OR; Handle/WithAttrs/WithGroup call each enabled
   handler) — use it instead of a custom tee.
 - `math/rand/v2` (Go 1.22) — new code: `rand.N(n)` for any integer/duration upper bound; ChaCha8
-  global source, auto-seeded. Still **not** `crypto/rand`. Do not call `Read` on v2 (removed); use
-  `crypto/rand.Read` for tokens.
+  global source, auto-seeded. Still **not** `crypto/rand`. Package-level `Read` and `(*Rand).Read`
+  were not carried to v2; use `crypto/rand.Read` for tokens.
 - `unique.Make` (Go 1.23) — intern comparable values; `Handle[T]` equality is cheap. Use as map
   keys when the payload is large and compared often. Not a string pool for tiny ints.
 - `uuid` (Go 1.27) — generate/parse UUIDs in stdlib; drop a UUID helper module unless you need

@@ -81,11 +81,13 @@ For long-running workers, make shutdown order explicit:
 
 ## Timer channels (Go 1.23+, locked in 1.27)
 
-`time.Timer` / `Ticker` / `time.After` channels are **unbuffered** (synchronous) when the main
-module's `go` line is 1.23+. Go 1.27 **removed** `GODEBUG=asynctimerchan`; the unbuffered behavior
-is unconditional. `Stop`/`Reset` results are reliable: a delayed receive cannot sneak a leftover
-value into a buffered chan. Do not write `asynctimerchan=1` in `go.mod` — Go 1.27 rejects a
-removed GODEBUG set to the old value.
+On a **Go 1.27+ toolchain**, `time.Timer` / `Ticker` / `time.After` channels are always
+**unbuffered** (synchronous), regardless of the `go` line. `GODEBUG=asynctimerchan` is
+removed; `asynctimerchan=1` in `go.mod` is a build error. `Stop`/`Reset` results are
+reliable: a delayed receive cannot sneak a leftover value into a buffered chan.
+
+On 1.23–1.26, unbuffered channels require the main module's `go` line to be 1.23+
+(`asynctimerchan=1` restored the one-element buffer).
 
 `runtime.LockOSThread` still pins the calling goroutine to its OS thread (cgo thread-local APIs,
 `runtime.LockOSThread` + `UnlockOSThread` pairs). Cgo already takes an M; locking extra threads

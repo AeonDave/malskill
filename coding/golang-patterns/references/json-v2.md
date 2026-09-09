@@ -48,9 +48,10 @@ Behavior does not:
 
 `omitzero` (also on v1 since Go 1.24) omits a field when `IsZero() bool` is true,
 else when the Go value is zero. Prefer `omitzero` for `time.Time`, `netip.Addr`,
-and other types with a meaningful zero. Prefer `omitempty` when you mean "omit if
-the JSON encoding is empty" (empty slice vs nil slice differ). Both tags together
-omit if either applies.
+and other types with a meaningful zero — a nil slice omits, an empty non-nil
+slice encodes as `[]`. Prefer `omitempty` when you mean "omit if the JSON encoding
+is empty" (v1 and v2 agree for strings, slices, arrays, and maps). Both tags
+together omit if either applies.
 
 ```go
 type Pet struct {

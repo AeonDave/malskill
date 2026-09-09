@@ -50,7 +50,7 @@ Go prevents memory corruption but not resource exhaustion or panics-as-crash:
   helpers panicking. Handlers behind `net/http` are recovered by the server, but custom goroutines
   are not — a panic in a spawned goroutine terminates the program.
 - **Unbounded request bodies**: wrap with `http.MaxBytesReader(w, r.Body, N)` before `json.Decode`;
-  otherwise a large POST forces `ioutil.ReadAll`/decoder to buffer arbitrary bytes.
+  otherwise a large POST forces `io.ReadAll`/decoder to buffer arbitrary bytes.
 - **Decoder bombs**: `json`/`yaml`/`xml` decoders and `encoding/gob` will happily inflate nested
   structures. Set body caps and depth limits; reject `Content-Length` outliers early.
 - **Zip/gzip bombs**: cap the decompressed byte count (`io.LimitReader` on the reader you *return*

@@ -37,7 +37,7 @@ you hit in practice:
 - **Reading pointer as `uintptr` only inside a single call expression** (e.g. `syscall.Syscall(...,
   uintptr(unsafe.Pointer(&x)), ...)`). The `uintptr` must not survive past the call.
 - **Conversion between compatible layouts** requires *identical* size and layout — use
-  `unsafe.Sizeof` and `unsafe.Offsetof` to prove it, or use `//go:notinheap` types.
+  `unsafe.Sizeof` and `unsafe.Offsetof` to prove it.
 
 ## Slice, string, and header helpers
 

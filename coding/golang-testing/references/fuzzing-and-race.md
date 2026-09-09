@@ -91,8 +91,8 @@ lane.
 - Race under `-fuzz`: cargo-cult wisdom said "not supported", but modern toolchains combine them;
   it just runs slower. Use for the concurrent-mutation-heavy targets.
 - Common patterns that fire: writes to a map from multiple goroutines, `wg.Add` inside the
-  goroutine (see `waitgroup` analyzer), reading a `time.Time` field without a lock, sharing an
-  `http.Request` across goroutines.
+  goroutine (see `waitgroupgo`; named `waitgroup` before Go 1.27), reading a `time.Time` field
+  without a lock, sharing an `http.Request` across goroutines.
 
 ## Goroutine leaks: goleak vs goroutineleak
 
@@ -151,11 +151,12 @@ from inside a bubble. The inner `*testing.T`: `Cleanup` runs inside the bubble; 
 bubbled; **do not** call `T.Run`, `T.Parallel`, or `T.Deadline`.
 
 Durable blocks (can only be woken from inside the bubble): bubbled channel send/recv, select of
-only those, `time.Sleep`, `sync.Cond.Wait`, `WaitGroup.Wait` when `Add`/`Go` ran in the bubble.
+only those, `time.Sleep`, `sync.Cond.Wait`, `WaitGroup.Wait` when `Add` ran in the bubble
+(`Go` also associates the WaitGroup).
 
-**Not** durable: `Mutex` lock, network/syscall I/O, `os.Sleep`. A goroutine blocked on real I/O
-prevents the bubble from going idle — tests hang or deadlock. Do not use loopback TCP inside
-`synctest`; use `net.Pipe` or `httptest.NewTestServer` (Go 1.27, in-memory net) — see
+**Not** durable: `Mutex`/`RWMutex` lock, network I/O, other system calls. A goroutine blocked on
+real I/O prevents the bubble from going idle — tests hang or deadlock. Do not use loopback TCP
+inside `synctest`; use `net.Pipe` or `httptest.NewTestServer` (Go 1.27, in-memory net) — see
 `http-testing.md`.
 
 Isolation: operating on a bubbled channel/timer from outside panics. Package-level
