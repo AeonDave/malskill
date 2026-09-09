@@ -2,10 +2,10 @@
 name: rust-patterns
 description: "Idiomatic Rust patterns and best practices for readable, safe, maintainable Rust: ownership, borrowing, API design, enums/traits, error handling, iterators, concurrency, dynamic dispatch/plugins, and low-level/offensive patterns. Use when writing or reviewing `.rs` code, refactoring crates, porting non-idiomatic code into Rust, designing Rust APIs, or building Rust tooling that needs runtime composition or RE-resistance."
 license: MIT
-compatibility: "Rust stable baseline (2024 edition-friendly). Tools: cargo, rustfmt, clippy, rustdoc. Optional: rust-analyzer, Miri (nightly), cargo-audit/cargo-deny for security review."
+compatibility: "Rust 1.75+ baseline (async fn / RPITIT in traits); notes flag features through Rust 1.98 and Edition 2024 (1.85+). Tools: cargo, rustfmt, clippy, rustdoc. Optional: rust-analyzer, Miri (nightly), cargo-audit/cargo-deny for security review."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Rust Patterns
@@ -33,6 +33,8 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 - Prefer iterators and pattern matching when they make intent clearer; do not turn readable logic into adapter golf.
 - Keep public APIs small and deliberate; re-export intentionally and hide implementation details.
 - Run `cargo fmt` and `cargo clippy`; style should not be negotiated by hand.
+- Treat **crate `edition`** as a semantic gate (capture rules, drop order, `unsafe`
+  attributes, `set_var`). Do not assume the installed rustc edition.
 
 ---
 
@@ -87,12 +89,13 @@ If the task is primarily profiling/benchmarking, use `rust-performance`. If the 
 
 Load on demand:
 
+- `references/language.md` — load when using Edition 2024, `async fn` / RPITIT in traits, `use<>` capture, async closures / `AsyncFn`, let chains, if-let guards, `#[expect]`, or edition-gated `unsafe` attributes
 - `references/ownership-and-borrowing.md` — use when signatures, lifetimes, moves, or borrow-checker friction are central
 - `references/api-design.md` — use when shaping public types, traits, builders, and module boundaries
 - `references/errors-and-results.md` — use when designing recoverable errors or cleaning up panic-prone code
 - `references/collections-and-iterators.md` — use when choosing collections or refactoring loops into clearer iterator code
-- `references/tooling-and-docs.md` — use when reviewing formatting, clippy, rustdoc, features, and crate hygiene
-- `references/concurrency.md` — use when choosing shared-state, channel, or async patterns
+- `references/tooling-and-docs.md` — use when reviewing formatting, clippy, rustdoc, features, `edition`/`rust-version`, or crate hygiene
+- `references/concurrency.md` — use when choosing shared-state, channel, scoped threads, `OnceLock`/`LazyLock`, poison, or async callback patterns
 - `references/dynamic-dispatch-and-plugins.md` — use when choosing `dyn` vs generics vs enum dispatch,
   building plugin registries, loading code at runtime, or structuring command dispatchers
 - `references/unsafe-and-ffi.md` — use for `unsafe` blocks, raw pointers, provenance, uninitialized memory, `repr(C)`/ABI, or C FFI boundaries

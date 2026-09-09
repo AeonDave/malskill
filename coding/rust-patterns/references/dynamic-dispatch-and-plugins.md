@@ -187,8 +187,8 @@ In-process reload for servers (zero-downtime restart, not "hot code swap"):
   use arc_swap::ArcSwap;
   use std::sync::Arc;
 
-  static CONFIG: once_cell::sync::Lazy<ArcSwap<Config>> =
-      once_cell::sync::Lazy::new(|| ArcSwap::from_pointee(Config::default()));
+  static CONFIG: std::sync::LazyLock<ArcSwap<Config>> =
+      std::sync::LazyLock::new(|| ArcSwap::from_pointee(Config::default()));
 
   // SIGHUP handler or admin RPC: parse new config, then atomically swap in.
   CONFIG.store(Arc::new(new_config));

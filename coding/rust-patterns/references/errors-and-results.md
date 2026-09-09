@@ -34,6 +34,21 @@ fn run() -> anyhow::Result<()> {
 }
 ```
 
+## `core::error::Error` (1.81+)
+
+The `Error` trait lives in `core` (`core::error::Error`, re-exported as
+`std::error::Error`). `no_std` + `alloc` libraries can implement `Error` without
+`std`. Keep `thiserror` / `anyhow` at the crate boundary as before.
+
+`std::error::Report` is **nightly** (`error_reporter`) as of 1.98 — use `anyhow`
+or a `Display` wrapper in `main` on stable.
+
+`std::panic::Location::caller()` is the right source location for "this is where
+it was constructed" in error types; do not parse backtraces for that.
+
+`Result::flatten` (1.89) unwraps `Result<Result<T, E>, E>` → `Result<T, E>`. Use
+it after `map` that already returns `Result`, not as a substitute for `?`.
+
 ## Panic hygiene
 
 - `panic!`, `unwrap`, and `expect` belong in tests, prototypes, or justified invariants

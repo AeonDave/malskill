@@ -33,3 +33,6 @@ Use explicit timeout bounds for awaits that depend on external progress to avoid
 - sharing mutable global state across async tests
 - forgetting that doctests and unit tests may run in parallel
 - tests that pass only with one specific thread count or machine speed
+- `std::thread::sleep` or `File::lock` on a Tokio worker (`spawn_blocking` instead)
+- putting `#[tokio::test]` inside `loom::model` — Loom is for `loom::sync` / `loom::thread`,
+  see `concurrency-testing.md`

@@ -11,6 +11,9 @@ Use these commands as a starting point; select the smallest command that proves 
 - `cargo test -- --test-threads=1` — force serial execution when shared state is unavoidable
 - `cargo test package::module::test_name -- --exact` — run one exact test path when triaging
 - `cargo test -- --ignored` — run tests marked `#[ignore]` (quarantined or slow tests)
+- `RUSTFLAGS="--cfg loom" cargo test --test <loom_harness> --release` — Loom permutation tests
+  (`concurrency-testing.md`)
+- `cargo +nightly miri test` — UB interpreter; see `fuzzing-and-sanitizers.md`
 
 ## Optional tooling
 

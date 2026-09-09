@@ -17,6 +17,12 @@ Use this reference when signatures, moves, lifetimes, or borrow-checker friction
 - Prefer stable keys or indexes over long-lived references into collections
 - Use `Option::take`, `std::mem::take`, or `std::mem::replace` for move-out patterns
 
+## Edition 2024 capture and drop
+
+Lifetime over-capture on `-> impl Trait` and tail-expression `Drop` order are
+edition-gated. Load `language.md` when a 2024 migration, `use<>` bound, or a
+`RefCell`/`Mutex` return that "used to compile" is the issue.
+
 ## Avoid these habits
 
 - `clone()` used only to appease the compiler

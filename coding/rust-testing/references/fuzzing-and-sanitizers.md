@@ -105,7 +105,8 @@ cargo +nightly miri test
 
 It catches out-of-bounds access, use-after-free, invalid values, data races, misalignment, and
 provenance violations. It cannot execute real FFI, inline asm, or most syscalls — cover those with a
-sanitizer build instead.
+sanitizer build instead. Weak-memory coverage is incomplete; lock-free protocols also need Loom
+(`concurrency-testing.md`).
 
 ## Standalone sanitizers
 

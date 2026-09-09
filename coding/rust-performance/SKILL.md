@@ -2,10 +2,10 @@
 name: rust-performance
 description: "Rust performance workflow: benchmark and profile first, identify hotspots, reduce allocations and contention, improve data layout, tune release profiles, and verify gains with repeatable evidence. Use only after you have a real Rust performance symptom, regression, or hotspot in `.rs` code."
 license: MIT
-compatibility: "Rust stable baseline. Tools: cargo, Criterion, cargo bench, divan, iai-callgrind. Optional: cargo flamegraph, samply, perf, heaptrack, dhat, valgrind, rayon, cargo-pgo, mimalloc."
+compatibility: "Rust 1.75+ baseline; notes flag runtime/codegen features through Rust 1.98. Tools: cargo, Criterion, cargo bench, divan, iai-callgrind. Optional: cargo flamegraph, samply, perf, heaptrack, dhat, valgrind, rayon, cargo-pgo, mimalloc."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Rust Performance
@@ -83,5 +83,5 @@ Load on demand:
 - `references/measurement-workflow.md` — use when defining benchmarks, baselines, and release settings
 - `references/profiling.md` — use when choosing CPU, heap, allocation, or contention profilers
 - `references/allocations-and-data-layout.md` — use when the bottleneck smells like cloning, heap churn, or cache locality
-- `references/concurrency-and-throughput.md` — use when evaluating Rayon, async throughput, locks, channels, backpressure, or false sharing
-- `references/compiler-and-build-tuning.md` — use when release-profile knobs are not enough, or when tuning `-C target-cpu`, PGO, or BOLT for a final binary
+- `references/concurrency-and-throughput.md` — use when evaluating Rayon, async throughput, locks, channels, backpressure, `available_parallelism`, or false sharing
+- `references/compiler-and-build-tuning.md` — use when release-profile knobs are not enough, or when tuning `-C target-cpu`, PGO, BOLT, LLD, `--timings`, or nightly Cranelift / parallel frontend

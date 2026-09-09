@@ -38,6 +38,9 @@ strip = "symbols"    # smaller binary; keep symbols when you still need to profi
 - `-C target-cpu=native` (via `RUSTFLAGS` or `.cargo/config.toml`) lets codegen use the host's
   instruction set — only when the binary won't run on older/other CPUs.
 - Use a faster linker (`lld`/`mold`) when available; it cuts link time with no runtime downside.
+  On `x86_64-unknown-linux-gnu`, Rust 1.90+ already defaults to LLD — see
+  `compiler-and-build-tuning.md`.
+- `cargo build --timings` when the complaint is compile time, not run time.
 - For size instead of speed: `opt-level = "z"` (or `"s"`), plus `lto`, `codegen-units = 1`,
   `panic = "abort"`, `strip`.
 - Once the knobs above are measured and exhausted, escalate to `-C target-cpu`, PGO, or BOLT —

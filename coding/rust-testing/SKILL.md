@@ -1,11 +1,11 @@
 ---
 name: rust-testing
-description: "Rust testing patterns for unit, integration, async, doc, property, snapshot, fuzz, and benchmark-adjacent tests. Use when writing or reviewing tests for `.rs` code, reducing flakiness, designing fixtures/fakes, improving CI confidence, or hardening `unsafe`, FFI, and parser-heavy code with Miri and sanitizers."
+description: "Rust testing patterns for unit, integration, async, doc, property, snapshot, fuzz, and benchmark-adjacent tests. Use when writing or reviewing tests for `.rs` code, reducing flakiness, designing fixtures/fakes, improving CI confidence, hardening `unsafe`/FFI/parsers with Miri and sanitizers, or testing concurrent atomics and locks with Loom."
 license: MIT
-compatibility: "Rust stable baseline. Tools: cargo test. Optional: rstest, pretty_assertions, mockall, tokio (test-util), proptest, insta, trybuild, cargo nextest, cargo llvm-cov, cargo-mutants. Nightly: cargo-fuzz/Miri/sanitizers."
+compatibility: "Rust 1.75+ baseline; `assert_matches!` is stable in 1.96. Tools: cargo test. Optional: rstest, pretty_assertions, mockall, tokio (test-util), proptest, insta, trybuild, cargo nextest, cargo llvm-cov, cargo-mutants, loom. Nightly: cargo-fuzz/Miri/sanitizers."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Rust Testing
@@ -21,6 +21,7 @@ Use this skill when tests are part of the change, when flakiness needs to die qu
 - Introducing fakes, mocks, property tests, or snapshot tests
 - Tightening CI feedback with coverage, nextest, or command selection
 - Hardening parsers, `unsafe`, or FFI code against arbitrary input with fuzzing, Miri, or sanitizers
+- Testing locks, atomics, or shutdown joins (Loom, Miri races, deadlock)
 
 ---
 
@@ -71,5 +72,6 @@ Load on demand:
 - `references/async-and-boundaries.md` — use when testing async code, time, IO, and network boundaries
 - `references/property-snapshot-and-mocks.md` — use when example-based tests are not enough, when output is bulky, or when scripting `mockall` expectations
 - `references/fuzzing-and-sanitizers.md` — use to hunt panics, memory-safety bugs, and UB on arbitrary input (cargo-fuzz, arbitrary, AFL, Miri, sanitizers)
+- `references/concurrency-testing.md` — load when testing atomics/Mutex/channels: Loom models, Miri races vs TSan, deadlock/`OnceLock` re-entry
 - `references/coverage-and-ci.md` — use when wiring coverage, nextest profiles, mutation testing, or stable CI gates
 - `references/commands.md` — use for the most common Rust test commands and selectors

@@ -12,6 +12,30 @@ performance side only.
 - CPU-bound data parallelism often fits Rayon well
 - IO-bound concurrency belongs in an async runtime with bounded task creation
 
+## `available_parallelism` and OS threads
+
+`std::thread::available_parallelism()` (1.59) is the portable pool size: logical
+CPUs, **capped by cgroup / affinity** when the OS exposes them. It is **not**
+cached — do not call it in a hot loop. Errors if the platform cannot answer;
+fall back to `1`.
+
+```rust
+let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+```
+
+- Size Rayon / a hand-rolled pool / `tokio` `worker_threads` from this value (or
+  leave Rayon/Tokio defaults, which already consult it). Do **not** spawn
+  `available_parallelism()` OS threads **per request**.
+- Linux caveats (from std docs): may overcount when affinity/cgroup cannot be
+  queried (sandbox); may undercount when the current thread's affinity is a
+  subset of the process cpuset; ignores `ulimit -u`. Windows may undercount
+  above 64 logical CPUs unless the process opted into >64-CPU support.
+- Extra OS threads are expensive (stack + scheduler). Cap blocking
+  `spawn_blocking` (`max_blocking_threads`); CPU work belongs in Rayon, not a
+  growing blocking pool.
+- Primitive choice (`Mutex` vs channel vs atomics, `thread::scope`, poison) is
+  in `rust-patterns` `concurrency.md`. This file is cost and sizing only.
+
 ## Common bottlenecks
 
 - `Arc<Mutex<T>>` around hot shared state
@@ -44,6 +68,12 @@ struct Padded<T>(T);  // one hot counter per thread/shard, each on its own line
 - Avoid one `tokio::spawn` per tiny item — batch items into fewer, longer-lived tasks.
 - `tokio-console` (runtime built with `--cfg tokio_unstable`) diagnoses task stalls and
   over-spawning live.
+- `Atomic*::update` (1.95) is still an atomic RMW — it does not remove contention.
+  Shard first. `Atomic::from_mut` (1.98) is for unique `&mut` views, not for
+  introducing atomics on a shared location.
+- `hint::select_unpredictable` (1.88) for a rare branch you must keep; `hint::cold_path`
+  (1.95) to mark an error/slow path. Measure; these are not substitutes for fixing
+  the hot branch.
 
 ## High-signal fixes
 

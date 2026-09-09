@@ -4,6 +4,16 @@ Use when the `[profile.release]` knobs in `measurement-workflow.md` are measured
 or when shipping a binary tuned for a known deployment CPU. Escalate one step at a time and
 re-benchmark at each step.
 
+## Contents
+
+- [Escalation order](#escalation-order)
+- [target-cpu and target features](#target-cpu-and-target-features)
+- [PGO](#pgo)
+- [BOLT](#bolt)
+- [Faster linkers](#faster-linkers)
+- [Compile graph: cargo --timings](#compile-graph-cargo---timings)
+- [Nightly compile-time experiments](#nightly-compile-time-experiments)
+
 ## Escalation order
 
 1. Baseline: plain `--release`, measured
@@ -69,7 +79,50 @@ optimized binary lands as `<name>-bolt-optimized`.
 - Composes with PGO via `cargo pgo bolt optimize --with-pgo`.
 - Do NOT strip symbols from the release binary when using BOLT — it can cause linker errors.
 
-## Faster linkers (dev-loop only)
+## Faster linkers
 
-`mold` (Linux/macOS) or `lld` cut link times on large crates with zero runtime effect — a
-build-latency fix, not a runtime optimization.
+Rust 1.90+ uses **LLD by default** on `x86_64-unknown-linux-gnu` (not a
+dev-only opt-in). Expect faster links on large debug/incremental builds. If a
+custom linker script or BFD-only flag breaks:
+
+```toml
+# .cargo/config.toml
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "linker-features=-lld"]
+```
+
+`mold` / `lld` on other targets still cut **dev-loop** link time with zero
+runtime effect. They are not a substitute for LTO/`codegen-units` on the
+shipped binary.
+
+## Compile graph: cargo --timings
+
+`cargo build --timings` writes an HTML chart of crate-level parallelism. Use it
+when **compile time** is the symptom (not runtime). A crate that stays red
+("waiting") while others sit idle is the unit to split or to stop feeding a
+proc-macro. This does not change generated code.
+
+## Nightly compile-time experiments
+
+Do **not** enable these on a stable MSRV or in release CI.
+
+**Parallel rustc frontend** (`-Z threads=8`, nightly): Cargo book still marks
+it experimental. Caps around 8 threads; can cut *frontend* time substantially
+on large crates, with higher RAM. Default thread count remains 1.
+
+```toml
+# nightly only
+[build]
+rustflags = ["-Z", "threads=8"]
+```
+
+**Cranelift backend** (nightly component `rustc-codegen-cranelift-preview`):
+faster **dev** codegen, worse runtime code. Not production-ready as of 1.98
+(missing features on large graphs). Dev profile only:
+
+```bash
+rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+CARGO_PROFILE_DEV_CODEGEN_BACKEND=cranelift cargo +nightly build -Zcodegen-backend
+```
+
+Never set Cranelift on `[profile.release]`.

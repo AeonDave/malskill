@@ -14,6 +14,8 @@ else's crate for exploitable bugs, see `security-review.md`.
 - [transmute and reinterpretation](#transmute-and-reinterpretation)
 - [FFI boundaries](#ffi-boundaries)
 - [Panics across FFI](#panics-across-ffi)
+- [Naked functions (1.88+)](#naked-functions-188)
+- [`ManuallyDrop` (1.96 validity)](#manuallydrop-196-validity)
 - [Verification](#verification)
 - [Review checklist](#review-checklist)
 
@@ -31,8 +33,13 @@ borrow checker — references built inside `unsafe` are still checked.
 
 - Every `unsafe fn` documents its precondition in a `/// # Safety` section.
 - Every `unsafe { }` block carries a `// SAFETY:` comment proving the precondition holds *here*.
-- Deny undocumented unsafe in the lint config: `#![warn(unsafe_op_in_unsafe_fn)]` and
+- Deny undocumented unsafe in the lint config: `#![warn(unsafe_op_in_unsafe_fn)]`
+  (Edition 2024 **warns by default**, still not deny) and
   `#![deny(clippy::undocumented_unsafe_blocks)]`.
+- Edition 2024: `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "...")]`,
+  `#[unsafe(link_section = "...")]`, and `unsafe extern "C" { ... }`. The
+  `unsafe` marks ABI/symbol obligations the compiler cannot check — duplicate
+  `export_name = "malloc"` is still a soundness bug. See `language.md`.
 
 ```rust
 /// # Safety
@@ -98,6 +105,8 @@ let role = unsafe {
   value (a `bool` that isn't 0/1, a null reference, an out-of-range enum/`NonZero`).
 - Reinterpreting types across an ABI requires `#[repr(C)]` or `#[repr(transparent)]`; the default
   `repr(Rust)` layout is unspecified and may reorder fields.
+- Field offset: `core::mem::offset_of!(Type, field)` (1.77; nested fields 1.82). Prefer this over
+  `addr_of!` arithmetic when computing C-struct offsets.
 
 ## FFI boundaries
 
@@ -128,6 +137,21 @@ unsafe { ffi_use(c.as_ptr()) };
   panic into an error code — do not let it reach the boundary.
 - Use the `extern "C-unwind"` ABI only when you deliberately want unwinding to cross languages
   (e.g. interop with C++ exceptions or `longjmp`).
+
+## Naked functions (1.88+)
+
+`#[unsafe(naked)]` + a body that is a single `naked_asm!` — no compiler prologue
+/ epilogue. For syscall stubs, context switch, and compiler-builtins. Arguments
+and return values are **your** calling convention; `asm!` inside a normal `fn`
+is the default. `cfg` on individual `asm!` / `naked_asm!` lines is stable
+(1.93).
+
+## `ManuallyDrop` (1.96 validity)
+
+Dropping a `ManuallyDrop<T>` has never dropped `T`. As of 1.96, after
+`unsafe { ManuallyDrop::drop(&mut slot) }`, moving or dropping `slot` is sound
+even if `T` is `Box` / `&mut`. Pre-1.96 that was UB. Do not expose dropped
+contents through a safe API.
 
 ## Verification
 

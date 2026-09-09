@@ -29,6 +29,9 @@ Use this reference when shaping public Rust types, traits, modules, or construct
 - Accept generic inputs when it improves ergonomics (`impl AsRef<Path>`, `impl Into<String>`)
 - Return concrete types unless callers truly benefit from abstraction
 - Derive common traits aggressively for ergonomic value types: `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`, `Default`
+- `async fn` / `-> impl Trait` in traits are stable (1.75) but **not dyn-safe**. Keep a small object-safe core if you need `dyn`; otherwise generic bounds.
+- Async callbacks: `F: AsyncFnOnce(&T) -> R` (1.85), not `F: FnOnce(&T) -> Fut`. See `language.md`.
+- Public `-> impl Trait`: write `+ use<...>` when the captured lifetime set is the API (Edition 2024 otherwise captures every in-scope lifetime).
 
 ## Public surface hygiene
 

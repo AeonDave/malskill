@@ -70,6 +70,9 @@ Rust prevents memory corruption but not resource exhaustion or panics-as-crash:
 - **Command injection**: never build a shell string. Use `Command::new(prog).args([...])` with a
   fixed program and separate arguments; do not pass user data to `sh -c`/`cmd /C`. Sanitize/allowlist
   when the program name itself is dynamic.
+- **Env mutation (Edition 2024):** `std::env::set_var` / `remove_var` are `unsafe` — they race
+  with C `getenv` and other threads. Treat leftover safe-looking `set_var` as a 2024 migration
+  defect, not a style nit.
 - **Deserialization**: constrain formats — set size/depth limits (e.g. `bincode` config limits),
   avoid formats that can instantiate arbitrary types, and validate invariants after decode rather
   than trusting them. Treat `serde` inputs as attacker-controlled.

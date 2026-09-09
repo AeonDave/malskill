@@ -14,6 +14,25 @@ Use this reference when deciding test scope and file placement in Rust.
 - Keep setup close to the assertion unless a helper clearly improves readability
 - Prefer one behavior per test; table-style loops are fine when cases are closely related
 - Return `Result<(), E>` and use `?` inside the test when asserting error paths, instead of `unwrap()` chains
+- `assert_matches!` / `debug_assert_matches!` (1.96) — not in the prelude (name clash
+  with crates). `use std::assert_matches;` then `assert_matches!(val, Pattern { .. })`.
+  Prefer this over `assert!(matches!(...))` so the panic prints the value.
+
+## Process pipes (1.87+)
+
+`std::io::pipe()` returns `(PipeReader, PipeWriter)` and implements `Into<Stdio>`.
+Join a child's stdout and stderr without extra threads:
+
+```rust
+let (mut recv, send) = std::io::pipe()?;
+let mut child = Command::new(bin)
+    .stdout(send.try_clone()?)
+    .stderr(send)
+    .spawn()?;
+let mut buf = Vec::new();
+recv.read_to_end(&mut buf)?; // read before wait or the OS buffer can fill
+assert!(child.wait()?.success());
+```
 
 ## Parameterized tests with rstest
 
@@ -42,8 +61,8 @@ Skip it for one-off tests — `rstest` pays off only when cases, fixtures, or sh
 
 ## Panic testing discipline
 
-- If the API returns `Result`, assert on the error (`is_err()`, `unwrap_err()`, or the variant via
-  `matches!`) — do not reach for `#[should_panic]`.
+- If the API returns `Result`, assert on the error (`is_err()`, `unwrap_err()`, `assert_matches!`,
+  or the variant via `matches!`) — do not reach for `#[should_panic]`.
 - When a panic genuinely is the contract, use `#[should_panic(expected = "substring")]`; the
   `expected` filter blocks a wrong panic from passing. Bare `#[should_panic]` accepts *any* panic.
 
