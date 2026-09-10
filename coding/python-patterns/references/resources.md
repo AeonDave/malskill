@@ -5,13 +5,19 @@
 Use `with` for files, locks, temp dirs, network sessions, etc.
 
 ```python
+from pathlib import Path
+
 with path.open("r", encoding="utf-8") as f:
     return f.read()
 ```
 
+`pathlib.Path` is the default for filesystem paths. `Path.walk()` (3.12+) replaces most `os.walk` call sites.
+
+Do **not** use `with path:` on a `Path` — the context-manager behavior was a no-op and was **removed in 3.13**.
+
 ## contextlib
 
-Use `contextlib.contextmanager` for simple custom context managers.
+Use `contextlib.contextmanager` for simple custom context managers. `ExitStack` when the number of resources is dynamic.
 
 ## Cleanup
 
@@ -20,11 +26,12 @@ Use `contextlib.contextmanager` for simple custom context managers.
 
 ## Anti-patterns
 
-- **Forgetting `with` and manually calling `.close()`**: Brittle if an exception occurs before close.
-- **Nesting context managers without clarity**: Use parentheses or multiple `with` lines for readability.
-- **Relying on `__del__` for cleanup**: Non-deterministic; always use context managers.
+- **Forgetting `with` and manually calling `.close()`**: brittle if an exception occurs before close.
+- **Nesting context managers without clarity**: use parentheses or multiple `with` items.
+- **Relying on `__del__` for cleanup**: non-deterministic.
+- **`os.path` string concatenation** for new code: `Path` / `/` operator.
 
-## CI discipline
+## References
 
-- Run `pylint --disable=all --enable=R0924` (too many arguments in function) and similar checks.
-- Use `ruff check --select F821` to catch undefined names before runtime.
+- https://docs.python.org/3/library/pathlib.html
+- https://docs.python.org/3/library/contextlib.html

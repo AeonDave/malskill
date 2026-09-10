@@ -9,20 +9,21 @@
 ```python
 from pwn import *
 
-binary = ELF("./binary")
+context.binary = binary = ELF("./binary")  # sets arch/bits/endian/os for asm/disasm
 
 print(binary.arch)        # 'amd64'
 print(binary.bits)        # 64
 print(binary.entry)       # Entry point address
 print(binary.address)     # Load address / image base
 print(binary.path)        # Path to binary
+binary.checksec()         # prints NX/PIE/canary/RELRO (not a return dict)
 ```
 
 ### Symbols and addresses
 
 ```python
 func_addr = binary.symbols['main']
-string_addr = binary.search(b'password')  # First occurrence
+string_addr = next(binary.search(b'password'))  # generator of VAs; raises StopIteration if missing
 ```
 
 ### Sections
@@ -38,20 +39,17 @@ for section in binary.sections:
 ### Imports and PLT
 
 ```python
-for import_sym in binary.imports:
-    print(f"Import: {import_sym} at {hex(binary.got[import_sym])}")
-    
-plt_entries = binary.plt
-for name, addr in plt_entries.items():
-    print(f"PLT[{name}] = {hex(addr)}")
+for name, got_addr in binary.got.items():
+    print(f"GOT[{name}] = {hex(got_addr)}")
+for name, plt_addr in binary.plt.items():
+    print(f"PLT[{name}] = {hex(plt_addr)}")
 ```
 
 ### Reading from virtual address
 
 ```python
-# Read string at virtual address
-string_va = 0x400000 + 0x1234
-# (Use binary sections to map VA to file offset)
+data = binary.read(binary.entry, 32)                 # VA → bytes in the file
+offset = binary.vaddr_to_offset(binary.entry)        # None if VA is not file-backed
 ```
 
 ---
@@ -61,17 +59,12 @@ string_va = 0x400000 + 0x1234
 ### Quick pattern search
 
 ```python
-from pwn import *
-
-# Search for all occurrences in binary
+# search(needle, writable=False, executable=False) → generator of VAs
+# Needle is bytes. No regex flag. Does not search BSS / gaps between segments.
 addresses = list(binary.search(b'admin'))
-
-# Limit results
-first_addr = binary.search(b'flag').__next__()
-
-# Search with regex (slower)
-for match in binary.search(b'http', regex=True):
-    print(hex(match))
+first_addr = next(binary.search(b'flag'))
+for addr in binary.search(b'\x55\x48\x89\xe5', executable=True):
+    print(hex(addr))
 ```
 
 ---
@@ -81,18 +74,13 @@ for match in binary.search(b'http', regex=True):
 ### Using Capstone (integrated)
 
 ```python
-from pwn import *
+# ELF.disasm(address, n_bytes) → str (not an instruction iterator)
+print(binary.disasm(binary.entry, 32))
 
-binary = ELF("./binary")
-
-# Disassemble from address
-asm = binary.disasm(0x400000, 32)  # Disassemble 32 bytes from 0x400000
-
-# Or manually with capstone
-from capstone import *
+from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 
 md = Cs(CS_ARCH_X86, CS_MODE_64)
-for i in md.disasm(binary.read(0x400000, 64), 0x400000):
+for i in md.disasm(binary.read(binary.entry, 64), binary.entry):
     print(f"0x{i.address:x}:\t{i.mnemonic}\t{i.op_str}")
 ```
 
@@ -112,10 +100,7 @@ INJECTION_APIS = {
     "WriteProcessMemory", "SetThreadContext",
 }
 
-suspicious = set()
-for imp in binary.imports:
-    if imp in INJECTION_APIS:
-        suspicious.add(imp)
+suspicious = set(binary.got) & INJECTION_APIS
 
 if suspicious:
     print(f"Suspicious APIs: {suspicious}")
@@ -138,7 +123,7 @@ for addr in binary.search(b"\x55\x48\x89\xe5"):  # push rbp; mov rbp, rsp
 ## Anti-patterns
 
 - **Assuming all imports are resolved at load time**: Some are resolved lazily via PLT/GOT.
-- **Searching without offset**: Always track where you are in the VA/file space.
+- **Searching without offset**: `search` yields VAs; convert with `vaddr_to_offset` when you need a file offset. There is no `regex=` argument.
 - **Ignoring section flags**: RWX or missing RELRO indicates non-standard hardening.
 
 ---

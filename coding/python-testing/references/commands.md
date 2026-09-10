@@ -27,6 +27,9 @@ pytest --cov=mypkg --cov-report=html
 
 # Run with strict markers (fail on typos)
 pytest --strict-markers
+
+# pytest-xdist: process isolation (not a thread-safety proof)
+pytest -n auto --dist loadscope
 ```
 
 ## Tips

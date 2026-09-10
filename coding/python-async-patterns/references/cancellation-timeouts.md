@@ -2,18 +2,24 @@
 
 ## Cancellation
 
-- In asyncio, cancellation is cooperative.
-- `asyncio.CancelledError` can be raised at an `await` point.
+Cancellation is cooperative. `CancelledError` is injected at an `await` point.
 
-Rule: catch it only to clean up, then re-raise.
+`Task.cancel(msg=None)` returns `True` if a cancel was scheduled, `False` if the task is already done. **It is not a coroutine — do not `await task.cancel()`.**
 
 ```python
+task.cancel()
 try:
-    await do_work()
+    await task
 except asyncio.CancelledError:
     await cleanup()
     raise
 ```
+
+Rule: catch `CancelledError` only to clean up, then re-raise. It is a `BaseException`; `except Exception` will not catch it.
+
+`Task.uncancel()` / `cancelling()` (3.11+) decrement/read the cancel request count. They exist so **TaskGroup and `asyncio.timeout` can isolate cancellation**. Application code should not call `uncancel()` to "keep going after cancel" except when implementing a similar structured block.
+
+3.13+: `uncancel()` may clear an internal `_must_cancel` flag when the count hits zero so nested groups don't swallow outer cancellation.
 
 ## Timeouts (Python 3.11+)
 
@@ -24,20 +30,22 @@ async with asyncio.timeout(2.0):
     await slow_op()
 ```
 
-Fallback (older): `asyncio.wait_for()`
+Expiry raises **`TimeoutError`** (builtin). `asyncio.TimeoutError` is an alias since 3.11 — write `TimeoutError`.
 
-```python
-await asyncio.wait_for(slow_op(), timeout=2.0)
-```
+`asyncio.timeout(None)` disables the timeout (infinite). Don't pass 0 thinking it means "no timeout".
+
+`asyncio.timeout_at(when)` for an absolute loop clock deadline.
+
+Fallback (older): `asyncio.wait_for()` — also raises `TimeoutError`; it **cancels** the inner awaitable.
 
 ## Timeout hygiene
 
 - Apply timeouts at network boundaries.
-- Don’t wrap huge call chains with one big timeout unless you truly want that behavior.
+- Don't wrap huge call chains with one big timeout unless you truly want that behavior.
 
 ## Context-aware cancellation
 
-For library code, prefer to accept an optional cancellation token or timeout parameter:
+For library code, prefer an optional timeout the **caller** owns:
 
 ```python
 async def fetch(url: str, *, timeout: float | None = None) -> bytes:
@@ -47,15 +55,19 @@ async def fetch(url: str, *, timeout: float | None = None) -> bytes:
             return resp.content
 ```
 
-Caller controls the deadline, not the callee.
+## Shield
+
+`asyncio.shield(aw)` delays cancellation of `aw` until it finishes; the **caller** can still be cancelled and will wait. Use only for a short critical section (flush). Shielding a whole request hides Ctrl-C and TaskGroup shutdown.
 
 ## Anti-patterns
 
-- **Bare `await task.cancel()` without awaiting cancellation result**: The task may not stop immediately.
-- **Timeout on a whole chain of operations**: Unless you truly want all-or-nothing, apply timeouts at leaf boundaries (network calls, DB operations).
-- **Ignoring CancelledError**: Always re-raise after cleanup to propagate the cancellation signal upward.
+- **`await task.cancel()`**: `cancel()` returns `bool`. Await the **task**, not cancel.
+- **Timeout on a whole chain** unless you want all-or-nothing.
+- **Swallowing `CancelledError`**: always re-raise after cleanup.
+- **Catching `asyncio.TimeoutError` as if it were distinct** from `TimeoutError` on 3.11+.
 
 ## References
 
+- https://docs.python.org/3/library/asyncio-task.html#task-cancellation
 - https://docs.python.org/3/library/asyncio-task.html#timeouts
-- https://docs.python.org/3/library/asyncio-task.html#cancellation
+- https://docs.python.org/3/library/asyncio-exceptions.html

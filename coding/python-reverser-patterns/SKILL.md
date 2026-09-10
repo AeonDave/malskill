@@ -1,86 +1,75 @@
 ---
 name: python-reverser-patterns
-description: "Binary reverse engineering with Python: analyze, parse, and disassemble ELF/PE executables using pwntools, capstone, Frida, and custom parsing tools. Use when understanding malware, debugging binary failures, analyzing section structure, extracting strings/entropy, or instrumenting runtime behavior."
+description: "Reverse binaries and Python artifacts with Python: parse ELF/PE, disassemble with pwntools/capstone, instrument with Frida, recover .pyc and PyInstaller payloads. Use when analyzing malware, packed Python, stripped binaries, or runtime hooks — not for CPython language style (python-patterns)."
 license: MIT
-compatibility: "Python 3.11+. Core libraries: pwntools, capstone, pyelftools, pefile, Frida (dynamic). Optional: pyinstaller-extractor, binwalk, upx."
+compatibility: "Python 3.11+ (guidance baseline; current stable CPython 3.14.7). Core: pwntools, capstone, pyelftools, pefile. Dynamic: Frida 17+ GumJS (Python is the host). Optional: xdis, pyinstxtractor-ng, LIEF."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Python Reverse Engineering
 
-This skill focuses on **hands-on binary analysis** with Python: static parsing (headers, sections, strings, entropy) and dynamic instrumentation (Frida hooks, syscall tracing).
+Hands-on reversing **with** Python: ELF/PE parsing, strings/imports/entropy, disassembly, Frida, and Python bytecode (`.pyc` / PyInstaller). Language idioms belong in `python-patterns`.
 
 ## When to activate
 
-- You need to understand why an executable fails or crashes.
-- Analyzing malware, unobfuscated binaries, or stripped ELFs for behavior/functionality.
-- Extracting metadata (strings, imports, entropy regions, entrypoints, section layout).
-- Instrumenting runtime behavior with Frida hooks or syscall analysis.
-- Comparing binary versions or detecting hardening/packing.
-
----
+- Mapping why an ELF/PE fails, what malware does, or how a stripped binary is laid out.
+- Extracting strings, imports, entropy regions, entrypoints, section flags.
+- Instrumenting runtime with Frida (host Python, hooks in GumJS).
+- Recovering logic from `.pyc`, `__pycache__`, or a PyInstaller/py2exe-style bundle.
+- Diffing two binary versions (hardening, packing, payload change).
 
 ## Core principles
 
-- **Parse from scratch first**: Use Python structs or pwntools before automated tools.
-- **Entropy identifies obfuscation**: High entropy ≈ encrypted/compressed; low entropy ≈ plaintext strings.
-- **Imports reveal intent**: Suspicious API combos (VirtualAlloc + CreateRemoteThread) flag injection.
-- **Strings are quick wins**: Often reveal C2 addresses, file paths, error messages without disassembly.
-- **Frida is for behavior**: When you need to see what the binary *does* at runtime, not what it *says*.
-
----
+- **Triage before disassembly**: strings, imports, entropy, then hotspots.
+- **Match interpreter to bytecode**: `marshal`/`dis` only on the same CPython version as the `.pyc`; otherwise `xdis`/`pydisasm`.
+- **Do not execute recovered code** on the analysis host; `dis` is read-only, `exec` is not.
+- **Frida injects GumJS**, not Python. Host API: `attach`/`spawn`/`create_script`.
+- **Entropy flags packing**: high-entropy blobs are compressed/encrypted until proven otherwise.
 
 ## Outcome expectations
 
-- Binary structure is mapped (sections, headers, entrypoints).
-- Strings, imports, entropy regions, and suspicious API patterns are identified.
-- Custom analysis scripts (IAT dump, entropy heatmap, section diff) are written and run.
-- Runtime behavior is instrumented via Frida when static analysis is insufficient.
-
----
+- File type, arch, and layout (sections, entry, imports) are known.
+- Suspicious APIs and high-entropy regions are listed with offsets.
+- `.pyc` payloads are disassembled with a version-matched tool; decompile is opportunistic.
+- Frida hooks attach (or spawn) without using removed Frida 16 static `Module.*` APIs.
 
 ## Recommended workflow
 
-1. **Triage**: File type (ELF/PE/Mach-O?), architecture, bitness, stripped/debug symbols.
-2. **Headers**: Parse DOS/COFF headers, optional header, entry point, base address.
-3. **Sections**: Extract .text, .data, .rodata, .relro; flag unusual sections.
-4. **Strings**: Dump ASCII/UTF-8 strings; search for patterns (URLs, IPs, paths, error messages).
-5. **Imports**: Enumerate DLLs and functions (PE) or dynamic symbols (ELF); flag suspicious APIs.
-6. **Entropy**: Block-by-block analysis to identify encrypted/compressed regions.
-7. **Disassembly** (if needed): Use capstone or pwntools to disassemble hotspots.
-8. **Frida instrumentation**: Hook critical functions or syscalls to observe runtime behavior.
-9. **Comparison**: Diff two binary versions for delta analysis (hardening, patching, payload changes).
+1. **Triage**: ELF / PE / Mach-O / `.pyc` / PyInstaller overlay. Packed Python → `references/pyc-bytecode.md` first.
+2. **Headers**: parse ELF/PE (or LIEF when you will rewrite). Load `references/binary-formats.md`.
+3. **Sections / imports / strings / entropy**: `references/static-analysis.md`, `references/pwntools-reference.md`.
+4. **Disassemble hotspots**: `references/capstone.md` (Capstone) or `ELF.disasm` (returns a string).
+5. **Runtime**: Frida when static is insufficient — `references/frida-basics.md`. Spawn if the interesting path is before a stable attach.
+6. **Custom scripts**: IAT dump, entropy map, section diff — `references/custom-tooling.md`.
 
----
+Pyarmor, custom opcode maps, and Nuitka-as-native: keep the Python-API path here; load [reversing-technique languages.md](../../offensive-techniques/reversing-technique/references/languages.md) for those packer-specific recoveries.
 
 ## Quick review checklist
 
-- Binary parsed without crashing; sections are readable.
-- Entry point and imports are enumerated.
-- Strings scanned for suspicious patterns (URLs, credentials, error messages).
-- Entropy zones identified; high-entropy blobs are flagged.
-- Frida hooks compile and attach without crashes.
-
----
+- Magic/arch parsed; file offsets vs VAs are not mixed.
+- Imports enumerated; ordinal-only PE imports are not assumed to have names.
+- Strings and entropy scanned before wide disassembly.
+- `.pyc` magic matches the interpreter (or `pydisasm` was used).
+- Frida scripts use `Process.getModuleByName` / `Module.getGlobalExportByName` (Frida 17+).
 
 ## Anti-patterns
 
-- **Blind disassembly without context**: Always check strings, imports, and entropy first.
-- **Ignoring section flags**: RWX sections, missing RELRO, or executable heap are red flags.
-- **Over-relying on automated tools**: Use IDA/Ghidra for complex cases; Python for automation and scripting.
-- **Frida hooks without error handling**: Always wrap hooks in try/except; unhandled exceptions kill the session.
-
----
+- Blind Capstone over the whole file (alignment, data-in-code, packing).
+- `marshal.loads` of a `.pyc` **including** the 16-byte header, or on the wrong Python version.
+- Treating `uncompyle6` as valid past 3.8, or `pycdc` as guaranteed on 3.13–3.14.
+- `Module.findExportByName` / static `Module.getExportByName` (removed in Frida 17).
+- `Interceptor.replace` with `onEnter`/`onLeave` (that is `attach`; replace takes a `NativeCallback`).
 
 ## Resources
 
 Load on demand:
 
-- `references/binary-formats.md` — ELF/PE parsing, headers, sections, symbols.
-- `references/pwntools-reference.md` — ELF object, string search, section access, disassembly.
-- `references/static-analysis.md` — strings, imports, entropy, IAT dumps, suspicious APIs.
-- `references/capstone.md` — disassembly, instruction decoding, syntax options.
-- `references/frida-basics.md` — attach, hooks, intercept calls, bytecode patching.
-- `references/custom-tooling.md` — write entropy heatmaps, section diffs, API detectors.
+- `references/binary-formats.md` — load when parsing or patching ELF/PE/Mach-O headers and sections
+- `references/pwntools-reference.md` — load when using `ELF`, `search`, `read`, `disasm`, `context.binary`
+- `references/static-analysis.md` — load for strings, imports, entropy, suspicious APIs
+- `references/capstone.md` — load when decoding instructions or scanning gadgets
+- `references/frida-basics.md` — load when attaching/spawning and hooking (Frida 17+ JS API)
+- `references/pyc-bytecode.md` — load for `.pyc`, `marshal`/`dis`, xdis, PyInstaller unpack
+- `references/custom-tooling.md` — load when writing a reusable IAT/entropy/diff script

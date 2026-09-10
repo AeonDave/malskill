@@ -4,7 +4,19 @@
 
 - `src/<package>/` for library code
 - `tests/` for tests
-- `pyproject.toml` for tooling config
+- `pyproject.toml` for project metadata and tooling (PEP 621)
+
+Read config with stdlib `tomllib` (3.11+, read-only). Do not add `tomli` on 3.11+. Writing TOML needs a third-party writer.
+
+Dev-only tools: prefer PEP 735 `[dependency-groups]` when the installer supports it; don't overload `[project.optional-dependencies]` as a test-runner extra unless consumers install that extra.
+
+## Removed stdlib (don't import)
+
+- `distutils` — removed in 3.12. Use packaging / setuptools / `pyproject.toml`.
+- PEP 594 "dead batteries" (`cgi`, `imghdr`, `audioop`, …) — **removed in 3.13**. Use PyPI replacements if you still need them.
+- `Path` as a context manager — removed in 3.13 (it never closed anything).
+
+Don't add `setup.py` unless an existing tool requires it.
 
 ## Tooling notes
 
@@ -20,9 +32,11 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N"]  # Style, undefined names, imports, naming
-ignore = ["E501"]  # Line length (handled by formatter)
+select = ["E", "F", "W", "I", "N"]
+ignore = ["E501"]
 ```
+
+Raise `target-version` to the oldest Python you actually support (`py312` / `py314`) so ruff can flag APIs you cannot use.
 
 ## Mypy for public APIs
 

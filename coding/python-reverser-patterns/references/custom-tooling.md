@@ -155,7 +155,9 @@ def check_iat(binary_path: str):
         print(f"\n[*] {dll_name}")
         
         for imp in dll.imports:
-            func_name = imp.name.decode("utf-8", "ignore")
+            func_name = (
+                imp.name.decode("utf-8", "ignore") if imp.name else f"ord_{imp.ordinal}"
+            )
             
             if func_name in INJECTION_APIS:
                 print(f"  [INJECTION] {func_name}")

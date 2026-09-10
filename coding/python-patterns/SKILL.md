@@ -1,18 +1,18 @@
 ---
 name: python-patterns
-description: "Pythonic patterns and best practices for writing readable, robust Python: typing, error handling, data modeling, iteration, resource management, project layout, and tooling. Use when writing or reviewing Python code and APIs."
+description: "Pythonic patterns for readable, robust Python: typing, error handling, data modeling, iteration, resource management, threading/process/subinterpreter primitives, project layout, and tooling. Use when writing or reviewing Python code and APIs. For measurement/GIL/JIT use python-performance; for asyncio orchestration use python-async-patterns."
 license: MIT
-compatibility: "Python 3.11+ (guidance baseline). Optional tools: ruff, mypy, pytest."
+compatibility: "Python 3.11+ (guidance baseline; current stable CPython 3.14.7). Optional tools: ruff, mypy, pytest."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Python Patterns
 
 This skill is for **day-to-day Python code quality**: readability, correctness, maintainability.
 
-If you are doing asyncio-heavy work, prefer `python-async-patterns` for structured concurrency, cancellation, and backpressure.
+If you are doing asyncio-heavy work, prefer `python-async-patterns`. If the task is profiling, GIL/free-threading, or experimental JIT, use `python-performance`.
 
 ## When to activate
 
@@ -20,6 +20,7 @@ If you are doing asyncio-heavy work, prefer `python-async-patterns` for structur
 - Reviewing PRs for idioms, clarity, and footguns
 - Introducing typing or improving error handling
 - Designing lightweight data models and APIs
+- Choosing threads vs processes vs subinterpreters (not asyncio)
 
 ---
 
@@ -57,9 +58,10 @@ If you are doing asyncio-heavy work, prefer `python-async-patterns` for structur
 - No mutable default arguments; `None` sentinel used
 - `is None` / `is not None` (not `== None`)
 - Specific `except` clauses; no bare `except:`
-- Types: public functions/classes have annotations; complex types use aliases
-- Files/paths use `pathlib.Path` where appropriate
+- Types: public functions/classes have annotations; 3.12+ type-parameter syntax; `T | None` not `Optional[T]`
+- Files/paths use `pathlib.Path` (`Path.walk` 3.12+); not `os.path` string soup
 - Iteration uses comprehensions/generators only when simple
+- CPU-bound fan-out uses executors from `concurrency.md`, not unbounded `Thread` spawns
 
 ---
 
@@ -67,10 +69,11 @@ If you are doing asyncio-heavy work, prefer `python-async-patterns` for structur
 
 Load on demand:
 
-- `references/typing.md` — modern typing (3.11), aliases, Protocol, generics
-- `references/errors.md` — exception hygiene, custom errors, chaining, boundaries
-- `references/data-models.md` — dataclasses, NamedTuple, immutability, validation
-- `references/iteration.md` — comprehensions vs loops, generators, itertools
-- `references/resources.md` — context managers, cleanup, temp files
-- `references/performance.md` — simple perf rules (avoid premature optimization)
-- `references/layout-tooling.md` — project layout, ruff/mypy/pytest notes
+- `references/typing.md` — load for annotations, PEP 695 generics, Protocols, 3.14 deferred evaluation
+- `references/errors.md` — load for exception hygiene, `ExceptionGroup` / `except*`, `finally` control flow
+- `references/data-models.md` — load for dataclasses, `copy.replace`, `StrEnum`, t-strings (3.14)
+- `references/iteration.md` — load for comprehensions, generators, `itertools.batched`, `match`
+- `references/resources.md` — load for context managers and pathlib
+- `references/concurrency.md` — load for threads, `concurrent.futures`, queues, multiprocessing start methods, `InterpreterPoolExecutor`
+- `references/layout-tooling.md` — load for `pyproject.toml`, ruff/mypy/pytest, removed stdlib modules
+- `references/performance.md` — one-screen "don't micro-optimize here"; real measurement is `python-performance`

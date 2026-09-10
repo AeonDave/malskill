@@ -1,11 +1,11 @@
 ---
 name: python-testing
-description: "Python testing patterns with pytest: TDD loop, fixtures, parametrization, mocking, test organization, async testing, coverage, and CI hygiene. Use when writing or reviewing Python tests to improve correctness and reduce flakiness."
+description: "Python testing with pytest: TDD loop, fixtures, parametrization, mocking, test organization, async tests, Hypothesis, ExceptionGroup, free-threaded caveats, coverage, and CI hygiene. Use when writing or reviewing Python tests to improve correctness and reduce flakiness."
 license: MIT
-compatibility: "Python 3.11+ (guidance baseline). Tools: pytest. Optional: pytest-cov, pytest-asyncio, hypothesis."
+compatibility: "Python 3.11+ (guidance baseline; current stable CPython 3.14.7). Tools: pytest. Optional: pytest-cov, pytest-asyncio, hypothesis. Free-threaded CI: python3.14t."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Python Testing
@@ -18,6 +18,7 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 - Refactoring tests to reduce flakiness
 - Designing fixtures and test organization
 - Adding coverage, CI checks, or async tests
+- Property tests (Hypothesis) or concurrent/free-threaded suites
 
 ---
 
@@ -55,6 +56,8 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 - Do not add production hooks solely for tests; use real seams or dependency injection.
 - Pair with `test-driven-development` when implementing persistent code or bug fixes test-first.
 - If mocks, timing, or flakes dominate, pair with `testing-reliability`; if the root cause is unclear, pair with `systematic-debugging`.
+- Asyncio-heavy tests: also load `python-async-patterns` `testing.md`.
+- `CancelledError` and `ExceptionGroup` are not caught by `pytest.raises(Exception)` / `pytest.raises(ValueError)` respectively.
 
 ---
 
@@ -65,6 +68,8 @@ Load on demand:
 - `references/tdd-and-structure.md` — TDD loop, naming, organizing tests
 - `references/fixtures-parametrize.md` — fixtures (scopes, autouse), parametrization patterns
 - `references/mocking.md` — unittest.mock, patching correctly, async mocks
-- `references/async.md` — pytest-asyncio patterns and pitfalls
+- `references/async.md` — pytest-asyncio loop scope; cancellation/`ExceptionGroup` pointers
+- `references/concurrency.md` — load for threads, `InterpreterPoolExecutor`, free-threaded suites
+- `references/property.md` — load when example tests miss a space Hypothesis can shrink
 - `references/coverage-ci.md` — pytest-cov, coverage hygiene, CI tips
 - `references/commands.md` — common pytest commands and selectors

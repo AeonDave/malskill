@@ -79,10 +79,14 @@ for instr in md.disasm(b"\x89\xc0", 0):
 from pwn import *
 
 binary = ELF("./binary")
+print(binary.disasm(binary.entry, 64))  # str, not an iterator
 
-# Disassemble from binary
-for instr in binary.disasm(0x400000, 64):
-    print(instr)
+from capstone import Cs, CS_ARCH_X86, CS_MODE_64
+
+md = Cs(CS_ARCH_X86, CS_MODE_64)
+md.skipdata = True  # keep walking when bytes are not instructions
+for instr in md.disasm(binary.read(binary.entry, 64), binary.entry):
+    print(f"{instr.address:#x}\t{instr.mnemonic}\t{instr.op_str}")
 ```
 
 ## Common patterns
@@ -125,9 +129,10 @@ return_seq = b"\x5d\xc3"
 
 ## Anti-patterns
 
-- **Disassembling without context**: Always know the target architecture/endianness first.
-- **Assuming every sequence is reachable**: Dead code, unreachable paths, or misaligned offsets can fool naive parsing.
-- **Not handling exceptions**: Malformed code, bad offsets, or packed sections cause exceptions; use try/except.
+- **Disassembling without context**: Always know the target architecture/endianness first. Set `context.binary` if using pwntools.
+- **Iterating `ELF.disasm`**: it returns a formatted `str`, not instructions.
+- **Assuming every sequence is reachable**: Dead code, data-in-code, or packed sections; `skipdata=True` still does not recover true control flow.
+- **Not handling exceptions**: Malformed code or bad offsets raise; bound the window you feed Capstone.
 
 ---
 

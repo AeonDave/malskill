@@ -20,15 +20,22 @@ q: asyncio.Queue[int] = asyncio.Queue(maxsize=100)
 async def producer():
     for i in range(1000):
         await q.put(i)
+    q.shutdown()  # 3.13+: further put() raises; get() raises QueueShutDown once empty
 
 async def consumer():
-    while True:
-        i = await q.get()
-        try:
-            await handle(i)
-        finally:
-            q.task_done()
+    try:
+        while True:
+            i = await q.get()
+            try:
+                await handle(i)
+            finally:
+                q.task_done()
+    except asyncio.QueueShutDown:
+        return
 ```
+
+- `asyncio.Queue.shutdown(immediate=False)` (3.13+) — not `queue.Queue.shutdown`. The exception is **`asyncio.QueueShutDown`**, not `queue.ShutDown`.
+- `immediate=True` drains the queue and unblocks `join()` even if `task_done` was never called — don't use it if you still need "all work finished".
 
 ## Rate limiting
 

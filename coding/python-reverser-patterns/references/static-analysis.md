@@ -65,7 +65,10 @@ pe = pefile.PE("binary.exe")
 for dll in pe.DIRECTORY_ENTRY_IMPORT:
     print(f"DLL: {dll.dll.decode()}")
     for imp in dll.imports:
-        print(f"  {imp.name.decode()}")
+        if imp.name:
+            print(f"  {imp.name.decode()}")
+        else:
+            print(f"  ordinal {imp.ordinal}")
 ```
 
 ### ELF dynamic symbols
@@ -76,10 +79,13 @@ from elftools.elf.elffile import ELFFile
 with open("binary", "rb") as f:
     elf = ELFFile(f)
     dynsym = elf.get_section_by_name(".dynsym")
-    
-    for symbol in dynsym.iter_symbols():
-        if symbol.entry.st_info.bind == "STB_DYNAMIC":
-            print(f"Import: {symbol.name}")
+    if dynsym is None:
+        print("no .dynsym (static or stripped of dynsyms)")
+    else:
+        for symbol in dynsym.iter_symbols():
+            # Imports are undefined symbols. There is no STB_DYNAMIC bind.
+            if symbol["st_shndx"] == "SHN_UNDEF" and symbol.name:
+                print(f"Import: {symbol.name}")
 ```
 
 ### Suspicious API detection

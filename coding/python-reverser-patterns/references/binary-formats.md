@@ -16,9 +16,10 @@ ei_data = data[5]                          # 1 (little-endian) or 2 (big-endian)
 ei_version = data[6]                       # 1 (current)
 e_type = struct.unpack("<H", data[16:18])[0]      # 2 (ET_EXEC) or 3 (ET_DYN)
 e_machine = struct.unpack("<H", data[18:20])[0]   # 0x3E (x86-64), 0xB7 (AArch64)
-e_entry = struct.unpack("<Q", data[32:40])[0]     # Entry point
+e_entry = struct.unpack("<Q", data[24:32])[0]     # Entry point (ELF64)
 e_phoff = struct.unpack("<Q", data[32:40])[0]     # Program header offset
 e_shoff = struct.unpack("<Q", data[40:48])[0]     # Section header offset
+# ei_data == 2 → big-endian (`>`); ELF32 uses 4-byte e_entry/e_phoff/e_shoff at different offsets.
 ```
 
 ### Sections
@@ -72,10 +73,15 @@ with open("binary", "rb") as f:
 machine = struct.unpack("<H", coff_header[0:2])[0]       # 0x8664 (x86-64) or 0x14C (x86)
 num_sections = struct.unpack("<H", coff_header[2:4])[0]
 
-# From optional header
+# From optional header (PE32 vs PE32+ layouts differ after AddressOfEntryPoint)
 magic = struct.unpack("<H", opt_header[0:2])[0]          # 0x20B (PE32+) or 0x10B (PE32)
-entry_point = struct.unpack("<I", opt_header[16:20])[0]  # Relative to image base
-image_base = struct.unpack("<Q", opt_header[24:32])[0]   # Base address
+entry_point = struct.unpack("<I", opt_header[16:20])[0]  # RVA
+if magic == 0x20B:
+    image_base = struct.unpack("<Q", opt_header[24:32])[0]
+elif magic == 0x10B:
+    image_base = struct.unpack("<I", opt_header[28:32])[0]
+else:
+    raise ValueError(f"not a PE optional header: {magic:#x}")
 ```
 
 ### Sections
@@ -101,6 +107,23 @@ If binary is a DLL, exports are listed in the Export Table.
 
 ---
 
+## Library choice
+
+- **Parse-only PE** (IAT, sections, resources): `pefile`.
+- **Parse-only ELF**: `pyelftools` or pwntools `ELF` (see `pwntools-reference.md`).
+- **Rewrite, Mach-O, or one API for PE+ELF**: [LIEF](https://lief.re/doc/latest/intro.html). `pefile`/`pyelftools` do not safely rewrite.
+
+```python
+import lief
+
+elf = lief.ELF.parse("target")   # or lief.PE.parse / lief.MachO.parse
+if elf is None:
+    raise ValueError("unrecognized")
+elf.write("patched")             # rebuilds headers/offsets
+```
+
+---
+
 ## Comparison: When to use what
 
 | Task | ELF | PE |
@@ -117,5 +140,5 @@ If binary is a DLL, exports are listed in the Export Table.
 ## References
 
 - https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
-- https://en.wikipedia.org/wiki/Portable_Executable
 - https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
+- https://lief.re/doc/latest/intro.html

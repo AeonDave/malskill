@@ -115,7 +115,7 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **C / C++** - safe patterns, modern idioms, fuzzing, sanitizers
 - **Rust** - ownership, API design, performance, unsafe patterns
 - **Go** - idiomatic patterns, concurrency, performance
-- **Python** - patterns, async, pytest workflows
+- **Python** - patterns, async, pytest, performance (GIL / free-threading / profilers)
 - **Kotlin / Android** - idiomatic Kotlin (null-safety, coroutines, sealed hierarchies, Java interop), Android testing (JUnit/Robolectric/Compose/screenshot/instrumented), Kotlin performance (Macrobenchmark, Baseline Profiles, R8 full mode, Compose recomposition, Perfetto), Android JNI/NDK bridging (16 KB pages, `@FastNative`/`@CriticalNative`, Rust-on-Android)
 - **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
 

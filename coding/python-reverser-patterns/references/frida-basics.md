@@ -1,133 +1,101 @@
 # Frida: Dynamic instrumentation
 
-Frida allows you to inject Python code into running processes to hook functions, intercept calls, and modify behavior.
+Python is the **host**. Hooks run as **GumJS** inside the target. Do not write hooks as Python.
 
-## Basics: Attach and hook
+Frida **17+** (2025): static `Module.findExportByName` / `Module.getExportByName` were **removed**. Resolve a module first, or use the global-export helpers.
 
-### Process attachment
-
-```python
-import frida
-
-# Attach to process by name
-session = frida.attach("notepad.exe")
-
-# Or by PID
-session = frida.attach(1234)
-
-# Detach
-session.detach()
-```
-
-### Simple function hook
+## Host: attach vs spawn
 
 ```python
 import frida
 
 def on_message(message, data):
-    if message['type'] == 'send':
-        print(f"[*] {message['payload']}")
-    elif message['type'] == 'error':
-        print(f"[!] {message['stack']}")
+    if message["type"] == "send":
+        print(message["payload"])
+    elif message["type"] == "error":
+        print(message.get("stack", message))
 
-session = frida.attach("target.exe")
+# Already running: attach by name or PID
+session = frida.attach("target")           # or frida.attach(pid)
 
-# Frida script (JavaScript/TypeScript)
-script_code = """
-Interceptor.attach(Module.findExportByName(null, "printf"), {
-    onEnter: function(args) {
-        console.log("[*] printf called");
-        console.log("[*] First arg: " + args[0].readCString());
-    }
+# Constructor / early init: spawn, load script, then resume
+# pid = frida.spawn(["./target"])
+# session = frida.attach(pid)
+
+JS = """
+const m = Process.getModuleByName("libc.so"); // Windows: kernel32.dll
+Interceptor.attach(m.getExportByName("open"), {
+  onEnter(args) {
+    try { send(args[0].readUtf8String()); } catch (e) { send(String(e)); }
+  }
 });
 """
 
-script = session.create_script(script_code)
-script.on('message', on_message)
+script = session.create_script(JS)
+script.on("message", on_message)
 script.load()
-input()  # Keep process running
+# frida.resume(pid)  # only after spawn + load
+input()
 session.detach()
 ```
 
-## Common hooks
-
-### Intercept malloc/free
+## JS: resolve exports (Frida 17+)
 
 ```javascript
-Interceptor.attach(Module.findExportByName(null, "malloc"), {
-    onEnter: function(args) {
-        var size = args[0].toInt32();
-        console.log("[malloc] size: " + size);
-    },
-    onLeave: function(retval) {
-        console.log("[malloc] allocated at: " + retval);
+// Known module (preferred; do not look the module up twice)
+const libc = Process.getModuleByName("libc.so");  // Windows: "kernel32.dll"
+const openPtr = libc.getExportByName("open");     // throws if missing
+// findExportByName on the Module object returns null instead of throwing
+
+// Unknown module (slow; last resort)
+const printfPtr = Module.getGlobalExportByName("printf");  // throws if missing
+```
+
+`get*` throws; `find*` returns `null`. Check null before `Interceptor.attach`.
+
+## Hook: Interceptor.attach
+
+```javascript
+Interceptor.attach(openPtr, {
+  onEnter(args) {
+    try {
+      this.path = args[0].readUtf8String();
+    } catch (e) {
+      this.path = "<unreadable>";
     }
+  },
+  onLeave(retval) {
+    send({ path: this.path, fd: retval.toInt32() });
+  }
 });
 ```
 
-### Syscall tracing
+Windows strings: `readUtf16String()` for `*W` APIs.
+
+## Replace: NativeCallback only
+
+`Interceptor.replace(ptr, NativeCallback)` — not an `{ onEnter, onLeave }` object. To also call the original, wrap it with `NativeFunction`.
 
 ```javascript
-// On Linux: trace open() syscall
-Interceptor.attach(Module.findExportByName(null, "open"), {
-    onEnter: function(args) {
-        console.log("[open] file: " + args[0].readCString());
-    }
-});
+const open = new NativeFunction(openPtr, "int", ["pointer", "int"]);
+Interceptor.replace(openPtr, new NativeCallback((pathPtr, flags) => {
+  send(pathPtr.readUtf8String());
+  return open(pathPtr, flags);
+}, "int", ["pointer", "int"]));
 ```
 
-### Bypass function
-
-```javascript
-// Skip function; return hardcoded value
-Interceptor.replace(Module.findExportByName(null, "check_license"), {
-    onEnter: function(args) {
-        console.log("[check_license] bypassed");
-    },
-    onLeave: function(retval) {
-        retval.replace(1);  // Return 1 (success)
-    }
-});
-```
-
-## Data inspection
-
-### Read strings from memory
-
-```javascript
-var ptr = args[0];
-if (ptr !== null) {
-    var string = ptr.readCString();
-    console.log("[*] String: " + string);
-}
-```
-
-### Read structures
-
-```javascript
-var struct_ptr = args[0];
-var field1 = struct_ptr.add(0).readU32();
-var field2 = struct_ptr.add(4).readCString();
-console.log("[*] Field1: " + field1 + ", Field2: " + field2);
-```
+Bypass a check without knowing the full ABI: `attach` + `retval.replace(...)` in `onLeave`.
 
 ## Anti-patterns
 
-- **Crashing the target with bad pointers**: Always check nulls and offsets.
-- **Logging too much**: Frida's overhead is high; filter aggressively.
-- **Not handling exceptions**: Wrap hooks in try/catch to prevent session death.
-- **Assuming ASLR is off**: Always use `Module.findExportByName()` or dynamic base address resolution.
-
-## Common pitfalls
-
-- **Hook doesn't fire**: Function may be inlined, use a different calling convention, or be in a different module.
-- **Infinite recursion in hook**: Don't call the hooked function from inside the hook without careful guard.
-- **Process crashes after detach**: If you modified memory/registers, crashes may occur on detach; use safe detach patterns.
-
----
+- **Python inside `create_script`**: the VM is JS.
+- **Removed Module statics** on Frida 17+: `Module.findExportByName(null, "open")`.
+- **`replace` with attach-style callbacks**.
+- **Hooking without null checks**: inlined functions, wrong module, or `find*` miss.
+- Logging every call on a hot path; filter in JS and `send()` summaries.
 
 ## References
 
-- https://frida.re/
-- https://frida.re/docs/home/
-- https://github.com/frida/frida
+- https://frida.re/docs/javascript-api/
+- https://frida.re/news/2025/05/17/frida-17-0-0-released/
+- https://frida.re/docs/functions/
