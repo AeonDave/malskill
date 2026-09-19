@@ -13,7 +13,7 @@ Quick reference for the SKILL.md format. Source: https://agentskills.io/specific
 | `metadata` | No | Arbitrary string key-value map for extra properties |
 | `allowed-tools` | No | Space-delimited list of pre-approved tools (experimental) |
 
-No other fields are permitted in frontmatter.
+This repository's validator permits only the fields above; check host extensions separately before relying on them.
 
 ## Name Rules
 
@@ -35,10 +35,12 @@ Invalid: PDF-Processing  (uppercase)
 
 ```yaml
 # Good
-description: "Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs. Use when working with PDF documents or when the user mentions PDFs, forms, or document extraction."
+description: "Extract PDF text and tables, fill PDF forms, or merge PDF files. Use for these document operations."
 
 # Poor
 description: "Helps with PDFs."
+# Also poor: activates for adjacent tasks the skill does not support.
+description: "Use for any document, report, form, or file conversion."
 ```
 
 ## Optional Fields Examples
@@ -46,7 +48,7 @@ description: "Helps with PDFs."
 ```yaml
 ---
 name: pdf-processing
-description: "Extract text, fill forms, merge and split PDF files. Use when the user asks about PDFs, forms, or document conversion."
+description: "Extract PDF text and tables, fill PDF forms, or merge PDF files. Use for these document operations."
 license: Apache-2.0
 compatibility: Requires Python 3.10+, pdfplumber, pypdf
 metadata:
@@ -59,12 +61,12 @@ allowed-tools: Bash(python:*) Read
 ## Progressive Disclosure
 
 ```
-Stage 1 — Startup:   name + description (~100 tokens, always loaded)
-Stage 2 — Trigger:   Full SKILL.md body  (< 5 000 tokens recommended)
-Stage 3 — On demand: scripts/, references/, assets/ (unlimited, loaded when needed)
+Discovery:  name + description
+Activation: full SKILL.md body
+On demand:  resources needed for the selected task
 ```
 
-Aim to keep the substantive body of `SKILL.md` around **500 lines** as a soft target — this is a guideline, not a validator rule. Exclude link/index sections (e.g. `## Reference Files`, `## Resources`) from the count; long reference lists are fine. Reference files are loaded individually, so keep each focused.
+The specification recommends a body under 5000 tokens and a `SKILL.md` under 500 lines. These are upper guidelines, not targets or validator rules; routing sections also consume context. Split independently needed subtasks instead of waiting for a size threshold, and keep each resource focused. Host discovery and context limits can differ.
 
 ## File Reference Syntax
 

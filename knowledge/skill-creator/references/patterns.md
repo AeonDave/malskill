@@ -1,131 +1,43 @@
-# Progressive Disclosure Patterns
+# Resource Routing Patterns
 
-Reference for structuring skills efficiently. Load this file when designing a skill's internal organization.
+Use when splitting a skill into resources or repairing unnecessary loading.
 
-## Table of Contents
+## Choose the boundary
 
-- [Pattern 1: High-level guide with references](#pattern-1-high-level-guide-with-references)
-- [Pattern 2: Domain-specific organization](#pattern-2-domain-specific-organization)
-- [Pattern 3: Multi-variant organization](#pattern-3-multi-variant-organization)
-- [Pattern 4: Conditional details](#pattern-4-conditional-details)
-- [Anti-patterns to avoid](#anti-patterns)
+| Task shape | Structure |
+|---|---|
+| One compact workflow | Keep it in `SKILL.md`; extra files need a concrete use. |
+| Shared baseline with an occasional specialized operation | Keep the baseline in the body; load the operation's reference when the task needs it. |
+| Distinct workflows, formats, or platforms | Keep selection criteria and shared constraints in the body; route directly to the selected resource. |
+| Repeated or fragile mechanics | Use a script with an explicit invocation condition and output contract. |
 
----
+Split by what a task needs, not by a line threshold. If two references are always needed together, consider merging them. If a section adds no actionable information, delete it instead of relocating it.
 
-## Pattern 1: High-level guide with references
+## Write actionable routes
 
-Use when the substantive body of the skill (excluding link/index sections) starts to exceed ~500 lines or becomes hard to navigate, or when some features are rarely needed.
-
-```markdown
-# PDF Processing
-
-## Quick Start
-
-Extract text with pdfplumber:
-
-```python
-import pdfplumber
-with pdfplumber.open("file.pdf") as pdf:
-    text = "\n".join(p.extract_text() for p in pdf.pages)
-```
-
-## Operations
-
-- **Text extraction**: Use `scripts/extract_text.py`
-- **Form filling**: See [references/forms.md](references/forms.md)
-- **Merging/splitting**: See [references/merge_split.md](references/merge_split.md)
-- **Image conversion**: `scripts/convert_to_images.py`
-```
-
-The agent loads `forms.md` or `merge_split.md` only when the user's request requires them.
-
----
-
-## Pattern 2: Domain-specific organization
-
-Use when a skill covers multiple unrelated sub-domains (e.g., a company data skill covering finance, sales, product).
-
-```
-company-data/
-├── SKILL.md          (overview + navigation guide)
-└── references/
-    ├── finance.md    (revenue, billing, cost metrics)
-    ├── sales.md      (opportunities, pipeline, CRM)
-    ├── product.md    (API usage, feature flags)
-    └── marketing.md  (campaigns, attribution)
-```
-
-`SKILL.md` explains which file covers which domain. The agent loads only the relevant file.
-
-**SKILL.md navigation section:**
+Each route needs a task condition, an exact resource, and the action to take. For example, a skill whose resources exist could use:
 
 ```markdown
-## Data Domains
+## Export format
 
-Load the reference file that matches the user's question:
-
-| Domain | File | Topics |
-|---|---|---|
-| Finance | [references/finance.md](references/finance.md) | Revenue, billing, P&L |
-| Sales | [references/sales.md](references/sales.md) | Pipeline, CRM, deals |
-| Product | [references/product.md](references/product.md) | API usage, features |
-| Marketing | [references/marketing.md](references/marketing.md) | Campaigns, attribution |
+Use the requested format or the existing project configuration.
+- CSV export: read [references/csv.md](references/csv.md) for quoting rules.
+- XLSX export: read [references/xlsx.md](references/xlsx.md) for workbook layout.
+Ask for the format only if it cannot be inferred and changes the output contract.
 ```
 
----
+Keep independent branches independently readable. A task should not have to load every branch to discover which one applies. Keep essential shared constraints in the parent, without copying them into each branch.
 
-## Pattern 3: Multi-variant organization
+## Repair common failures
 
-Use when the skill supports multiple frameworks, providers, or platforms that require different instructions.
+| Observed problem | Targeted correction |
+|---|---|
+| The agent opens all resources before acting | Replace unconditional prerequisites with task-specific routes. |
+| A reference is never discovered | Add a direct parent link at the decision that needs it. |
+| The same fact differs across files | Select one canonical location and link to it. |
+| The agent must traverse unrelated documents | Link directly to the resource needed for the task. |
+| A long reference is hard to search | Add headings and a compact contents list for its actual subtasks. |
+| A reference is mostly background | Retain only facts that change a decision or action. |
+| A fixed recipe blocks a suitable existing tool | State the required contract; fix the implementation only when compatibility or correctness requires it. |
 
-```
-cloud-deploy/
-├── SKILL.md          (workflow + provider selection logic)
-└── references/
-    ├── aws.md        (AWS-specific patterns)
-    ├── gcp.md        (GCP-specific patterns)
-    └── azure.md      (Azure-specific patterns)
-```
-
-**SKILL.md selection logic:**
-
-```markdown
-## Provider Selection
-
-Identify the target cloud from the user's request or project config:
-- AWS → read [references/aws.md](references/aws.md)
-- GCP → read [references/gcp.md](references/gcp.md)
-- Azure → read [references/azure.md](references/azure.md)
-
-If unspecified, ask the user before proceeding.
-```
-
----
-
-## Pattern 4: Conditional details
-
-Use when most users need the simple path and only some need advanced features.
-
-```markdown
-## Document Editing
-
-For simple text edits, modify content in-place using `scripts/edit_docx.py`.
-
-For advanced scenarios:
-- **Tracked changes / redlines**: See [references/redlining.md](references/redlining.md)
-- **OOXML internals**: See [references/ooxml.md](references/ooxml.md)
-- **Form fields**: See [references/forms.md](references/forms.md)
-```
-
----
-
-## Anti-patterns
-
-| Anti-pattern | Problem | Fix |
-|---|---|---|
-| Everything in SKILL.md | Bloats context even when not needed | Split into reference files |
-| Deeply nested references | Reference chains create loading ambiguity | Keep all references one level from SKILL.md |
-| Duplicate content | Same content in SKILL.md and a reference file | Single source of truth — pick one location |
-| Unresolved placeholder markers left in | Skill is not ready to use | Resolve all markers before packaging |
-| Long reference files without a TOC | Agent cannot preview scope | Add a TOC at the top of any file >100 lines |
-| README.md and CHANGELOG.md in the skill | Irrelevant to agent execution | Remove — skills are for agents, not humans |
+Verify referenced files and helpers exist. Review an actual task trace when claiming the new routing reduces irrelevant reads.

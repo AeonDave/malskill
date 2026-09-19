@@ -1,166 +1,97 @@
 ---
 name: skill-creator
-description: "Design, create, improve, test, validate, and package Agent Skills following the open AgentSkills specification (agentskills.io). Use when asked to create or update a skill, tune when it activates, structure its resources, evaluate its behavior, validate SKILL.md, or package a distributable .skill file."
+description: "Create, revise, evaluate, or package Agent Skills. Use for SKILL.md instructions, activation descriptions, and bundled resources."
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Skill Creator
 
-Guidance for creating and maintaining high-quality Agent Skills across any AI agent ecosystem.
+Produce a skill that changes how an agent handles a recurring task. Keep only instructions, resources, and constraints that contribute to that outcome.
 
-## What Is a Skill
+## Establish the gap
 
-A skill is a self-contained folder that gives an AI agent specialized knowledge, workflows, and tools for a specific domain. Skills use the open [AgentSkills specification](https://agentskills.io/specification).
+Use the request, existing skill, and applicable repository instructions to identify the missing behavior and what completion requires. Inspect only resources relevant to the change. Ask for missing information only when it changes the scope, contract, or authorization.
 
-### Directory Structure
+- Reuse an existing skill when its scope already fits; fix its routing if discovery is the problem.
+- Create a skill only for a distinct recurring capability. Keep one-off inputs in the task prompt and repository-wide conventions in repository instructions.
+- Preserve supported behavior, metadata, user decisions, and authorization boundaries unless their change is part of the request.
+- Separate the observed failure from a proposed remedy. Try deleting or narrowing conflicting instructions before adding another rule.
 
-```
-skill-name/
-├── SKILL.md          # Required — frontmatter + instructions
-├── scripts/          # Optional — executable code agents can run
-├── references/       # Optional — docs loaded on demand into context
-└── assets/           # Optional — templates, images, data files used in output
-```
+## Author the smallest useful instruction set
 
----
+**Brief, clear, specific, useful.** Assume competence in ordinary domain knowledge and tool use. Retain non-obvious constraints, decision criteria, output contracts, and verification that prevent a concrete failure. Ground technical claims in the current implementation, a real run, or a primary source; qualify uncertain conditions.
 
-## Core Design Principles
+Define the outcome and when work is complete. Prescribe a sequence only when order matters; otherwise let the agent choose the method. Record genuine approval boundaries without inserting review stops into already-authorized work. Do not turn a workaround for one model into a universal requirement.
 
-### 1. Brief, Clear, Specific, Useful
+### Frontmatter
 
-Assume the agent already knows common domain facts and standard tool use. Include only context, constraints, decision criteria, or reusable mechanics that materially change its work. Match specificity to risk: describe outcomes and choices when several approaches work; prescribe exact steps or scripts only for fragile or deterministic operations.
-
-### 2. Progressive Disclosure
-
-Design for staged loading to keep the context clean:
-- **Discovery**: `name` + `description` only
-- **Activation**: full `SKILL.md` body (baseline workflow, routing, and task guidance)
-- **On demand**: explicit triggers load files in `scripts/`, `references/`, `assets/`
-
-If a workflow gets deeply specific, move it to `references/` so the agent only loads it when that specific subtask triggers.
-
-### 3. Agent-Neutral Language
-
-Use agent-neutral wording for portable behavior. Name a product only when its runtime, metadata, tools, or distribution are part of the capability; keep those details scoped and declare relevant compatibility.
-
-### 4. No Meta-Justification
-
-Keep `SKILL.md` and `references/` files stripped of benchmarks, "why we built this" defenses, and generic README material. Only include actionable rules and necessary constraints. Tell the agent *what* to do and the operational *why* (e.g., "because command X hangs the service"), not the philosophical why.
-
----
-
-## Skill Creation Process
-
-Follow these steps to build or refactor a skill:
-
-### Step 1: Understand or Audit
-
-Use the conversation and target workspace before asking questions.
-- **New skill:** Capture representative requests, inputs, expected outputs or behavior, dependencies, and near misses. Ask only for missing information that changes the design.
-- **Update:** Read `SKILL.md`, relevant resources, and repository conventions. Name the concrete gap, success and failure criteria, and what must remain stable.
-
-Separate durable requirements from one-off examples, failures, and preferences. Preserve the skill's name, scope, supported metadata, and authorization boundaries unless the user requests a change.
-
-### Step 2: Plan Resources
-
-Start instruction-only. Add a resource only when it repeatedly helps the agent execute the skill:
-- `scripts/`: Use when the same code is rewritten each time or deterministic output is required.
-- `references/`: Use for specific subtasks, schemas, or guides needed dynamically. They must not fill context with non-actionable material.
-- `assets/`: Use for boilerplate or templates the agent copies.
-
-### Step 3: Scaffold
-
-For a new skill, run the init script:
-```bash
-python scripts/init_skill.py <skill-name> --path <output-dir>
-# Add only the resource directories the workflow needs:
-python scripts/init_skill.py <skill-name> --path <output-dir> --resources references
-```
-Request only justified resource directories. Use `--examples` only when placeholders clarify a real need, then replace or remove them. For an existing skill, edit in place; do not re-scaffold.
-
-### Step 4: Author
-
-#### SKILL.md — Frontmatter
-Start with the required fields:
 ```yaml
 ---
-name: my-skill                  # lowercase, hyphens, max 64 chars, matches folder name
-description: "Single coherent paragraph covering what it does + when to use it; max 1024 chars."
+name: my-skill
+description: "Capability and the specific task that should activate it."
 ---
 ```
-Add optional fields only when they change use or distribution. Use `compatibility` for non-obvious OS, package, network, or tool requirements; most skills do not need it.
 
-**Description rules:** The description is the primary routing signal. Front-load the capability and natural task context so matching survives hosts that shorten discovery metadata. Add a near-miss boundary only when it prevents likely misrouting. Avoid implementation details, catchalls, exhaustive synonym lists, and exact wording copied from failed test prompts.
+- `name`: matches the folder, lowercase letters/digits/hyphens, at most 64 characters; no leading, trailing, or consecutive hyphens.
+- `description`: the shortest clear routing signal, at most 1024 characters. Lead with the distinctive task. Include a near-miss boundary only when needed; omit workflow summaries, broad topic associations, synonym lists, and activation pressure.
+- Add optional metadata only when useful. Declare non-obvious runtime requirements in `compatibility`; keep product-specific behavior scoped to that runtime.
 
-#### SKILL.md — Body
-State the desired outcome, non-obvious constraints, decision criteria, and verification. Explain operational intent so agents can generalize. Use fixed sequences only where deviation causes a concrete failure. Link each resource where it becomes relevant, or in a compact **Resources** section, and state exactly when to read, run, or use it. Omit the section when the skill has no resources.
+Load [references/spec.md](references/spec.md) when choosing optional fields or checking specification details. The field limits are ceilings, not writing targets.
 
-#### Scripts (`scripts/`)
-- Bundle only repeated or deterministic logic. Make inputs, outputs, dependencies, and failures explicit.
-- Execute every new or changed script against representative input.
+### Body and resources
 
-#### References (`references/`)
-- Reference files must extend the skill for a specific subtask.
-- **Do not** use them as a README, training manual, or catalog.
-- Add a table of contents at the top of any file over 100 lines.
-- Never duplicate content between `SKILL.md` and a reference file.
+Keep shared decisions and constraints in `SKILL.md`. For independently used workflows, make it a compact router with explicit conditions for loading each resource. A short, single-workflow skill can remain one file.
 
-#### What NOT to Include
-Do not create: `README.md`, `CHANGELOG.md`, `INSTALLATION_GUIDE.md`. Evict any file that doesn't direct agent behavior.
+| Resource | Add when |
+|---|---|
+| `scripts/` | Repeated mechanics or fragile operations need deterministic execution. Specify inputs, outputs, dependencies, and failures. |
+| `references/` | A subtask needs depth that other tasks can skip. Link the exact file with a "load when" condition. |
+| `assets/` | The agent needs a reusable template or static file in the output. |
 
-### Step 5: Pressure-Test Behavior
+Keep each fact in one canonical location. Delete irrelevant material instead of moving it into a reference. Omit generic tutorials, design defenses, historical notes, and extra README/CHANGELOG/install guides. Add examples only to resolve ambiguity; add navigation when a long reference cannot be scanned easily.
 
-Choose evaluation depth in proportion to the change. A small or subjective edit may need one clean-context scenario and qualitative review. For substantial, risky, or objectively verifiable work, use 2–3 realistic prompts with expected and forbidden behavior, then compare the candidate with the pre-edit or no-skill baseline under the same conditions. See `references/pressure-testing-skills.md`.
+Load [references/patterns.md](references/patterns.md) when deciding how to split workflows or repair resource routing.
 
-Use `references/skill-triggering-tests.md` when activation may be too broad or too narrow. Do not test only whether the agent can repeat the skill text.
+## Create or revise
 
-### Step 6: Validate and Package
+For an existing skill, edit in place; do not re-scaffold. For a new skill, resolve this script relative to the skill-creator directory:
 
-From the target repository, resolve these scripts relative to this skill:
+```bash
+python <skill-creator-dir>/scripts/init_skill.py <skill-name> --path <output-dir>
+# Request resource directories only when needed:
+python <skill-creator-dir>/scripts/init_skill.py <skill-name> --path <output-dir> --resources references
+```
+
+Use `--examples` only when sample files help; replace or remove them before finishing. Execute new or changed helpers on representative inputs, including relevant failure cases.
+
+## Evaluate the change
+
+Use the smallest check that can detect the claimed improvement:
+
+- Editorial change: review the diff and validate structure.
+- Instruction or workflow change: try a realistic task in a clean context and inspect the result and actions taken.
+- Substantial behavior change: compare the candidate with the pre-edit or no-skill baseline using the same inputs and environment. Set expected outputs and prohibited outcomes before grading.
+- Routing change: exercise natural requests and plausible near misses with the available skill catalog.
+
+Load [references/pressure-testing-skills.md](references/pressure-testing-skills.md) when designing behavior comparisons or diagnosing failures. Load [references/skill-triggering-tests.md](references/skill-triggering-tests.md) when tuning activation.
+
+Test the models and hosts used by the intended audience when making compatibility claims; name untested targets. Check for unnecessary reads, tool calls, tests, and approval stops as well as incorrect outputs. A shorter file is not evidence of better behavior.
+
+## Validate and finish
+
+From the target repository, run these scripts for each changed skill directory:
+
 ```bash
 python <skill-creator-dir>/scripts/quick_validate.py <skill-dir>
 python <skill-creator-dir>/scripts/sweep_skills.py <skill-dir>
 python <skill-creator-dir>/scripts/check_changed_files.py
 ```
-Fix validation errors, resolve placeholder findings, and triage workstation-path hits. The sweep exit status enforces broken links; its other findings are report-only. These checks prove structure and hygiene, not behavior. Package with `package_skill.py` only when a distributable archive is requested.
 
-### Step 7: Iterate
+Resolve frontmatter errors, broken links, scaffold markers, and workstation-path leakage. The sweep enforces broken links through its exit status; inspect its report-only findings too. These checks establish structure and hygiene, not behavioral quality.
 
-After real usage:
-- If it under- or over-triggers, revise the underlying intent or boundary and rerun the trigger matrix.
-- If a section doesn't improve output, remove it.
-- If it grows too large, push depth into `references/`.
-- If several runs recreate the same helper logic, consider bundling it in `scripts/`.
-- Review execution traces as well as final outputs; remove instructions that cause repeated unproductive work.
-- Generalize patches: fix the underlying instruction gap, not just the single failing prompt.
+Finish the requested edits, affected checks, and corrections before handing back the result. Report what was tested and what remains unverified. Package with `python <skill-creator-dir>/scripts/package_skill.py <skill-dir>` only when an archive is requested; use `python <skill-creator-dir>/scripts/validate_all.py <repo-root>` only for repository-wide validation.
 
----
-
-## Skill Naming Conventions
-
-- Lowercase letters, digits, and hyphens only (e.g., `pdf-extractor`).
-- Max 64 characters; no leading/trailing/consecutive hyphens.
-- Folder name must match the `name` field exactly.
-
----
-
-## Reference Files
-
-- See [references/patterns.md](references/patterns.md) for progressive disclosure patterns and anti-patterns.
-- See [references/spec.md](references/spec.md) for the full AgentSkills frontmatter field reference.
-- See [references/pressure-testing-skills.md](references/pressure-testing-skills.md) for proportional clean-context behavior tests and baselines.
-- See [references/skill-triggering-tests.md](references/skill-triggering-tests.md) for natural-prompt activation and description regression checks.
-
-## Scripts
-
-| Script | Purpose |
-|---|---|
-| `scripts/init_skill.py` | Scaffold a new skill directory with template |
-| `scripts/package_skill.py` | Validate + zip a skill into a `.skill` file |
-| `scripts/quick_validate.py` | Validate frontmatter; report unresolved scaffold TODOs as warnings |
-| `scripts/sweep_skills.py` | Report broken links, placeholders, and workstation-path leakage |
-| `scripts/check_changed_files.py` | Safe changed-file newline and `git diff --check` hygiene checks |
-| `scripts/validate_all.py` | Validate every skill directory under a repository root |
+After a real failure or model/runtime change, reassess the affected instructions and rerun relevant scenarios. Keep a rule only if it still improves the outcome.

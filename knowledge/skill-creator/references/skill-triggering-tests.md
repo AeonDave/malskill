@@ -21,12 +21,14 @@ Reason: triggering phrase, symptom, file type, or boundary
 
 Use natural prompts with varied phrasing, detail, formality, and indirect intent. Include realistic paths or domain details when relevant. Avoid trivial negative cases with no overlap.
 
+Test discovery with the skill catalog the agent will actually see, including overlapping skills. Check which descriptions the host exposes; if it shortens them, inspect the visible text rather than assuming a universal truncation limit. Put the distinguishing task early and narrow competing descriptions instead of making every skill insist on activation.
+
 ## Manual pass criteria
 
-- The skill activates before action when it should.
+- The skill activates when its guidance is needed for the task.
 - The skill does not activate on near misses.
 - The agent reads the body instead of only following the description shortcut.
-- The resulting behavior follows the skill, not just mentions it.
+- The resulting behavior satisfies the task contract, not just mentions the skill.
 
 ## Description tuning
 

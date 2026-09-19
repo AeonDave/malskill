@@ -1,175 +1,49 @@
 ---
 name: agent-md-creator
-description: "Create, update, or refactor repository-root and nested AGENTS.md files for AI coding agents. Use when the user asks to bootstrap AGENTS.md, replace tool-specific instruction files with a shared open format, compress overly verbose agent instructions, document build/test commands for agents, or design minimal project instructions for monorepos and subprojects."
+description: "Create, audit, or streamline root and nested AGENTS.md files. Use when defining repository instructions for coding agents or migrating existing agent instruction files."
 license: MIT
-compatibility: "Markdown; works for repos using GitHub Copilot Coding agent, OpenAI Codex, Cursor, Claude Code, Gemini CLI, Windsurf, RooCode, Amp, and other agents that read AGENTS.md"
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Agent MD Creator
 
-Create technical, token-efficient `AGENTS.md` files that help coding agents work immediately without bloating context. Treat `AGENTS.md` as a living operational file: it should evolve with the codebase, discovered workflows, current tool availability, and real team practices. Prefer compact, evidence-based instructions over generic prompting.
+Produce repository instructions that let an agent complete the requested work using verified commands, local constraints, and clear completion criteria. Keep only guidance that changes a real decision or prevents a demonstrated mistake.
 
-## Workflow
+## Find the gap
 
-### 1. Discover the real project shape
+Start with the requested scope, current user decisions, and applicable instruction files. Inspect the README, command definitions, CI, and code only where needed to establish a missing or disputed fact. A focused update does not require a full repository survey.
 
-Before drafting anything:
+For an existing file, identify the concrete failure: stale command, missing constraint, conflicting rule, unnecessary reading, repeated approval, or premature stopping. For a new file, identify what an agent would otherwise need to rediscover or could get wrong. Ask only for information that materially changes the instructions and cannot be established locally.
 
-- Search for existing instruction files: `AGENTS.md`, `AGENT.md`, `.github/copilot-instructions.md`, `CLAUDE.md`, `.cursorrules`, README files, and CI workflows.
-- Inspect build/test/lint commands from actual repo files instead of guessing.
-- Identify stack, package manager, subprojects, test framework, and directories the agent will likely edit.
-- If the repo is a monorepo, decide whether one root file is enough or whether nested `AGENTS.md` files are needed.
+## Choose the right home
 
-If you need structure, precedence, or section guidance, load [references/agents-md-principles.md](references/agents-md-principles.md).
-If you need the 2025 GitHub-specific lessons from analysis of 2,500+ repositories, load [references/github-lessons.md](references/github-lessons.md).
+- Root `AGENTS.md`: instructions shared across the repository.
+- Nested `AGENTS.md`: commands or constraints that differ for one subtree, when the target host loads nested instructions.
+- Existing docs or skills: specialized procedures and explanatory detail. Link with a task trigger, such as "Read `docs/schema.md` when changing the schema."
+- Current task: one-off requests and temporary progress; do not turn them into persistent project policy.
 
-### 2. Choose the smallest useful scope
+Load [references/agents-md-principles.md](references/agents-md-principles.md) when resolving instruction scope, migrating files, or preserving decisions and exceptions.
 
-Default to a single root `AGENTS.md`.
+## Write the operational contract
 
-Add nested `AGENTS.md` files only when at least one of these is true:
+Include only sections that have concrete content:
 
-- subprojects use different stacks or commands
-- backend/frontend/infrastructure have different workflows
-- the root file would become long or full of exceptions
-- a subdirectory needs stricter boundaries than the rest of the repo
+- **Commands:** exact command, working directory, prerequisites, and change trigger where they matter. Verify against scripts or CI; do not invent missing commands.
+- **Constraints:** non-obvious architecture, compatibility, generated-file ownership, or enforced contribution rules. Prefer a short instruction with its operational reason over broad prohibitions.
+- **Completion:** the required result and relevant evidence. Name checks that establish it; state when broader validation is necessary. Preserve required gates without demanding unrelated tests for every edit.
+- **Authorization:** retain real approval boundaries and current user decisions. Where useful, identify the already-authorized local work the agent should finish without another approval. Do not add blanket gates for research, debugging, dependencies, or routine edits.
+- **Routing:** only the paths that save repeated discovery, with explicit conditions for loading specialized docs. Omit file inventories and duplicated README content.
 
-Keep instructions local: the nearest `AGENTS.md` should carry only the details relevant to that subtree.
+Specify an exact sequence only when order prevents a concrete failure. Let the agent choose the route when several approaches satisfy the outcome. Examples must encode a verified local rule; do not import tool preferences, ignored warnings, or security choices from an unrelated project.
 
-### 3. Draft a minimal, technical AGENTS.md
+For a new file, [assets/minimal-agents-template.md](assets/minimal-agents-template.md) is an optional starting point. Replace its placeholders and delete unsupported sections; the template does not establish project policy.
 
-Use only sections supported by evidence from the repo. Preferred order:
+## Review and finish
 
-1. Commands the agent can run
-2. Active user decisions / workflow choices
-3. Testing / validation expectations
-4. Debugging expectations when useful
-5. Project structure or key paths
-6. Code style or architecture rules that are not obvious
-7. Boundaries / approval rules
-8. Optional accepted diagnostics or PR / commit rules
+Read the resulting instructions together with applicable parent and host-specific files. Check that commands and paths exist, task triggers are clear, and edits preserve constraints and user decisions still in force. Do not execute deployment or destructive commands merely to verify their spelling; validate them from their definitions and report what remains unrun.
 
-Write short bullets, concrete paths, and exact commands. Prefer this:
+For a substantial rewrite, load [references/optimization-checklist.md](references/optimization-checklist.md) and compare behavior on representative tasks using the models and hosts the repository actually supports. Fix instructions that cause unnecessary reading, redundant checks, repeated approval, or early stopping while retaining genuine safeguards.
 
-- `pytest tests/api/test_users.py -q`
-- `npm run lint`
-- `src/api/` contains HTTP handlers
-- `Code comments must be technical, precise, and written in English; explain why or intent, not obvious syntax`
-- `Add or update tests for changed behavior in tests/api/`
-- `If debugging stalls after 2–3 failed iterations, ask before using online research`
-- `Use Tavily for online research when external lookup is needed`
-- `Use objdump for binary inspection before switching tools`
-- `Ignore the existing warning in src/ui/App.tsx unless the user reopens it`
-- `go vet ./... # one pre-existing unsafe.Pointer warning in injection/ is accepted — do not fix it`
-- `Regenerate the resource blob after changes in evasion/ or injection/: bash scripts/gen.sh`
-
-For `## Project structure`, stop at the **folder level** unless a specific file is truly operationally important. Describe what each directory contains or should contain. Do **not** dump long file inventories. Mark generated files inline when their presence causes confusion (e.g., `resources.enc ⚡ GENERATED — do not edit`). When a subdirectory has its own specialized rules, write `See <path>/AGENTS.md` to keep the root lean instead of duplicating content.
-
-Avoid this:
-
-- “Use best practices”
-- “Be careful with code quality”
-- long prose repeating the README
-- interface definitions, config structs, pipeline breakdowns, or behavioral deep-dives — put those in `README.md` or a reference file
-- giant `Project structure` sections listing every file in the repo
-
-If the user asks for a starter file from scratch, use [assets/minimal-agents-template.md](assets/minimal-agents-template.md) as the base and then replace every placeholder with repo-specific facts.
-
-### 3a. Record active user decisions explicitly
-
-When the user declares persistent tool/workflow choices, capture them in a dedicated section (`## Active user decisions`, `## Working agreements`, or `## Current tool choices`). Mark entries as active but revisable — not permanent rules. See [references/agents-md-principles.md](references/agents-md-principles.md).
-
-### 3b. Treat testing as part of the change
-
-When the project has tests, state whether the agent should add or update tests for changed behavior and which test command to run first. If the repo has no meaningful automated tests, say what validation is expected instead. Do not promise test creation for repos where tests are intentionally absent or generated elsewhere.
-
-### 3c. Treat debugging as an evidence-gathering workflow
-
-Encode the debugging workflow as short operational bullets:
-- local tools first: tests, linters, type checkers, logs, debuggers, trace output, repro scripts, profilers
-- create small temporary debugging helpers when local tooling is missing and that is the fastest path to clear answers
-- after **2–3 failed iterations**, escalate deliberately instead of retrying blindly
-- align with the user before online research unless already permitted
-
-### 3d. Record accepted diagnostics and intentionally ignored UI issues
-
-When the user says a warning or lint issue should not be changed, store it in a scoped entry (`## Accepted diagnostics`, `## Known ignored warnings`, or `## Deferred issues`) with path, issue summary, and disposition (ignored/deferred/out of scope). Prevents repeated re-analysis. See [references/agents-md-principles.md](references/agents-md-principles.md).
-
-### 4. Optimize for token cost
-
-Target **30–80 lines** for small repos, **60–120 lines** for medium repos. Commands early. One real example beats abstract rules. No product history, motivation, or template noise.
-
-Load [references/optimization-checklist.md](references/optimization-checklist.md) when tightening a draft.
-Use [references/github-lessons.md](references/github-lessons.md) for command order, examples, and the six high-value sections.
-
-### 5. Merge or refactor existing files carefully
-
-Preserve verified commands, boundaries, repo-specific gotchas, and active decisions still in force. Remove stale commands, duplicated explanations, and generic filler. Prefer one canonical `AGENTS.md`; migrate tool-specific files only when the user requests it or duplication is clearly harmful. See [references/agents-md-principles.md](references/agents-md-principles.md) § Migration and Maintenance.
-
-### 6. Validate before finishing
-
-- Commands and paths are real; no placeholders, TODOs, or fake examples.
-- `Project structure` is directory-level only — no file inventories.
-- Developer documentation moved to `README.md` or a reference file.
-- Only instructions that change agent behavior remain.
-
-Load [references/optimization-checklist.md](references/optimization-checklist.md) for the full quality checklist.
-
-## Drafting Rules
-
-- Be precise, technical, and minimal.
-- Prefer repo facts over generic advice.
-- Mention commands with flags when they reduce ambiguity.
-- In `Project structure`, prefer folders plus one short explanation of what lives there.
-- Mention approval boundaries only when they prevent real risk.
-- If no reliable command exists, say so instead of inventing one.
-- Treat `AGENTS.md` as a living operational file: update it when the project changes, when better workflows are discovered, or when available tools materially change.
-- A single accepted diagnostic can be recorded as an inline comment on the command that produces it rather than creating a dedicated section for just one issue.
-
-## Common Section Patterns
-
-### Small repository
-
-- `## Commands`
-- `## Active user decisions`
-- `## Testing`
-- `## Debugging`
-- `## Project structure`
-- `## Accepted diagnostics`
-- `## Boundaries`
-
-### Monorepo root
-
-- `## Workspace commands`
-- `## Working agreements`
-- `## Package discovery tips`
-- `## Testing strategy`
-- `## Debugging strategy`
-- `## Accepted diagnostics policy`
-- `## Nested AGENTS.md policy`
-
-### Specialized subtree
-
-- `## Local commands`
-- `## Local decisions`
-- `## Local testing`
-- `## Local debugging`
-- `## Local accepted diagnostics`
-- `## Files in scope`
-- `## Local conventions`
-- `## Do not touch`
-
-## Resources
-
-### references/
-
-- [references/agents-md-principles.md](references/agents-md-principles.md) — load when deciding structure, precedence, section selection, or migration rules.
-- [references/optimization-checklist.md](references/optimization-checklist.md) — load when shrinking a draft, reviewing quality, or turning vague instructions into concise, actionable bullets.
-- [references/github-lessons.md](references/github-lessons.md) — load when you need the actionable lessons from GitHub's Nov 2025 analysis of 2,500+ `AGENTS.md` files.
-
-### assets/
-
-- `assets/minimal-agents-template.md` — minimal starter template for root `AGENTS.md` files; customize every placeholder with repo-specific facts before saving.
+Deliver the edited files with a concise account of the behavior changed, verification performed, and unresolved facts. Completion requires a usable instruction file with no scaffold text, no broken local links, and no unsupported operational claims.

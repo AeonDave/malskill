@@ -1,44 +1,33 @@
+<!-- Drafting scaffold: replace every placeholder with verified repository facts.
+Delete unsupported sections and this comment before saving the target AGENTS.md. -->
+
 # AGENTS.md
 
 ## Commands
-- Install dependencies: `<real command>`
-- Run the dev workflow: `<real command>`
-- Run the fast validation for changed code: `<real command>`
-- Run the full test suite: `<real command>`
 
-## Active user decisions
-- Use `<tool / workflow choice>` when relevant.
-- Ask before changing these decisions; they are active preferences, not permanent rules.
+- From `<working-directory>`, run `<command>` when `<task or changed area>`; requires `<prerequisite, if any>`.
+- Validate `<affected behavior>` with `<command or manual check>`.
 
-## Testing
-- Add or update tests for changed behavior.
-- Prefer the smallest relevant test command first.
-- Do not finish with failing tests, lint, or type checks unless the user explicitly accepts it.
+## Constraints
 
-## Debugging
-- Use available local tools first: tests, logs, debuggers, repro scripts, type checks, profilers, or existing diagnostics.
-- If local evidence is still insufficient after 2–3 failed iterations, ask before using online research.
-- Create small temporary debug helpers only when they materially improve signal, then remove or formalize them as appropriate.
+- `<Non-obvious repository rule, affected scope, and operational reason.>`
+- `<Generated path>` is produced by `<source or generator>`; update it through `<verified command>`.
 
-## Project structure
-- Keep this section at folder level only; list only directories and very high-signal paths.
-- `<path>/` — `<what lives here>`
-- `<path>/` — `<what lives here>`
-- `<path>/` — `<what lives here>`
+## Task-specific documentation
+
+- Read `<relative-doc-path>` when `<specific task condition>`.
+
+## Completion
+
+- `<Observable result and required validation for this workflow.>`
+- `<Condition requiring broader checks and their command, if any.>`
+
+## Working agreements
+
+- `<Current persistent user or team decision and the scope where it applies.>`
+- `<Already-authorized local action and its applicable limits, if useful.>`
+- `<Action requiring approval under an actual project rule, if any.>`
 
 ## Accepted diagnostics
-- `<path or scope>` — `<warning / lint / UI issue>` — `<ignored / deferred / out of scope until user reopens>`
 
-## Conventions
-- `<non-obvious style or architecture rule>`
-- Code comments should be in English, technical, and brief; explain intent, invariants, or non-obvious behavior.
-- `<library / framework preference>`
-- `<naming / file placement rule>`
-- Update `AGENTS.md` after important changes to commands, structure, conventions, or boundaries.
-
-## Boundaries
-- Ask first before: `<schema / dependency / deploy / destructive change>`
-- Never: `<secrets / vendor dirs / generated output / production config>`
-
-## PR instructions
-- `<title format or required checks, only if real>`
+- `<Exact diagnostic and path or command>`: `<approved disposition and revisit condition>`.

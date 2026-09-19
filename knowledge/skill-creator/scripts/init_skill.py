@@ -22,16 +22,16 @@ ALLOWED_RESOURCES = {"scripts", "references", "assets"}
 SKILL_TEMPLATE = """\
 ---
 name: {skill_name}
-description: "[TODO: State what this skill enables, when to use it, and any important boundary. Use natural task language. Max 1024 chars.]"
+description: "[TODO: Name the distinctive task and when this skill applies, as briefly as clarity allows. Max 1024 chars is a ceiling, not a target.]"
 ---
 
 # {skill_title}
 
-[TODO: State the task-specific outcome and any boundary another agent cannot infer. Remove this paragraph when done.]
+[TODO: State the task-specific outcome, completion condition, and constraints another agent cannot infer.]
 
-## Workflow
+## Guidance
 
-[TODO: Add only instructions that change execution: decision criteria, constraints, steps, and verification. Match detail to risk. Add an example only when it removes ambiguity.]
+[TODO: Add only decisions and non-obvious constraints that change execution. Prescribe a sequence only when order matters. For independent workflows, route to the relevant resource instead of loading every branch. Remove unused sections.]
 {resource_section}
 """
 
@@ -42,10 +42,10 @@ Example script for {skill_name}.
 
 Replace this placeholder with actual implementation or delete if not needed.
 
-Agentic ergonomics:
-- Output clean success/failure strings to stdout/stderr.
-- Never print raw tracebacks — catch exceptions and print a clear message.
-- Truncate long outputs (e.g., "Success: First 50 lines shown...").
+Output contract:
+- Keep stdout suitable for its consumer; send diagnostics to stderr.
+- Preserve failure details needed for debugging.
+- Shorten human summaries without truncating required result data.
 \"\"\"
 
 import sys
@@ -69,19 +69,9 @@ EXAMPLE_REFERENCE = """\
 
 [TODO: Replace with actual reference content or delete this file if not needed.]
 
-## Table of Contents
+[TODO: State which subtask needs this file and add a matching route in SKILL.md.]
 
-- [Overview](#overview)
-- [Details](#details)
-
-## Overview
-
-Provide a concise summary of this reference document.
-
-## Details
-
-Add detailed documentation here. This file is loaded on demand — it can be long.
-Common uses: API specifications, database schemas, workflow guides, company policies.
+[TODO: Add only the contracts, decisions, or mechanics needed for that subtask. Keep shared rules in one canonical location.]
 """
 
 EXAMPLE_ASSET = """\
@@ -90,8 +80,8 @@ EXAMPLE_ASSET = """\
 Replace this with an actual asset file (template, image, data file, boilerplate, etc.)
 or delete this file if not needed.
 
-Assets are NOT loaded into the agent's context — they are files the agent copies or
-uses in its output.
+Assets are files the agent copies or uses in its output. Inspect their contents
+when needed for the task.
 """
 
 
