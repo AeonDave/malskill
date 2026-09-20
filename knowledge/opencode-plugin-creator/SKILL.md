@@ -1,6 +1,6 @@
 ---
 name: opencode-plugin-creator
-description: "Build, structure, test, and ship OpenCode CLI plugins — the JS/TS modules that extend OpenCode through the @opencode-ai/plugin API. Use when asked to create an OpenCode plugin, add a plugin hook (event, config, chat.message, chat.params, chat.headers, permission.ask, tool.execute.before/after, shell.env, command.execute.before, tool.definition, auth, provider, dispose, or any experimental.* hook for system-prompt/messages transform or compaction), register a custom tool() backed by a zod schema, scaffold a plugin package.json + tsconfig, wire the `plugin` array in opencode.json, install a local plugin via shim, or publish a plugin to npm. Covers the PluginInput context (client, $, directory, worktree, project, serverUrl), the Hooks return shape, ToolContext/ToolResult, the Bun runtime, and cross-platform gotchas. NOT for OpenCode agents/subagents (use opencode-agent-creator), AGENTS.md files (use agent-md-creator), or portable Agent Skills (use skill-creator)."
+description: "Create or revise OpenCode plugins. Use for version-specific plugin entrypoints, hooks, tools, initialization, lifecycle, and packaging."
 license: MIT
 compatibility: "OpenCode CLI (opencode.ai). Plugins are JS/TS modules under ~/.config/opencode/plugins/ or .opencode/plugins/, or npm packages in the 'plugin' array of opencode.json."
 metadata:
@@ -95,7 +95,7 @@ my-plugin/
 
 - **Hooks mutate `output` in place.** Reassigning the argument or returning a value (other than for custom-tool `execute`) is silently ignored.
 - **Throw to block.** A thrown error in `"tool.execute.before"` or `"permission.ask"` stops the action; the message reaches the model. Custom-tool `execute` should usually **return** an error string as guidance instead of throwing (see [references/custom-tools.md](references/custom-tools.md)).
-- **Don't block startup.** Heavy init (network, backfill, restore) must be fire-and-forget (`void doWork()`), or it delays every session. See [references/patterns.md](references/patterns.md).
+- **Don't block startup.** Heavy init (network, backfill, restore) should be scheduled without awaiting it inline (`void doWork().catch(...)`), so it does not delay session start and failures are observed. See [references/patterns.md](references/patterns.md).
 - **Log through the client, keep the binding.** `client.app.log({ body: { service, level, message } })` — call it via the client object (a detached reference loses `this` and throws). Fall back to `console`.
 - **Verify before claiming success.** Typecheck + tests are necessary, not sufficient. The plugin must actually load in OpenCode and run its hook. See the verification rule in [references/patterns.md](references/patterns.md).
 

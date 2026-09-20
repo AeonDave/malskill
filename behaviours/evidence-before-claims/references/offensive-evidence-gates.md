@@ -76,7 +76,7 @@ Downgrade when:
 
 Confirmed requires:
 
-- primary artifact re-checked in the current context (file read, command rerun, request replayed) — the model/subagent report alone is not evidence
+- primary artifact inspected with its relevant state and provenance — the model/subagent summary alone is not evidence; a new context alone does not invalidate recorded evidence
 - exact quote/path/offset the model cited, verified to exist and match
 - for delegated work: inspection of diff/artifacts, not the worker's summary
 
@@ -84,7 +84,7 @@ Downgrade when:
 
 - claim rests on paraphrased tool output or a subagent's conclusion
 - cited file/line/CVE/function was not opened and matched byte-for-byte
-- screenshot is the only artifact for a text/log claim (replay the source)
+- a screenshot omits the context needed for a text/log claim (inspect the original when available)
 - model output contradicts a fresh command run
 
 ## Cleanup and remediation

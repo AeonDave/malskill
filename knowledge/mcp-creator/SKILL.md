@@ -1,6 +1,6 @@
 ---
 name: mcp-creator
-description: "Create, implement, scaffold, migrate, or review Model Context Protocol (MCP) servers against modern MCP 2026-07-28. Use for server architecture, tool/resource/prompt contracts, stdio or Streamable HTTP transports, MRTR, optional extensions, authorization, security, and real-transport validation. Also use to isolate legacy initialization or session behavior. Do not use merely to configure an MCP client or invoke an existing server."
+description: "Create or audit an MCP server. Use for protocol contracts, capabilities, transport, authorization, tools, resources, and interoperability testing."
 license: MIT
 metadata:
   author: AeonDave

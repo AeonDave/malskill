@@ -87,7 +87,7 @@ A "team template" is just a directory of these plus an `opencode.json` wiring th
 
 Patterns that make any topology above more reliable, distilled from the OpenAgentsControl roster:
 
-- **Scout-first.** Before any write, dispatch a read-only `explore`/`scout` (or a ContextScout-style subagent) to gather project context and current external-library docs. Training data is stale for fast-moving libraries; a cheap read-only pass prevents expensive rework. Bake "discover before you build" into the supervisor's stage 1.
+- **Discovery when useful.** For unfamiliar code or fast-moving dependencies, dispatch a read-only `explore`/`scout` (or equivalent) before writing. Do not force a separate scout for a small, well-understood change.
 - **Context-level allocation.** Pass each subagent only what it needs: most dispatches need just the task spec (isolation); some need a filtered slice of the plan; almost none need the whole picture. Tighter packets = fewer tokens and sharper work.
 - **Context bundle for big handoffs.** For multi-file features, write a `bundle.md` (objective, loaded standards, constraints, acceptance criteria) and pass its path in the packet, instead of inlining everything — the subagent reads it on start.
 - **Dependency-batched parallelism.** Independent subtasks run together; dependent ones wait at a barrier. Never start a wave whose inputs aren't ready.

@@ -15,6 +15,7 @@ description: Safely evaluate, adapt, and rewrite raw public proof-of-concepts in
 
 ### 1. Safety Audit (Isolated Environment)
 Before executing any public exploit script:
+- **Record provenance first**: exact source URL, repository revision or release, file path, cryptographic hash of the reviewed artifact, and the claimed affected product/version. Preserve this record with the review so later edits or mirrors are not mistaken for the inspected PoC.
 - **Run in an isolated environment first** (container or VM with no credentials mounted). A clean-looking PoC may still exfiltrate environment variables or SSH keys at runtime.
 - Check `requirements.txt`, `setup.py`, `install.sh`, and any package manifest for typosquatted or malicious dependencies and build hooks that execute at install time.
 - Look for obfuscation: Base64 blocks, `eval()`, `exec()`, reversed strings.

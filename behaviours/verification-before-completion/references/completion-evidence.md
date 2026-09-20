@@ -1,37 +1,22 @@
-# Completion Evidence Gates
+# Completion Evidence
 
-Deep-dive for the freshness gate: red flags, downgrade wording, regression proof.
-Output shape (Claim / Evidence / Limits / Next) lives in `evidence-before-claims`.
+Load when selecting regression checks or reconciling a completion claim with partial evidence.
 
-## Red flags
+## Evidence gaps
 
-- Words like "should", "probably", "seems fixed", "looks good", or "ready" without a fresh check.
-- Relying on a sub-agent, scanner, or tool summary without inspecting primary output.
-- Tool exited 0 or "no error" treated as objective met.
-- Green test run cited after further code edits (stale).
-- Treating one passing proxy as proof for a broader claim.
-- Skipping verification because the change is small, urgent, or obvious.
-- Calling a regression test valid without proving it fails on the broken behavior.
+- A check predates a change that could affect its result.
+- Only a worker summary is available; the artifact or check output is missing.
+- Exit success is substituted for inspection of the intended output or state.
+- A passing subset is described as full coverage.
+- An environment failure, skip, or missing prerequisite is reported as a pass.
+- Static review is described as executed behavior.
 
-## Downgrade wording by work type
+For each gap, either obtain the missing evidence or narrow the claim. Do not repeat unaffected checks simply to create a newer timestamp.
 
-| Work type | Downgrade wording when |
-|---|---|
-| Code change | only static inspection was done, no test run |
-| Build / packaging | only lint or editor diagnostics passed |
-| Skill edit | only Markdown was visually checked, validator not run |
-| Research claim | sources are stale, indirect, or single-source |
-| Exploit / tooling | works once, only under debugger, or timing is unstable |
-| Delegated / sub-agent work | worker report is the only evidence, no diff replay |
-| Cleanup / remediation | remediation ran but target state not re-inspected |
+## Regression verification
 
-## Regression proof
+When practical, demonstrate the original failure, apply the fix, observe the reproducer pass, and run the smallest relevant check for collateral damage. Use an isolated baseline or saved artifact rather than undoing concurrent user work.
 
-For a bug fix, the strongest evidence is:
+For nondeterministic behavior, record conditions and repeated outcomes; a fixed number of passing runs does not prove absence of a race. If a baseline or broader check is unavailable, name the limitation.
 
-1. reproduce the original failure,
-2. apply the fix,
-3. observe the reproducer pass,
-4. run the smallest broader check that could catch collateral damage.
-
-When a full red-green reversal is too expensive, state the limitation explicitly.
+Report what changed, the verified outcome, and remaining uncertainty. The general claim/evidence/limits contract lives in `evidence-before-claims`.

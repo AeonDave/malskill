@@ -6,6 +6,7 @@ model: anthropic/claude-haiku-4-5
 permission:
   task: deny
   edit: deny
+  bash: deny
   webfetch: allow
   websearch: allow
 ---

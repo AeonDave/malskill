@@ -1,48 +1,30 @@
 ---
 name: design-before-implementation
-description: "Use before creative or multi-file implementation work: new features, behavior changes, refactors, new skills, offensive tooling workflows, exploit chains, research pipelines, or architecture decisions. Clarifies intent, scope, alternatives, constraints, success criteria, and non-goals before coding or executing."
+description: "Resolve design uncertainty before a substantial change. Use when requirements, interfaces, alternatives, or success criteria are unclear; skip a separate design phase for an already specified local fix."
 license: MIT
 compatibility: "Agent workflow guidance for coding, skill curation, and authorized security work."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Design Before Implementation
 
-Do not optimize the wrong plan. A short design prevents long rework.
+Identify the decisions that could cause rework before implementing them. Match the design effort to the uncertainty and consequences.
 
-## Hard gate
+## Establish the contract
 
-Before implementation, produce a design summary and get explicit or clearly implied approval unless the user gave exact step-by-step instructions or the change is a trivial single-edit fix.
+- Inspect the current implementation, applicable instructions, and relevant tests before proposing a replacement.
+- State the requested outcome, affected interfaces, constraints, and how completion will be checked.
+- Separate independent deliverables only when that clarifies ownership, dependencies, or validation.
+- Ask about missing information only when it materially changes scope, authorization, data integrity, or a costly design choice. Continue independent work while waiting.
 
-## Design workflow
+## Choose and execute
 
-1. **Context scan**: inspect current structure, conventions, and constraints.
-2. **Scope check**: split work that contains independent subsystems or targets.
-3. **Clarify intent**: ask only the missing questions that affect design, safety, or data integrity.
-4. **Options**: present 2-3 viable approaches with tradeoffs and a recommendation.
-5. **Design summary**: architecture, data/control flow, touched areas, testing, risks, non-goals.
-6. **Review gate**: resolve ambiguity, TODOs, contradictions, and scope creep before planning.
+Compare alternatives when a real tradeoff remains; do not manufacture options for a settled requirement. Record the selected approach and the assumption that would invalidate it.
 
-## Offensive and research focus
+An implementation request can already authorize routine design decisions and reversible edits. Do not insert a new approval gate solely because several files change. Honor an explicit design-only request and any actual restricted action.
 
-- Restate scope, allowed actions, noise/destructive limits, and evidence requirements.
-- Prefer the smallest viable technique chain before expanding tooling.
-- Separate reconnaissance, exploitability, tooling, validation, and reporting decisions.
-- Stop when verification would require access or actions outside the approved boundary.
+For a substantial design, summarize the outcome, approach, interfaces/artifacts, validation, and unresolved decisions. Omit empty sections. A short explanation may suffice for a local change.
 
-## Output shape
-
-- **Goal**: one sentence.
-- **Non-goals**: what this will not do.
-- **Approach**: recommended option and why.
-- **Interfaces/artifacts**: files, commands, reports, APIs, or evidence outputs.
-- **Validation**: how success and failure will be proven.
-- **Open questions**: only blockers or meaningful tradeoffs.
-
-## Resources
-
-Load on demand:
-
-- `references/design-gates.md` — spec review checklist and common design failure modes.
+Load [references/design-gates.md](references/design-gates.md) when reviewing a substantial design or resolving contradictory requirements. Use `implementation-planning` when dependencies or a handoff warrant an executable plan.

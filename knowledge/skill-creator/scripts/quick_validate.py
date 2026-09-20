@@ -2,6 +2,9 @@
 """
 Skill Validator - Check a SKILL.md for spec compliance.
 
+Dependency: PyYAML is required for strict YAML parsing; install it in the
+runtime before invoking this script.
+
 Validates:
   - SKILL.md exists
   - YAML frontmatter is well-formed
@@ -45,7 +48,7 @@ def _parse_frontmatter(content: str) -> tuple[bool, str, dict]:
     if not content.startswith("---"):
         return False, "No YAML frontmatter found (file must start with '---')", {}
 
-    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    match = re.match(r"^---\r?\n(.*?)\r?\n---(?=\r?\n|$)", content, re.DOTALL)
     if not match:
         return False, "Malformed frontmatter — could not find closing '---'", {}
 
@@ -60,16 +63,7 @@ def _parse_frontmatter(content: str) -> tuple[bool, str, dict]:
             return False, "Frontmatter must be a YAML mapping", {}
         return True, "", data
 
-    # Minimal fallback parser (simple key: value lines only)
-    data = {}
-    for line in raw.splitlines():
-        m = re.match(r"^(\S[^:]*?):\s*(.*)", line)
-        if m:
-            value = m.group(2).strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
-                value = value[1:-1]
-            data[m.group(1).strip()] = value
-    return True, "", data
+    return False, "PyYAML is required to parse frontmatter", {}
 
 
 def _uses_folded_description_scalar(content: str) -> bool:
@@ -113,6 +107,21 @@ def validate_skill(skill_path: Path | str) -> tuple[bool, str]:
             "folded-scalar syntax ('description: >', '>-', '>+') is not allowed"
         )
 
+    if any(not isinstance(key, str) for key in fm):
+        return False, "Frontmatter keys must be YAML strings"
+
+    # Type checks must precede normalization: str() would accept invalid YAML
+    # scalars such as null, booleans, and lists as valid strings.
+    for field in ("name", "description", "license", "compatibility", "allowed-tools"):
+        if field in fm and not isinstance(fm[field], str):
+            return False, f"Field '{field}' must be a YAML string"
+    if "metadata" in fm:
+        metadata = fm["metadata"]
+        if not isinstance(metadata, dict):
+            return False, "Field 'metadata' must be a YAML mapping"
+        if any(not isinstance(k, str) or not isinstance(v, str) for k, v in metadata.items()):
+            return False, "Field 'metadata' must contain only string keys and values"
+
     # Unexpected keys
     unexpected = set(fm.keys()) - ALLOWED_FIELDS
     if unexpected:
@@ -155,6 +164,8 @@ def validate_skill(skill_path: Path | str) -> tuple[bool, str]:
     # Validate compatibility (optional)
     if "compatibility" in fm:
         compat = str(fm["compatibility"]).strip()
+        if not compat:
+            return False, "Compatibility must not be empty"
         if len(compat) > MAX_COMPAT_LENGTH:
             return False, f"Compatibility is {len(compat)} chars — max is {MAX_COMPAT_LENGTH}"
 

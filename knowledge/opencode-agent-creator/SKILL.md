@@ -1,14 +1,16 @@
 ---
 name: opencode-agent-creator
-description: "Design, build, and tune OpenCode CLI agents and multi-agent teams. Use when asked to create an OpenCode agent, a subagent, an orchestrator/supervisor, a roster of specialists, a swarm/parallel fan-out, or an agent .md / opencode.json config. Covers agent modes (primary/subagent/all), the built-in agents (build, plan, general, explore, scout), the native Task tool for hierarchical delegation, permission.task dispatch whitelists, per-agent model/cost routing (and the no-per-task-model constraint plus the background-agents plugin workaround), the supervisor/swarm/mesh/template topologies and which are natively supported, custom tools, plugins, and secrets. Not for AGENTS.md instruction files (use agent-md-creator), generic Agent Skills (use skill-creator), or Claude Code subagents (use agents-claude-creator)."
+description: "Create or revise OpenCode agents. Use for version-specific agent files, tool permissions, model configuration, discovery, and delegation boundaries."
 license: MIT
-compatibility: "OpenCode CLI (opencode.ai), current docs as of 2026-06. Agents are Markdown files under ~/.config/opencode/agents/ or .opencode/agents/, or JSON under the 'agent' key of opencode.json. Multi-agent delegation uses the native Task tool; async/background delegation is experimental natively (OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS) or via the opencode-background-agents plugin."
+compatibility: "OpenCode CLI (opencode.ai). Verify whether the target is the V1 CLI or V2 beta before generating config; their agent and plugin shapes differ."
 metadata:
   author: AeonDave
   version: "2.0"
 ---
 
 # OpenCode Agent Creator
+
+Confirm the target OpenCode generation first. V1 and V2 beta configuration and plugin APIs are not interchangeable; preserve an existing V1 setup unless the user explicitly requests a V2 migration and the current V2 docs have been checked.
 
 Build precise, functional, professional OpenCode agents and agent teams without re-researching the platform. The reference shape is **one visible primary "supervisor" that plans and delegates, dispatching a roster of model-tiered subagents through the native `task` tool**. This skill encodes the official OpenCode agent model plus field-tested orchestration, topology, and cost-routing patterns.
 
@@ -71,7 +73,7 @@ Separate by **independent decision boundary**, not convenience:
 - **N specialist subagents** — `mode: subagent`, `hidden: true`. One bounded domain each, pinned to a capable model.
 - **M utility subagents** — `mode: subagent`, `hidden: true`. Trivial/bulk/token-heavy work (summarize, parse, public lookup, boilerplate), pinned to cheap/free models.
 
-Keep each subagent to **one bounded question with one deliverable**. If you cannot state its success signal in one sentence, split it. A scout-first habit (dispatch a read-only `explore`/`scout` to gather context before any write) keeps expensive agents cheap — see the OpenAgentsControl-derived discipline in [references/multi-agent-topologies.md](references/multi-agent-topologies.md).
+Keep each subagent to **one bounded question with one deliverable**. If you cannot state its success signal in one sentence, split it. Use a read-only discovery pass for unfamiliar or fast-moving dependencies when it reduces rework; scouting is not mandatory for every small change. See [references/multi-agent-topologies.md](references/multi-agent-topologies.md).
 
 ### 5. Assign models by tier (cost routing)
 

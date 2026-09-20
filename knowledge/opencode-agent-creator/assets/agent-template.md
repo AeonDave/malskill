@@ -1,8 +1,3 @@
-<!--
-Subagent template for OpenCode. Save as ~/.config/opencode/agents/<name>.md or
-.opencode/agents/<name>.md — THE FILENAME IS THE AGENT NAME (no `name:` field).
-Delete the comments and the lines you don't need. Restart OpenCode after editing.
--->
 ---
 description: One paragraph — what it does and the concrete trigger for when to dispatch here. Assertive and specific; this is what the supervisor reads to route. e.g. "Reviews a diff for security and quality issues, read-only. Use after code changes."
 mode: subagent
@@ -15,6 +10,8 @@ permission:
   edit: deny                       # remove this line only if the agent legitimately writes
   # bash: deny                     # add for a pure-analysis agent
 ---
+<!-- Save as ~/.config/opencode/agents/<name>.md or .opencode/agents/<name>.md.
+The filename is the agent name; delete this comment after copying. -->
 
 You are a <role> specializing in <domain>.
 

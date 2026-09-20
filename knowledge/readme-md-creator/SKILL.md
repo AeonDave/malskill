@@ -1,6 +1,6 @@
 ---
 name: readme-md-creator
-description: "Create, update, rewrite, or shorten repository README.md files so they stay concise, well-sectioned, non-redundant, and written in clear English. Use when the user asks to create a new README, improve or refresh an existing one, standardize structure and tone, remove bloat, or add practical setup and usage guidance, selective badges or callouts, and small ASCII architecture diagrams only when the architecture or flow is important to understanding the project."
+description: "Create, audit, or update a repository README. Use when setup, usage, project scope, or documentation links need to match the actual project."
 license: MIT
 compatibility: "Markdown; works for any repository with a README.md"
 metadata:
@@ -59,7 +59,7 @@ Keep the header compact. The reader should reach the first meaningful content qu
 
 ### 4. Choose the smallest useful outline
 
-Use only the sections that help the reader act. Prefer 5–9 top-level sections for most repositories.
+Use only the sections that help the reader act. Prefer the smallest useful set; section count is a result, not a quota.
 
 High-value sections, in typical order:
 

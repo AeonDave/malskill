@@ -39,8 +39,9 @@ const MyPlugin: Plugin = async (input) => {
 	log("info", `loaded in ${input.directory}`)
 
 	// TODO: one-time setup here (load config, start a server, restore state).
-	// Heavy/slow work must be fire-and-forget so it never delays session start:
-	//   void doExpensiveInit().catch(() => {})
+	// Optional independent work may run asynchronously with an attached catch.
+	// If a later hook depends on initialization, retain a readiness promise,
+	// catch into state, and await it from that hook before using the state.
 
 	return {
 		// Block reads of sensitive files. Throwing aborts the tool call; the

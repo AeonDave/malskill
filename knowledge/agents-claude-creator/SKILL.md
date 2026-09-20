@@ -1,6 +1,6 @@
 ---
 name: agents-claude-creator
-description: "Design, build, and tune Claude agents — primarily Claude Code subagents (the Markdown + YAML files under .claude/agents/ or ~/.claude/agents/ that Claude delegates to), and also Claude Managed Agents (the cloud agent harness on the API). Use when asked to create a Claude agent or subagent, write agent frontmatter (name, description, tools, model, skills, permissionMode, hooks, memory), design a focused reviewer/debugger/researcher agent, scope tool access, route work to a cheaper model, build a team of delegating agents, or fix an agent that never triggers or sees the wrong context. Not for AGENTS.md / CLAUDE.md instruction files (use agent-md-creator), portable Agent Skills (use skill-creator), or OpenCode agents (use opencode-agent-creator)."
+description: "Create or revise Claude Code subagents. Use for agent definitions, tool permissions, context, model selection, discovery, and invocation behavior."
 license: MIT
 compatibility: "Claude Code subagents (.claude/agents/ and ~/.claude/agents/, *.md). Managed Agents target the Claude API (managed-agents beta). Frontmatter validated against the current Claude Code subagent spec."
 metadata:
@@ -101,7 +101,7 @@ Match **degrees of freedom** to the task: tight numbered steps for fragile/destr
 ### 6. Validate and test
 
 - Frontmatter is valid YAML between `---`; `name` is lowercase-hyphens; `tools` names are real; `model` is a valid alias/ID/`inherit`.
-- Manual file edits load at **session start** — restart the session. Use `--agents` JSON flag for session-only testing without a file (as of v2.1.198, `/agents` no longer opens a creation wizard).
+- Existing agent files are reloaded by Claude Code while the session is running; restart when adding a new agent directory or changing discovery roots. Use `--agents` JSON for session-only testing.
 - **Triggering test:** give a natural prompt that *should* delegate and confirm Claude picks the agent; if not, sharpen the `description`. **Behavior test:** run it on a real task and confirm it stays in its tool boundary and returns the contracted output. Method: [references/triggering-and-testing.md](references/triggering-and-testing.md).
 
 For teams of agents (a coordinator that delegates to specialists), keep each specialist single-responsibility and let the coordinator route — see the orchestration notes in [references/system-prompt-patterns.md](references/system-prompt-patterns.md).

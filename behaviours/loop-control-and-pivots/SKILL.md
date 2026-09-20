@@ -1,94 +1,46 @@
 ---
 name: loop-control-and-pivots
-description: "Retry discipline for stuck work. Use when an approach fails repeatedly, when grinding a side problem (env setup, missing tool, credentials, file transfer) instead of the goal, or when a debug/exploit/build attempt is not converging. Enforces evidence-first pivots, a 3-strikes rule, and honest BLOCKED reporting over thrash - while resisting premature give-up: pivot the dead path, but hold the objective while budget and untried approaches remain."
+description: "Stop unproductive retries and repeated polling. Use when the same failure recurs, a side issue consumes the task, or unfinished jobs are checked without new evidence."
 license: MIT
 compatibility: "AgentSkills-compatible loop-control guidance for coding, debugging, security testing, and research."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.3"
 ---
 
 # Loop Control and Pivots
 
-Repeating a failing approach burns budget and hides progress. Fail fast, pivot on evidence, and stay
-on the goal.
+Keep the requested outcome while changing approaches that no longer yield evidence.
 
-## Activation triggers
+## Retry or change course
 
-- The same approach has failed ~2–3 times (same error, same dead end).
-- You are grinding a **side problem** — env setup, a missing tool, credentials, a file transfer,
-  working around tooling — instead of the actual deliverable.
-- A debug / exploit-dev / build / research thread is not converging.
+- After repeated equivalent failures, compare the expected and actual result before another attempt. A small retry count is a reassessment cue, not proof that a cause or solution is impossible.
+- Do not repeat unchanged authentication, permission, malformed-input, or unsupported-feature failures. Correct a demonstrated cause, use a supported route, or identify the missing capability.
+- Retry transient failures only within the tool's retry policy and task budget, respecting backoff or server guidance.
+- Record the failed approach, decisive error, and what the next attempt changes. Preserve useful partial results instead of restarting discovery.
+- Give side issues a budget proportionate to their role in the deliverable. Continue independent work when a dependency is unresolved.
 
-## The rules
+Use `hypothesis-driven` when the causal model is uncertain and `known-problem-hint-research` when a precise unresolved question would benefit from external evidence. Do not invent additional work simply to avoid reporting a limitation.
 
-1. **3-strikes → dead**: after ~3 evidence-based attempts at one approach, mark the path dead. Do not
-   re-trigger it blindly; quote the failure and switch to a **different** test, not a repeat. New
-   evidence or partial progress resets the count — strikes track *repeated identical failure*, not a
-   path that is still yielding signal.
-2. **Fail fast on non-retryable failures**: some errors never resolve by repetition — auth/permission
-   denials, 404/not-found, malformed-input or unsupported-feature rejections. Spend zero retries: fix
-   the cause, pivot, or surface `[BLOCKED: need X]` at once instead of burning the 3-strikes budget.
-3. **Pivot on evidence**: `failed path → quote the exact failure → next shortest path`. Each retry
-   must change a variable, not just re-run hope.
-4. **Don't grind side quests**: a secondary problem gets one bounded attempt (see Budgets). If it
-   doesn't yield, surface `[BLOCKED: need X]` and pivot to productive work rather than sinking the
-   run into it.
-5. **Hold the objective**: every step ties to the success signal. If you've drifted onto a
-   sub-problem, name the drift and return to the goal (or escalate for the missing capability).
-6. **Escalate honestly**: when genuinely stuck after the recovery pass, pivots, and local tests, load the narrowest
-   hint/research support skill or hand back an honest blocker **with everything derived so far**
-   (offsets, leaks, partial output) — never a fabricated success.
+## Persistence and stopping
 
-## Persist on the objective (the other half of fail-fast)
+A failed approach does not automatically block the whole task. Check remaining supported alternatives that fit the authorization and budget. Stop at an explicit limit, an unavailable required capability, or a request to pause.
 
-Fail-fast applies to a **path**, never to the **objective**. A dead path means pivot; it does not
-license abandoning the goal. The dominant failure mode on capable models against hard targets is
-*premature surrender* — bailing with "stuck" / "need a tool" / BLOCKED while budget and untried
-attack-classes remain.
+Distinguish a proven constraint from an untested assumption. Static evidence or a valid proof can justify a bounded conclusion; unsuccessful sampling alone cannot prove impossibility. Do not demand live actions outside the authorized scope to support every negative claim.
 
-- **Two levels, opposite reflexes.** Pivot the vector/class fast (3-strikes, above); keep attacking
-  the *objective* until the run budget is committed **or** every distinct attack-class has been tried
-  and killed with evidence. Do not collapse "this path is dead" into "I am stuck."
-- **Kill paths with tests, not proofs.** "Dead" requires a *failing live experiment*. A reasoning-based
-  "this can't work / is unreachable / is impossible" verdict is a hypothesis, not a kill — abandoning
-  the *correct* vector on a deductive impossibility is a top cause of losing solvable targets. When
-  your attempts have become impossibility *arguments* instead of *experiments*, the pivot is to dynamic
-  probing (hook the candidate call site, fuzz the threshold/length/format), not deeper static reasoning.
-  (See `hypothesis-driven` → "'Impossible' is a hypothesis".)
-- **Recovery pass before BLOCKED.** On a solvable target, before you report blocked: (a) diff current
-  state vs your hypothesis and probe what is still *unverified*; (b) re-read recon for missed env
-  vars, comments, headers, versions; (c) try the *simplest* attack of the class, not the cleverest;
-  (d) send wild/empirical payloads — errors leak parser and structure.
-- **What BLOCKED actually means.** A genuine blocker is a *missing external capability* — credential,
-  authorization, access, or a tool you cannot obtain — not "out of ideas." Out-of-ideas → recovery
-  pass or a hint/research skill; missing-capability → the BLOCKED report shape below.
+## Waiting for running work
 
-## Budgets and hard stops
+- For a long-running job, identify its completion signal and execution deadline. Check the current host's tool contract before choosing a wait or notification mechanism.
+- Prefer supported completion notifications or native waits. Do independent useful work meanwhile; when exhausted, use a wait suited to the expected duration within tool limits and higher-priority responsiveness requirements.
+- If polling is the only supported option, space checks with backoff bounded by the job deadline and required intervention latency. Avoid short sleep/check loops and rereading unchanged logs.
+- A wait returning early or timing out does not establish job failure. Check its reported state; silence alone does not justify cancellation, relaunch, or counting a failed attempt.
+- End a turn with work pending only if the job can survive it; also require reliable host resumption or a user-agreed handoff. State the job, result location, and resume mechanism; otherwise retain responsibility for completion. Instructions alone do not create wake-ups.
+- On completion, verify exit status and required artifacts before continuing dependent work. A delivered notification is not evidence of success.
 
-Set caps before starting. Trip a cap → stop, quote it, pivot or report.
+## Budgets and handoff
 
-- **Tool-calls per approach**: ~5–10 calls to prove or kill one hypothesis. Past that: path is dead.
-- **Side-quest cap**: ~10 tool-calls or ~15 min on env/tooling/creds/transfer. Past that:
-  `[BLOCKED: need X]`.
-- **Wall-clock / token budget**: when ~70% of the run budget is spent, drop low-yield branches and
-  reserve remainder for verification and reporting.
-- **MCP / network retry cap**: at most 2 automatic retries on the same call with the same args.
-  The third attempt must change the call, target, or route — otherwise mark it dead.
-- **Sub-agent runaway**: kill and reassign a delegated worker when it exceeds its budget, produces
-  no new artifacts across two status reports, or drifts off the stated goal.
+Respect explicit runtime, cost, retry, and scope limits. If estimating a budget, scale it to the uncertainty and retain enough capacity for verification and reporting; no universal call count proves exhaustion.
 
-## Anti-patterns
+For delegated work, enforce the agreed budget and investigate a missed milestone, reported failure, or scope drift before reassignment. Apply the running-work rules to a quiet worker.
 
-| Smell | Instead |
-|---|---|
-| Re-running the same command hoping it works | change an input/assumption, or pivot |
-| Two hours on env/tooling for a 10-minute task | bounded attempt → `[BLOCKED: need X]` → pivot |
-| "Almost there" for the 5th identical attempt | quote the failure, mark the path dead, pivot |
-| Silent give-up | report the blocker + partial results + next smallest step |
-
-## Blocked report shape
-
-`[BLOCKED: need X]` — what you were trying, the exact failure (verbatim), what you derived, and the
-one capability/decision that would unblock it. Pair with `evidence-before-claims` so the blocker is
-as auditable as a success would be.
+When blocked, report the missing capability, exact failure or constraint, useful results, and the smallest action that would unblock the work. Follow the host's task-state contract before marking a goal blocked; the label is not a substitute for evidence.

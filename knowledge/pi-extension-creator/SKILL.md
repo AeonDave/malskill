@@ -1,6 +1,6 @@
 ---
 name: pi-extension-creator
-description: "Create, review, package, and troubleshoot Pi coding-agent extensions and Pi packages. Use when asked to build TypeScript extensions for Pi, register tools with pi.registerTool, subscribe to pi.on lifecycle/tool/input/session events, add slash commands, keyboard shortcuts, or CLI flags, build custom UI/widgets/footers/headers/editors and message or tool renderers, contribute skills/prompts/themes, package resources through package.json pi.extensions/skills/prompts/themes, define subagent-style markdown agents in ~/.pi/agent/agents or .pi/agents, install via pi -e or pi install, or implement patterns like permission gates, protected paths, subagents, command rewriters, custom providers, and dynamic resources."
+description: "Create or revise Pi extensions. Use for extension entrypoints, tools, commands, events, UI integration, state, and packaging."
 license: MIT
 metadata:
   author: AeonDave

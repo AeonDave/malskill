@@ -88,7 +88,7 @@ A tight output contract is also what keeps a high-volume agent (tests, search) f
 ---
 name: code-reviewer
 description: Expert code-review specialist. Proactively reviews changes for quality, security, and maintainability. Use immediately after writing or modifying code.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 model: inherit
 ---
 

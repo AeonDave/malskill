@@ -1,6 +1,6 @@
 ---
 name: known-problem-hint-research
-description: "Targeted post-triage online research for a known technical problem signature, not broad discovery. Use after the agent has already analyzed the artifact, ranked hypotheses, and hit a wall, to find the missing hint in papers, blogs, articles, public writeups, source discussions, specifications, commits, issues, changelogs, advisories, PoCs, or implementation notes. Useful for cryptography, protocol debugging, reversing, AI/ML behavior, web/API behavior, exploit constraints, version-specific bugs, build/runtime errors, and standards mismatches where one external clue unlocks the next local test."
+description: "Research a precise unresolved technical symptom after local triage. Use when a known signature, version, or artifact needs an external source to resolve the remaining uncertainty."
 license: MIT
 compatibility: "AgentSkills-compatible agents with web search/fetch access; uses fetch_content, Tavily when available, and Jina Reader/Search endpoints."
 metadata:
@@ -42,7 +42,7 @@ The fingerprint is the guardrail that keeps the search sharp.
 
 ## Search ladder
 
-### 1. Generate 3 to 5 precise queries
+### 1. Generate a small set of precise queries
 
 Derive queries from the fingerprint, not from the whole user prompt.
 
@@ -62,11 +62,12 @@ Bad query ingredients:
 
 ### 2. Discover candidate URLs
 
-Use available discovery tools in this order:
+Use whichever discovery tools are available in the active host:
 
-1. Tavily search/research when available, with one narrow query at a time.
-2. Jina Search through `fetch_content` on `https://s.jina.ai/{url-encoded-query}`, preferably with a site filter from `references/source-filters.md`.
-3. Direct site-native search or normal web search only for gaps or when the above fail.
+1. A native search tool, including Tavily when available, with one narrow query at a time.
+2. Direct site-native search or ordinary web search for gaps.
+
+Do not assume Jina, Tavily, a particular endpoint, or a provider-specific score field exists.
 
 Do not accept Tavily's synthesis as final evidence. Treat it as URL discovery and claim triage, then fetch primary pages.
 
@@ -74,12 +75,11 @@ Do not accept Tavily's synthesis as final evidence. Treat it as URL discovery an
 
 For each candidate URL, use the smallest reliable fetch path:
 
-1. Jina Reader: `fetch_content` on `https://r.jina.ai/{full-url-with-scheme}`.
-2. Direct `fetch_content` for raw text, JSON, PDFs, API pages, or simple sites.
-3. Tavily extraction when available and the page needs structured extraction.
-4. Browser automation only if the source is highly relevant and other fetches fail.
+1. An available direct page fetch for the source's canonical URL.
+2. An available reader or extraction tool when direct content is incomplete.
+3. Browser automation only if the source is highly relevant and available fetches fail.
 
-Stop after 5 to 8 high-signal pages unless a page cites a clearly decisive source.
+Stop when the next page is unlikely to change the hint, or when a deliberately chosen page budget is reached.
 
 ### 4. One-hop recursion only
 

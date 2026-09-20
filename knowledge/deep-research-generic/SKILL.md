@@ -1,6 +1,6 @@
 ---
 name: deep-research-generic
-description: "File-backed deep research with recursive link-following, multi-tool web fetching, and step-by-step synthesis. Use when the user asks to research, investigate, analyze, or summarize a topic in depth; when a thorough answer requires gathering and cross-referencing multiple sources; or when output must be comprehensive, cited, and not limited by context window size. For CVE/exploit/threat-intel research → use deep-research-offensive."
+description: "Research a question across primary sources. Use when competing claims or multiple subquestions need traceable evidence and a bounded research plan."
 license: MIT
 metadata:
   author: AeonDave
@@ -9,9 +9,9 @@ metadata:
 
 # Deep Research — Generic
 
-File-backed, multi-pass research workflow. Each useful page is fetched, cleaned, and saved to an intermediate file. Linked pages are recursively followed. All intermediate files are synthesized step-by-step into a single comprehensive research document.
+File-backed, multi-pass research workflow for investigations that need multiple sources or context beyond one response. Save useful pages and synthesize them step-by-step; for a small self-contained question, keep the notes and output proportionate.
 
-> **Core principle**: Use the file system as extended memory. Never rely on context alone — save everything worth keeping, then synthesize from files.
+> **Core principle**: Use the file system as extended memory when the research is multi-page or context-limited. Save material worth keeping and synthesize it from the recorded evidence.
 
 ---
 
@@ -22,8 +22,8 @@ File-backed, multi-pass research workflow. Each useful page is fetched, cleaned,
 Before any search:
 
 1. Define the exact research question or thesis
-2. Break into 3–7 sub-questions (dimensions), each with a priority (high/medium/low)
-3. Create the working directory:
+2. Break the question into the smallest useful set of sub-questions, each with a priority (high/medium/low)
+3. For multi-page or context-limited work, create the working directory:
 
 ```
 .research/{topic-slug}/
@@ -32,22 +32,24 @@ Before any search:
 └── output.md           # Final synthesized research document
 ```
 
-4. Write `_plan.md` with sub-questions and an empty URL queue section
+4. For that workflow, write `_plan.md` with sub-questions and an empty URL queue section.
 
-Ask at most two clarifying questions. If the request is clear, proceed immediately.
+Ask only the clarifying questions needed to resolve scope or a materially ambiguous requirement. If the request is clear, proceed immediately.
+
+For a small self-contained question, use a direct cited response and skip the file-backed passes; use Steps 2–7 when multiple sources or context limits justify them.
 
 ### Step 2 — Initial Search Sweep
 
 For each sub-question, run parallel searches to discover URLs:
 
-- **`web_search`** (primary): one query per sub-question; multi-provider, synthesized results with citations
-- **Jina Search** (complementary): `fetch_content` on `https://s.jina.ai/{search-query}`
-- **Tavily** (if MCP-available): `search_depth: basic`, `max_results: 5–10`
+- Use the available search provider(s), one focused query per sub-question where practical.
+- Use Tavily only when its MCP tools are available; follow that tool's current schema and limits.
+- Do not assume a provider, endpoint, score field, or synthesis behavior exists in the active host.
 
 From results:
 - Record every promising URL in `_plan.md` under the URL queue
-- Note: source, relevance score, which sub-question it serves
-- Filter: only queue URLs with relevance score > 0.5 (or clearly relevant titles)
+- Note: source, relevance rationale (and a provider score only if available), and which sub-question it serves
+- Filter by relevance and source quality; use a provider score only when that provider documents one.
 
 ### Step 3 — Deep Fetch (page by page)
 
@@ -57,15 +59,13 @@ Process each queued URL individually:
 
 | Priority | Tool | When |
 |---|---|---|
-| 1 | **`fetch_content`** (Jina proxy) | `https://r.jina.ai/{url}` — strips boilerplate, cleanest markdown |
-| 2 | **`fetch_content`** (direct) | APIs, raw JSON, PDFs, GitHub repos |
-| 3 | **Tavily extract** | MCP-available; structured extraction |
-| 4 | **Playwright** | JS-rendered SPAs, dynamic tables |
+| 1 | An available direct page fetch | APIs, raw JSON, PDFs, and ordinary pages |
+| 2 | An available extraction or reader tool | When it returns citable content more reliably |
+| 3 | Browser automation | JS-rendered pages when other available fetches are incomplete |
 
-**Jina proxy**: `fetch_content` on `https://r.jina.ai/{full-url-with-scheme}`
-Converts any page to clean markdown. Strips ads, nav, popups. Falls back to Gemini for bot-blocked pages.
+Use a reader or extraction proxy only when it is available and its behavior is known. Do not claim that a proxy strips all boilerplate or that one provider automatically falls back to another.
 
-**Escalation**: Jina proxy empty → `fetch_content` direct → Tavily extract → Playwright.
+**Escalation**: try the least expensive available fetch, then a direct or browser fetch when the result is empty or incomplete.
 
 **3b. Evaluate**: Is the content relevant and citable? If not, mark URL as `skipped` in `_plan.md` and move on.
 
@@ -97,7 +97,7 @@ but preserve all critical detail and data points.}
 
 Repeat Step 3 for newly queued links. Stop when:
 - No new relevant links found
-- Maximum depth reached (default: 3 levels from initial results)
+- A deliberately chosen depth or page budget is reached
 - Diminishing returns — new pages repeat known information
 
 Update `_plan.md` queue: mark each URL as `fetched`, `skipped`, or `queued`.
@@ -168,25 +168,19 @@ Present `output.md` to the user. Intermediate files remain available for follow-
 
 ## Fetch Tool Details
 
-### fetch_content (primary — always available)
+### Fetching
 
 ```
-Jina proxy:  fetch_content(url="https://r.jina.ai/{target-url-with-scheme}")
-Direct:      fetch_content(url="{target-url}")
+Use the active host's page-fetch or extraction tool and record the method used.
 ```
 
-Handles URLs, GitHub repos, PDFs (text extraction), and YouTube transcripts. Jina proxy strips boilerplate, returns clean markdown. Direct mode for APIs, raw text, and documents. Gemini fallback activates automatically for bot-blocked pages.
+Capabilities vary by host; verify URL, PDF, repository, and transcript support before relying on them.
 
-### web_search (primary search — always available)
+### Search
 
-Multi-provider search (OpenAI, Brave, Perplexity, Exa, Tavily, Gemini). Returns synthesized answer with source citations.
+Use the active host's search tool. Treat returned summaries and citations as leads until the linked source is fetched and checked.
 
-```python
-web_search(queries=["sub-question 1", "sub-question 2"])  # parallel
-web_search(query="...", recencyFilter="month")             # time-bounded
-```
-
-Use `numResults=10` for broad sweeps. Post-filter URLs for relevance before deep-fetching.
+Use the active search tool's documented query, result-count, and recency parameters; do not copy a signature from this skill into a host that exposes a different API.
 
 ### Tavily (when MCP available)
 
@@ -197,11 +191,11 @@ Use `numResults=10` for broad sweeps. Post-filter URLs for relevance before deep
 | `tavily_crawl` | Multi-page crawl (expensive — use last) |
 | `tavily_map` | Enumerate URLs before crawling |
 
-Query rules: max 400 chars, one topic per query, `include_domains` instead of `site:`, `score > 0.5` filter. Use `search_depth: advanced` + `chunks_per_source: 3` for precise fact retrieval.
+Follow Tavily's current documented parameter limits. Keep queries focused and use domain filters when supported; do not impose an undocumented score threshold.
 
 ### Playwright (fallback for JS-heavy pages)
 
-Use when fetch_content and Tavily return empty or incomplete content:
+Use browser automation when the available fetch or extraction tools return empty or incomplete content:
 - JavaScript-rendered SPAs and dynamic tables
 - Content requiring browser-level JS execution
 
@@ -224,5 +218,5 @@ Use when fetch_content and Tavily return empty or incomplete content:
 - Every factual claim needs a citation with source URL
 - Never fabricate a source — if unavailable, state "not found"
 - Distinguish "no evidence" from "evidence of absence"
-- Flag information older than 2 years as potentially outdated
+- Check age when the claim is time-sensitive; age alone does not invalidate stable facts.
 - Respect robots.txt on public-domain research; record the fetch method used per page

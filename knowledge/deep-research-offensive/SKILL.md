@@ -1,6 +1,6 @@
 ---
 name: deep-research-offensive
-description: "File-backed offensive security research with recursive link-following, multi-tool fetching (Jina Reader, Tavily, Playwright), and step-by-step synthesis. Use when researching CVEs, vulnerabilities, exploits, attack chains, PoC code, OSINT targets, red team planning, or threat intelligence. Saves each useful page to intermediate files, follows linked sources recursively, and produces a comprehensive research document not limited by context size."
+description: "Review published security research and advisories with traceable sources. Use when a security question requires multi-source evidence and applicability checks."
 license: MIT
 metadata:
   author: AeonDave
@@ -21,7 +21,7 @@ File-backed offensive research workflow. Each useful page is fetched, cleaned, a
 ### Step 1 — Scope & Plan
 
 1. Define the research objective (CVE analysis, target recon, technique research, threat intel)
-2. Break into 3–7 sub-questions, e.g.:
+2. Break into the smallest useful set of sub-questions, e.g.:
    - Vulnerability details (CVSS, CWE, affected versions)
    - PoC availability (GitHub, ExploitDB, PacketStorm)
    - Active exploitation evidence (CISA KEV, APT campaigns, ITW reports)
@@ -42,22 +42,19 @@ File-backed offensive research workflow. Each useful page is fetched, cleaned, a
 
 Run parallel searches across offensive sources for each sub-question:
 
-**Tavily** (if available):
+**An available search provider** (Tavily when configured):
 ```
 # CVE-specific
 query: "CVE-YYYY-NNNNN" exploit PoC
 include_domains: ["github.com", "exploit-db.com", "sploitus.com"]
-search_depth: basic, max_results: 5
+Use the provider's current documented parameters.
 
 # Threat intel
 query: CVE-YYYY-NNNNN exploited ransomware APT
-topic: news, time_range: year, max_results: 5
+Use the active provider's news/recency/result-count parameters when supported.
 ```
 
-**Jina Search** (always available):
-```
-fetch_webpage → https://s.jina.ai/CVE-YYYY-NNNNN exploit PoC github
-```
+Use a configured reader/search endpoint only when the active host exposes it; do not assume Jina or `fetch_webpage` exists.
 
 **Social media** (for real-time intel): use xcancel/Playwright and Telegram — see [references/mcp-tools.md](references/mcp-tools.md).
 
@@ -71,13 +68,11 @@ Process each queued URL:
 
 | Priority | Tool | When |
 |---|---|---|
-| 1 | **Jina Reader** | Default — cleanest markdown output |
-| 2 | **`fetch_webpage`** (direct) | APIs, NVD JSON, raw text |
-| 3 | **Tavily extract** | Structured data (CVSS, CPE, versions) |
-| 4 | **Playwright** | ExploitDB tables, JS-rendered SPAs, xcancel |
+| 1 | Available direct page fetch | APIs, NVD JSON, raw text |
+| 2 | Available reader/extraction tool | When direct content is incomplete |
+| 3 | Browser automation | JS-rendered pages when supported and needed |
 
-**Jina Reader**: `fetch_webpage` on `https://r.jina.ai/{full-url-with-scheme}`
-**Jina Search**: `fetch_webpage` on `https://s.jina.ai/{search-query}`
+Record the actual fetch method and host contract used. A reader proxy is optional and may have different availability, authentication, limits, and traffic behavior.
 
 **3b. Evaluate**: relevant to sub-question + contains citable data? If not → mark `skipped`.
 
@@ -110,7 +105,7 @@ Preserve all technical detail.}
 
 Repeat Step 3 for newly queued links. Stop when:
 - No new relevant links
-- Depth limit reached (default: 3 levels)
+- A deliberately chosen depth or page budget is reached
 - Diminishing returns
 
 Update `_plan.md`: mark each URL as `fetched`, `skipped`, or `queued`.
@@ -172,7 +167,7 @@ Use this structure (adapt for engagement type):
 
 For single-CVE research, run steps 1–3 in parallel, then follow links:
 
-**Step 1 — NVD data**: Jina Reader on `https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN` → save to `pages/001_nvd.md`. If NVD metadata is absent (enrichment backlog since Feb 2024; pre-2018 CVEs marked Deferred Apr 2025), cross-check `https://cve.org/CVERecord?id=CVE-YYYY-NNNNN`.
+**Step 1 — NVD data**: fetch `https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN` with an available reader or direct fetch → save to `pages/001_nvd.md`. If NVD metadata is absent, cross-check `https://cve.org/CVERecord?id=CVE-YYYY-NNNNN`.
 
 **Step 2 — PoC search** (parallel queries):
 - GitHub: `"CVE-YYYY-NNNNN" exploit PoC` (include_domains: github.com)
@@ -244,10 +239,9 @@ For detailed recipes, parameters, and Playwright scripts → [references/mcp-too
 
 ## Operational Notes
 
-- **Traffic**: Jina Reader and Playwright generate real HTTP traffic. On live engagements, use only Tavily (cached results) to avoid direct target contact.
-- **Score filtering**: discard Tavily results with `score < 0.5` before deep-fetching.
+- **Traffic**: confirm the active fetch/search tool's network behavior before use. Search caching does not by itself prove that a fetch avoids target contact; follow the engagement's traffic boundary.
 - **Recency**: Tavily may lag for fresh CVEs — verify CVSS/KEV directly from NVD and CISA.
-- **Jina Reader** handles most pages but may fail on heavy JS SPAs → escalate to Playwright.
+- Escalate from an incomplete available fetch to another available method, such as direct retrieval or browser automation.
 
 ## References
 

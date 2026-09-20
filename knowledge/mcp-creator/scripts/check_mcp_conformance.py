@@ -88,9 +88,12 @@ def scan_file(path, findings, flags):
     if SENSITIVE_XHDR.search(text):
         findings.append(Finding(path, 0, "warn", "sensitive-x-mcp-header",
                         "x-mcp-header near a sensitive field; never mirror secrets/PII into headers"))
-    if LIST_METHOD.search(text) and "ttlMs" not in text:
-        findings.append(Finding(path, 0, "warn", "cache-metadata",
-                        "list/read handler present but no ttlMs/cacheScope found in this file"))
+    if LIST_METHOD.search(text):
+        missing = [field for field in ("ttlMs", "cacheScope") if field not in text]
+        if missing:
+            findings.append(Finding(path, 0, "warn", "cache-metadata",
+                            "list/read handler present but missing " +
+                            ", ".join(missing) + " cache metadata"))
     if "tools/call" in text and "resultType" not in text:
         findings.append(Finding(path, 0, "warn", "result-type",
                         "tools/call handling present but no resultType; every result must carry resultType"))

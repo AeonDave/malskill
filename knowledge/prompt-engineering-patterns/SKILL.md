@@ -1,6 +1,6 @@
 ---
 name: prompt-engineering-patterns
-description: "Design, structure, and version prompts sent to LLMs from application code — system prompts, few-shot templates, output contracts, XML-delimited RAG context, task decomposition, and prompt caching. Use when writing or refactoring prompts inside a Python/TS/other codebase (LangChain, LangGraph, OpenAI/Anthropic/Google SDKs, Bedrock, LlamaIndex, DSPy, Instructor), when structured outputs fail, when few-shot examples aren't landing, when a long RAG prompt drifts, or when the LLM bill is dominated by uncached prefix tokens. Framework-agnostic prompt engineering; not for Agent Skills bodies (skill-creator), agent system prompts (agents-claude-creator / opencode-agent-creator), or tool schemas (tool-schema-design)."
+description: "Design and evaluate prompts used by an application. Use for prompt templates, context boundaries, output contracts, examples, caching, and regression evaluation."
 license: MIT
 compatibility: "Framework-neutral prompt patterns for OpenAI, Anthropic, Google Gemini, Bedrock, and any SDK/wrapper that exposes system + user role separation and (optionally) structured outputs and prompt caching."
 metadata:
@@ -35,24 +35,24 @@ Every major LLM API separates them; use the separation.
 
 - **`system`** carries: role definition, constraints, output format, tools context, few-shot examples, cached reference material.
 - **`messages` (`user` / `assistant`)** carry: the variable turn payload only.
-- Never mix. Do not paste user text into the system prompt; do not put instructions in a user turn.
+- Keep untrusted user text separate from developer/system constraints. User turns may contain instructions as task data; do not let them silently rewrite higher-priority constraints.
 
-This is prompt-injection resistance *by design* — not by hope. A user string in the `user` role cannot silently rewrite the `system` role.
+Role separation gives the runtime a useful instruction hierarchy, but it is not a complete prompt-injection defense. Treat user and retrieved text as untrusted, constrain tool access, and validate outputs.
 
 ### 2. Force structured output with a schema
 
 Parsing free-text LLM responses with regex is the production equivalent of catching rain with your hands. Force a schema.
 
-- **OpenAI**: `response_format: { type: "json_schema", json_schema: { strict: true, schema: {...} } }`. Grammar-constrained decoding; the output *cannot* violate the schema.
-- **Anthropic**: pass a tool schema and set `tool_choice: { type: "tool", name: "..." }` to force the response into that tool's shape.
-- **Google Gemini**: `response_mime_type: "application/json"` with `response_schema`.
+- **OpenAI**: use the current Structured Outputs API and a strict JSON Schema where supported. Strict mode constrains schema-compatible output; still handle refusals, truncation, and API errors.
+- **Anthropic**: use the current structured-output or tool schema contract; `tool_choice` selects or requires a tool where supported, but selection is separate from schema strictness.
+- **Google Gemini**: use the current `response_mime_type` / `response_schema` contract where supported.
 - **Pydantic / Instructor / Outlines**: language-side wrappers that emit and validate the schema for you.
 
-The schema is the contract. When the model deviates, the SDK fails loudly on parse, not silently on downstream use. See `tool-schema-design` for the schema itself.
+The schema is an output contract, but refusals, truncation, transport errors, and unsupported schema features still need explicit handling. See `tool-schema-design` for the schema itself.
 
-### 3. Few-shot with 3–5 diverse examples
+### 3. Few-shot with representative diverse examples
 
-Few-shot beats zero-shot when the task has a format, style, or edge-case behavior you need consistently. In 2026 the rule is **diversity over quantity**: 3–5 well-chosen, diverse examples outperform 50 redundant ones.
+Few-shot can help when the task has a format, style, or edge-case behavior that instructions do not specify. Choose the smallest representative set and evaluate it; there is no universal example count.
 
 Good few-shot examples share three properties:
 
@@ -92,7 +92,7 @@ When the prompt carries retrieved context (docs, chunks, tool output), delimit e
 </user_question>
 ```
 
-The tags help the model segment inputs, cite sources, and resist injection from tainted chunks. Every fetched-page block should carry `source=` — you get free citations and traceability.
+The tags help the model segment inputs and support traceability, but delimiters do not enforce trust boundaries or prevent injection. Label retrieved content as untrusted and validate citations and actions separately.
 
 ### 6. Chain-of-thought only when reasoning is required
 
@@ -112,21 +112,21 @@ A reliable pattern for complex workflows: split one big prompt into deterministi
 
 Each stage has its own prompt, its own schema, and its own eval set. Failures are isolable. This is especially effective for document processing, support triage, compliance checks, and QA scoring. It also composes naturally with cheaper models on the easy stages.
 
-### 8. Prompt caching — the single biggest cost lever
+### 8. Prompt caching — a potential cost lever
 
-Anthropic and OpenAI cache the static prefix of a prompt. Subsequent calls that reuse the same prefix are billed at a steep discount and return faster.
+Some Anthropic and OpenAI models support prompt caching; availability, minimums, retention, pricing, and controls are model- and API-specific. Verify the current provider documentation.
 
 - Put the **stable content** at the top: system role, tool definitions, few-shot examples, large reference context, versioned rules.
 - Put the **variable content** at the bottom: the user turn, retrieved chunks for *this* query, dynamic state.
-- Anthropic requires an explicit `cache_control: { "type": "ephemeral" }` marker on the last message of the cached range; OpenAI matches automatically on prefix hash.
+- Provider controls differ: some modes are implicit, while others use explicit breakpoints or retention settings. Do not assume one provider's cache marker or hit behavior applies to another.
 
-In production this is usually a **10–90 % cost reduction** on chat-shaped workloads. Do not pick a cheaper model until you have cached the prefix on the model you actually want.
+Measure cache hits, latency, and cost on the target workload before claiming savings.
 
 ## Prompts as code — the workflow
 
-- **One prompt = one file** (`.md`, `.yaml`, or SDK-native template). Do not hardcode multi-line strings into Python/TS.
+- Keep substantial prompts in a versioned artifact (`.md`, `.yaml`, or SDK-native template) when that improves reviewability; small inline prompts can remain in code.
 - **Version prompts alongside the schema** they emit. Bumping the schema without bumping the prompt is a silent-failure recipe.
-- **A held-out eval set from day one.** 50–200 realistic examples that reflect real inputs, including edge cases. Attach evaluators for the metrics that matter (faithfulness, format adherence, domain-specific checks). A prompt without an eval set is a prompt you cannot iterate on safely.
+- **A held-out eval set from day one.** Use enough realistic examples to expose important inputs and edge cases; choose the size and metrics for the task.
 - **Baseline zero-shot, few-shot, and structured-output variants** in parallel; compare on the held-out set before shipping.
 - **Trace to production**: LangSmith / OpenAI Traces / Braintrust / custom. When a prompt regresses, you need the trace, not a hunch.
 
@@ -136,8 +136,8 @@ In production this is usually a **10–90 % cost reduction** on chat-shaped work
 |---|---|
 | One 4000-line prompt does routing + extraction + generation | decompose into stages, each with its own prompt + schema |
 | Instructions stuffed in the same message as user text | separate `system` and `user` roles |
-| "Please respond in JSON" without a schema | strict `response_format` / tool-forced output |
-| 20 few-shot examples all in the same shape | 3–5 diverse examples including edge cases |
+| "Please respond in JSON" without a schema | provider-supported strict output or explicit validation |
+| Many redundant few-shot examples | A representative diverse set including edge cases |
 | Long list of "Do NOT ..." rules | rewrite as positive constraints |
 | Retrieved chunks pasted inline as prose | XML-delimited `<doc source="...">` blocks |
 | CoT prompt handed to a reasoning-model | omit CoT; trust the model's internal reasoning + the schema |
@@ -150,8 +150,8 @@ In production this is usually a **10–90 % cost reduction** on chat-shaped work
 Before shipping a prompt:
 
 - Read the system prompt as if you were the model: is the role clear, are constraints positive, is the output format explicit?
-- Run the held-out eval set; require the pass rate to beat the previous version by a stated margin, not vibes.
-- Confirm the schema is grammar-constrained (not just described in prose).
+- Run the held-out eval set and compare the result with the previous version using a task-appropriate threshold.
+- When strict structured output is selected, confirm the provider reports/enforces that mode; otherwise validate the parsed output explicitly.
 - Confirm the static prefix is stable; run the same prompt twice and check the provider's cache-hit metric.
 - Adversarially probe: does an injection payload in the user turn override the system prompt? It should not.
 

@@ -23,15 +23,26 @@ function makeLog(client, service, silent) {
 }
 ```
 
-## 3. Never block startup — fire-and-forget heavy init
+## 3. Optional asynchronous initialization and readiness
 
-The plugin function is awaited before sessions start. Anything slow (network calls, history backfill, state restore) must **not** be awaited inline:
+The plugin function is awaited before sessions start. Optional independent work may run asynchronously, but dependent hooks need an explicit readiness gate. Catch failures into state so the promise does not become an unhandled rejection, then make dependent hooks await readiness and surface the failure:
 ```ts
 const MyPlugin: Plugin = async (input) => {
   const mgr = new Manager(input.client)
-  void mgr.restoreState()          // fire-and-forget; settles in the background
-  void backfill(mgr).then(n => { if (n) console.log(`[svc] backfilled ${n}`) })
-  return { /* hooks */ }
+  let initError: unknown
+  const ready = mgr.restoreState().catch(err => {
+    initError = err
+    console.error("restore failed", err)
+  })
+  void backfill(mgr).then(n => { if (n) console.log(`[svc] backfilled ${n}`) }).catch(err => console.error("backfill failed", err))
+  return {
+    // Hooks that depend on restored state must await readiness and fail clearly.
+    event: async () => {
+      await ready
+      if (initError) throw new Error("Plugin state could not be restored")
+      // use mgr
+    },
+  }
 }
 ```
 
@@ -44,7 +55,7 @@ return { dispose: async () => { server?.stop(); watcher?.close() } }
 
 ## 5. Single-instance side effects
 
-Multiple OpenCode windows load the plugin multiple times. For singletons (a web server on a fixed port), make the bind idempotent — try to listen, and if the port is taken, assume another instance owns it and skip rather than crash.
+Multiple OpenCode windows load the plugin multiple times. For singletons (a web server on a fixed port), make the bind idempotent. If binding fails because the port is taken, verify that the endpoint is the expected instance before reusing or skipping it; an occupied port alone does not prove ownership. Surface unrelated bind failures and release resources in `dispose`.
 
 ## 6. The `event` hook is a switch
 
@@ -108,7 +119,7 @@ Bun runs the TS; the config only typechecks. Use Bundler resolution and Bun type
 For plugins that create child sessions (`client.session.create({ body: { parentID, title } })` — delegation/background-agent style):
 - They are **navigable in the TUI by `parentID`**: `ctrl+x ↓` enters the first child, `←`/`→` cycle siblings, `↑` returns — and this works even while the parent turn is **idle** (it reads the live session list, not the running turn). The child `title` is its label in that navigation and the session list, so make it identifiable (`"<agent> · <id>"`, not `"Delegation: <id>"`).
 - The inline **"view subagents" badge** and the live `↳ N tool calls` block are **hardcoded to the native `task` tool** (`part.tool === "task"`). A custom `delegate`-style tool gets **no** passive on-screen cue — the user must press `ctrl+x ↓`. The native alternative that does get the badge is `task(background=true)` (flag `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`), at the cost of the custom control plane.
-- Finished child sessions are **never auto-evicted**, so they pile up and `ctrl+x ↓` lands on stale ones. Delete terminal+consumed children yourself (`client.session.delete`), but **persist their result to disk first** — deletion is permanent.
+- Finished child sessions remain navigable. Do not automatically delete them by default: deletion is permanent and removes user-visible history. If a plugin offers opt-in cleanup, persist the result first, verify the child is terminal and owned by the plugin, and expose the retention policy.
 
 ## 13. Verification rule (do not skip)
 

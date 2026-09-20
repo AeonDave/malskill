@@ -15,6 +15,7 @@ Examples of useful checks:
 | Completion guidance | Finishes authorized edits, relevant checks, and corrections | Stops after a draft or repeats checks with no new reason |
 | Approval boundary | Continues permitted local work; asks at an actual restricted action | Adds approval stops or expands authorization |
 | Scope control | Keeps a typo fix local | Rebuilds the workflow or adds a new skill for a one-off input |
+| Waiting for a job | Uses the supported completion mechanism and verifies the result | Repeated empty checks, premature cancellation, or ending the turn without a viable resume path |
 
 Use natural requests. Do not disclose the expected answer in a multiple-choice prompt or ask the agent to recite the skill. Add time pressure or ambiguity only when it reflects the intended workload.
 
@@ -32,6 +33,8 @@ Inspect both artifacts and execution traces. Use mechanical checks for objective
 Do not grade exact prose, headings, or implementation choices unless the output contract requires them. If both versions succeed, report preserved behavior; fewer words alone do not prove faster or better execution. Repeat variable cases before attributing an improvement to one edit.
 
 If a skill is shared across models or hosts, test the relevant targets or explicitly limit the conclusion. A thought experiment or reviewer reading the text is design review, not an execution test.
+
+For efficiency claims, compare total work through verified completion, including coordination, waiting, review, and repairs. Record model requests, elapsed time, and available usage counters with cached input separated from uncached input and output. Label the measurement boundary and pricing basis; API-equivalent cost estimates do not establish subscription-quota savings. Change one factor at a time when claiming what caused a difference.
 
 ## Diagnose before adding rules
 

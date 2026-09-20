@@ -8,20 +8,7 @@ metadata:
   version: "1.2"
   category: analysis
   language: asm,c,cpp,rust,go,python,csharp
-  objectives:
-    - malware-analysis
-      - software-protection-analysis
-    - patch-diffing
-    - firmware-reversing
-    - dotnet-reversing
-    - protocol-reversing
-    - vulnerability-hunting
-    - exploitability-triage
-    - secrets-extraction
-    - custom-vm-reversing
-    - anti-analysis-bypass
-    - side-channel-re
-    - language-specific-re
+  objectives: "malware-analysis, software-protection-analysis, patch-diffing, firmware-reversing, dotnet-reversing, protocol-reversing, vulnerability-hunting, exploitability-triage, secrets-extraction, custom-vm-reversing, anti-analysis-bypass, side-channel-re, language-specific-re"
 ---
 
 # Reverse Engineering Technique

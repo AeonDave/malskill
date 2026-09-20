@@ -1,53 +1,38 @@
 ---
 name: verification-before-completion
-description: "Use when about to claim work is done, fixed, passing, validated, merged, report-ready, or safe to proceed. Requires fresh verification evidence before success claims, commits, pull requests, task completion, operator reports, cleanup claims, or moving to the next step."
+description: "Check evidence before reporting work complete, fixed, passing, or ready. Use at a completion boundary or when later changes may have invalidated an earlier result."
 license: MIT
 compatibility: "AgentSkills-compatible verification workflow for coding, skill curation, research, and authorized security work."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Verification Before Completion
 
-Completion is a claim. Claims need fresh evidence.
+Match each completion claim to evidence for the state being delivered. `evidence-before-claims` owns general evidence quality and uncertainty; this skill checks freshness and coverage.
 
-Boundary: `evidence-before-claims` governs claim wording and evidence quality in general. This skill is the **freshness gate at the completion boundary** — did you actually re-run the check after the last change?
+## Completion gate
 
-## Core rule
+1. Name the outcome being claimed and the check that can detect its failure.
+2. Run the relevant check after the last change that could affect its result. Preserve required repository gates.
+3. Inspect exit status, substantive output, skipped cases, and the artifact or state actually checked.
+4. Map the evidence to acceptance criteria. Report uncovered requirements and unavailable checks explicitly.
+5. Correct failures and rerun affected checks. Once checks pass, repeat or broaden them only for a new change, failure, or unresolved concern.
 
-Do not say work is complete, fixed, passing, clean, validated, or ready unless the verification command or artifact was checked **after the last change** in the current context.
+A recorded result may be reused when its command, inputs, revision, environment, and coverage still match. A new turn or a different reader does not by itself make evidence stale. Concurrent changes or uncertain provenance require renewed verification.
 
-## Gate workflow
+## Select the check
 
-1. **Name the claim**: what exactly is being asserted?
-2. **Choose proof**: command, test, diff, log, replay, artifact, or checklist that would falsify the claim.
-3. **Run fresh, post-edit**: use the full relevant check on the current tree; any prior run before the last edit is stale.
-4. **Read the output**: exit code, failures, warnings, skipped checks, and scope limits. Exit 0 ≠ objective met — inspect what the tool actually produced.
-5. **Report accurately**: claim success only when evidence supports it; otherwise state the actual status and next smallest fix.
-
-## Common claim gates
-
-| Claim | Requires | Not enough |
+| Claim | Useful evidence | Limit |
 |---|---|---|
-| Tests pass | fresh run **after the last code edit**, zero relevant failures | earlier green run before further edits |
-| Build succeeds | build command exit 0 on current tree | lint-only, or stale build artifact |
-| Bug fixed | original reproducer now fails-then-passes across the fix | code changed near symptom, or “should work” |
-| Requirements met | checklist mapped to each spec/request item | tests pass without covering the requirement |
-| Skill valid | `quick_validate.py` on the changed skill dir | frontmatter looks right by inspection |
-| Objective met via tool | tool output shows the objective state | tool exit 0 or “no error” |
-| Delegated / sub-agent work done | controller inspects diff/artifacts and re-runs the check | worker/sub-agent report says done |
-| Cleanup / remediation complete | post-action target-state re-inspected | remediation command ran without error |
+| Tests pass | Relevant suite on the delivered code | Passing tests do not establish untested requirements. |
+| Build succeeds | Successful build for the intended target | Lint alone does not establish a build. |
+| Bug fixed | Original failure reproduced and then resolved | A nearby edit is not proof; disclose unavailable baseline reproduction. |
+| Skill structure valid | Frontmatter validation and resource sweep | Structural checks do not prove behavior or token savings. |
+| Delegated work complete | Inspect diff/artifacts and corresponding check output | Rerun when state, coverage, or provenance is insufficient; a summary alone is not evidence. |
+| Remediation complete | Relevant post-action state | A successful command may not establish the intended effect. |
 
-## Security and offensive focus
+Use diff inspection and required structural checks for low-impact editorial work; do not invent runtime tests that merely mirror text. Distinguish checks not run from checks that failed.
 
-- Exploit/tooling claims need reproduced primitive, target/build context, or marked uncertainty.
-- Cleanup/remediation claims need post-action target-state evidence.
-- Scanner triage needs replay, source/sink confirmation, or explicit downgrade.
-- Report-ready findings need evidence, limits, and smallest next verification step.
-
-## Resources
-
-Load on demand:
-
-- `references/completion-evidence.md` — detailed claim evidence table and red flags.
+Load [references/completion-evidence.md](references/completion-evidence.md) when choosing regression evidence or diagnosing an overstated completion claim.

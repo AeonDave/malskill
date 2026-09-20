@@ -1,26 +1,18 @@
 # Design Gates
 
-Use this reference to review a design before turning it into tasks.
+Use when reviewing a substantial design before implementation or handoff.
 
-## Spec review checklist
-
-| Category | Check |
+| Check | Required evidence |
 |---|---|
-| Completeness | No TODO, TBD, placeholders, or vague success criteria. |
-| Consistency | Requirements do not contradict architecture or constraints. |
-| Scope | One coherent deliverable; independent subsystems are split. |
-| Safety | Authorized boundaries and destructive/noisy limits are explicit. |
-| YAGNI | No unrelated hardening, abstractions, or nice-to-have features. |
-| Testability | Validation can be run or inspected by a later worker. |
+| Outcome | Observable success criteria and affected users or consumers. |
+| Consistency | Requirements fit the proposed interfaces and current constraints. |
+| Scope | Each proposed change contributes to the requested outcome. |
+| Authorization | Consequential actions fit the permission already granted. |
+| Dependencies | Shared state and ordering are explicit where they matter. |
+| Validation | A later worker can check the result with available artifacts or commands. |
 
-## When to split the design
+Resolve ambiguous commitments before depending on them. Record nonblocking unknowns with the decision they affect instead of demanding that every detail be known upfront.
 
-Split into separate specs when each piece can be built, tested, reviewed, or authorized independently. Examples: recon pipeline vs exploit harness, parser library vs CLI, skill content vs installer script.
+Split work when pieces have independent acceptance or ownership. Keep tightly coupled implementation and its tests together when splitting would duplicate discovery.
 
-## Common design failures
-
-- Starting with a favored tool instead of the operator goal.
-- Combining research, implementation, and reporting in one vague task.
-- Hiding authorization assumptions in examples.
-- Treating “simple” as a reason to skip non-goals or validation.
-- Adding broad refactors unrelated to the current objective.
+Reject designs that invent local APIs, add unrelated infrastructure, or substitute a favored tool for the requested outcome.

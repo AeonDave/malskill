@@ -10,7 +10,7 @@ Each entry: the signal that the bias is active in the current investigation, and
 ## Anchoring
 
 - **Signal**: the first hypothesis stays at the top of the list regardless of new evidence.
-- **Counter**: generate 3-7 alternatives explicitly before testing any of them. Re-rank after every experiment, not only when the leader is refuted.
+- **Counter**: identify credible alternatives left open by the evidence and re-rank when new observations discriminate between them. Do not invent candidates to meet a count.
 
 ## Sunk-cost continuation
 
@@ -25,12 +25,12 @@ Each entry: the signal that the bias is active in the current investigation, and
 ## Tool authority
 
 - **Signal**: a scanner finding, decompiler output, LLM suggestion, or stack trace is treated as ground truth.
-- **Counter**: every tool output is a lead until reproduced by an independent observation. Tools have false positives, decompilers lie, traces lose frames.
+- **Counter**: check what the tool actually measured and its limitations. Corroborate consequential or disputed inferences with independent evidence; do not require duplicate execution for every observation.
 
-## Deductive impossibility
+## Overstated negative evidence
 
-- **Signal**: a path, primitive, or exploit vector is abandoned because a *reasoning chain* concluded it "can't work / is unreachable / is a dead vector" — with no failing live test. The argument keeps getting longer instead of a probe getting run.
-- **Counter**: impossibility is a hypothesis, and code paths / primitives / gadgets / inputs can never be fully enumerated, so a deductive impossibility proof is almost always an incomplete-model error that discards the correct path. Demote every "X is impossible" to "X untested," then run the one experiment that would make it work — hook the candidate call site and fuzz thresholds (input length, allocation size, error/locale paths); internal scratch-buffer growth and parser edge cases create calls absent from normal flow. Only "no hit after adversarial fuzzing" counts as unreachable.
+- **Signal**: a limited search or unsuccessful test is described as proof that an outcome cannot occur.
+- **Counter**: state the tested conditions and coverage. Distinguish unobserved behavior from a proof under explicit assumptions; review whether the assumptions apply to the actual system.
 
 ## Compound changes
 
@@ -75,7 +75,7 @@ Each entry: the signal that the bias is active in the current investigation, and
 ## Tunnel vision under pressure
 
 - **Signal**: time pressure, operator urgency, or a long session collapse the candidate set to one.
-- **Counter**: spend two minutes generating alternatives anyway. Pressure increases the cost of being wrong; it does not justify skipping the gate.
+- **Counter**: check the most consequential unsupported assumption before committing. Keep the check proportionate to the cost of a wrong decision.
 
 ## Hindsight reframing
 

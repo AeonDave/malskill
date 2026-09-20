@@ -2,7 +2,7 @@
 
 > One sentence explaining what the project does and why it exists.
 
-<!-- Optional: add 0-5 high-signal badges here -->
+<!-- Optional: add only current, high-signal badges here -->
 
 ## Overview
 
@@ -43,7 +43,7 @@ Briefly explain the flow shown above.
 # Replace with the smallest useful example
 ```
 
-Add one or two additional real examples only if they help the common path.
+Add additional real examples only when they help distinct common paths.
 
 ## Configuration
 

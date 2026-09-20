@@ -66,15 +66,11 @@ Store the `.md` file in one of these locations. On a name collision, the higher-
 | `fable` | Available alias; use the full model ID (e.g. `claude-sonnet-5`) when exact versioning matters. |
 | `inherit` (default) | Match the main session — when the agent's difficulty tracks the parent task. |
 
-Claude Code resolves the effective model in this order (first wins):
-1. `CLAUDE_CODE_SUBAGENT_MODEL` env var
-2. the per-invocation `model` parameter Claude passes
-3. the agent's `model` frontmatter
-4. the main conversation's model
+Model precedence is version- and invocation-dependent. Treat the selected model as the effective value after applying the current Claude Code documentation, parent/session settings, invocation overrides, and agent frontmatter; do not promise a fixed order in generated agents.
 
 ## Tool access and inheritance
 
-- **Default (no `tools`):** inherits every internal and MCP tool the main conversation has. This is the most common mistake for "safe" agents — set a boundary explicitly.
+- **Default (no `tools`):** inherits every internal and MCP tool the main conversation has. Set an explicit allowlist for a safe agent; a read-only allowlist should normally omit `Bash` as well as `Write`/`Edit`.
 - **Allowlist:** `tools: Read, Grep, Glob, Bash` — only these.
 - **Denylist:** `disallowedTools: Write, Edit` — everything except these.
 - **Both set:** `disallowedTools` is applied first, then `tools` resolves against what remains. A tool in both is removed.
@@ -82,7 +78,7 @@ Claude Code resolves the effective model in this order (first wins):
 - **Always unavailable to subagents** (UI/session-bound), even if listed: `AskUserQuestion`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, and `ExitPlanMode` (unless `permissionMode: plan`).
 - **Spawning other agents:** include `Agent` in `tools` to let a subagent spawn nested subagents; omit it (or add to `disallowedTools`) to forbid. For a main-thread agent (`--agent`), `Agent(worker, researcher)` is an allowlist of which types it may spawn.
 
-Read-only pattern (reviewer/researcher): `tools: Read, Grep, Glob, Bash` (no `Write`/`Edit`). Fixer pattern (debugger): add `Edit`.
+Read-only pattern (reviewer/researcher): `tools: Read, Grep, Glob` (omit `Bash` unless shell execution is explicitly required). Fixer pattern (debugger): add `Edit` and any narrowly required execution tool.
 
 ## Permission modes
 
@@ -94,7 +90,7 @@ Read-only pattern (reviewer/researcher): `tools: Read, Grep, Glob, Bash` (no `Wr
 | `acceptEdits` | Auto-accept edits + common fs commands within the working dir. |
 | `auto` | Background classifier reviews commands and protected-dir writes. |
 | `dontAsk` | Auto-deny prompts (explicitly allowed tools still work). |
-| `bypassPermissions` | Skip prompts. Use with caution — can write to `.git`, `.claude`, etc. |
+| `bypassPermissions` | Skip prompts where the parent permits it. It cannot elevate a parent session's permissions; use with caution because it can write to `.git`, `.claude`, etc. |
 | `plan` | Read-only exploration (plan mode). |
 
 ## Preloading skills
@@ -183,7 +179,7 @@ claude --agents '{
   "code-reviewer": {
     "description": "Expert code reviewer. Use proactively after code changes.",
     "prompt": "You are a senior code reviewer. Focus on quality, security, and best practices.",
-    "tools": ["Read", "Grep", "Glob", "Bash"],
+    "tools": ["Read", "Grep", "Glob"],
     "model": "sonnet"
   }
 }'

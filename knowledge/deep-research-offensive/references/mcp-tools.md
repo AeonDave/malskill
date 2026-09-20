@@ -1,13 +1,12 @@
 # MCP Web Tools — Precise Usage Reference
 
-Full parameter reference and call patterns for the web research tools available in this environment.
-Verified against official documentation and live-tested.
+Illustrative parameter notes and call patterns for optional web research tools. Verify the active host's tool list, schema, authentication, limits, and traffic behavior before use; this file does not guarantee that any named tool is installed.
 
 ---
 
-## Jina Reader (primary — always available)
+## Jina Reader (when configured)
 
-Converts any web page to clean markdown. No authentication, no MCP dependency. Accessed via `fetch_webpage`.
+If the host exposes a Jina-compatible reader, it may convert pages to markdown. Authentication, access path, limits, and output behavior are host-specific.
 
 ### Read a page
 
@@ -23,7 +22,7 @@ Example: `fetch_webpage` on `https://r.jina.ai/https://nvd.nist.gov/vuln/detail/
 - Handles complex layouts, documentation sites, news articles, blog posts
 - Preserves outbound links (critical for recursive research)
 
-**When to use:** Default for all pages. Try Jina Reader first, escalate only if it fails.
+**When to use:** Only when the active host exposes it and its behavior fits the task.
 
 **Limitations:**
 - Heavy JS-rendered SPAs may return incomplete content → escalate to Playwright
@@ -40,15 +39,15 @@ Example: `fetch_webpage` on `https://s.jina.ai/CVE-2024-XXXXX exploit PoC github
 **What it does:**
 - Searches the web and returns results as structured markdown
 - Includes titles, URLs, and snippets for each result
-- Always available — no MCP dependency, no API key
+- Availability, authentication, and result shape depend on the active host
 
-**When to use:** When Tavily is unavailable, or as a complementary search engine.
+**When to use:** When the active host exposes the endpoint and it is appropriate for the task.
 
 ---
 
 ## Tavily — `mcp_io_github_tav_tavily_search`
 
-### Full parameter reference
+### Parameters (verify against the active schema)
 
 | Parameter | Type | Default | Notes |
 |---|---|---|---|
@@ -64,7 +63,7 @@ Example: `fetch_webpage` on `https://s.jina.ai/CVE-2024-XXXXX exploit PoC github
 | `exclude_domains` | string[] | — | Block domains (max 150) |
 | `country` | string | — | Boost results from specific country (general topic only) |
 | `include_answer` | bool/string | false | `basic` / `advanced` / `true` — LLM-generated answer (costs tokens) |
-| `include_raw_content` | bool/string | false | Full page content inline; prefer 2-step search→Jina Reader instead |
+| `include_raw_content` | bool/string | provider-defined | Full page content inline; choose based on the active provider's limits and task |
 | `include_images` | bool | false | Add image URLs to results |
 | `auto_parameters` | bool | false | Tavily auto-tunes params; may silently upgrade to `advanced` (2 credits) |
 
@@ -81,28 +80,22 @@ Do not use `auto_parameters: true` in cost-sensitive contexts.
 ### Result fields
 Each result: `title`, `url`, `content` (snippet), `score` (0–1), `published_date` (news topic only).
 
-### Recommended patterns
+### Example patterns (adjust to the active schema and budget)
 
 ```
 # General research — broad sweep
-search_depth: basic
-max_results: 5
-topic: general
+Use a provider-supported depth and result count appropriate to the budget.
+topic: general (when supported)
 
 # Current events / breaking advisories
-search_depth: basic
-topic: news
-time_range: week
+Use provider-supported news and recency parameters.
 
 # Precise fact retrieval (CVSS, specific version, API field)
-search_depth: advanced
-chunks_per_source: 3
-max_results: 5
+Use the provider-supported precision/depth parameters and a small result set.
 
 # Domain-restricted research
-search_depth: basic
+Use provider-supported domain filters and a result count suited to the query.
 include_domains: ["nvd.nist.gov", "cisa.gov", "github.com"]
-max_results: 5
 ```
 
 ### Query best practices
@@ -111,14 +104,14 @@ max_results: 5
 2. One topic per query — break complex research into parallel sub-queries
 3. Use `include_domains` instead of `site:` in the query string
 4. For broad recon: run multiple focused queries in parallel instead of one long query
-5. Post-filter: discard results with `score < 0.5` before fetching full content
-6. Do NOT use `include_raw_content: true` for bulk queries — use Jina Reader on promising URLs instead (cleaner, more reliable)
+5. Review relevance and source quality before fetching full content; do not impose an undocumented score cutoff
+6. Avoid bulk extraction when the active provider's cost or context limits make it unsuitable
 
 ### Other Tavily tools
 
-#### `mcp_io_github_tav_tavily_extract`
+#### Tavily extract (when available)
 
-Extract content from one or more URLs. Use when Jina Reader is unavailable or for structured extraction.
+Extract content from one or more URLs when the active host exposes the tool and structured extraction is useful.
 
 #### `mcp_io_github_tav_tavily_crawl`
 
@@ -130,7 +123,7 @@ Enumerates all URLs of a site. Use before crawling an unknown vendor portal.
 
 ```
 url: "https://vendor.com/security"
-max_depth: 2
+Choose a crawl depth supported by the active tool and justified by the task.
 max_breadth: 10
 select_paths: ["/advisory", "/security", "/cve", "/bulletins"]
 ```
@@ -142,7 +135,7 @@ select_paths: ["/advisory", "/security", "/cve", "/bulletins"]
 Required for: JavaScript-rendered tables (ExploitDB search), SPAs, login-gated content, xcancel Twitter search.
 
 ### Use only when
-- Jina Reader returns empty or incomplete content
+- An available reader returns empty or incomplete content
 - Content requires browser-level JS execution (DataTables, React SPAs)
 - Social media proxies (xcancel) that are JS-rendered
 
@@ -168,11 +161,11 @@ async (page) => {
 ```
 Page URL identified
   │
-  ├─ Try Jina Reader (fetch_webpage → https://r.jina.ai/{url})
+  ├─ Try an available reader/extraction tool
   │   → Content OK? → Save to intermediate file
   │
-  ├─ Jina returned empty/broken?
-  │   → Try fetch_webpage on the URL directly
+  ├─ Reader returned empty/broken?
+  │   → Try an available direct fetch
   │
   ├─ Still insufficient?
   │   → Try Tavily extract (if available)
@@ -189,7 +182,7 @@ Page URL identified
 
 ### xcancel — zero-auth Twitter search proxy (Playwright)
 
-xcancel.com mirrors Twitter's advanced search with no authentication. Page is JS-rendered — use Playwright.
+If xcancel is reachable in the authorized environment, it may mirror Twitter search. Authentication, availability, and page behavior are deployment-specific; use browser automation only when supported.
 
 **URL structure:**
 ```
@@ -258,7 +251,7 @@ https://api.fxtwitter.com/status/{POST_ID}
 https://api.fxtwitter.com/{username}
 ```
 
-**Fetch with Jina Reader** (preferred — always available):
+**Fetch with Jina Reader** (when configured):
 ```
 fetch_webpage → https://r.jina.ai/https://api.fxtwitter.com/status/{POST_ID}
 ```
@@ -272,7 +265,7 @@ url: https://api.fxtwitter.com/status/{POST_ID}
 **Typical workflow:**
 1. xcancel Playwright search → get post URLs from results
 2. Extract post ID from URL: `x.com/user/status/{ID}` or `twitter.com/user/status/{ID}`
-3. Jina Reader on `https://api.fxtwitter.com/status/{ID}` → full context, media, thread
+3. If configured, a reader on `https://api.fxtwitter.com/status/{ID}` may return full context, media, and thread
 
 ---
 
@@ -323,7 +316,7 @@ Use `scripts/twitter_search.py` for a full CLI wrapper with auth, pagination, fi
 Returns full JSON with messages, media URLs, views, reactions.
 
 ```
-# Fetch with Jina Reader
+# Fetch with a configured reader
 fetch_webpage → https://r.jina.ai/https://tg.i-c-a.su/json/{channel}
 
 # Or direct fetch
@@ -352,5 +345,5 @@ async (page) => {
 
 ```
 query: CVE-2025 PoC exploit site:t.me
-search_depth: fast, max_results: 10
+Use provider-supported depth and result-count parameters.
 ```

@@ -77,7 +77,7 @@ A header can include:
 - project name
 - one-sentence description
 - optional logo/icon
-- 0–5 high-signal badges
+- only high-signal badges that are current and useful to the reader
 - optional jump links when the README is long
 
 Avoid:
@@ -114,7 +114,7 @@ Technology belongs in overview, architecture, or prerequisites only when it help
 ## Usage rules
 
 - Start with the smallest useful example.
-- Follow with 2–5 common examples.
+- Add common examples only when they cover distinct, verified paths.
 - Group advanced or edge-case examples under subheadings.
 - Keep examples real and consistent with the actual interface.
 

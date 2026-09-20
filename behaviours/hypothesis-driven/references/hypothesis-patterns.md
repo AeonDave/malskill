@@ -25,7 +25,7 @@ Use this compact table when several runs differ by input, environment, or state.
 | control | safe/no-effect input | symptom absent | pending | pending |
 | H1 test | one variable only | specific observable | pending | pending |
 
-If two columns change in the same row, split the experiment.
+If unrelated input or environment variables change together, separate them or state how the design distinguishes their effects.
 
 ---
 
@@ -34,7 +34,7 @@ If two columns change in the same row, split the experiment.
 | Class | Example hypothesis | Cheap falsifier |
 | --- | --- | --- |
 | Wrong state propagated | "Value V is corrupted before frame F because callee C mutates it." | Log V at entry/exit of C; expect unchanged. |
-| Race / ordering | "Failure only occurs when thread A reaches X before thread B reaches Y." | Force ordering with a barrier or sleep; failure should disappear. |
+| Race / ordering | "Failure only occurs when thread A reaches X before thread B reaches Y." | Control ordering with synchronization and compare outcomes; a sleep alone does not establish ordering. |
 | Boundary / off-by-one | "Loop overruns by 1 on inputs of size N=2^k." | Test sizes N-1, N, N+1; only N fails. |
 | Environment / config | "Failure depends on env var E or config C." | Reproduce with E unset / C default; failure goes away. |
 | Build / ABI mismatch | "Mixed compiler flags caused layout mismatch between caller and callee." | Rebuild both with identical flags; symptom changes. |

@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible workflow guidance for code review, security testing, research, forensics, and reporting."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Evidence Before Claims
@@ -22,8 +22,8 @@ Use this skill when a conclusion could mislead an operator, reviewer, or report 
 
 Prefer the strongest evidence that is practical and authorized. Scale the bar to the claim's stakes: high-impact, irreversible, or report-bound claims demand the top tiers; reversible local notes do not.
 
-1. **Fresh reproduction**: exact command/API/action rerun in the current environment. Reproduce twice for racy, timing-sensitive, or stochastic behavior.
-2. **Primary artifact**: logs, packet capture, crash trace, hash, file path, HTTP transcript, debugger output. Prefer machine-readable log/transcript over screenshots — screenshots are mutable, croppable, and OCR-lossy; keep them only as supporting context.
+1. **Observed behavior**: a recorded command/API/action and result for the relevant environment. Repeat nondeterministic checks according to the uncertainty; a fixed number of passes does not prove reliability.
+2. **Primary artifact**: logs, packet capture, crash trace, hash, file path, HTTP transcript, debugger output. Preserve provenance and context; prefer searchable originals for textual evidence, while screenshots can be primary evidence for visual behavior.
 3. **Independent corroboration**: second tool, manual replay, source review, negative control, or version check.
 4. **Reasoned hypothesis**: clearly marked as likely/plausible and not final.
 5. **Unverified lead**: useful for next steps only, never reported as confirmed. Includes any LLM/subagent assertion not yet checked against a primary artifact.
@@ -39,11 +39,11 @@ Prefer the strongest evidence that is practical and authorized. Scale the bar to
 
 ## Self-check before asserting
 
-Your own reasoning is the most common source of an unverified claim. Before emitting a conclusion, run one falsification pass on your own draft:
+Before emitting a consequential conclusion, check its load-bearing assertions:
 
 - List each load-bearing assertion; for any that no primary artifact backs, verify it or label it a lead — reasoning is not evidence.
 - Flag any claim you would not stake a fresh reproduction on, and downgrade its wording to match.
-- Treat your own prior output and any subagent report as an unverified lead until re-checked against a primary artifact (see `references/offensive-evidence-gates.md`).
+- Inspect the primary artifacts behind prior output or a subagent report. Reuse applicable verified evidence; rerun only when state, provenance, or coverage is insufficient (see `verification-before-completion`).
 
 ## Wording discipline
 
@@ -58,11 +58,11 @@ Your own reasoning is the most common source of an unverified claim. Before emit
 
 ## Stop conditions
 
-Stop and ask for scope/authorization when verification requires destructive changes, credential use beyond read-only checks, noisy exploitation, persistence, or access outside the approved target set.
+Do not expand access or authorization merely to verify a claim. If a needed check is outside the approved boundary, report that limitation and obtain the missing authorization before it; continue independent permitted work.
 
 ## Output contract
 
-When finishing, include:
+For consequential findings, include the following information without requiring a separate template for every minor observation:
 
 - **Claim**: the exact statement being made.
 - **Evidence**: artifacts and commands used to support it.
@@ -73,6 +73,6 @@ When finishing, include:
 
 Load on demand:
 
-- `references/offensive-evidence-gates.md` — concrete evidence requirements by offensive/research domain, including LLM/agent output.
+- [references/offensive-evidence-gates.md](references/offensive-evidence-gates.md) — load when grading domain-specific research evidence or worker claims.
 
 Pair with `verification-before-completion` before claiming a task, fix, validation, or report is complete.

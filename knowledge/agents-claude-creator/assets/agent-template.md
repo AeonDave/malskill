@@ -1,8 +1,8 @@
 ---
 name: agent-name
 description: One sentence — what it does and the concrete trigger for when Claude should delegate to it, in third person. Add "Use proactively after X" for hands-free delegation.
-# tools: Read, Grep, Glob, Bash      # allowlist — OMIT to inherit ALL tools (rarely what you want). Read-only? exclude Write/Edit.
-# disallowedTools: Write, Edit       # alternative: inherit everything except these
+tools: Read, Grep, Glob              # explicit least-privilege allowlist; add Bash only when shell execution is required
+# disallowedTools: Write, Edit       # alternative for a deliberately inherited tool set
 # model: inherit                     # haiku (cheap/bulk) | sonnet (analysis) | opus (hard) | inherit (default)
 # skills:                            # preload full skill content at startup (give a cold agent its methodology)
 #   - some-skill

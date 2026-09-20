@@ -1,6 +1,6 @@
 ---
 name: tool-schema-design
-description: "Design LLM-callable tool signatures and JSON Schemas so the model picks the right tool and supplies valid arguments. Use when writing or reviewing function/tool definitions for OpenAI, Anthropic, Google, Bedrock, MCP servers, or any agent framework (LangChain, LangGraph, Semantic Kernel, Claude Code, OpenCode, Pi). Covers tool descriptions (what + when + when-NOT-to-use), parameter descriptions with format/range/example, JSON Schema constraints (enum, minimum, format), required-minimalism, naming consistency across a toolkit, structured outputs with strict schemas, tool_choice, parallel calls, and error responses that steer the model to recover. For portable Agent Skills use skill-creator; for MCP server architecture use mcp-creator."
+description: "Design or revise model-callable tools. Use for tool selection ambiguity, argument and result schemas, validation, error contracts, and execution semantics."
 license: MIT
 compatibility: "Agent-neutral. Applies to OpenAI function calling, Anthropic tool_use, Google Gemini function calling, Bedrock Converse, and MCP tools/resources."
 metadata:
@@ -44,10 +44,10 @@ Example:
 Every JSON Schema constraint is information the model uses to generate a valid call. Add signal, not noise.
 
 - **Types carry semantics**: `integer` on `quantity` tells the model fractional quantities are invalid; `number` allows them. Use the narrower type.
-- **`enum` closes the space**: prefer `"enum": ["day", "week", "month"]` over `"description": "one of day, week, or month"`. The model cannot invent a fourth value.
+- **`enum` narrows the accepted space**: prefer `"enum": ["day", "week", "month"]` over `"description": "one of day, week, or month"`. Still validate arguments because model output can violate a schema when strict enforcement is unavailable.
 - **`minimum` / `maximum` / `pattern` / `format`** narrow generation. `page_number` with `minimum: 1` implicitly signals one-indexed pages. `format: "date"`, `format: "uri"`, `format: "email"` are standardized.
 - **Consistent naming across the toolkit**: pick one of `user_id` / `userId` / `uid` and use it everywhere. Mixing shapes lowers extraction accuracy.
-- **Keep `required` minimal**. Every required field is a point of failure — if the model cannot extract or infer the value, the call fails. Give sensible defaults to non-critical fields and document the default in the description.
+- **Choose required fields for the target runtime.** Generic JSON Schema permits optional properties, but OpenAI strict function calling requires every property in `required` and `additionalProperties: false`; represent an optional value with a nullable type where that API requires it. Do not assume a JSON Schema `default` is injected by the model or runtime; apply defaults in application code.
 - **One responsibility per tool**. `create_or_update_user` is two contracts colliding; split them.
 - **Nested objects sparingly**. Deep nesting increases call errors; flatten when the operational meaning survives.
 
@@ -55,9 +55,9 @@ Every JSON Schema constraint is information the model uses to generate a valid c
 
 When the response has to be machine-consumable, do not parse free text. Use provider strict-schema modes:
 
-- **OpenAI**: `response_format: { type: "json_schema", json_schema: { strict: true, schema: {...} } }` — the model output is grammar-constrained to the schema.
-- **Anthropic**: pass a tool schema and set `tool_choice: { type: "tool", name: "..." }` to force the output shape.
-- **Google Gemini**: `response_mime_type: "application/json"` with `response_schema`.
+- **OpenAI**: use the current Structured Outputs contract for the selected API, with strict JSON Schema where supported. Strict mode constrains schema-compatible output; handle refusals, truncation, and API errors.
+- **Anthropic**: use the current tool schema and `tool_choice` controls when you need a specific tool; verify provider-specific strict structured-output support separately.
+- **Google Gemini**: use the current `response_mime_type` / `response_schema` contract where supported.
 
 Rules of thumb:
 
@@ -72,17 +72,17 @@ Providers expose it under slightly different names. The four states are the same
 | State | When |
 |---|---|
 | `auto` (default) | Model decides whether to call any tool. |
-| `required` / `any` | Model must call **some** tool this turn. Use to force actioning. |
-| `<specific tool>` | Model must call **that** tool. Use for structured extraction and eval harnesses. |
+| `required` / `any` | Some providers require a tool call this turn. Verify the provider's exact setting and semantics. |
+| `<specific tool>` | Some providers can require **that** tool. This is provider-specific, not equivalent to schema strictness. |
 | `none` | Model may not call tools. Use for summarization / final response steps. |
 
 Pin `tool_choice` at the agent step where behavior matters; leave `auto` where the model should route.
 
 ## Error responses that steer recovery
 
-An error is another turn of the conversation. Return content the model can act on.
+A model-visible tool error can become another observation. Return content the model can act on when the host supports that contract.
 
-- **Return a clear error string; do not throw** from a tool's `execute`. A thrown exception ends the loop; a returned error becomes an observation the model can react to.
+- **Return a clear structured error when the host supports model-visible tool errors.** Do not assume every framework treats thrown exceptions as terminal or returned strings as recoverable observations; follow the host contract.
 - Name the failure class: `not_found`, `invalid_argument`, `rate_limited`, `permission_denied`, `upstream_error`.
 - Include the offending argument value and the correction hint: `"invalid_argument: 'category'='electronic' is not in enum. Valid: ['electronics','clothing','food']."`
 - For retryable failures (rate limit, transient upstream), say so and give a hint: `"rate_limited: retry after 5s"`. Combine with framework-level retry policies (see `loop-control-and-pivots`) — do not loop internally.
@@ -90,8 +90,8 @@ An error is another turn of the conversation. Return content the model can act o
 
 ## Parallel and streaming considerations
 
-- **Parallel tool calls** default on for OpenAI/Anthropic in 2026. Design tools to be idempotent where possible; add an idempotency key parameter when a repeat call would double-charge or double-write.
-- **Long-running tools** should return a small handle (`operation_id`) plus a `get_status` companion tool, not block the loop. For MCP, use the Tasks extension when negotiated (see `mcp-creator`).
+- **Parallel tool calls** and their defaults vary by provider, model, and request setting. Design tools to be idempotent where possible; add an idempotency key parameter when a repeat call would double-charge or double-write.
+- **Long-running tools** should use the host's supported asynchronous result, callback, task, or status contract. A small handle such as `operation_id` can help, but do not invent a polling companion when the host provides another completion mechanism. For MCP, use Tasks when negotiated (see `mcp-creator`).
 - **Streaming outputs** from a tool are rarely useful to a model that reasons on complete observations; buffer and return the final result unless the tool is streaming user-visible content the agent forwards verbatim.
 
 ## Anti-patterns
@@ -100,7 +100,7 @@ An error is another turn of the conversation. Return content the model can act o
 - **Bare `"type": "string"`** on an id, date, or enum — you gave the model no scaffolding, expect hallucinated values.
 - **Overlapping tools with the same trigger words** — model routes randomly. Fix by explicit *when-NOT-to-use* on each description, or merge the tools.
 - **`get_data(filters: object)` with no schema for `filters`** — the model invents keys. Enumerate the fields.
-- **Everything `required`** — the model gets stuck when a field can't be inferred; a call fails instead of asking. Make optional what has a sensible default.
+- **Everything `required` without checking the target contract** — generic optionality and provider strict mode differ. Make fields nullable or handle defaults in application code where the provider requires them.
 - **Silent success on empty result** — `"[]"` reads as "worked, nothing found." If the argument was probably wrong, say so.
 - **Boolean flags that mean two different things** — `force=true` conflates "override safety" and "skip cache". Split.
 
@@ -109,7 +109,7 @@ An error is another turn of the conversation. Return content the model can act o
 Before shipping a tool schema:
 
 - Read the description as if you were the model: does it say *when to use* and *when NOT to use*? Does each parameter description carry format, range, and an example?
-- Sample 5–10 realistic prompts and confirm the model picks the right tool and fills valid arguments (record the traces).
+- Sample a representative set of realistic prompts and confirm the model picks the right tool and fills valid arguments (record the traces).
 - Force a malformed call and confirm the returned error is diagnostic — the model should self-correct on the next turn.
 - If two tools have overlapping triggers, add a differentiating clause and re-test.
 

@@ -1,11 +1,11 @@
 ---
 name: hypothesis-driven
-description: "Investigation discipline for extremely complex problems where the root cause, exploit path, or solution is unknown: hard bugs, flaky systems, CTF challenges, reverse engineering puzzles, incident triage, multi-system failures, and research questions backed by data. Forces explicit hypothesis generation, falsifiable predictions, prioritized experiments, and evidence-based iteration instead of trial-and-error patching or confirmation-biased reasoning. Use when symptoms are far from causes, when guesses keep failing, or when a problem spans tools, layers, or unknowns that defeat linear debugging."
+description: "Investigate an uncertain cause using testable hypotheses and discriminating evidence. Use for persistent bugs, flaky behavior, incident diagnosis, or conflicting research observations; skip routine edits with a known solution."
 license: MIT
 compatibility: "AgentSkills-compatible investigation workflow for debugging, exploit research, CTF solving, incident response, reverse engineering, and data-backed technical research."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Hypothesis-Driven Investigation
@@ -25,11 +25,11 @@ Do not activate for trivial fixes, single-line typos, or tasks where the user al
 
 - **Hypotheses must be falsifiable.** If no observation could disprove it, it is not a hypothesis — it is a belief.
 - **Reduce before deep-diving.** Shrink noisy inputs, traces, repro steps, or artifact scope until the failure still occurs with minimal irrelevant detail.
-- **One experiment, one hypothesis.** Test a single variable; otherwise you cannot tell which assumption was wrong.
-- **Write it down.** Maintain an explicit log of hypotheses, predictions, evidence, and verdicts. The cost is small; the cost of re-testing the same idea twice is large.
+- **Make comparisons interpretable.** Control relevant variables and predict how competing explanations would differ. One experiment may distinguish several hypotheses; avoid unrelated simultaneous changes.
+- **Record consequential results.** Keep a compact working note when it prevents repeated investigation or supports a handoff; a separate log is unnecessary for a short diagnosis.
 - **Evidence wins over preference.** When data contradicts a favorite hypothesis, kill the hypothesis, not the data.
-- **"Impossible / can't work / unreachable" is a hypothesis, not a conclusion.** A negative claim needs a *falsifying live test*, never a deductive proof — enumerating code paths, primitives, gadgets, or inputs is always incomplete, so "I proved X is impossible" is almost always a mental-model gap that abandons the correct path. Rewrite every "X can't work" as "X untested," then design the experiment that would make it work (hook the candidate call site, fuzz the threshold, vary the input length/format). Reaching for a longer impossibility argument is the tell that you should be running an experiment instead. This is the most expensive bias in exploitation, debugging, and RE.
-- **Stop the loop, not the work.** If three plausible fixes failed, the mental model is wrong. Re-examine assumptions before trying a fourth.
+- **Bound negative claims.** No observed failure is not proof of impossibility. A deductive proof can establish a claim within explicit assumptions; empirical results cover the tested conditions. Name which basis supports the conclusion and what remains outside it.
+- **Reassess repeated failure.** Recheck assumptions, measurements, and environment when attempts stop yielding information; a retry count alone does not identify the cause.
 
 ## Workflow
 
@@ -40,11 +40,11 @@ Do not activate for trivial fixes, single-line typos, or tasks where the user al
    - Define a falsification target: "this hypothesis is wrong if I see X."
 
 2. **Generate hypotheses (breadth before depth)**
-   - Enumerate plausible causes before committing to one. Aim for 3-7 candidates, MECE-style (mutually exclusive, collectively exhaustive enough to cover the space).
-   - If there is only one candidate, assume anchoring until proven otherwise and generate alternatives. If there are more than ten, group them into higher-level branches before testing.
+   - Enumerate plausible causes when evidence leaves a real ambiguity. Do not manufacture alternatives to meet a quota; causes may coexist.
+   - Group candidates when the list becomes hard to compare, and retain assumptions that have not yet been tested.
    - Build a diagnostic "why" tree before jumping to a solution "how" tree; solution ideas are premature until the cause branch is supported.
    - For each candidate, note the mechanism: how would this cause produce the observed symptom?
-   - Reject any candidate that is not testable with available access, time, or tooling.
+   - Mark candidates that cannot currently be tested as unresolved; missing access or tooling does not refute them.
 
 3. **Prioritize**
    - Score each hypothesis on three axes: prior likelihood, cost to test, and information gained if disproven.
@@ -70,15 +70,15 @@ Do not activate for trivial fixes, single-line typos, or tasks where the user al
    - Pause and re-frame whenever evidence contradicts a foundational assumption.
 
 7. **Converge to a diagnosis**
-   - A diagnosis is a hypothesis that (a) explains every prior observation and (b) predicts the next observation correctly.
+   - A supported diagnosis accounts for the relevant observations and survives a discriminating check. Note unexplained evidence and competing contributors; a single correct prediction is not proof.
    - Before acting on it, write the causal chain end-to-end: defect → faulty state → mechanism → observed symptom. If a link is hand-waved, the diagnosis is incomplete.
    - Show both causality and incorrectness: why this state caused the failure, and why the state itself is wrong rather than merely surprising.
 
 8. **Act, then verify**
    - Apply the smallest change that the diagnosis predicts will work.
-   - Re-run the original reproducer and at least one negative control.
+   - Re-run the original reproducer and a relevant control when it distinguishes the proposed cause from alternatives.
    - When safe, run a counter-experiment: revert the fix or reintroduce the condition and confirm the original symptom returns.
-   - If the fix works but the diagnosis was wrong, the symptom is likely to return; investigate further before claiming completion.
+   - If the symptom is resolved but the cause remains uncertain, distinguish verified recovery from a confirmed root cause.
 
 ## Hypothesis log format
 
@@ -94,7 +94,7 @@ H1: <one-line hypothesis>
   Verdict:   supported | refuted | inconclusive | blocked
 ```
 
-For named failure modes to resist during investigation, load `references/cognitive-biases.md`.
+For a recurring reasoning failure, load [references/cognitive-biases.md](references/cognitive-biases.md).
 
 ## Domain-specific accents
 
@@ -108,7 +108,7 @@ For named failure modes to resist during investigation, load `references/cogniti
 
 - The diagnosis is complete: the causal chain is explicit and reproduces the symptom on demand.
 - The next experiment requires access, authorization, or destructive action beyond approved scope — pause and escalate.
-- Three plausible fixes failed: stop patching, re-open assumptions.
+- Repeated fixes add no evidence: stop patching and re-open assumptions.
 - Evidence contradicts a load-bearing assumption: re-frame before generating more hypotheses on a broken foundation.
 
 ## Output contract

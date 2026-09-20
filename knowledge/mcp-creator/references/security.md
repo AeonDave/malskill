@@ -39,8 +39,8 @@ No opaque identifier, `clientInfo`, `serverInfo`, header, annotation, Task ID, s
 Status: Custom Application Pattern using MCP Core tools and MRTR
 
 - Keep the direct surface small without treating invisibility as access control.
-- Mark destructive behavior accurately and require authorization plus explicit confirmation for deletion, overwrite, revoke, publish, send, deploy, execute, or mutation.
-- Use MRTR for required interactive confirmation. Perform no irreversible work before an accepted, verified continuation.
+- Mark destructive behavior accurately and require verified authorization for deletion, overwrite, revoke, publish, send, deploy, execute, or mutation. Require explicit confirmation when the operation's policy marks it as required; an already-authorized action may proceed without a second prompt when that policy permits it.
+- Use MRTR for required interactive confirmation. Perform no irreversible work before an accepted, verified continuation when confirmation is required.
 - Separate catalog policy classes and risk tiers even when operations share `run_tool`.
 - Avoid unrestricted command or HTTP-fetch tools unless they are the product and have strong policy controls.
 - Make high-risk behavior discoverable with concise warnings and actionable denial errors.

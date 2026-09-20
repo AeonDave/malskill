@@ -53,11 +53,13 @@ Plugins are JS/TS modules that hook OpenCode lifecycle events. Load via the `plu
 import type { Plugin } from "@opencode-ai/plugin"
 export const MyPlugin: Plugin = async ({ client, $, directory, worktree }) => ({
   "tool.execute.before": async (input, output) => { /* guard/transform */ },
-  "session.idle": async () => { /* notify */ },
+  event: async ({ event }) => {
+    if (event.type === "session.idle") { /* notify */ }
+  },
 })
 ```
 
-Common event hooks: `tool.execute.before/after`, `session.idle/created/compacted`, `file.edited`, `shell.env`, `experimental.session.compacting`.
+Common event values include `session.idle/created/compacted`, handled inside the single `event` hook; other hooks include `tool.execute.before/after`, `file.edited`, `shell.env`, and `experimental.session.compacting`.
 
 ### Ecosystem plugins worth knowing (from the OpenCode ecosystem list)
 

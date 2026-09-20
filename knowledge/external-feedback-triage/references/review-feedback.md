@@ -26,7 +26,7 @@ Apply `evidence-before-claims` to verify evidence quality before acting on feedb
 ## Response patterns
 
 - “Accepted with adaptation: local API uses X, so the minimal fix is Y.”
-- “Rejected: scanner matched version string, but feature Z is disabled and manual replay returns 404.”
+- “Rejected: scanner matched a version string, but feature Z is disabled; the observed 404 is a lead, not proof of absence, so applicability was checked with the relevant route and configuration.”
 - “Deferred: valid hardening idea, but it changes auth behavior outside this patch.”
 - “Need clarification: proposed exploit step is noisy/destructive and scope does not authorize it.”
 

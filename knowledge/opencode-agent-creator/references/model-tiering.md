@@ -23,7 +23,7 @@ Routing rules the supervisor should follow:
 
 ## Always-working models: inheritance as the native "fallback"
 
-OpenCode has **no native model-fallback list** (you cannot write `model: [a, b, c]`; it is an open feature request). The supported way to guarantee a subagent always has a working model is **inheritance**: omit the `model` field and the subagent runs on the model of the primary that invoked it.
+In the documented V1 Task flow, there is no native model-fallback list; verify the target version before relying on that constraint. Omitting `model` may inherit the invoking primary's model in V1, but this is a routing choice rather than a guarantee that a model is available.
 
 This turns the supervisor's model into a single dial for the whole team:
 
@@ -38,18 +38,17 @@ Symptom that you need this: a dispatched subagent returns empty/failed with a qu
 
 Zen is OpenCode's curated gateway. Model id format in config is `opencode/<id>`. Catalogs change — verify with `opencode models` or `/models`. As of writing, representative entries:
 
-- **Free tier** (great for utility agents): `big-pickle`, `deepseek-v4-flash-free`, `mimo-v2.5-free`, `nemotron-3-ultra-free`. Availability is time-limited.
-- **Cheap paid, zero-retention** (good fallbacks): `gpt-5-nano` (~$0.05/M in), `deepseek-v4-flash` (~$0.14/M), `gpt-5.4-nano` (~$0.20/M), `claude-haiku-4-5` (~$1.00/M).
+Catalog entries, pricing, retention, and availability change. Query the current model catalog and provider terms before naming a model or making cost/privacy claims.
 - **Capable mid** (specialists): e.g. `claude-sonnet-4-6`, `gpt-5.4`.
 - **Top reasoning** (brain): e.g. `claude-opus-4-x`, `gpt-5.5`.
 
 Other providers work too — id is always `provider/model-id` (e.g. `github-copilot/gpt-5.4`, `anthropic/claude-...`). Keep a team on one provider when you want flat-rate/subscription billing to cover the specialists.
 
-## Privacy caveat for free models (important)
+## Provider privacy and data handling
 
-Free Zen models **may log or train on submitted data**. Never route sensitive engagement data (credentials, private keys, tokens, PII, client identifiers, raw memory/disk/PCAP/exploit artifacts) to a free-tier utility agent. Mitigations:
+Do not infer logging, training, or retention behavior from a model's price or tier. Check the current provider terms before routing sensitive data. As a conservative default, redact credentials, private keys, tokens, PII, client identifiers, and raw memory/disk/PCAP/exploit artifacts before sending them to any lower-trust or unverified provider. Mitigations:
 - Have the supervisor redact/generalize before delegating to a free agent.
-- For sensitive parsing, route to a **paid zero-retention** model (e.g. `opencode/deepseek-v4-flash`) or to a specialist, not the free utility.
+- For sensitive parsing, use a provider whose current terms meet the engagement requirement, or keep the work local.
 - Put this rule in the supervisor prompt and in each free utility's prompt so it is enforced behaviorally.
 
 ## Choosing per agent

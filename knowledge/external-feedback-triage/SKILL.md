@@ -1,6 +1,6 @@
 ---
 name: external-feedback-triage
-description: "Triage external technical feedback before applying it. Use for code reviews, scanner findings, exploit PoC notes, blog advice, LLM suggestions, issue comments, and advisory recommendations. Verifies context fit, evidence, risk, and minimal changes instead of accepting or rejecting feedback performatively."
+description: "Evaluate external technical feedback before acting. Use for reviews, scanner findings, blog advice, model suggestions, and recommendations whose applicability or evidence is uncertain."
 license: MIT
 compatibility: "AgentSkills-compatible review workflow for coding, research, and authorized security assessment."
 metadata:
@@ -22,7 +22,7 @@ Treat every external suggestion as a hypothesis until it is checked against the 
 
 1. **Restate feedback** in neutral technical terms.
 2. **Check applicability**: version, platform, configuration, code path, permissions, and scope.
-3. **Classify severity**: critical correctness, security risk, maintainability, style, or preference.
+3. **Classify independently**: impact (for example correctness, security, availability, or maintainability) and confidence (verified, plausible, or unverified). Record style or preference separately from defects.
 4. **Verify evidence**: apply `evidence-before-claims` before accepting.
 5. **Choose action**: apply, adapt, defer, reject, or ask for clarification.
 6. **Patch minimally** when acting; do not bundle unrelated cleanup.

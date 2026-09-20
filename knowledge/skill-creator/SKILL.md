@@ -82,6 +82,8 @@ Test the models and hosts used by the intended audience when making compatibilit
 
 ## Validate and finish
 
+`quick_validate.py` requires PyYAML for strict frontmatter parsing; install it in the runtime before running the validator.
+
 From the target repository, run these scripts for each changed skill directory:
 
 ```bash
