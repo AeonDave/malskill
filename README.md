@@ -150,6 +150,7 @@ Cross-cutting behavioral guardrails that shape *how* an agent works: evidence ga
 | `agentic-offensive-orchestration` | Red-team agent-swarm architecture, MCP-based C2, worker containment |
 | `design-before-implementation` | Clarify scope, alternatives, constraints, and success criteria before building |
 | `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
+| `humanizer` | Revise formulaic prose while preserving author voice, technical facts, and evidence limits |
 | `hypothesis-driven` | Force explicit hypotheses and falsifiable predictions for hard problems |
 | `implementation-planning` | Turn approved designs into executable, verifiable task plans |
 | `loop-control-and-pivots` | Retry discipline; pivot dead paths, honest BLOCKED reporting |
