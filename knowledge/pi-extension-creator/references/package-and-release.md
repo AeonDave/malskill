@@ -205,7 +205,7 @@ For packages:
 
 - `package.json` `name`, `version`, `description`, `license`, `repository`, `keywords`, `files`, and `pi` manifest are correct.
 - Public package includes `pi-package` keyword.
-- Current imports use `@earendil-works/*` unless maintaining older code.
+- Imports use `@earendil-works/*` packages.
 - Runtime imports are in `dependencies` or Pi peer dependencies.
 - Pure logic has tests.
 - `tsc --noEmit` passes.

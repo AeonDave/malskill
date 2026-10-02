@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Imports](#imports)
+- [API Index](#api-index)
 - [Factory](#factory)
 - [Events](#events)
 - [Tools](#tools)
@@ -15,8 +16,6 @@
 - [Errors](#errors)
 
 ## Imports
-
-For new code:
 
 ```ts
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -32,7 +31,46 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 ```
 
-If maintaining older extensions, check the repo before changing imports. Older code may still import from a previous package scope or from `@sinclair/typebox`.
+## API Index
+
+The full surface. Sections below show usage; load [codemode-and-mcp.md](codemode-and-mcp.md), [virtual-models.md](virtual-models.md), [themes.md](themes.md), and [advanced-redesign.md](advanced-redesign.md) for depth.
+
+Events — `pi.on(event, handler)` returns an unsubscribe function. See the [event table](#events).
+
+Register capabilities (`pi`):
+
+- `registerTool`, `registerCommand`, `registerShortcut`, `registerFlag` / `getFlag`
+- `registerMessageRenderer`, `registerEntryRenderer`, `registerMarkdownTransformer`
+- `registerProvider` / `unregisterProvider`
+- `registerMcpServer` / `unregisterMcpServer` / `getMcpServers`
+- `registerVirtualModel` / `unregisterVirtualModel`
+
+Messages and entries (`pi`):
+
+- `sendMessage`, `sendUserMessage`, `appendEntry`
+
+Session and tools (`pi`):
+
+- `getActiveTools` / `setActiveTools` / `getAllTools`, `getCommands`, `getSettings`
+- `setSessionName` / `getSessionName`, `setLabel`
+- `setModel`, `getThinkingLevel` / `setThinkingLevel`
+- `exec`, `events`
+
+Context (`ctx`):
+
+- `cwd`, `mode`, `hasUI`, `signal`, `model`, `thinkingLevel`
+- `sessionManager`, `modelRegistry`, `tools`, `executeTool`
+- `getContextUsage`, `getSystemPrompt`, `getSystemPromptOptions`, `isProjectTrusted`, `compact`, `shutdown`
+- Command-only (`ExtensionCommandContext`): `waitForIdle`, `reload`, `newSession`, `fork`, `switchSession`, `navigateTree`
+
+UI (`ctx.ui`):
+
+- Dialogs: `confirm`, `select`, `input`, `notify`, `custom`
+- Chrome: `setStatus`, `setWidget`, `setHeader`, `setFooter`, `setTitle`
+- Working row: `setWorkingMessage`, `setWorkingVisible`, `setWorkingIndicator`, `setHiddenThinkingLabel`
+- Editor: `setEditorText` / `getEditorText`, `setEditorComponent` / `getEditorComponent`
+- Themes: `getAllThemes`, `getTheme`, `setTheme`, `theme`
+- Misc: `getToolsExpanded` / `setToolsExpanded`, `onTerminalInput`
 
 ## Factory
 
@@ -58,7 +96,7 @@ Core lifecycle:
 project_trust -> session_start -> resources_discover
 user prompt -> input -> before_agent_start -> agent_start -> turn_start
 tool use -> tool_execution_start -> tool_call -> tool_result -> tool_execution_end
-turn_end -> agent_end -> agent_settled
+turn_end -> agent_end -> agent_before_settle -> agent_settled
 session changes -> session_before_* -> session_shutdown -> session_start
 ```
 
@@ -84,24 +122,41 @@ Useful event choices:
 |---|---|
 | Trust or decline project-local resources | `project_trust` |
 | Rehydrate state, register session-specific tools | `session_start` |
+| React to session rename or label change | `session_info_changed` |
 | Add skill/prompt/theme paths | `resources_discover` |
 | Intercept user text before agent run | `input` |
-| Inject per-turn system prompt additions | `before_agent_start` |
+| Change prompt sections, tools, or guidelines per run | `before_agent_start` |
 | Add/trim context before provider request | `context` |
+| Own the full transcript including system messages | `context_with_system` |
 | Inspect or replace provider payload just before HTTP send | `before_provider_request` |
 | Mutate outgoing request headers in place | `before_provider_headers` |
 | Inspect HTTP response status/headers | `after_provider_response` |
+| Observe parsed provider stream events (read-only) | `provider_stream_event` |
 | Intercept `!`/`!!` user bash commands | `user_bash` |
 | Gate or rewrite tool args | `tool_call` |
 | Inspect or alter tool result | `tool_result` |
 | React to model change | `model_select` |
 | React to thinking-level change | `thinking_level_select` |
+| React to MCP server add/remove/exposure change | `mcp_servers_change` |
 | Report waiting-for-user vs active work | `ui_prompt_start`, `ui_prompt_end` |
+| Append entries and request one continuation | `turn_end`, `agent_before_settle` |
 | Update footer/status after work | `turn_end`, `agent_end` |
+| Know Pi will not continue automatically | `agent_settled` |
+| Override an idle prompt-cache refresh | `cache_warming_decision` |
 | Prevent or customise compaction | `session_before_compact`, `session_compact` |
+| React to a failed compaction | `session_compact_failed` |
 | Prevent or customise tree navigation | `session_before_tree`, `session_tree` |
 | Prevent destructive session operations | `session_before_switch`, `session_before_fork` |
 | Release resources | `session_shutdown` |
+
+Notes on the newer events:
+
+- `pi.on()` returns an unsubscribe function. Handlers added or removed during a dispatch apply to later dispatches, not the one in progress.
+- `before_agent_start` exposes the prompt and its structured `systemPromptOptions`. Prefer changing prompt sections, selected tools, or guidelines so Pi appends a transcript delta; returning `systemPrompt` or setting `forceSystemPrompt` replaces the whole prompt for that run.
+- `turn_end` and `agent_before_settle` are the actionable boundaries: a handler can chain proposed `custom`, `custom_message`, `context_edit`, or `compaction` entries and return `continue: true` for exactly one more model request. Guard the continuation condition or it loops. `agent_settled` is final and notification-only.
+- `context` transforms conversation messages without the prompt/tool system messages (Pi restores them after). Use `context_with_system` only when a request-local transform must own the complete transcript, keeping a system message at index zero.
+- `provider_stream_event` fires for each parsed provider event before normalization. Treat `event.data` as read-only; it is notification-only and not persisted.
+- `mcp_servers_change` fires when registered MCP servers change; a replacement MCP extension reads the current set with `pi.getMcpServers()` on `session_start`.
 
 ## Tools
 
@@ -134,10 +189,20 @@ Tool result rules:
 
 - `content` is what the model sees.
 - `details` is persisted and can support reconstruction or custom rendering.
-- **Throw** to signal tool failure — Pi sets `isError: true` automatically. Returning `{ isError: true }` from `execute()` has no effect. In a `tool_result` event handler, returning `{ isError: true }` patches the result correctly.
-- `terminate: true` is for final structured-output tools that should end the agent loop.
+- **Throw** from `execute()` to produce a failed tool result; the model sees an error. Returning an object without `isError` is a success regardless of content.
+- Return `{ content, details, isError: true }` to report a failure that still carries data: the model sees an error, and codemode scripts still receive `structuredContent`. In a `tool_result` handler, returning `{ isError: true }` patches the result.
+- `terminate: true` skips the agent's automatic follow-up, but only when every completed tool in the same batch also returns `terminate: true`. Use it for final structured-output tools.
 - Include compact, actionable text. Put bulky structured state in `details`.
 - Truncate large output: use `truncateHead`/`truncateTail` from `@earendil-works/pi-coding-agent` (defaults: 2000 lines / 50 KB). Save full output to a temp file and include the path in `content` when truncating.
+
+`defineTool({ ... })` from `@earendil-works/pi-coding-agent` builds a typed definition to pass to `pi.registerTool`; both are current.
+
+### Structured output, exposure, and nested calls
+
+- Declare `outputSchema` and return a matching `structuredContent` when the result is data. The model still gets `content`; codemode scripts and `ctx.executeTool()` callers get `structuredContent`. Tools without `outputSchema` reach scripts as their text `content`.
+- `exposure` (`direct`, `model-only`, `codemode`, `deferred`, `hidden`), `namespace`, `annotations`, and `prepareLoadout` control how the model and other tools reach a tool.
+- `ctx.executeTool(name, args, { signal, onUpdate })` runs another tool from inside `execute()`; `ctx.tools` lists the callable tools.
+- Load [codemode-and-mcp.md](codemode-and-mcp.md) for the full exposure model, nested-call accounting, codemode runtime, and MCP integration.
 
 For subprocess tools:
 
@@ -246,6 +311,8 @@ ctx.ui.setStatus("my-ext", ctx.ui.theme.fg("dim", "my-ext idle"));
 // placement: "aboveEditor" (default) | "belowEditor"
 ctx.ui.setWidget("my-ext", ["My Extension", "Ready"], { placement: "belowEditor" });
 ```
+
+Header, footer, title, working-row (`setWorkingVisible`, `setWorkingMessage`, `setWorkingIndicator`, `setHiddenThinkingLabel`), editor replacement, and `setToolsExpanded` are catalogued in the [API Index](#api-index); see [advanced-redesign.md](advanced-redesign.md) for chrome patterns. Theme methods (`getAllThemes`, `getTheme`, `setTheme`, `ctx.ui.theme`) and the theme file format are in [themes.md](themes.md).
 
 Use `ctx.mode === "tui"` before custom components, keyboard handling, custom editors, games, or overlay-style UI.
 
@@ -381,8 +448,23 @@ pi.setLabel(entryId, "checkpoint"); // bookmark for /tree; pass undefined to cle
 // Remove a registered provider
 pi.unregisterProvider("my-proxy");
 
+// MCP servers for the current session (see codemode-and-mcp.md)
+pi.registerMcpServer("jira", { url: "https://mcp.example.com/jira", exposure: "codemode" });
+pi.unregisterMcpServer("jira");
+const servers = pi.getMcpServers(); // read on session_start; watch mcp_servers_change
+
+// Virtual models that route each request to a physical model (see virtual-models.md)
+pi.registerVirtualModel({ provider: "router", id: "auto", name: "Auto", thinkingLevels: ["low", "high"], route });
+pi.unregisterVirtualModel("router", "auto");
+
 // Get commands (extension + prompt + skill commands)
 const commands = pi.getCommands();
+
+// Read merged settings (user + project)
+const settings = pi.getSettings();
+
+// Transform rendered markdown before display (returns the new markdown string)
+pi.registerMarkdownTransformer((markdown, context) => markdown.replaceAll("\t", "  "));
 
 // Graceful shutdown
 ctx.shutdown(); // available from any event/tool/command

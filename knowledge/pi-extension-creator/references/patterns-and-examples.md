@@ -26,6 +26,7 @@ Use this map before writing code:
 | Rewriting built-in tool calls | Event gate module plus policy tests |
 | Replacing built-in tools | Register same tool names, preserve common args and rendering expectations |
 | External binary/runtime integration | Package dependency, resolver, diagnostics command, timeouts |
+| Connecting external MCP capabilities | `pi.registerMcpServer` or `mcp.json`, not a custom tool bridge |
 | Shared skills/prompts/themes | Pi package manifest or `resources_discover` |
 | Complex TUI | Directory extension with component modules and mode guards |
 
@@ -154,13 +155,14 @@ Rules:
 
 ## Provider Or MCP Bridge
 
-Use provider registration for model/provider integration.
+Use provider registration for model/provider integration. Register MCP servers with `pi.registerMcpServer(name, config)` instead of hand-building a tool bridge; the built-in MCP support connects them and routes their tools through the normal pipeline. Load [codemode-and-mcp.md](codemode-and-mcp.md) for the server config shape, exposure model, and lifecycle.
 
-Use MCP or tool bridge patterns when the extension exposes external capabilities:
+When the extension exposes external capabilities as its own tools:
 
 - Keep discovery separate from call execution.
 - Deduplicate generated tools.
-- Compress or summarize noisy external output before returning to the model.
+- Use tool `exposure` (`codemode`/`deferred`) and `namespace` so large or noisy tool sets reach the model through codemode or `tool_search` rather than crowding the declared set.
+- Compress or summarize noisy external output before returning to the model; return `structuredContent` for data.
 - Redact known secrets in diagnostics and tool output.
 - Add timeouts for every external call.
 
@@ -172,19 +174,23 @@ Use these sources as pattern references, not as code to paste blindly:
 - Official Pi package docs: https://pi.dev/docs/latest/packages
 - Official examples dir: https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions
 
-High-signal example files in that directory (v0.84.x):
+High-signal example files in that directory:
 
 | Pattern | Example file |
 |---|---|
 | Tool-call gate | `permission-gate.ts`, `protected-paths.ts`, `confirm-destructive.ts` |
 | Runtime tool registration | `dynamic-tools.ts` |
 | Stateful tool + `renderCall`/`renderResult` | `todo.ts` |
+| Structured output + `terminate` | `structured-output.ts` |
 | Custom message vs entry rendering | `message-renderer.ts`, `entry-renderer.ts` |
 | Subprocess/subagent runner | `subagent/`, `interactive-shell.ts` |
+| Context handoff to a new session | `handoff.ts` |
 | Chrome/footer/header/editor | `custom-footer.ts`, `custom-header.ts`, `border-status-editor.ts`, `modal-editor.ts` |
 | Dynamic resources | `dynamic-resources/` |
 | Package with npm dependency | `with-deps/` |
 | Custom compaction | `custom-compaction.ts`, `trigger-compact.ts` |
 | Custom provider | `custom-provider-anthropic/`, `custom-provider-gitlab-duo/` |
+| Virtual model router | `jev-router.ts` |
+| Provider stream debugging | `debug-provider.ts` |
 
 Normalize imports and APIs against current Pi docs before creating new code.
