@@ -1,11 +1,11 @@
 ---
 name: linux-internals-dev
-description: "Auth/lab dev: Linux internals; ELF loader, procfs, namespaces/caps, eBPF verifier/maps, LSM hooks for tooling/telemetry design."
+description: "Auth/lab dev: Linux internals; ELF loading and program startup, procfs, namespaces/caps, eBPF verifier/maps, LSM hooks for tooling/telemetry design."
 license: MIT
 compatibility: "Linux kernels 5.4 through 6.x on x86-64 and ARM64; Interfaces and struct layouts can vary by kernel version and distro patches, so verify against running kernel docs and headers before production use."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # linux-internals
@@ -19,6 +19,7 @@ This skill is for structural mechanics: what the kernel and loader actually do, 
 ## When to activate
 
 - You are writing or reviewing custom ELF loaders, in-memory execution, or reflective mapping logic
+- You are diagnosing execution before `main` or checking an old startup diagram against the target libc and toolchain
 - You are parsing `/proc` for process, memory, mount, or namespace intelligence and need race-safe interpretation
 - You are building namespace or container boundary logic with `clone`, `unshare`, `setns`, or pidfd flows
 - You are loading eBPF programs and debugging verifier failures, helper constraints, map lifetime, or attach semantics
@@ -33,7 +34,7 @@ If the task is ordinary userland API usage, this skill is overkill. If the task 
 
 | Domain | File | Covers |
 |---|---|---|
-| ELF and dynamic linking | `references/elf-format.md` | ELF headers, program headers vs sections, dynamic tags, relocation flow, loader order, practical invariants |
+| ELF and dynamic linking | `references/elf-format.md` | Load when parsing ELF or tracing interpreter entry, executable entry, libc startup, initializers, and termination |
 | procfs semantics | `references/procfs.md` | `/proc` layout, ptrace-gated visibility, `maps` and `smaps` races, `hidepid`, mountinfo and pidns interactions |
 | Namespaces and isolation | `references/namespaces.md` | namespace APIs, ownership and capability checks, pid and user namespace rules, lifetime pinning |
 | Syscall dispatch internals | `references/syscall-dispatch-linux.md` | x86-64 syscall ABI details, vDSO-sourced syscall gadgets, fallback chains, errno handling, and telemetry implications |
@@ -130,7 +131,7 @@ Use this whenever implementing a low-level technique.
 
 ## Resources
 
-- `references/elf-format.md` for loader and relocation mechanics
+- `references/elf-format.md` for loader/relocation mechanics and a reproducible pre-`main` startup trace
 - `references/procfs.md` for process and memory introspection semantics
 - `references/namespaces.md` for isolation model and transition constraints
 - `references/syscall-dispatch-linux.md` for syscall ABI, dispatch-source tradeoffs, and fallback design

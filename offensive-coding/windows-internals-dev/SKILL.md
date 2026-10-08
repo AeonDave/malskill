@@ -1,11 +1,11 @@
 ---
 name: windows-internals-dev
-description: "Auth/lab dev: Windows internals; PEB/TEB, PE/COFF, syscalls, unwinding, memory/heap, tokens, kernel objects, ETW/AMSI telemetry."
+description: "Auth/lab dev: Windows internals; PE loading and CRT startup, PEB/TEB, PE/COFF, syscalls, unwinding, memory/heap, tokens, kernel objects, ETW/AMSI telemetry."
 license: MIT
 compatibility: "Windows 10 1809 through Windows 11 24H2, x86-64 and ARM64; Kernel structures referenced from Windows 11 22H2/24H2 public debug symbols."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # windows-internals
@@ -23,6 +23,7 @@ Foundational Windows internals for programmatic work: writing implants and loade
 - Writing an implant, loader, or BOF that cannot use traditional imports
 - Building indirect syscall dispatch (Hell's / Halo's / Tartarus / Recycled Gate)
 - Reversing your own release binary to verify ASM stubs land correctly
+- Tracing native execution before `main`/`WinMain` or checking PE entry, TLS, and CRT initialization against the target toolchain
 - Implementing call-stack spoofing (SilentMoonwalk / Draugr / CHRYSALIS)
 - Patching AMSI, ETW, or ETW-TI in userland; understanding what kernel telemetry remains
 - Writing a kernel driver that registers process/thread/image/registry callbacks
@@ -40,7 +41,7 @@ Everything below is a pointer into a reference file. Load only what you need.
 | Domain | File | Covers |
 |--------|------|--------|
 | **Process/thread state blocks** | `references/peb-teb.md` | PEB, TEB, LDR data, InMemoryOrderModuleList, ApiSetMap, module walking, hash-based resolution |
-| **PE / COFF** | `references/pe-format.md` | DOS/NT headers, sections, exports (incl. forwarded), imports, relocations, TLS callbacks, .pdata, COFF object files |
+| **PE / COFF and startup** | `references/pe-format.md` | Load for PE parsing or before-user-entry diagnosis: headers, TLS/CRT boundaries, matching source, symbols, and debugger steps |
 | **Syscalls** | `references/syscalls.md` | Syscall ABI (x64/ARM64), SSN resolution strategies, direct/indirect dispatch, gate variants, stub layout |
 | **Exception handling** | `references/exception-unwind.md` | SEH, VEH, UNWIND_INFO, RtlLookupFunctionEntry, RtlVirtualUnwind, KiUserExceptionDispatcher, call-stack spoofing frames |
 | **Memory** | `references/memory-management.md` | Virtual memory (NtAllocate/Protect/Write/Read), sections, VADs, NT heap vs Segment heap, LFH |
@@ -169,15 +170,9 @@ Need to invoke an Nt* function without touching ntdll's hooked stub?
 
 ### DLL load (`LdrLoadDll`)
 
-1. Canonicalize name, check if in `KnownDlls` (section object namespace under `\KnownDlls`)
-2. If present → `NtOpenSection` on the pre-mapped section, `NtMapViewOfSection` into process
-3. If absent → resolve via search path, `NtOpenFile` → `NtCreateSection(SEC_IMAGE)` → `NtMapViewOfSection`
-4. Process imports recursively (depth-first — causes loader lock cascades)
-5. Walk `IMAGE_TLS_DIRECTORY.AddressOfCallBacks` array, call each with `DLL_PROCESS_ATTACH`
-6. Call `DllMain` with `DLL_PROCESS_ATTACH`
-7. Insert into LDR lists, notify registered load image callbacks (`PsSetLoadImageNotifyRoutine` fires now)
+For startup analysis, use the documented boundary: an image's TLS callbacks run before that image's PE entry point. With default MSVC DLL startup, the PE entry point is `_DllMainCRTStartup`, which initializes the CRT before calling the user's `DllMain`. Dependencies are initialized before the executable reaches its own PE entry point; keep exact cross-image loader event ordering build-specific. See `references/pe-format.md` for the WinDbg observation method.
 
-**Pitfall**: TLS callbacks from a DLL loaded via `LoadLibrary` are **not** invoked for already-running threads, only for threads created after. They are invoked for the current thread on `DLL_PROCESS_ATTACH`. Statically-linked DLLs' TLS callbacks are fired for all existing threads at process init.
+For `DLL_THREAD_ATTACH`, Microsoft documents that a DLL loaded with `LoadLibrary` receives notifications only for threads created after that load; existing threads do not receive a retroactive thread-attach call. Do not generalize this rule into undocumented TLS callback timing for every loader path.
 
 ### Thread creation (`NtCreateThreadEx`)
 
@@ -279,7 +274,7 @@ Use those skills when writing code; use this one for the underlying structures a
 ### Reference files in this skill
 
 - `references/peb-teb.md` — PEB, TEB, LDR data, ApiSetMap, module walking, hash-based resolution
-- `references/pe-format.md` — DOS/NT headers, sections, exports, imports, TLS callbacks, .pdata, COFF objects
+- `references/pe-format.md` — load for PE parsing or native startup diagnosis before `main`/`WinMain`/user `DllMain`, with source/disassembly/debugger correlation
 - `references/syscalls.md` — Syscall ABI, SSN resolution (Hell's/Halo's/Tartarus/Recycled/HWSyscall), direct/indirect dispatch
 - `references/exception-unwind.md` — SEH/VEH, UNWIND_INFO, RtlVirtualUnwind, KiUserExceptionDispatcher, call-stack spoofing
 - `references/memory-management.md` — Virtual memory, sections, VADs, NT heap / Segment heap / LFH

@@ -1,11 +1,11 @@
 ---
 name: reversing-technique
-description: "Auth/lab: reverse engineering methodology; malware triage, patch diffing, firmware/protocol RE, protections, exploitability handoff evidence."
+description: "Auth/lab: reverse engineering methodology; malware triage, patch diffing, firmware/protocol RE, OS/runtime behavior verification, protections, exploitability handoff evidence."
 license: MIT
 compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images,.NET assemblies, network captures; User-mode focus; kernel RE referenced but not detailed."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
   category: analysis
   language: asm,c,cpp,rust,go,python,csharp
   objectives: "malware-analysis, software-protection-analysis, patch-diffing, firmware-reversing, dotnet-reversing, protocol-reversing, vulnerability-hunting, exploitability-triage, secrets-extraction, custom-vm-reversing, anti-analysis-bypass, side-channel-re, language-specific-re"
@@ -20,6 +20,7 @@ metadata:
 - **Malware analysis**: Understand behavior, C2, persistence, evasion.
 - **Software protection analysis**: Identify license/protection logic, emulate validation checks, reconstruct key material where authorized.
 - **Patch diffing**: Find security fixes, understand vendor patches.
+- **OS/runtime behavior verification**: Recover a version-bound rule from matching sources, symbols, disassembly, and a controlled execution trace.
 - **Firmware reversing**: Extract filesystems, analyze embedded code.
 - **.NET reversing**: Deobfuscate, understand managed code logic.
 - **Protocol reversing**: Reconstruct proprietary protocols or file formats.
@@ -478,7 +479,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 **Core sequence:**
 
 - [references/triage.md](references/triage.md) — start here for the first 5–10 minutes: format detection, entropy, imports, language/runtime fingerprints, and next-step decisioning.
-- [references/re-workflow.md](references/re-workflow.md) — core methodology after triage: static, dynamic, reconstruction, Ghidra workflow, crypto-pattern spotting, and reporting.
+- [references/re-workflow.md](references/re-workflow.md) — load after triage for static/dynamic reconstruction, or when validating/updating OS/runtime behavior with matching-build sources, symbols, and traces.
 
 **Format supplements:**
 

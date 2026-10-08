@@ -50,7 +50,7 @@ Skills for building offensive tooling from scratch: shellcode, loaders, BOFs, sy
 - **BOF**: `bof-dev/c-bof`, `bof-dev/cpp-bof` - Beacon Object File development workflows
 - **Evasion**: `edr-evasion-dev`, `indirect-syscall-dev`, `sleep-masking-dev`, `stack-spoofing-dev` - technique-level development patterns
 - **Exploit and payload development**: `heap-exploitation-dev`, `rop-development-dev`, `shellcode-dev`
-- **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, and memory layout knowledge
+- **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, memory layout, and native PE/ELF startup; use `reversing-technique` for matching-build source/symbol checks and observed OS/runtime behavior
 - **Assembly patterns**: `asm-offensive-patterns` - x86-64/ARM64 patterns tuned for shellcode, syscall stubs, and evasion primitives
 - **Android RE**: `smali-dex-patching` - APK patch/rebuild/resign cycle, smali syntax, common bypass patterns (root, pinning, license, integrity)
 - **C2**: `adaptixc2-dev` - framework-specific development

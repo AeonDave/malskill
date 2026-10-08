@@ -100,12 +100,16 @@ Use this mental model when a debugger seems to “skip” important code:
 
 ```text
 Map image -> apply base relocations -> resolve static imports -> process loader metadata
--> run TLS callbacks -> CRT startup/global constructors -> AddressOfEntryPoint/DllMain
--> worker threads, delay imports, dynamic LoadLibrary/GetProcAddress resolution
+-> initialize static dependencies and image TLS -> AddressOfEntryPoint
+-> default CRT startup/global initializers -> user main/WinMain or DllMain
+
+Worker threads, delay imports, and dynamic LoadLibrary/GetProcAddress resolution
+occur when triggered, including from initialization code; they are not a mandatory later phase.
 ```
 
 Important details:
 
+- `AddressOfEntryPoint` is usually CRT startup for a native MSVC image, not user `main`/`WinMain`/`DllMain`. Custom `/ENTRY`, other toolchains, and managed images need their own path. For the source/disassembly/debugger procedure, load `windows-internals-dev` → `references/pe-format.md`. [MSVC entrypoint selection](https://learn.microsoft.com/en-us/cpp/build/reference/entry-entry-point-symbol?view=msvc-170).
 - If the image is not loaded at `ImageBase`, the loader applies `.reloc` base relocations. If relocations are stripped, rebasing can fail or force fixed-base assumptions.
 - Static imports populate the IAT before user entry. Delay imports are resolved by helper thunks later, often at the first call site.
 - TLS callbacks are invoked before normal entry and on later thread attach/detach events.

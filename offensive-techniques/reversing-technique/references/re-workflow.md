@@ -31,9 +31,35 @@
 
 ## Phase 2: Static Analysis (Objective-Driven)
 
+### Verify OS/runtime behavior
+
+Load this workflow when an old tutorial, undocumented structure, or runtime claim must be checked on the actual target. State one falsifiable question, such as which image runs first or whether an initializer precedes the user entry function.
+
+1. **Bind the environment.** Record OS/kernel build and revision, architecture, compiler/linker and flags, runtime/package revision, and the actual loaded module paths, versions, and hashes. A Windows product-name string or OS build is not a DLL version; a WSL kernel version is not a glibc version. Note discrepancies rather than choosing the most convenient label.
+2. **Separate contracts from implementations.** Start with the applicable ABI/API/specification. Retrieve the vendor/distro source revision and patches for the observed implementation. Windows public symbols expose selected names/types; they do not supply all source or private runtime state. ReactOS/Wine, blog diagrams, and upstream `master` are hypotheses to compare, not substitutes for the target build.
+3. **Match symbols to images.** Linux: inspect `readelf -n` build IDs and `.gnu_debuglink`, then obtain corresponding distro debug/source packages or debuginfod results. GDB uses build IDs or debug-link CRCs to select separate debug files. Windows: retain the PE CodeView PDB identity (modern RSDS GUID plus age) and matching PDB; use the symbol server/debugger's matching checks, not filename or product version alone. [GDB debug-file matching](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Separate-Debug-Files.html), [Microsoft symbol matching](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/symbols).
+4. **Recover the path statically.** Locate the relevant header entry/RVA or function, then follow disassembly and compare it with matching source. Record module-relative addresses and account for thunks, inlining, optimized-out arguments, and absent private symbols. Missing symbols are not evidence that a stage does not exist; pseudocode is a hypothesis until checked against instructions/data.
+5. **Test the smallest observable claim.** Build a harmless local probe or use the authorized target's isolated test environment. Set breakpoints before the disputed boundary, capture the loaded base, instructions, arguments, call stack, and marker order. Compare a normal run with the debugger run; vary one relevant factor such as architecture or CRT linkage. Log order alone cannot identify the responsible loader/runtime routine.
+6. **Persist a scoped rule.** Label it documented, observed, inferred, or unresolved. Save the source locator/revision, image hash/build ID/PDB identity, tool versions, commands/flags, observed result, and untested branches. Re-check after changes to the module, toolchain, architecture, linkage, or vendor patches; edit the canonical fact and its routing, not duplicate diagrams across skills.
+
+For Windows identity gathering in PowerShell:
+
+```powershell
+Get-CimInstance Win32_OperatingSystem | Select-Object Version, BuildNumber, OSArchitecture
+Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' |
+    Select-Object CurrentBuild, UBR, DisplayVersion, BuildLabEx
+(Get-Item -LiteralPath $modulePath).VersionInfo |
+    Select-Object FileVersion, ProductVersion
+Get-FileHash -Algorithm SHA256 -LiteralPath $modulePath
+```
+
+Set `$modulePath` to the image actually loaded by the target. For WinDbg, `.symfix`, `.reload /f MODULE`, `lmvm MODULE`, and `!lmi MODULE` show module/symbol evidence; replace `MODULE` with its debugger module name. If matching fails, use `!sym noisy` and inspect the selected file before trusting names/types. Do not force-load mismatched symbols to turn an unresolved claim into a result. [Microsoft symbol workflow](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/symbols).
+
+For startup-specific boundaries and executable commands, load `linux-internals-dev` → `references/elf-format.md` or `windows-internals-dev` → `references/pe-format.md`.
+
 ### 2.1 Entry Point Analysis
-- Locate `main`/`WinMain`/`DllMain`/`_start`
-- Follow initialization code to understand program setup
+- Distinguish interpreter/loader entry, executable ELF `e_entry` or PE `AddressOfEntryPoint`, and user `main`/`WinMain`/`DllMain`.
+- Follow initialization through the actual runtime; a breakpoint at `main` can miss earlier application logic.
 - Note early anti-analysis checks (often in startup)
 
 ### 2.2 Function Identification

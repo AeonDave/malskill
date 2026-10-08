@@ -220,6 +220,8 @@ RE implications:
 
 ## Pre-main execution paths
 
+For a version-bound interpreter → executable → libc → `main` trace, load `linux-internals-dev` → `references/elf-format.md`. Its startup workflow replaces legacy symbol assumptions with header, auxv, debugger, and matching-source evidence.
+
 ### Constructors and destructors
 
 Check these before assuming `main` is first meaningful code:
@@ -263,7 +265,7 @@ RE implications:
 
 Practical resolution:
 
-1. Break at `_start`, the IFUNC resolver, or `_dl_debug_state`.
+1. Start with `starti` and a breakpoint on the identified IFUNC resolver when checking relocation-time execution. Executable `_start` can be too late; interpreter `_start` and `_dl_debug_state` are runtime-specific pivots, not proof that the resolver has not run.
 2. Run until relocations complete.
 3. Inspect the GOT/relocation target for the selected implementation.
 4. Annotate decompiler call sites with the concrete target and CPU/environment condition.

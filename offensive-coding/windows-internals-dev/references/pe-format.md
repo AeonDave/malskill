@@ -318,7 +318,7 @@ while (block < end) {
 
 ## TLS Directory (DataDirectory[9])
 
-Runs callbacks before `DllMain` / entry point.
+For a normally loaded native image, the loader runs that image's TLS callbacks before its PE entry point. This does not make the callback the executable's C/C++ `main` or a DLL's user `DllMain`.
 
 ### IMAGE_TLS_DIRECTORY64
 
@@ -343,27 +343,44 @@ VOID NTAPI TlsCallback(PVOID DllHandle, DWORD Reason, PVOID Reserved);
 //         DLL_THREAD_DETACH(3), DLL_PROCESS_DETACH(0)
 ```
 
-### Callback execution order
+### PE entry point, CRT startup, and user functions
 
-At **process init**, for a statically-linked .exe:
-1. All TLS callbacks of all statically-imported DLLs fire with DLL_PROCESS_ATTACH
-2. Main exe's TLS callbacks fire
-3. CRT init runs
-4. Main exe entry point runs
+`AddressOfEntryPoint` in the Optional Header is an RVA from the image base. For a loaded image with a nonzero entry RVA, its address is `actual image base + AddressOfEntryPoint`; use the runtime base because ASLR can move the image. It identifies the PE entry point, not necessarily a source-level `main`. A DLL can have no entrypoint; do not set a breakpoint on its base when the entry RVA is zero. [PE Optional Header](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-standard-fields-image-only).
 
-**For a DLL loaded via LoadLibrary**:
-1. TLS callbacks fire with DLL_PROCESS_ATTACH (for the **current** thread only)
-2. DllMain fires
-3. For each **subsequent** thread created: callbacks fire with DLL_THREAD_ATTACH
+For the default native MSVC startup, the linker chooses `mainCRTStartup`/`wmainCRTStartup` for console applications, `WinMainCRTStartup`/`wWinMainCRTStartup` for Windows-subsystem applications, and `_DllMainCRTStartup` for DLLs. Executable CRT startup initializes runtime state and static C++ objects before it calls `main`, `wmain`, `WinMain`, or `wWinMain`. The default DLL startup initializes the CRT and then calls the user `DllMain`. These names and paths are MSVC defaults, not universal PE rules. `/ENTRY` can select a different PE entry symbol and bypass default CRT initialization; retain the default when CRT initialization is required. [`/ENTRY` reference](https://learn.microsoft.com/en-us/cpp/build/reference/entry-entry-point-symbol?view=msvc-170), [CRT initialization](https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170), [DLL CRT behavior](https://learn.microsoft.com/en-us/cpp/build/run-time-library-behavior?view=msvc-170).
 
-**Existing threads do not get DLL_THREAD_ATTACH.** This is a common source of "my TLS callback only fires for new threads" confusion.
+The `/MT` family selects the static CRT; `/MD` selects the DLL CRT. This changes how CRT code is linked/deployed, not the distinction between the PE entry point and the user function. Qualify this behavior to the compiler, subsystem, link options, and custom-entry configuration in the binary under study. [MSVC runtime library options](https://learn.microsoft.com/en-us/cpp/build/reference/md-mt-ld-use-run-time-library?view=msvc-170).
 
-### Malware relevance
+For a DLL using default MSVC startup, TLS callbacks precede its PE entry point (`_DllMainCRTStartup`), which performs CRT work before calling user `DllMain`. For an executable, dependency DLL initialization and the executable's TLS callbacks occur before control reaches its PE entry point; CRT initialization and the user `main`/`WinMain` family follow according to the linked runtime. Avoid assuming a fixed ordering across callbacks in different images from this per-image rule. The documented DLL reason values and thread-notification caveats are in Microsoft's [TLS callback](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#tls-callback-functions) and [DllMain](https://learn.microsoft.com/en-us/windows/win32/dlls/dllmain) references.
 
-TLS callbacks run before the entry point and before most debuggers break. Classic anti-analysis:
-- Place `IsDebuggerPresent` check in first TLS callback
-- Place unpacking stub in TLS callback
-- Run before `main()` — debugger breakpoints at `main` are bypassed
+### Observe startup in WinDbg
+
+Run in a separate build directory with a benign native sample. A global object's constructor/destructor and an `atexit` callback make the user-visible boundaries observable:
+
+```cpp
+#include <cstdio>
+#include <cstdlib>
+struct Probe {
+    Probe() { std::puts("constructor"); }
+    ~Probe() { std::puts("destructor"); }
+} probe;
+void on_exit() { std::puts("atexit"); }
+int main() { std::puts("main"); return std::atexit(on_exit); }
+```
+
+Build in a Visual Studio developer shell with debug information, separate compiler/linker PDBs, and a map:
+
+```text
+cl /nologo /Zi /Od /EHsc /MD startup.cpp /Fo:startup.obj /Fd:compile.pdb /Fe:startup.exe /link /DEBUG:FULL /PDB:startup.pdb /MAP:startup.map
+```
+
+Launch the new target under WinDbg without `-g`; do not attach to an already-running process for this initial-startup observation. The documented initial breakpoint for a newly started target occurs after the main image and statically linked DLLs are loaded but before DLL initialization routines. Load symbols with `.symfix` and `.reload`, then check available application symbols with `x startup!*main*`. If the matching PDB contains the user symbol, set `bu startup!main` (or `bu startup!WinMain`) and continue with `g`; this stops after loader and CRT initialization, at the user function. A breakpoint on `main` alone cannot show earlier TLS or DLL initialization. [Initial breakpoint](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/initial-breakpoint), [WinDbg user-mode guide](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/getting-started-with-windbg), [symbol setup](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/symbols).
+
+At the initial stop, get the target's actual base from `lm m startup`, read the `AddressOfEntryPoint` RVA from `dumpbin /headers startup.exe`, add the two, and set `bp ADDRESS` before continuing, replacing `ADDRESS` with the computed runtime VA. Disassemble at that stop and follow any entry thunk before identifying CRT startup. Set additional breakpoints at the specimen's global initializer, user function, and callback to establish the disputed order; marker output alone does not identify the CRT routine that called them.
+
+If matching application symbols are unavailable but a matching `.map` exists, its public-symbol addresses are a fallback bound to this exact image. Subtract the map's preferred image base to obtain symbol RVAs, then add the actual loaded base; never copy preferred VAs into an ASLR-enabled session. Native GDB can use `starti`, `info files`, and address breakpoints without understanding MSVC PDBs. If deriving the image base from a loaded section, subtract that section's RVA from `dumpbin /headers`; do not assume `.text` always starts at RVA `0x1000`. Record that names came from the map, not loaded PDB symbols. Without symbols or a matching map, follow disassembly and leave unconfirmed source names unresolved. [MSVC map-file contents](https://learn.microsoft.com/en-us/cpp/build/reference/map-generate-mapfile?view=msvc-170).
+
+For a toolset-specific CRT walk-through, inspect `crt/src/vcruntime/exe_common.inl` under `%VCToolsInstallDir%` and compare its `_initterm_e`, `_initterm`, `invoke_main`, and normal-exit calls with startup code linked into the specimen. `/MD` can load serviced CRT DLLs newer than the toolset's sources: record these separately and do not use EXE startup source to explain unverified internals of a different loaded DLL. Follow that module's matching symbols/source or its observed instructions. Treat source/trace correspondence as evidence for the tested path, not all Windows builds, custom entrypoints, or managed startup. Use `reversing-technique` → `references/re-workflow.md`, section **Verify OS/runtime behavior**, for the shared image/source/symbol provenance method. [Symbol matching and loading](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/symbol-path), [SymChk](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-symchk).
 
 To register a TLS callback from C/C++ source (MSVC):
 
