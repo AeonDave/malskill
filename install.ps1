@@ -1,3 +1,5 @@
+#requires -Version 7.0
+
 param(
     [string]$SourceRoot = "",
     [string]$Destination = "",
@@ -17,9 +19,10 @@ if ([string]::IsNullOrWhiteSpace($SourceRoot)) {
 }
 $SourceRoot = (Resolve-Path -LiteralPath $SourceRoot).Path
 
-$ValidatorScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\quick_validate.py"
-$BatchValidatorScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\validate_all.py"
-$PackagerScript = Join-Path $ScriptDir "knowledge\skill-creator\scripts\package_skill.py"
+$ValidatorScript = Join-Path $ScriptDir "scripts\quick_validate.py"
+$BatchValidatorScript = Join-Path $ScriptDir "scripts\validate_all.py"
+$PackagerScript = Join-Path $ScriptDir "scripts\package_skill.py"
+$SelectorScript = Join-Path $ScriptDir "scripts\skill_selector.py"
 $DiscoveryExclusions = @(
     'dist',
     'installed-skills',
@@ -114,7 +117,7 @@ function Invoke-PythonScript([string]$ScriptPath, [string[]]$ScriptArgs) {
 # ─── Skills discovery ────────────────────────────────────────────────────────
 
 function Get-SkillDirectories([string]$RootPath) {
-    $skillFiles = Get-ChildItem -Path $RootPath -Recurse -File | Where-Object {
+    $skillFiles = Get-ChildItem -LiteralPath $RootPath -Recurse -File | Where-Object {
         $_.Name -ieq 'SKILL.md' -and -not (Test-SkillDiscoveryExcluded -RootPath $RootPath -CandidatePath $_.Directory.FullName)
     }
     if (-not $skillFiles) {
@@ -131,45 +134,6 @@ function Get-SkillDirectories([string]$RootPath) {
     }
 
     return $skills | Sort-Object RelativePath, Name
-}
-
-function Parse-IndexSelection([string]$RawSelection, [int]$MaxIndex) {
-    $trimmed = $RawSelection.Trim()
-    if ([string]::IsNullOrWhiteSpace($trimmed)) {
-        throw "Selection cannot be empty."
-    }
-    if ($trimmed -match '^(all|\*)$') {
-        return 1..$MaxIndex
-    }
-
-    $result = New-Object System.Collections.Generic.List[int]
-    foreach ($token in ($trimmed -split ',')) {
-        $part = $token.Trim()
-        if ($part -match '^(\d+)-(\d+)$') {
-            $start = [int]$matches[1]
-            $end = [int]$matches[2]
-            if ($start -lt 1 -or $end -gt $MaxIndex -or $start -gt $end) {
-                throw "Invalid range: $part"
-            }
-            foreach ($value in $start..$end) {
-                $result.Add($value)
-            }
-            continue
-        }
-
-        if ($part -match '^\d+$') {
-            $value = [int]$part
-            if ($value -lt 1 -or $value -gt $MaxIndex) {
-                throw "Index out of range: $part"
-            }
-            $result.Add($value)
-            continue
-        }
-
-        throw "Invalid selection token: $part"
-    }
-
-    return $result | Sort-Object -Unique
 }
 
 function Resolve-SkillReferences([object[]]$Skills, [string[]]$References) {
@@ -222,20 +186,37 @@ function Select-Skills([object[]]$Skills) {
     }
 
     Write-Step "Discovered $($Skills.Count) skill folders under $SourceRoot"
-    $indexWidth = $Skills.Count.ToString().Length
-    for ($i = 0; $i -lt $Skills.Count; $i++) {
-        $index = $i + 1
-        Write-Host ("[{0,$indexWidth}] {1}" -f $index, $Skills[$i].RelativePath) -ForegroundColor Cyan
-    }
-    Write-Host ""
-    $rawSelection = Read-Host "Select skills by index (e.g. 1,4-7 or all)"
-    $indexes = Parse-IndexSelection -RawSelection $rawSelection -MaxIndex $Skills.Count
+    $skillsFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $selectorSkills = @($Skills | ForEach-Object {
+            @{ name = $_.Name; path = (Normalize-SkillPath $_.RelativePath) }
+        })
+        $json = ConvertTo-Json -InputObject $selectorSkills -Depth 3
+        [System.IO.File]::WriteAllText($skillsFile, $json, [System.Text.UTF8Encoding]::new($false))
+        $selectedPaths = @(& $PythonInvocation.Exe @($PythonInvocation.PrefixArgs + @($SelectorScript, '--skills-file', $skillsFile)))
+        if ($LASTEXITCODE -ne 0) {
+            throw "Skill selection cancelled or failed."
+        }
 
-    $selected = foreach ($index in $indexes) {
-        $Skills[$index - 1]
+        $byPath = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
+        foreach ($skill in $Skills) {
+            $byPath.Add((Normalize-SkillPath $skill.RelativePath), $skill)
+        }
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($path in $selectedPaths) {
+            if (-not $byPath.ContainsKey($path)) {
+                throw "Selector returned an unknown skill path: $path"
+            }
+            if ($seen.Add($path)) {
+                $byPath[$path]
+            }
+        }
     }
-
-    return $selected
+    finally {
+        if (Test-Path -LiteralPath $skillsFile) {
+            Remove-Item -LiteralPath $skillsFile -Force
+        }
+    }
 }
 
 function Select-Destination {
@@ -336,14 +317,17 @@ function Select-Layout {
 }
 
 function Assert-UniqueArtifactNames([object[]]$SelectedSkills, [string]$LayoutChoice) {
-    if ($LayoutChoice -eq 'group') {
-        return
+    $artifacts = foreach ($skill in $SelectedSkills) {
+        $stem = $skill.Name
+        if ($LayoutChoice -eq 'group' -and $skill.RelativePath -ne '.') {
+            $stem = Normalize-SkillPath $skill.RelativePath
+        }
+        [pscustomobject]@{ Stem = $stem; Skill = $skill }
     }
-
-    $duplicates = $SelectedSkills | Group-Object Name | Where-Object { $_.Count -gt 1 }
+    $duplicates = $artifacts | Group-Object Stem | Where-Object { $_.Count -gt 1 }
     if ($duplicates) {
         $details = foreach ($duplicate in $duplicates) {
-            $paths = ($duplicate.Group | ForEach-Object { $_.RelativePath }) -join ', '
+            $paths = ($duplicate.Group | ForEach-Object { $_.Skill.RelativePath }) -join ', '
             "- $($duplicate.Name): $paths"
         }
         throw "Selected skills would collide at install time:`n$($details -join "`n")"
@@ -386,7 +370,120 @@ function Validate-SelectedSkills([object[]]$SelectedSkills) {
     Invoke-PythonScript -ScriptPath $BatchValidatorScript -ScriptArgs $batchArgs.ToArray()
 }
 
-function Remove-ExistingSkillDirectory([string]$TargetPath) {
+function Get-AbsoluteInstallPath([string]$PathValue) {
+    $absolute = [System.IO.Path]::GetFullPath($PathValue)
+    $root = [System.IO.Path]::GetPathRoot($absolute)
+    if ($absolute -eq $root) {
+        return $root
+    }
+    return $absolute.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+}
+
+function Test-InstallPathContains([string]$ParentPath, [string]$ChildPath) {
+    $parent = Get-AbsoluteInstallPath $ParentPath
+    $child = Get-AbsoluteInstallPath $ChildPath
+    $comparison = [System.StringComparison]::Ordinal
+    if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+        $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    }
+    $prefix = $parent.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    return $child.Equals($parent, $comparison) -or $child.StartsWith($prefix, $comparison)
+}
+
+function Assert-NoInstallReparsePoints([string]$PathValue, [System.Collections.Generic.HashSet[string]]$CheckedPaths = $null) {
+    $current = Get-AbsoluteInstallPath $PathValue
+    while (-not [string]::IsNullOrWhiteSpace($current)) {
+        if ($null -ne $CheckedPaths -and $CheckedPaths.Contains($current)) {
+            break
+        }
+        if (Test-Path -LiteralPath $current) {
+            $item = Get-Item -LiteralPath $current -Force
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing an install path through a symbolic link or junction: $current"
+            }
+        }
+        if ($null -ne $CheckedPaths) {
+            [void]$CheckedPaths.Add($current)
+        }
+        $current = [System.IO.Path]::GetDirectoryName($current)
+    }
+}
+
+function Assert-InstallTargetWithinRoot([string]$TargetPath, [string]$DestinationRoot, [System.Collections.Generic.HashSet[string]]$CheckedPaths = $null) {
+    $target = Get-AbsoluteInstallPath $TargetPath
+    $destinationPath = Get-AbsoluteInstallPath $DestinationRoot
+    if ($target -eq $destinationPath -or -not (Test-InstallPathContains -ParentPath $destinationPath -ChildPath $target)) {
+        throw "Install target must be inside the destination root: $target"
+    }
+    Assert-NoInstallReparsePoints -PathValue $target -CheckedPaths $CheckedPaths
+}
+
+function New-InstallSourcePathIndex([object[]]$SourceSkills) {
+    $comparer = [System.StringComparer]::Ordinal
+    if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+        $comparer = [System.StringComparer]::OrdinalIgnoreCase
+    }
+    $sourcePaths = [System.Collections.Generic.HashSet[string]]::new($comparer)
+    $ancestorPaths = [System.Collections.Generic.HashSet[string]]::new($comparer)
+    $protectedPaths = [System.Collections.Generic.List[string]]::new()
+    $protectedPaths.Add((Get-AbsoluteInstallPath $SourceRoot))
+    foreach ($sourceSkill in $SourceSkills) {
+        $sourcePath = Get-AbsoluteInstallPath $sourceSkill.FullPath
+        [void]$sourcePaths.Add($sourcePath)
+        $protectedPaths.Add($sourcePath)
+    }
+    foreach ($path in $protectedPaths) {
+        $current = $path
+        while (-not [string]::IsNullOrWhiteSpace($current)) {
+            if (-not $ancestorPaths.Add($current)) {
+                break
+            }
+            $current = [System.IO.Path]::GetDirectoryName($current)
+        }
+    }
+    return @{ Paths = $sourcePaths; Ancestors = $ancestorPaths }
+}
+
+function Assert-InstallSourceSeparation([string]$TargetPath, [object[]]$SourceSkills, [object]$SourcePathIndex = $null) {
+    # Protect all sources, including unselected skills, without comparing every pair.
+    if ($null -eq $SourcePathIndex) {
+        $SourcePathIndex = New-InstallSourcePathIndex $SourceSkills
+    }
+    $target = Get-AbsoluteInstallPath $TargetPath
+    if ($SourcePathIndex.Ancestors.Contains($target)) {
+        throw "Install target overlaps a source path: $TargetPath"
+    }
+    $current = $target
+    while (-not [string]::IsNullOrWhiteSpace($current)) {
+        if ($SourcePathIndex.Paths.Contains($current)) {
+            throw "Install target overlaps a source skill: $TargetPath ($current)"
+        }
+        $current = [System.IO.Path]::GetDirectoryName($current)
+    }
+}
+
+function Assert-SafeInstallTargets([object[]]$SelectedSkills, [object[]]$SourceSkills, [string]$DestinationRoot, [string]$LayoutChoice, [string]$FormatChoice) {
+    $sourcePathIndex = New-InstallSourcePathIndex $SourceSkills
+    # This cache exists only during preflight; writes and deletion recheck the target.
+    $checkedPaths = [System.Collections.Generic.HashSet[string]]::new($sourcePathIndex.Paths.Comparer)
+    Assert-NoInstallReparsePoints -PathValue $SourceRoot -CheckedPaths $checkedPaths
+    foreach ($sourceSkill in $SourceSkills) {
+        Assert-NoInstallReparsePoints -PathValue $sourceSkill.FullPath -CheckedPaths $checkedPaths
+    }
+    foreach ($skill in $SelectedSkills) {
+        if ($FormatChoice -eq 'folder') {
+            $target = Get-InstallFolderTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice
+        } else {
+            $target = Get-InstallArchiveTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice -Extension $FormatChoice
+        }
+        Assert-InstallTargetWithinRoot -TargetPath $target -DestinationRoot $DestinationRoot -CheckedPaths $checkedPaths
+        Assert-InstallSourceSeparation -TargetPath $target -SourceSkills $SourceSkills -SourcePathIndex $sourcePathIndex
+    }
+}
+
+function Remove-ExistingSkillDirectory([string]$TargetPath, [string]$DestinationRoot, [object[]]$SourceSkills, [object]$SourcePathIndex = $null) {
+    Assert-InstallTargetWithinRoot -TargetPath $TargetPath -DestinationRoot $DestinationRoot
+    Assert-InstallSourceSeparation -TargetPath $TargetPath -SourceSkills $SourceSkills -SourcePathIndex $SourcePathIndex
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         return
     }
@@ -399,15 +496,17 @@ function Remove-ExistingSkillDirectory([string]$TargetPath) {
     Remove-Item -LiteralPath $TargetPath -Recurse -Force
 }
 
-function Install-AsFolders([object[]]$SelectedSkills, [string]$DestinationRoot, [string]$LayoutChoice) {
+function Install-AsFolders([object[]]$SelectedSkills, [object[]]$SourceSkills, [string]$DestinationRoot, [string]$LayoutChoice) {
     New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
+    $sourcePathIndex = New-InstallSourcePathIndex $SourceSkills
 
     foreach ($skill in $SelectedSkills) {
         $targetDir = Get-InstallFolderTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice
+        Assert-InstallTargetWithinRoot -TargetPath $targetDir -DestinationRoot $DestinationRoot
         $targetParent = Split-Path -Path $targetDir -Parent
         if (Test-Path -LiteralPath $targetDir) {
             Write-Warn "Removing existing installed skill directory: $targetDir"
-            Remove-ExistingSkillDirectory -TargetPath $targetDir
+            Remove-ExistingSkillDirectory -TargetPath $targetDir -DestinationRoot $DestinationRoot -SourceSkills $SourceSkills -SourcePathIndex $sourcePathIndex
         }
 
         if (-not [string]::IsNullOrWhiteSpace($targetParent)) {
@@ -424,6 +523,7 @@ function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot,
 
     foreach ($skill in $SelectedSkills) {
         $targetFile = Get-InstallArchiveTarget -DestinationRoot $DestinationRoot -Skill $skill -LayoutChoice $LayoutChoice -Extension $Extension
+        Assert-InstallTargetWithinRoot -TargetPath $targetFile -DestinationRoot $DestinationRoot
         $targetParent = Split-Path -Path $targetFile -Parent
         if (-not [string]::IsNullOrWhiteSpace($targetParent)) {
             New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
@@ -434,17 +534,12 @@ function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot,
             if ($item.PSIsContainer) {
                 throw "Refusing to overwrite directory with .$Extension archive: $targetFile"
             }
-            Write-Warn "Removing existing archive: $targetFile"
-            Remove-Item -LiteralPath $targetFile -Force
+            Write-Warn "Replacing existing archive: $targetFile"
         }
 
         Write-Step "Packaging $($skill.RelativePath) -> $targetFile"
-        if ($Extension -eq 'skill') {
-            Invoke-PythonScript -ScriptPath $PackagerScript -ScriptArgs @($skill.FullPath, $targetParent)
-            continue
-        }
-
-        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
+        $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+        $tempDir = Join-Path $tempRoot ([System.Guid]::NewGuid().ToString())
         New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
         try {
             Invoke-PythonScript -ScriptPath $PackagerScript -ScriptArgs @($skill.FullPath, $tempDir)
@@ -457,6 +552,7 @@ function Install-AsArchives([object[]]$SelectedSkills, [string]$DestinationRoot,
         }
         finally {
             if (Test-Path -LiteralPath $tempDir) {
+                Assert-InstallTargetWithinRoot -TargetPath $tempDir -DestinationRoot $tempRoot
                 Remove-Item -LiteralPath $tempDir -Recurse -Force
             }
         }
@@ -482,6 +578,8 @@ try {
     $resolvedLayout = Select-Layout
     Assert-UniqueArtifactNames -SelectedSkills $selectedSkills -LayoutChoice $resolvedLayout
     $destinationRoot = Select-Destination
+    Write-Step ("Checking source and destination paths for {0} selected skill(s)" -f $selectedSkills.Count)
+    Assert-SafeInstallTargets -SelectedSkills $selectedSkills -SourceSkills $skills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -FormatChoice $resolvedFormat
 
     Write-Host ""
     Write-Info "Selected $($selectedSkills.Count) skill(s)"
@@ -493,7 +591,7 @@ try {
     Validate-SelectedSkills -SelectedSkills $selectedSkills
 
     switch ($resolvedFormat) {
-        'folder' { Install-AsFolders -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout }
+        'folder' { Install-AsFolders -SelectedSkills $selectedSkills -SourceSkills $skills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout }
         'skill'  { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'skill' }
         'zip'    { Install-AsArchives -SelectedSkills $selectedSkills -DestinationRoot $destinationRoot -LayoutChoice $resolvedLayout -Extension 'zip' }
         default  { throw "Unsupported format: $resolvedFormat" }

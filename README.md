@@ -6,13 +6,13 @@ Each skill is a self-contained folder with a `SKILL.md` that gives any AI agent 
 
 The collection covers the full range a security-focused agent needs: offensive tool execution, active exploitation, post-exploitation, credential attacks, defensive artifact analysis, malware understanding, private offensive CTF/lab solving, and the development workflows for building custom tooling. These categories are complementary - effective security work requires switching between attacker, analyst, developer, and lab-solving perspectives within a single task.
 
-The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `behaviours/`, `ai/`, and `hardware/` belong here only when they directly improve the active security task.
+The repository is curated for offensive-security work first. Support areas such as `coding/`, `knowledge/`, `harness-dev/`, `behaviours/`, `ai/`, and `hardware/` belong here only when they directly improve the active security task.
 
 ## Skill anatomy
 
 - `SKILL.md` - baseline workflow, routing, and task guidance.
 - `references/` - load-on-demand deep dives for specific subtasks; they extend the parent skill and should not act as README-style overviews, training material, or design rationale.
-- `scripts/` - deterministic helpers the agent can run.
+- A skill's `scripts/` - deterministic helpers for its task. Repository maintenance lives separately in the root `scripts/`.
 - `assets/` - templates or static supporting material.
 
 ---
@@ -129,15 +129,34 @@ Skills that support the workflow itself: skill authoring, research helpers, and 
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
 | `readme-md-creator` | Create and maintain high-signal README files |
 | `mcp-creator` | Design and validate Model Context Protocol servers |
-| `agents-claude-creator` / `opencode-agent-creator` / `opencode-plugin-creator` / `pi-extension-creator` | Vendor-specific agent/extension authoring |
 | `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
-| `deep-research-offensive` | File-backed offensive security research with source chaining |
 | `deep-research-generic` | General-purpose deep research |
 | `known-problem-hint-research` | Targeted post-triage research to unblock a known problem signature |
-| `cve-search` | CVE enumeration and public PoC collection |
-| `poc-weaponization` | Safely evaluate, adapt, and rewrite raw public proof-of-concepts |
-| `prompt-engineering-patterns` | Design, structure, and version prompts sent to LLMs from application code |
 | `tool-schema-design` | Design LLM-callable tool signatures so the model picks the right tool and supplies valid arguments |
+
+### `knowledge-offensive/` - Assessment research and evidence
+
+Research and development support for authorized security assessments. Use the narrowest skill that answers the current decision, and preserve the distinction between published claims and observations from the assessed environment.
+
+| Skill | Role |
+|-------|------|
+| `cve-search` | Build a current CVE inventory and assess version, configuration, and access prerequisites |
+| `deep-research-offensive` | Resolve multi-source security questions with a bounded evidence trail and explicit gaps |
+| `poc-weaponization` | Review public test artifacts and plan controlled, non-destructive reproduction |
+| `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
+
+### `harness-dev/` - Agent harness development
+
+Vendor-specific agent and extension authoring. Load the skill matching the host and artifact being created.
+
+| Skill | Role |
+|-------|------|
+| `claude-agents-creator` | Claude Code subagents and Claude Managed Agents |
+| `opencode-agent-creator` | OpenCode agent definitions and delegation |
+| `opencode-plugin-creator` | OpenCode plugins, hooks, and custom tools |
+| `pi-extension-creator` | Pi extensions, tools, renderers, and packages |
+
+When updating an existing installation, replace `agents-claude-creator` with `claude-agents-creator`. For grouped layouts, reinstall the four harness skills under `harness-dev/` and the four assessment research skills under `knowledge-offensive/`, then remove their old copies under `knowledge/`. The installers update selected destinations; they do not migrate old skill paths.
 
 ### `behaviours/` - Cognitive discipline skills
 
@@ -163,7 +182,6 @@ Cross-cutting behavioral guardrails that shape *how* an agent works: evidence ga
 
 Support skills for building or auditing AI/ML pipelines used inside security tooling.
 
-- **`codemachine-template`** - CodeMachine multi-agent workflow scaffolding
 - **`keras`** / **`pytorch`** / **`scikit-learn`** - ML framework patterns for security models and adversarial workflows
 - **`langchain-py`** - Production-oriented LangChain Python workflows
 - **`vec2text`** - Embedding-inversion attack against vector databases
@@ -180,13 +198,27 @@ General hardware/embedded platform skills. Load when a security task needs them 
 
 ## Quick start
 
+Install directly from GitHub with the [Skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add AeonDave/malskill -g
+
+# Inspect available skills without installing
+npx skills add AeonDave/malskill --list
+
+# Install one skill for Codex
+npx skills add AeonDave/malskill -g --skill adaptixc2-dev --agent codex
+```
+
+`npx` runs the existing `skills` package; malskill does not need an npm package. The CLI discovers the current nested repository layout. Add `--full-depth` to explicitly search nested skills if a root-level skill or another skill container would otherwise hide them. The CLI provides its own selection and agent setup; the scripts below provide the category tree and archive/layout options.
+
 ```bash
 # Clone
-git clone <repo-url> && cd malskill
+git clone https://github.com/AeonDave/malskill.git && cd malskill
 
 # Interactive install (choose skills, destination, format, layout)
-./install.sh        # Bash
-.\install.ps1       # PowerShell
+./install.sh                     # Bash
+pwsh -File ./install.ps1          # PowerShell 7
 
 # Install a single skill (copy folder into agent skill directory)
 cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
@@ -201,6 +233,22 @@ cp -r offensive-ctf/* ~/.agents/skills/
 ./install.sh --skills offensive-tools/windows/mimikatz --format folder --layout group --destination ~/.agents/skills
 ```
 
+The local installers require Python 3.10+ with PyYAML; PowerShell uses `pwsh` (PowerShell 7). Their shared keyboard selector starts at the source root, shows categories before standalone skills, and keeps each category's color while navigating.
+
+| Key | Action |
+|---|---|
+| Up / Down, Home / End, Page Up / Down | Move through the current folder |
+| Space | Select an empty skill/category; clear a selected or partially selected one |
+| Enter / Right | Open a folder; Enter toggles a skill |
+| Left / Backspace | Return to the parent folder |
+| A | Select or clear the current subtree |
+| C | Continue with the selected skills |
+| Q / Esc | Cancel without installing |
+
+`[ ]` means empty, `[x]` means fully selected, and `[.]` means only some descendants are selected. Opening a folder that is itself a skill shows a separate `(this skill)` entry alongside its child skills. Selection survives navigating up and down. For unattended use, keep using `--skills` / `-SkillRefs` or `--all` / `-All` with explicit format, layout, and destination.
+
+After destination selection, PowerShell reports its source/destination path checks before validation and installation. It checks shared ancestors once during this phase and rechecks each destination before writing or replacing a skill. Source overlaps and symbolic links/junctions remain rejected.
+
 Skills are plain folders - no build step, no runtime dependency. Copy a skill folder into wherever your agent reads skills from and it activates automatically.
 
 **Supported output formats:**
@@ -214,24 +262,31 @@ Skills are plain folders - no build step, no runtime dependency. Copy a skill fo
 
 ---
 
-## Validation
+## Repository maintenance
+
+Run project maintenance from the root `scripts/`. These tools are shared by contributors and installers; they are not bundled inside `skill-creator`. Python 3.10+ and PyYAML are required for frontmatter validation and packaging. Regression tests live in `tests/`. Skill-local helpers remain with their skill when they implement its operational task.
 
 ```bash
-# Validate a single skill (frontmatter + basic structure)
-python knowledge/skill-creator/scripts/quick_validate.py offensive-tools/windows/mimikatz
+# Scaffold a skill only when an existing one cannot cover the task
+python scripts/init_skill.py my-skill --path knowledge --resources references
+
+# Validate a single skill's frontmatter
+python scripts/quick_validate.py offensive-tools/windows/mimikatz
 
 # Validate every skill in the repo
-python knowledge/skill-creator/scripts/validate_all.py .
+python scripts/validate_all.py .
 
 # Sweep for broken links, placeholders, and workstation-path leaks
-python knowledge/skill-creator/scripts/sweep_skills.py offensive-tools/windows/mimikatz
+python scripts/sweep_skills.py offensive-tools/windows/mimikatz
 
 # Check changed files for final newlines and git diff whitespace issues
-python knowledge/skill-creator/scripts/check_changed_files.py
+python scripts/check_changed_files.py
 
 # Package a skill into a .skill archive
-python knowledge/skill-creator/scripts/package_skill.py offensive-tools/windows/mimikatz
+python scripts/package_skill.py offensive-tools/windows/mimikatz
 ```
+
+Validate each changed skill, sweep the affected category when several skills change, and finish with the changed-file check. Structural checks do not prove workflow quality: review the instructions and exercise representative tasks for substantive behavior changes. Keep categories and commands in this README synchronized with repository changes.
 
 ---
 

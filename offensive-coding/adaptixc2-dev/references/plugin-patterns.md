@@ -44,7 +44,7 @@ Build on the Teamserver's target OS. Go plugins require compatible Go toolchains
 
 ## Extender source layout
 
-Verified against `AdaptixServer/extenders/{gopher_agent,beacon_agent,beacon_listener_http}` on the pinned baseline. Names are conventions, not framework requirements, but current tooling and reference extenders assume them:
+Verified against `AdaptixServer/extenders/{beacon_agent,beacon_listener_http}` in the checked-out source. Names are conventions, not framework requirements, but current tooling and reference extenders assume them:
 
 ```text
 extenders/<name>_agent/
@@ -112,6 +112,8 @@ func (p *Plugin) AgentRestore(data adaptix.AgentData) adaptix.AgentFunctions {
 Use the callback factory and incompatible-data policy defined by the [agent state machine](architecture-and-lifecycle.md#agent). Keep sufficient versioned state in `AgentData.CustomData` for that reconstruction.
 
 Populate every callback that the agent supports. `adaptix.NewAgent` replaces missing required callbacks with error-returning stubs, so nil fields defer a defect until runtime rather than disabling the feature cleanly.
+
+For SOCKS5 BIND support, populate `TunnelCB.BindTCP` with `func(channelID int64, addressType int, address string, port int) adaptix.TaskData`. Decode implant bind replies in `ProcessData` and call `TsTunnelConnectionBindReply(channelID, phase, addressType, addressBytes, port)` for `adaptix.TUNNEL_BIND_LISTENING` and `adaptix.TUNNEL_BIND_ACCEPTED`. A nil `BindTCP` makes the Teamserver reject BIND as unsupported; do not advertise it until the callback and both reply phases work.
 
 Before parsing a beat or callback:
 

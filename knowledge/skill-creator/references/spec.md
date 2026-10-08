@@ -85,8 +85,8 @@ Keep references one level deep. Avoid chains (A → B → C).
 # Official CLI
 skills-ref validate ./my-skill
 
-# This skill's built-in validator
-python scripts/quick_validate.py ./my-skill
+# malskill repository validator (not bundled with a standalone skill)
+python <repo-root>/scripts/quick_validate.py ./my-skill
 ```
 
 ## Packaging

@@ -4,7 +4,7 @@ description: "Create, revise, evaluate, or package Agent Skills. Use for SKILL.m
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.6"
+  version: "1.7"
 ---
 
 # Skill Creator
@@ -57,15 +57,15 @@ Load [references/patterns.md](references/patterns.md) when deciding how to split
 
 ## Create or revise
 
-For an existing skill, edit in place; do not re-scaffold. For a new skill, resolve this script relative to the skill-creator directory:
+For an existing skill, edit in place; do not re-scaffold. In malskill, repository maintenance tools live in the repository's `scripts/` directory and are not bundled with this skill. For a new skill in that repository:
 
 ```bash
-python <skill-creator-dir>/scripts/init_skill.py <skill-name> --path <output-dir>
+python scripts/init_skill.py <skill-name> --path <output-dir>
 # Request resource directories only when needed:
-python <skill-creator-dir>/scripts/init_skill.py <skill-name> --path <output-dir> --resources references
+python scripts/init_skill.py <skill-name> --path <output-dir> --resources references
 ```
 
-Use `--examples` only when sample files help; replace or remove them before finishing. Execute new or changed helpers on representative inputs, including relevant failure cases.
+Use `--examples` only when sample files help; replace or remove them before finishing. Execute new or changed helpers on representative inputs, including relevant failure cases. In malskill, executable repository-tooling changes need focused tests under `tests/`; standalone skills and other repositories use their available host or repository tooling.
 
 ## Evaluate the change
 
@@ -82,18 +82,18 @@ Test the models and hosts used by the intended audience when making compatibilit
 
 ## Validate and finish
 
-`quick_validate.py` requires PyYAML for strict frontmatter parsing; install it in the runtime before running the validator.
+In malskill, `scripts/quick_validate.py` requires PyYAML for strict frontmatter parsing; install it in the runtime before running the validator. Standalone skill packages do not include repository maintenance tools.
 
-From the target repository, run these scripts for each changed skill directory:
+In malskill, run these commands from the repository root for each changed skill directory. In other repositories, use the available validators and check the same structural conditions:
 
 ```bash
-python <skill-creator-dir>/scripts/quick_validate.py <skill-dir>
-python <skill-creator-dir>/scripts/sweep_skills.py <skill-dir>
-python <skill-creator-dir>/scripts/check_changed_files.py
+python scripts/quick_validate.py <skill-dir>
+python scripts/sweep_skills.py <skill-dir>
+python scripts/check_changed_files.py
 ```
 
 Resolve frontmatter errors, broken links, scaffold markers, and workstation-path leakage. The sweep enforces broken links through its exit status; inspect its report-only findings too. These checks establish structure and hygiene, not behavioral quality.
 
-Finish the requested edits, affected checks, and corrections before handing back the result. Report what was tested and what remains unverified. Package with `python <skill-creator-dir>/scripts/package_skill.py <skill-dir>` only when an archive is requested; use `python <skill-creator-dir>/scripts/validate_all.py <repo-root>` only for repository-wide validation.
+Finish the requested edits, affected checks, and corrections before handing back the result. Report what was tested and what remains unverified. In malskill, package with `python scripts/package_skill.py <skill-dir>` only when an archive is requested; use `python scripts/validate_all.py <repo-root>` only for repository-wide validation. Run these commands from the malskill repository root.
 
 After a real failure or model/runtime change, reassess the affected instructions and rerun relevant scenarios. Keep a rule only if it still improves the outcome.

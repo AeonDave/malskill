@@ -4,14 +4,14 @@ description: "Build, review, debug, package, and activate AdaptixC2 v2 extenders
 license: MIT
 metadata:
   author: AeonDave
-  version: "2.1"
+  version: "2.2"
 ---
 
 # AdaptixC2 v2 Extender Development
 
-Develop against the checked-out source, not remembered v1 APIs or the public GitBook. Adaptix v2 is pre-release: pin the exact source revision and re-run the contract gate for every new task.
+Develop against the checked-out source, not remembered v1 APIs or the public GitBook. Pin the exact source revision and working-tree contract changes; re-run the contract gate for every new task.
 
-Verified baseline for this guidance: AdaptixC2 commit `72f20075` on `testing-v2.0`, `github.com/Adaptix-Framework/axc2/v2` v2.0.13, Go 1.26.5.
+Verified source: AdaptixC2 commit `a1a9cead`, with the local `AdaptixServer/go.mod` selecting `github.com/Adaptix-Framework/axc2/v2` v2.0.14; committed source selects v2.0.13. The server declares Go 1.26.5; contract probes used Go 1.27.1. Match the actual host toolchain and dependency graph when building plugins.
 
 ## Start with the contract gate
 
@@ -20,12 +20,15 @@ From `<adaptix-root>`:
 ```bash
 git status --short --branch
 git rev-parse HEAD
+git diff -- AdaptixServer/go.mod AdaptixServer/go.sum
 go -C AdaptixServer list -m github.com/Adaptix-Framework/axc2/v2
 go -C AdaptixServer env GOVERSION
 go -C AdaptixServer doc github.com/Adaptix-Framework/axc2/v2.PluginAgent
 go -C AdaptixServer doc github.com/Adaptix-Framework/axc2/v2.PluginListener
 go -C AdaptixServer doc github.com/Adaptix-Framework/axc2/v2.PluginService
 ```
+
+If `go.work` references missing modules, use `GOWORK=off` for these module-only probes. This does not establish the host's shared dependency graph: verify or repair that graph before building a plugin.
 
 Then inspect the implementation that owns the behavior being changed:
 
@@ -36,7 +39,7 @@ rg -n "TsAgentBuild|BuildPayload|GenerateProfiles" AdaptixServer
 rg -n "plugin_service_(command|wait)|plugin_(agent|listener)_command" AdaptixClient AdaptixServer
 ```
 
-If the revision or module version differs from the baseline, treat every signature and lifecycle statement below as a hypothesis until re-verified.
+If the revision, local contract changes, or module version differs, treat every signature and lifecycle statement below as a hypothesis until re-verified.
 
 ## Choose one extender boundary
 
@@ -63,7 +66,7 @@ For boundary ownership, lifecycle state machines, failure semantics, and concurr
 | [plugin-patterns.md](references/plugin-patterns.md) | Implementing Go interfaces, agent restore/build, listener start/stop, service calls, or safe boundary adapters |
 | [axscript-patterns.md](references/axscript-patterns.md) | Building payload forms, listener forms, service docks/dialogs, event handlers, or UI-to-plugin interactions |
 | [axscript-api.md](references/axscript-api.md) | Checking an exact client bridge method, argument order, return shape, or server stub parity |
-| [teamserver-api.md](references/teamserver-api.md) | Selecting Teamserver calls and checking ownership, errors, hooks, endpoints, storage, or messaging semantics |
+| [teamserver-api.md](references/teamserver-api.md) | Selecting Teamserver calls for atomic data updates, task correlation, framed transport accounting, hooks, endpoints, storage, or messaging |
 | [generator-details.md](references/generator-details.md) | Creating templates/specs, building, installing, activating, or auditing `axtool` behavior |
 
 Load the parent first, then only the references required by the current subtask.
@@ -90,13 +93,13 @@ Use explicit schemas at every JSON boundary. Reject unknown operations, missing 
 - Go plugins cannot be safely unloaded from the process. Registry removal is not resource teardown; design cleanup before supporting runtime unload.
 - Treat extender binaries and `axtool` specs as trusted code. Do not run unreviewed packages or mutable build inputs.
 
-### Wrong-type traps (axc2/v2 v2.0.13)
+### Wrong-type traps (axc2/v2 v2.0.14)
 
-Verified against `axc2/v2@v2.0.13/adaptix_struct.go`. Common misuses that compile but corrupt runtime state:
+Verified against `axc2/v2@v2.0.14/adaptix_struct.go` and the in-tree beacon UI. Common misuses that compile but corrupt runtime state:
 
 | Field / constant | Real type | Trap |
 |---|---|---|
-| `AgentData.Sleep`, `AgentData.Jitter` | `uint` (seconds) | Do not parse from a duration string in-plugin; convert once at the boundary. |
+| `AgentData.Sleep`, `AgentData.Jitter` | `uint` | Beacon sleep is seconds; jitter is a percentage. Preserve those units at the boundary. |
 | `AgentData.Pid`, `AgentData.Tid` | `string` | Format from numeric sources with `fmt.Sprintf("%v", ...)`; do not cast. |
 | `AgentData.Id` and every `agentId` on `Teamserver`/`Call`/`InternalHandler` | `int64` | Never a string. In JavaScript treat it as opaque string when it may exceed `Number.MAX_SAFE_INTEGER`. |
 | `OS_MAC` (constant `3`) | `int` | No `OS_MACOS` symbol exists. |
@@ -126,8 +129,6 @@ rg -n "panic\(|log\.Fatal|os\.Exit" .
 ```
 
 Use the race gate for Go/domain packages on a supported native target; it does not prove races across the host/plugin boundary. Also inspect the built `.so`, server profile entry, load logs, command catalogs, and the intended UI in a real client. Report skipped gates and upstream source failures separately from extender failures.
-
-Baseline limitation: commit `72f20075` contains no Go test files, so its `go test` runs are compile gates only; `beacon_listener_dns` currently fails that gate at `pl_transport.go:375` (`undefined: total`). Recheck both facts on a newer revision before attributing the failure to an extender change.
 
 ## Delivery record
 

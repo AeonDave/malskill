@@ -1,0 +1,29 @@
+{
+  "name": "@example/opencode-guard",
+  "version": "0.1.0",
+  "description": "Guard selected read calls and expose a bounded echo tool.",
+  "keywords": ["opencode", "opencode-plugin"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/plugin/index.ts",
+  "exports": {
+    ".": "./src/plugin/index.ts",
+    "./server": "./src/plugin/index.ts"
+  },
+  "files": ["src", "README.md"],
+  "engines": {
+    "opencode": "1.18.35"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.35"
+  },
+  "devDependencies": {
+    "@opencode-ai/sdk": "1.18.35",
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2"
+  }
+}

@@ -87,10 +87,21 @@ All visual wrappers expose `setEnabled(bool)`, `setVisible(bool)`, `getEnabled()
 | spin | `value`, `setValue`, `setRange` | `valueChanged` |
 | checkbox | `isChecked`, `setChecked` | `stateChanged` |
 | button | `text`, `setText`, `setIcon`, `setIconSize`, `setFixedSize` | `clicked` |
-| text multi | `text`, `setText`, `appendText`, `setPlaceholder`, `setReadOnly` | none in the current wrapper |
-| table | `addItem`, `rowCount`, `text`, `setText`, `selectedRows`, `resizeToContent(column)`, `clear` | `cellChanged`, `cellClicked`, `cellDoubleClicked` |
+| label | `text`, `setText`, `setWordWrap`, `setAlignment("left" / "center" / "right")` | none |
+| text multi | `text`, `setText`, `appendText`, `setPlaceholder`, `setReadOnly`, `setMinimumHeight(h)`, `setMaximumHeight(h)` | none in the current wrapper |
+| table | `addItem`, `rowCount`, `currentRow`, `text`, `setText`, `selectedRows`, `setReadOnly`, `setCatalogMenuEnabled`, `resizeToContent(column)`, `clear` | `cellChanged`, `cellClicked`, `cellDoubleClicked`, `addClicked`, `removeClicked`, `configClicked` |
+| list | `addItem`, `addItems`, `items`, `itemText`, `setItemText`, `currentRow`, `selectedRows`, `setReadOnly`, `setStartStopEnabled`, `clear` | `currentTextChanged`, `currentRowChanged`, `itemClickedText`, `itemDoubleClickedText`, `addClicked`, `removeClicked`, `startClicked`, `stopClicked` |
+| file selector | `content`, `setContent`, `text`, `setText` | none |
 
 `form.connect(sender, signalName, handler)` requires the exact Qt signal name exposed by the wrapper.
+
+Table `setCatalogMenuEnabled(true)` enables an Add/Config/Remove menu that only emits signals, including on a read-only table. Implement plugin operations in those handlers and refresh rows from their results. Without catalog mode, Add/Remove edit an editable local table. Read-only tables retain row selection, including multiple rows and select-all.
+
+List `setStartStopEnabled(true)` adds Start/Stop signals to its enabled context menu; it does not start or stop a plugin operation. List context-menu Add/Remove also emit signals and then mutate rows unless read-only. Use `setReadOnly(true)` for a plugin-owned catalog and read `currentRow()` or `selectedRows()` in its handlers. Editable lists retain item editability after container restore. Do not rely on `setDragDropEnabled(true)` for reordering: added/restored items have their drag flag cleared.
+
+File-selector `text()`/`setText()` access only the displayed label. `content()`/`setContent()` access the serialized content; changing the label does not select, read, or clear a file. Text-multi height setters ignore non-positive values.
+
+The current Goja widget stub lacks `setCatalogMenuEnabled`, `setStartStopEnabled`, `setAlignment`, `setMinimumHeight`, and `setMaximumHeight`. Keep calls inside client-only UI entry points or callbacks, as described in [the two-runtime pattern](axscript-patterns.md#design-for-two-runtimes).
 
 Layouts and surfaces:
 
@@ -137,6 +148,8 @@ ax.register_service_commands(group)
 ```
 
 For agent config scripts, the Teamserver also consumes the object returned by `RegisterCommands(listenerType)`; match the current in-tree agent shape rather than inventing a new schema.
+
+For local command collisions and replacement testing, use [client command overlays](axscript-patterns.md#client-command-overlays).
 
 ## Contextual menus
 

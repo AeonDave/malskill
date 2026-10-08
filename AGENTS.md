@@ -13,16 +13,19 @@ Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill st
    - **enrich an existing reference** — deep-dive exists but has a real gap
    - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf/role) is documented once where it is most actionable and cross-referenced from the others, never copied
    - **wire new depth into routing** — a new reference or major section is dead weight unless the parent `SKILL.md` points to it with an explicit "load when…" trigger
-4. After the edit, validate the changed skill dir — `quick_validate.py` (frontmatter only), `sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `check_changed_files.py` — before finishing.
+4. After the edit, validate the changed skill dir with the repository's `scripts/quick_validate.py` (frontmatter only), `scripts/sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `scripts/check_changed_files.py` — before finishing. Keep README categories and documented commands aligned with the actual tree.
 
 ## Tooling & Commands
 
-- Scaffold a new skill: `python knowledge/skill-creator/scripts/init_skill.py <skill-name> --path <target-dir> --resources references`
-- Validate one skill: `python knowledge/skill-creator/scripts/quick_validate.py <skill-dir>`
-- Validate changed-file hygiene: `python knowledge/skill-creator/scripts/check_changed_files.py`
-- Sweep a category or skill dir for broken links, placeholder markers, and workstation paths: `python knowledge/skill-creator/scripts/sweep_skills.py <path> [--ctf-check] [--top N]`
-- Package one skill: `python knowledge/skill-creator/scripts/package_skill.py <skill-dir>`
+- Scaffold a new skill: `python scripts/init_skill.py <skill-name> --path <target-dir> --resources references`
+- Validate one skill: `python scripts/quick_validate.py <skill-dir>`
+- Validate all skills: `python scripts/validate_all.py .`
+- Validate changed-file hygiene: `python scripts/check_changed_files.py`
+- Sweep a category or skill dir for broken links, placeholder markers, and workstation paths: `python scripts/sweep_skills.py <path> [--ctf-check] [--top N]`
+- Package one skill: `python scripts/package_skill.py <skill-dir>`
 - Install interactively: `.\install.ps1` (PowerShell) or `./install.sh` (Bash)
+
+Repository maintenance tools belong in the root `scripts/`: discovery, analysis, validation, hygiene, scaffolding, packaging, and repeatable project updates. Use these canonical entrypoints; do not keep copies or compatibility wrappers inside skills. Put their regression tests in root `tests/`. A skill's own `scripts/` may contain helpers for that skill's task, such as artifact triage or creating an extension in another project; these are not malskill maintenance tools. Keep installer callsites and README commands current when moving tooling.
 
 ## Repository Structure & Boundaries
 
@@ -35,6 +38,8 @@ Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill st
 - `offensive-hardware/`: Hardware-focused assessments (device compromise, firmware extraction).
 - `offensive-ctf/`: Challenge-derived patterns. Use as a support layer for real-world tasks when artifacts or workflows match; avoid platform-specific writeup culture.
 - `knowledge/`: Meta-skills (skill-creator, research helpers, orchestration, doc automation).
+- `knowledge-offensive/`: Assessment research, CVE applicability, public test-artifact review, and prompts for security tooling.
+- `harness-dev/`: Vendor-specific agent and extension authoring for security workflows.
 - `behaviours/`: Cross-cutting discipline skills (evidence gates, hypothesis-driven work, loop control, reading budget, verification, untrusted-input hygiene, operator modes).
 - `coding/`, `ai/`, `hardware/`: Support categories.
 

@@ -13,8 +13,9 @@ LAYOUT=""
 ALL=false
 SKILL_REFS_RAW=""
 
-VALIDATOR_SCRIPT="$SCRIPT_DIR/knowledge/skill-creator/scripts/quick_validate.py"
-PACKAGER_SCRIPT="$SCRIPT_DIR/knowledge/skill-creator/scripts/package_skill.py"
+VALIDATOR_SCRIPT="$SCRIPT_DIR/scripts/quick_validate.py"
+PACKAGER_SCRIPT="$SCRIPT_DIR/scripts/package_skill.py"
+SELECTOR_SCRIPT="$SCRIPT_DIR/scripts/skill_selector.py"
 DISCOVERY_EXCLUSIONS=(
     "dist"
     "installed-skills"
@@ -52,6 +53,9 @@ usage() {
         '  -a, --all                 Select all discovered skills' \
         '  -h, --help                Show this help' \
         '' \
+        'Interactive tree: arrows navigate, Space toggles a checkbox, Enter opens a folder,' \
+        'Backspace goes up, C continues, Q cancels. [.] means partially selected.' \
+        '' \
         'Examples:' \
         '  ./install.sh' \
         '  ./install.sh --all --format folder --layout flat --destination ~/.agents/skills' \
@@ -59,6 +63,14 @@ usage() {
 }
 
 while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -s|--source|-d|--destination|-f|--format|-l|--layout|-k|--skills)
+            if [[ $# -lt 2 || -z "$2" ]]; then
+                printf '[ERROR] Missing value for %s.\n' "$1" >&2
+                exit 1
+            fi
+            ;;
+    esac
     case "$1" in
         -s|--source)
             SOURCE_ROOT="$2"
@@ -120,11 +132,11 @@ find_python() {
         PYTHON_CMD=("$SCRIPT_DIR/.venv/Scripts/python.exe")
         return
     fi
-    if command -v python3 >/dev/null 2>&1; then
+    if command -v python3 >/dev/null 2>&1 && python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
         PYTHON_CMD=(python3)
         return
     fi
-    if command -v python >/dev/null 2>&1; then
+    if command -v python >/dev/null 2>&1 && python -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
         PYTHON_CMD=(python)
         return
     fi
@@ -133,7 +145,7 @@ find_python() {
 }
 
 run_python() {
-    "${PYTHON_CMD[@]}" "$@"
+    "${PYTHON_CMD[@]}" -X utf8 "$@"
 }
 
 find_python
@@ -147,6 +159,8 @@ declare -a SKILL_FULLS=()
 should_skip_skill_dir() {
     local rel="$1"
     local segment excluded
+
+    [[ "$rel" == '.' ]] && return 1
 
     IFS='/' read -r -a segments <<< "$rel"
     for segment in "${segments[@]}"; do
@@ -187,53 +201,6 @@ discover_skills() {
         printf '[ERROR] No SKILL.md files found under %s\n' "$SOURCE_ROOT" >&2
         exit 1
     fi
-}
-
-parse_selection_indices() {
-    local raw="$1"
-    local max="$2"
-    local token start end value
-    local -a result=()
-
-    raw="${raw// /}"
-    if [[ -z "$raw" ]]; then
-        printf '[ERROR] Selection cannot be empty.\n' >&2
-        exit 1
-    fi
-    if [[ "$raw" == "all" || "$raw" == "*" ]]; then
-        for ((value = 1; value <= max; value++)); do
-            result+=("$value")
-        done
-        printf '%s\n' "${result[@]}"
-        return
-    fi
-
-    IFS=',' read -r -a tokens <<< "$raw"
-    for token in "${tokens[@]}"; do
-        if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
-            start="${BASH_REMATCH[1]}"
-            end="${BASH_REMATCH[2]}"
-            if (( start < 1 || end > max || start > end )); then
-                printf '[ERROR] Invalid range: %s\n' "$token" >&2
-                exit 1
-            fi
-            for ((value = start; value <= end; value++)); do
-                result+=("$value")
-            done
-        elif [[ "$token" =~ ^[0-9]+$ ]]; then
-            value="$token"
-            if (( value < 1 || value > max )); then
-                printf '[ERROR] Index out of range: %s\n' "$token" >&2
-                exit 1
-            fi
-            result+=("$value")
-        else
-            printf '[ERROR] Invalid selection token: %s\n' "$token" >&2
-            exit 1
-        fi
-    done
-
-    printf '%s\n' "${result[@]}" | sort -n | uniq
 }
 
 declare -a SELECTED_NAMES=()
@@ -293,7 +260,7 @@ resolve_skill_ref() {
 }
 
 select_skills() {
-    local i ref raw_selection
+    local i ref indexes catalog_file selected_paths selected_path matched
     if $ALL; then
         for ((i = 1; i <= ${#SKILL_FULLS[@]}; i++)); do
             add_selection_by_index "$i"
@@ -304,41 +271,68 @@ select_skills() {
     if [[ -n "$SKILL_REFS_RAW" ]]; then
         IFS=',' read -r -a refs <<< "$SKILL_REFS_RAW"
         for ref in "${refs[@]}"; do
+            indexes="$(resolve_skill_ref "$ref")" || exit 1
             while IFS= read -r idx; do
                 [[ -n "$idx" ]] && add_selection_by_index "$idx"
-            done < <(resolve_skill_ref "$ref")
+            done <<< "$indexes"
         done
         return
     fi
 
     step "Discovered ${#SKILL_FULLS[@]} skill folders under $SOURCE_ROOT"
-    local index_width="${#SKILL_FULLS[@]}"
-    index_width="${#index_width}"
-    for ((i = 0; i < ${#SKILL_FULLS[@]}; i++)); do
-        printf '[%*d] %s\n' "$index_width" "$((i + 1))" "${SKILL_RELS[$i]}"
-    done
-    printf '\n'
-    read -r -p 'Select skills by index (e.g. 1,4-7 or all): ' raw_selection
-    while IFS= read -r idx; do
-        [[ -n "$idx" ]] && add_selection_by_index "$idx"
-    done < <(parse_selection_indices "$raw_selection" "${#SKILL_FULLS[@]}")
+    catalog_file="$(mktemp)"
+    if ! {
+        for ((i = 0; i < ${#SKILL_RELS[@]}; i++)); do
+            printf '%s\0%s\0' "${SKILL_NAMES[$i]}" "${SKILL_RELS[$i]}"
+        done
+    } | run_python -c 'import json, sys
+from pathlib import Path
+fields = sys.stdin.buffer.read().decode("utf-8").split("\0")[:-1]
+records = [{"name": fields[i], "path": fields[i + 1]} for i in range(0, len(fields), 2)]
+Path(sys.argv[1]).write_text(json.dumps(records), encoding="utf-8")' "$catalog_file"; then
+        rm -f -- "$catalog_file"
+        exit 1
+    fi
+    if selected_paths="$(run_python "$SELECTOR_SCRIPT" --skills-file "$catalog_file")"; then
+        rm -f -- "$catalog_file"
+    else
+        rm -f -- "$catalog_file"
+        exit 1
+    fi
+    while IFS= read -r selected_path; do
+        selected_path="${selected_path%$'\r'}"
+        [[ -z "$selected_path" ]] && continue
+        matched=false
+        for ((i = 0; i < ${#SKILL_RELS[@]}; i++)); do
+            if [[ "${SKILL_RELS[$i]}" == "$selected_path" ]]; then
+                add_selection_by_index "$((i + 1))"
+                matched=true
+                break
+            fi
+        done
+        if ! $matched; then
+            printf '[ERROR] Unknown selector result: %s\n' "$selected_path" >&2
+            exit 1
+        fi
+    done <<< "$selected_paths"
 }
 
 assert_unique_artifact_names() {
-    local i j
-    if [[ "$LAYOUT" == 'group' ]]; then
-        return
-    fi
+    local i
+    {
     for ((i = 0; i < ${#SELECTED_NAMES[@]}; i++)); do
-        for ((j = i + 1; j < ${#SELECTED_NAMES[@]}; j++)); do
-            if [[ "${SELECTED_NAMES[$i]}" == "${SELECTED_NAMES[$j]}" ]]; then
-                printf '[ERROR] Selected skills would collide at install time:\n' >&2
-                printf '        - %s (%s)\n' "${SELECTED_NAMES[$i]}" "${SELECTED_RELS[$i]}" >&2
-                printf '        - %s (%s)\n' "${SELECTED_NAMES[$j]}" "${SELECTED_RELS[$j]}" >&2
-                exit 1
-            fi
-        done
+        printf '%s\0%s\0' "${SELECTED_NAMES[$i]}" "${SELECTED_RELS[$i]}"
     done
+    } | run_python -c 'import os, sys
+fields = sys.stdin.buffer.read().decode("utf-8").split("\0")[:-1]
+seen = {}
+for name, path in zip(fields[::2], fields[1::2]):
+    stem = path if sys.argv[1] == "group" and path != "." else name
+    key = os.path.normcase(stem)
+    if key in seen:
+        sys.exit("[ERROR] Selected skills would collide at install time: " + seen[key] + " and " + path)
+    seen[key] = path
+' "$LAYOUT"
 }
 
 skill_dir_target_path() {
@@ -370,14 +364,54 @@ archive_target_path() {
     printf '%s/%s.%s\n' "$DESTINATION" "$name" "$extension"
 }
 
+canonical_path() {
+    local resolved
+    resolved="$(run_python -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$1")" || return 1
+    resolved="${resolved%$'\r'}"
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -u "$resolved"
+    else
+        printf '%s\n' "$resolved"
+    fi
+}
+
+assert_safe_targets() {
+    local target="${1:-}"
+    printf '%s\0' "${SKILL_RELS[@]}" | run_python -c 'import sys
+from pathlib import Path, PurePosixPath
+root, destination = (Path(value).resolve() for value in sys.argv[1:3])
+format_name, layout, explicit_target = sys.argv[3:6]
+paths = sys.stdin.buffer.read().decode("utf-8").split("\0")[:-1]
+sources = [root.joinpath(*PurePosixPath(path).parts).resolve() for path in paths]
+targets = []
+if explicit_target:
+    targets.append(Path(explicit_target).resolve())
+else:
+    for path in sys.argv[6:]:
+        relative = PurePosixPath(path)
+        name = root.name if path == "." else relative.name
+        if format_name == "folder":
+            target = destination.joinpath(*relative.parts) if layout == "group" and path != "." else destination / name
+        else:
+            parent = destination.joinpath(*relative.parent.parts) if layout == "group" and path != "." else destination
+            target = parent / (name + "." + format_name)
+        targets.append(target.resolve())
+for target in targets:
+    if target == destination or destination not in target.parents:
+        sys.exit("[ERROR] Install target escapes destination: " + str(target))
+    for source in sources:
+        if target == source or target in source.parents or source in target.parents:
+            sys.exit("[ERROR] Install target overlaps source skill: " + str(target))
+' "$SOURCE_ROOT" "$DESTINATION" "$FORMAT" "$LAYOUT" "$target" "${SELECTED_RELS[@]}"
+}
+
 choose_destination() {
     local home_dir choice manual index custom_index option
     local -a known_options=()
     local -a ordered_options=()
 
     if [[ -n "$DESTINATION" ]]; then
-        mkdir -p "$DESTINATION"
-        DESTINATION="$(cd "$DESTINATION" && pwd)"
+        DESTINATION="$(canonical_path "$DESTINATION")"
         return
     fi
 
@@ -418,8 +452,7 @@ choose_destination() {
         exit 1
     fi
 
-    mkdir -p "$DESTINATION"
-    DESTINATION="$(cd "$DESTINATION" && pwd)"
+    DESTINATION="$(canonical_path "$DESTINATION")"
 }
 
 choose_format() {
@@ -493,7 +526,8 @@ remove_existing_skill_directory() {
         printf '[ERROR] Target exists and is not a directory: %s\n' "$target" >&2
         exit 1
     fi
-    rm -rf "$target"
+    assert_safe_targets "$target"
+    rm -rf -- "$target"
 }
 
 install_as_folders() {
@@ -525,15 +559,9 @@ install_as_archives() {
                 printf '[ERROR] Refusing to overwrite directory with .%s archive: %s\n' "$extension" "$target" >&2
                 exit 1
             fi
-            warn "Removing existing archive: $target"
-            rm -f "$target"
+            warn "Replacing existing archive: $target"
         fi
         step "Packaging ${SELECTED_RELS[$i]} -> $target"
-        if [[ "$extension" == 'skill' ]]; then
-            run_python "$PACKAGER_SCRIPT" "${SELECTED_FULLS[$i]}" "$target_dir"
-            continue
-        fi
-
         temp_dir="$(mktemp -d)"
         if ! run_python "$PACKAGER_SCRIPT" "${SELECTED_FULLS[$i]}" "$temp_dir"; then
             rm -rf "$temp_dir"
@@ -547,7 +575,10 @@ install_as_archives() {
             exit 1
         fi
 
-        mv "$packaged" "$target"
+        if ! assert_safe_targets "$target" || ! mv -f -- "$packaged" "$target"; then
+            rm -rf -- "$temp_dir"
+            exit 1
+        fi
         rm -rf "$temp_dir"
     done
 }
@@ -568,10 +599,11 @@ if [[ ${#SELECTED_FULLS[@]} -eq 0 ]]; then
     exit 1
 fi
 
-assert_unique_artifact_names
-choose_destination
 choose_format
 choose_layout
+assert_unique_artifact_names
+choose_destination
+assert_safe_targets
 
 printf '\n'
 info "Selected ${#SELECTED_FULLS[@]} skill(s)"

@@ -8,6 +8,7 @@ Use `axtool` from the same pinned Adaptix checkout as the Teamserver. Go plugins
 - [Scaffold](#scaffold)
 - [Project spec](#project-spec-adaptixspec)
 - [Package spec](#package-spec-axtoolspec)
+- [Validate and build before installation](#validate-and-build-before-installation)
 - [Install commands](#install-commands)
 - [Activation](#activation)
 - [Provenance and safe operation](#provenance-and-safe-operation)
@@ -28,6 +29,8 @@ Project commands take the project/spec path as the first argument. There is no `
 ```
 
 Template commands do not take `adaptix.spec`.
+
+The current CLI misclassifies bare `init`, `validate`, and `build` as the project-spec argument. Prefix those commands with `adaptix.spec` as shown below; their handlers do not read the project spec.
 
 ## Scaffold
 
@@ -59,11 +62,23 @@ rg -n "_SO_FILE_HERE_|_AGENT_|_RANDOM_HEX_8_|adaptix_agent_NAME|_LISTENER_|_PROT
 
 The scaffolder creates `axtool.spec`; it does not prove that the copied template matches the pinned Teamserver contracts. Run the contract gate and compile before adding behavior.
 
+### Local skeleton
+
+For a local skeleton without fetching a template:
+
+```bash
+axtool adaptix.spec init service example-service
+```
+
+`init` supports `agent`, `listener`, and `service`. An explicit name creates that directory; omitting it uses the current directory and its basename. Use an empty destination: only an existing `axtool.spec` prevents overwriting the other generated files.
+
+It writes `axtool.spec`, `Makefile`, `config.yaml`, `ax_config.axs`, and `go.mod`; implement `pl_main.go`, type-specific config fields, and AxScript entry points yourself. Replace the hardcoded Go `1.26` and `axc2/v2 v2.0.2` with the pinned Teamserver toolchain/dependency contract before compiling.
+
 ## Seed from an existing in-tree extender
 
 Use this path when `axtool template`'s mutable `templates-extender@main` is not acceptable (reproducibility, air-gapped work, or already-pinned checkout). Copy a verified in-tree extender instead of a remote template.
 
-Reference extenders in `AdaptixServer/extenders/` on the verified baseline:
+Reference extenders tracked under `AdaptixServer/extenders/`; check working-tree availability before copying:
 
 | Directory | Type | Seed for |
 |---|---|---|
@@ -94,7 +109,7 @@ rg -n "<seed>" AdaptixServer/extenders/<name>_<type>/
 
 ### `go.work` when bypassing `axtool install`
 
-`axtool install` adds a new extender to `AdaptixServer/go.work` automatically. A copy-rename workflow that skips `axtool install` (dev iteration, no deploy yet) will not. Add the entry manually before `go vet`/`make`:
+`axtool ext install` adds a new extender to `AdaptixServer/go.work` automatically. Copy-rename and `axtool build` do not. Add the entry manually before `go vet`/`make`:
 
 ```text
 // AdaptixServer/go.work
@@ -112,7 +127,7 @@ An extender missing from `go.work` will still compile a `.so`, but `axc2/v2` res
 
 ## Project spec: `adaptix.spec`
 
-Paths are relative to the directory containing `adaptix.spec`, except `plugin_dir`, which is relative to `server_dir`.
+Project paths are relative to the directory containing `adaptix.spec`, except `plugin_dir`, which is relative to `server_dir`. The global `--workdir <existing-dir>` overrides that project base; it does not change the process working directory or relocate local package sources.
 
 ```yaml
 server_version: "v2.0"
@@ -166,6 +181,8 @@ Optional fields include `description`, `author`, `min_server_version`, `requires
 
 Build commands run in the installed source directory through `sh -c` and inherit the host environment. Treat the entire spec and source as executable trusted input. Prefer a small checked-in build script, pinned dependencies, and direct validation of its outputs.
 
+Keep custom Go plugin Makefiles responsive to `GO_LDFLAGS` (for example, `-ldflags="$(GO_LDFLAGS)"`). On a native Linux/arm64 host without `ld.gold`, the build runner supplies a BFD fallback through `GO_LDFLAGS` and `CGO_LDFLAGS`; a nonempty `GO_LDFLAGS` is preserved, so include any needed linker override yourself. This detection uses the tool's host architecture, not a cross-compilation target.
+
 The release must contain at least one `.so` and a config file. `release.config` is relative to the collected release root; without it, `axtool` auto-detects the shallowest `config.yaml` or `config.yml`.
 
 ### Multi-item package
@@ -201,6 +218,17 @@ scripts:
 
 The entry must be a relative `.axs` path. With no release selector, the package tree is copied except `.git`. Keep the kit minimal so unrelated files are not deployed.
 
+## Validate and build before installation
+
+```bash
+axtool adaptix.spec validate ./path/to/package
+axtool adaptix.spec build ./path/to/package
+```
+
+`validate` loads and validates `axtool.spec` without writing files; it does not check compilation, release contents, or runtime contracts.
+
+`build` runs every extender's build commands in its source directory with `GOEXPERIMENT=jsonv2,greenteagc`, then lists collected release files. It leaves `go.work`, profile, and installation state untouched; build commands still write their own outputs. It does not build AxScript kits, install host dependencies, or verify that the release contains a `.so` and config. Check those files explicitly before installation and use the pinned Teamserver build environment.
+
 ## Install commands
 
 Use one source mode:
@@ -208,6 +236,9 @@ Use one source mode:
 ```bash
 # Explicit local package
 axtool adaptix.spec ext install ./path/to/package
+
+# Reviewed source package archive
+axtool adaptix.spec ext install ./package.tgz
 
 # One item in a multi-item package
 axtool adaptix.spec ext install ./path/to/package --name example-service
@@ -220,6 +251,8 @@ axtool adaptix.spec ext install --from packages.yaml
 ```
 
 Calling `ext install` without a source, `--packages`, or `--from` is an error. `-d` installs declared apt dependencies; review the package list first and use it only on a disposable or managed host.
+
+Local sources may be a package directory, a directory containing package directories, or a `.zip`, `.tar`, `.tar.gz`, or `.tgz` source archive. Keep `axtool.spec` at the package root; the resolver accepts direct package children and unwraps at most three single-directory layers. Archives are extracted temporarily and still follow the source-build install path; they are not a prebuilt `.so` install shortcut.
 
 For an extender, install normally:
 

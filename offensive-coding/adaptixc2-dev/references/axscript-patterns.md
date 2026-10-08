@@ -11,6 +11,7 @@ Use this reference for payload-builder forms, listener forms, service docks/dial
 - [Bounded synchronous service request](#bounded-synchronous-service-request)
 - [Agent and listener plugin calls](#agent-and-listener-plugin-calls)
 - [Service command metadata](#service-command-metadata)
+- [Client command overlays](#client-command-overlays)
 - [UI acceptance checks](#ui-acceptance-checks)
 
 ## Design for two runtimes
@@ -75,7 +76,7 @@ The keys in `container.put` are the wire schema. Keep them stable and version th
 
 `form.create_selector_file()` serializes selected file content as base64, not the local path. Bound the encoded and decoded size server-side and avoid placing secrets in long-lived UI configuration.
 
-The current payload dialog does not surface every build-socket error through its visible controls. Treat Teamserver build logs and the received artifact as completion evidence, not a quiet client dialog.
+Follow [build ownership](architecture-and-lifecycle.md#build-ownership) for transport fallback and cancellation. Require the received artifact as UI completion evidence; the HTTP fallback aborts its request after 180 seconds.
 
 ## Listener create/edit form
 
@@ -237,6 +238,12 @@ function RegisterServiceCommands() {
 
 For agent commands, return the OS-specific command-group object expected by the current in-tree agent scripts. `setDefaultEnabled` is currently a server-side command-group builder method; use it only inside `RegisterCommands`, not client-executed code.
 
+## Client command overlays
+
+Local command groups may overlay a server group or command name for that client; the conflict message is a warning, not a rejected registration. Test the active command's help, argument parsing, and handler with the local script loaded, then remove it and verify the server command again. A working local override does not establish server metadata parity.
+
+Reloading a local script at the same file path replaces its engine and client groups; registering the same group name from the same file replaces that group. Agent/listener config-script replacement also removes the old engine and its groups. Service config scripts still skip an already-loaded name; use a fresh client context when testing changed service initialization. These client script operations do not unload a Go plugin.
+
 ## Menus, files, and timers
 
 - `menu` supports contextual registrations such as `add_session_agent`, `add_session_browser`, `add_filebrowser`, `add_targets`, `add_credentials`, and `add_payload_store`. It does not expose `add_main` or `add_main_axscript`.
@@ -252,6 +259,8 @@ Test every applicable runtime:
 1. For agent/service scripts, Teamserver Goja loads the file and publishes intended command metadata; for listeners, verify listener catalog metadata without a Goja expectation.
 2. Client reconnect/resync receives the file, Qt `QJSEngine` executes it, and the script creates exactly one dock/dialog or builder/listener form.
 3. Submitted container JSON matches the Go schema, including file size behavior.
+   For list fields, restore saved values and verify intended editability. For plugin catalogs, exercise the [list/table menu contract](axscript-api.md#common-widget-methods) with both single and multiple selections.
 4. One plugin error and one malformed pushed result produce visible, bounded failure states.
 5. Closing/reopening does not duplicate docks, signal connections, or timers.
 6. Async responses remain correlated when two requests complete out of order.
+7. For payload builders, exercise WebSocket and HTTP fallback, invalid configuration, and a received artifact; inspect Teamserver build evidence after client cancellation or timeout.

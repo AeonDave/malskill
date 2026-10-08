@@ -118,7 +118,7 @@ Pair with `evidence-before-claims` before declaring "the tool works" — a singl
 ## Companion skills
 
 - `mcp-creator` — for MCP-specific tool/resource contracts (execution classes, result types, transport).
-- `agents-claude-creator` / `opencode-agent-creator` / `pi-extension-creator` — when the tools live inside an agent's `tools:` array.
+- `claude-agents-creator` / `opencode-agent-creator` / `pi-extension-creator` — when the tools live inside an agent's `tools:` array.
 - `opencode-plugin-creator` — for the `tool()` API with zod schemas and `ToolContext`.
 - `evidence-before-claims` — before reporting a tool schema as "correct".
 - `loop-control-and-pivots` — for the retry / non-retryable classification the error string signals to.

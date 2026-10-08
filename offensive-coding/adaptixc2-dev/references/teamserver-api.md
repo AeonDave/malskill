@@ -13,6 +13,7 @@ Use the implementation, not only the interface, when success, cancellation, clea
 
 - [Acquire a narrow port](#acquire-a-narrow-port)
 - [Agent creation and data](#agent-creation-and-data)
+- [Partial state updates](#partial-state-updates)
 - [Payload build](#payload-build)
 - [Tasks and console output](#tasks-and-console-output)
 - [Listener lifecycle](#listener-lifecycle)
@@ -20,6 +21,7 @@ Use the implementation, not only the interface, when success, cancellation, clea
 - [Extender storage](#extender-storage)
 - [Endpoints](#endpoints)
 - [Event hooks](#event-hooks)
+- [Framed transport accounting](#framed-transport-accounting)
 - [Specialized families](#specialized-families)
 
 ## Acquire a narrow port
@@ -65,6 +67,21 @@ TsAgentGetHostedTasks(agentID int64, maxCount, maxDataSize int) ([]byte, adaptix
 
 Honor size limits and propagate the returned task statistics according to the transport protocol.
 
+### Partial state updates
+
+`TsAgentUpdateDataPartial` persists a candidate, commits it in memory, and queues the client update under the same per-agent lock. A persistence error is returned without changing in-memory state or publishing the update; propagate it before reporting success or advancing plugin-owned state. This guarantee does not extend to `TsAgentUpdateData`, which changes only scheduling fields and logs persistence errors without returning them.
+
+Use the partial-update JSON schema, not an `AgentData` snapshot: keys include `sleep`, `working_time`, and `custom_data` (a string); the session-key exception is `a_session_key` (`[]byte` in Go). Validate keys and values before the call: an update with no recognized fields, or a JSON marshal/unmarshal failure, currently returns nil without applying it.
+
+```go
+if err := api.TsAgentUpdateDataPartial(agentID, map[string]any{
+    "sleep":        uint(0),
+    "working_time": 0,
+}); err != nil {
+    return fmt.Errorf("persist agent schedule: %w", err)
+}
+```
+
 ## Payload build
 
 ```go
@@ -93,12 +110,17 @@ TsTaskGetAvailableTasks(agentID int64, maxCount, availableSize int) ([]adaptix.T
 TsTaskCancel(agentID, taskID int64) error
 TsTaskSave(task adaptix.TaskData) error
 
+TsAgentCommandResult(agentName string, agentID int64, client, hookID, handlerID, cmdline string, ui bool, args map[string]any) (taskID int64, local bool, err error)
+TsAxScriptParseAndExecuteResult(agentID int64, username, cmdline string) (taskID int64, local bool, err error)
+
 TsAgentConsoleOutput(agentID int64, client string, messageType int, message, clearText string, store bool)
 TsAgentConsoleOutputClient(agentID int64, client string, messageType int, message, clearText string)
 TsAgentConsoleErrorCommand(agentID int64, client, cmdline, message, hookID, handlerID string)
 ```
 
 Keep task IDs and agent IDs as `int64`. Do not emit success console output before the protocol confirms the corresponding state transition. Use client-only output only when the result is intentionally private to that operator.
+
+Use the result-returning command methods when a service or workflow must correlate a queued task. A nonlocal success returns its nonzero task ID; `local == true` returns zero, which must not be treated as a task to await. `TsAxScriptParseAndExecuteResult` also marks pre-hook handling as local; a pre-hook error can appear only in client console output while the method returns nil, so local handling is not proof of command success.
 
 ## Listener lifecycle
 
@@ -196,6 +218,12 @@ TsLogWriter(status adaptix.LogStatus, source, category string) io.Writer
 ```
 
 Use stable source/category values. Include operation, request/build/agent/listener ID, elapsed time, and terminal state; exclude passwords, keys, tokens, raw credentials, and payload content.
+
+## Framed transport accounting
+
+Load this section when a listener uses `TsFrame*` for chunked transport. Call `adaptix.NoteFrameRecv(api, agentID)` after a completed, non-nil upload assembly and `adaptix.NoteFrameSent(api, agentID)` after serving a nonempty download chunk, as the DNS listener does. The helpers consume available transfer statistics once through `TsFrameTakeStatRecv` and `TsFrameTakeStatTasks`; let the frame manager account retries instead of emitting a console note per request. Do not consume those statistics separately if the helpers own the console note.
+
+Frame operations already publish transfer progress through `TsAgentIoProgress`. Emit progress directly only for a transport that owns its accounting outside the frame manager. Test duplicate PUTs, repeated GET offsets, and delivery acknowledgements without duplicate data processing or transfer notes.
 
 ## Specialized families
 

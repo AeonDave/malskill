@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""
+Skill Initializer - Scaffold a new skill directory from template.
+
+Usage:
+    python scripts/init_skill.py <skill-name> --path <output-dir> [--resources scripts,references,assets] [--examples]
+
+Examples:
+    python scripts/init_skill.py my-skill --path ~/skills
+    python scripts/init_skill.py my-skill --path ~/skills --resources scripts,references
+    python scripts/init_skill.py my-skill --path ~/skills --resources scripts,references,assets --examples
+"""
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+MAX_NAME_LENGTH = 64
+ALLOWED_RESOURCES = {"scripts", "references", "assets"}
+
+SKILL_TEMPLATE = """\
+---
+name: {skill_name}
+description: "[TODO: Name the distinctive task and when this skill applies, as briefly as clarity allows. Max 1024 chars is a ceiling, not a target.]"
+---
+
+# {skill_title}
+
+[TODO: State the task-specific outcome, completion condition, and constraints another agent cannot infer.]
+
+## Guidance
+
+[TODO: Add only decisions and non-obvious constraints that change execution. Prescribe a sequence only when order matters. For independent workflows, route to the relevant resource instead of loading every branch. Remove unused sections.]
+{resource_section}
+"""
+
+EXAMPLE_SCRIPT = """\
+#!/usr/bin/env python3
+\"\"\"
+Example script for {skill_name}.
+
+Replace this placeholder with actual implementation or delete if not needed.
+
+Output contract:
+- Keep stdout suitable for its consumer; send diagnostics to stderr.
+- Preserve failure details needed for debugging.
+- Shorten human summaries without truncating required result data.
+\"\"\"
+
+import sys
+
+
+def main():
+    # TODO: Implement actual logic here.
+    print("Success: example script ran.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(f"Failure: {{exc}}", file=sys.stderr)
+        sys.exit(1)
+"""
+
+EXAMPLE_REFERENCE = """\
+# Reference: {skill_title}
+
+[TODO: Replace with actual reference content or delete this file if not needed.]
+
+[TODO: State which subtask needs this file and add a matching route in SKILL.md.]
+
+[TODO: Add only the contracts, decisions, or mechanics needed for that subtask. Keep shared rules in one canonical location.]
+"""
+
+EXAMPLE_ASSET = """\
+# Placeholder Asset
+
+Replace this with an actual asset file (template, image, data file, boilerplate, etc.)
+or delete this file if not needed.
+
+Assets are files the agent copies or uses in its output. Inspect their contents
+when needed for the task.
+"""
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def normalize_name(raw: str) -> str:
+    """Normalize arbitrary input to a valid hyphen-case skill name."""
+    normalized = raw.strip().lower()
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
+    normalized = normalized.strip("-")
+    normalized = re.sub(r"-{2,}", "-", normalized)
+    return normalized
+
+
+def title_case(name: str) -> str:
+    """Convert hyphen-case to Title Case."""
+    return " ".join(word.capitalize() for word in name.split("-"))
+
+
+def parse_resources(raw: str) -> list[str]:
+    """Parse and validate the --resources argument."""
+    if not raw:
+        return []
+    items = [item.strip() for item in raw.split(",") if item.strip()]
+    invalid = sorted({i for i in items if i not in ALLOWED_RESOURCES})
+    if invalid:
+        allowed = ", ".join(sorted(ALLOWED_RESOURCES))
+        print(f"[ERROR] Unknown resource type(s): {', '.join(invalid)}")
+        print(f"        Allowed: {allowed}")
+        sys.exit(1)
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    result = []
+    for i in items:
+        if i not in seen:
+            seen.add(i)
+            result.append(i)
+    return result
+
+
+def render_resource_section(resources: list[str]) -> str:
+    """Render routing placeholders only for requested resource directories."""
+    if not resources:
+        return ""
+
+    guidance = {
+        "scripts": "List each script and the condition for running it.",
+        "references": "Link each reference and state when to read it.",
+        "assets": "List each asset and how it contributes to the output.",
+    }
+    lines = [
+        "",
+        "## Resources",
+        "",
+        "[TODO: Replace each placeholder with exact file-level routing. "
+        "Remove this section if no resources remain.]",
+        "",
+    ]
+    lines.extend(
+        f"- `{resource}/`: [TODO: {guidance[resource]}]" for resource in resources
+    )
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
+
+def init_skill(
+    skill_name: str,
+    base_path: str,
+    resources: list[str],
+    include_examples: bool,
+) -> Path | None:
+    skill_dir = Path(base_path).resolve() / skill_name
+
+    if skill_dir.exists():
+        print(f"[ERROR] Directory already exists: {skill_dir}")
+        return None
+
+    skill_title = title_case(skill_name)
+
+    try:
+        skill_dir.mkdir(parents=True)
+        print(f"[OK] Created: {skill_dir}")
+    except Exception as exc:
+        print(f"[ERROR] Cannot create directory: {exc}")
+        return None
+
+    # SKILL.md
+    skill_md = skill_dir / "SKILL.md"
+    resource_section = render_resource_section(resources)
+    skill_md.write_text(
+        SKILL_TEMPLATE.format(
+            skill_name=skill_name,
+            skill_title=skill_title,
+            resource_section=resource_section,
+        ),
+        encoding="utf-8",
+    )
+    print("[OK] Created SKILL.md")
+
+    # Resource directories
+    for resource in resources:
+        resource_dir = skill_dir / resource
+        resource_dir.mkdir()
+        if not include_examples:
+            print(f"[OK] Created {resource}/")
+            continue
+
+        if resource == "scripts":
+            script = resource_dir / "example.py"
+            script.write_text(
+                EXAMPLE_SCRIPT.format(skill_name=skill_name), encoding="utf-8"
+            )
+            script.chmod(0o755)
+            print("[OK] Created scripts/example.py")
+
+        elif resource == "references":
+            ref = resource_dir / "reference.md"
+            ref.write_text(
+                EXAMPLE_REFERENCE.format(skill_title=skill_title), encoding="utf-8"
+            )
+            print("[OK] Created references/reference.md")
+
+        elif resource == "assets":
+            asset = resource_dir / "example_asset.txt"
+            asset.write_text(EXAMPLE_ASSET, encoding="utf-8")
+            print("[OK] Created assets/example_asset.txt")
+
+    # Next steps
+    print(f"\n[OK] Skill '{skill_name}' initialized at {skill_dir}")
+    print("\nNext steps:")
+    print("  1. Edit SKILL.md — fill in all TODO items, especially description")
+    if resources and include_examples:
+        print("  2. Customize or delete the example files in resource directories")
+    elif resources:
+        print("  2. Add files to the resource directories as needed")
+    else:
+        print("  2. Add scripts/, references/, assets/ directories only if needed")
+    print("  3. Run the repository's scripts/quick_validate.py and scripts/sweep_skills.py, then its changed-file hygiene check")
+
+    return skill_dir
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Scaffold a new Agent Skill directory.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument("skill_name", help="Skill name (normalized to hyphen-case)")
+    parser.add_argument("--path", required=True, help="Output directory")
+    parser.add_argument(
+        "--resources",
+        default="",
+        metavar="scripts,references,assets",
+        help="Resource directories to create (comma-separated subset)",
+    )
+    parser.add_argument(
+        "--examples",
+        action="store_true",
+        help="Populate resource directories with placeholder example files",
+    )
+    args = parser.parse_args()
+
+    raw = args.skill_name
+    name = normalize_name(raw)
+
+    if not name:
+        print("[ERROR] Skill name must contain at least one letter or digit.")
+        sys.exit(1)
+    if len(name) > MAX_NAME_LENGTH:
+        print(
+            f"[ERROR] Name '{name}' is {len(name)} chars — max is {MAX_NAME_LENGTH}."
+        )
+        sys.exit(1)
+    if name != raw:
+        print(f"[NOTE] Normalized '{raw}' → '{name}'")
+
+    resources = parse_resources(args.resources)
+
+    if args.examples and not resources:
+        print("[ERROR] --examples requires --resources to be specified.")
+        sys.exit(1)
+
+    print(f"Initializing skill: {name}")
+    print(f"  Location:  {args.path}")
+    print(f"  Resources: {', '.join(resources) if resources else 'none (add as needed)'}")
+    if args.examples:
+        print("  Examples:  enabled")
+    print()
+
+    result = init_skill(name, args.path, resources, args.examples)
+    sys.exit(0 if result else 1)
+
+
+if __name__ == "__main__":
+    main()

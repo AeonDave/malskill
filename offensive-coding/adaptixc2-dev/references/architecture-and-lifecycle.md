@@ -85,6 +85,8 @@ The Teamserver registers the listener instance before `Start`. A start error is 
 
 `Start` must tolerate a previous partial start and a later resume. The plugin's `Stop` method serves both pause and full removal, so it must be idempotent and leave the instance restartable until the framework removes it. Pair every listener, goroutine, timer, route, file, and channel with one explicit owner and cleanup action.
 
+Full stop removes the active plugin instance even when `Stop` returns an error. `TsListenerStop` retains the catalog record on that error only when its status is `Listen`; otherwise it removes the record and watermark. Do not rely on a retry reaching the instance for cleanup. Exercise stop errors in both running and paused/stopped states.
+
 ### Service
 
 ```text
@@ -111,6 +113,8 @@ WebSocket builder: open channel -> pre hook -> core -> post hook
 ```
 
 The agent plugin owns only profile generation and artifact production. It must not deliver the final file or close a channel. Build into a unique per-request directory and remove it with `defer`; never mutate a shared source tree or fixed output filename. Hooks currently apply to the WebSocket path, not `TsAgentBuildSyncOnce`.
+
+The client falls back to synchronous HTTP when no build OTP is available or the WebSocket disconnects before the file message (`status: 4`). This can invoke the builder again after a WebSocket build started. Keep invocations isolated, avoid irreversible build side effects, and verify both paths; a client disconnect does not establish server-side cancellation.
 
 `TsAgentBuildExecute` inherits the process environment when `env == nil`; a non-nil slice replaces the complete environment. If a controlled environment is required, construct the full allowlisted environment deliberately.
 
