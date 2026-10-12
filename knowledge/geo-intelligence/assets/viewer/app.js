@@ -714,9 +714,12 @@
     stage.highlight = new Map();
     const finest = s.focus && !s.focus.final ? s.focus.level : null;
     const markers = [];
+    // an ancestor with an open candidate below it is a container, not a place to show: its big circle would only hide the finer ones
+    const hasOpenChild = new Set(s.candidates.filter((c) => !c.excluded && c.parent).map((c) => c.parent));
     s.candidates.forEach((c, i) => {
       if (c.level === "country" && c.iso2 && !c.excluded) stage.highlight.set(c.iso2, c.share);
-      if (c.level !== "country" && c.has_geo) markers.push({ lat: c.lat, lon: c.lon, radius_km: c.radius_km, share: c.share, excluded: c.excluded, name: c.name, lead: finest === c.level && !c.excluded && s.candidates.find((x) => x.level === c.level && !x.excluded) === c });
+      if (c.level !== "country" && c.has_geo && !(hasOpenChild.has(c.name) && !c.excluded))
+        markers.push({ lat: c.lat, lon: c.lon, radius_km: c.radius_km, share: c.share, excluded: c.excluded, name: c.name, lead: finest === c.level && !c.excluded && s.candidates.find((x) => x.level === c.level && !x.excluded) === c });
     });
     // when the answer is in, only the answer stays on the map
     stage.markers = s.status === "completed" ? [] : markers;

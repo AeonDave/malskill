@@ -265,7 +265,7 @@ class PhotoArchiveTests(unittest.TestCase):
                             "--longitude", "20.0675", "--confidence", "medium", "--heading", "unknown", "--taken", "unknown"],
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("names 2015", r.stderr)                                                 # the report knew a year
+        self.assertIn("name 2015", r.stderr)                                                  # the report knew a year
         self.assertIn("looks at 120", r.stderr)                                               # the best match nearby had a heading
         out = json.loads(r.stdout)
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
