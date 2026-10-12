@@ -39,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import pano as P  # noqa: E402
@@ -177,8 +177,11 @@ def _neighbour_support(lat, lon, z, radius: float, k: int = 3) -> np.ndarray:
     """mean of the k best z-scores among *other* panoramas within radius m (0 when alone), via grid hashing."""
     n = len(lat)
     cell = radius
+    # One longitude scale for the whole hash (the smallest cos(lat) in the set, so every cell is at least `radius`
+    # wide): scaling each point by its own cos(lat) shifted same-meridian neighbours by lon·sin(lat)·Δlat metres
+    # (130 m per 100 m step at lon 116°), two cells apart and outside the 3x3 search.
     ky = np.floor(lat * 110540.0 / cell).astype(np.int64)
-    kx = np.floor(lon * 111320.0 * np.cos(np.radians(lat)) / cell).astype(np.int64)
+    kx = np.floor(lon * 111320.0 * math.cos(math.radians(float(np.abs(lat).max()))) / cell).astype(np.int64)
     buckets: dict[tuple[int, int], list[int]] = {}
     for i in range(n):
         buckets.setdefault((int(ky[i]), int(kx[i])), []).append(i)
@@ -242,7 +245,6 @@ def _sheet(cells: list[tuple[Image.Image, str]], out: Path, cols: int = 4, tw: i
 
 def cmd_rank(a) -> None:
     from geolib import megaloc as _megaloc
-    lat, lon = [], []
     per_view_key, per_view_b, feats, entries = [], [], [], {}
     cfg0 = None
     for name in a.index:
@@ -318,11 +320,10 @@ def cmd_rank(a) -> None:
 
     def cell(r):
         try:
-            im, b, s = _best_view(emb_ref, entries[r["key"]], qf["full"], r["best_bearing"], hf, pt)
+            im, b, s = _best_view(emb, entries[r["key"]], qf["full"], r["best_bearing"], hf, pt)
             return im, f"#{r['rank']} (area #{r['area_rank']}) {r['key'][-22:]} {r['date']} brg {b:.0f}"
         except Exception as e:  # noqa: BLE001
             return Image.new("RGB", (480, 320), "gray"), f"#{r['rank']} {r['key'][-22:]} failed: {str(e)[:30]}"
-    emb_ref = emb
     if not a.no_sheet:
         cells = [(qthumb, "query")] + [cell(r) for r in top[: a.sheet]]
         _sheet(cells, od / "top.jpg")

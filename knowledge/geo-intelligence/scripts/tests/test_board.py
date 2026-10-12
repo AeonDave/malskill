@@ -165,7 +165,6 @@ class HierarchyTests(unittest.TestCase):
         self.assertTrue(rows["Ukraine"].get("dormant"))
         self.assertFalse(rows["Ukraine"]["excluded"])
         self.assertIn("dormant", self.cli("rank"))
-        self.cli("exclude", "Lipetsk", "--why", "wrong street grid", "--file", "photo.jpg", "--covers", "52.58,39.55") if False else None
         b = json.loads(self.path.read_text(encoding="utf-8"))
         b["candidates"]["Lipetsk"]["status"] = "excluded"          # the city falls: the countries are back in play
         self.path.write_text(json.dumps(b), encoding="utf-8")
@@ -180,8 +179,6 @@ class HierarchyTests(unittest.TestCase):
         self.assertTrue(rows["Russia"].get("settled"))
         self.assertTrue(rows["Ukraine"].get("superseded"))
         self.assertEqual(rows["Ukraine"]["share"], 0.0)
-        b = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertIsNone(board._frontier(b) if False else None)
         self.cli("add", "Lipetsk", "Yelets", "--level", "city", "--parent", "Russia", "--no-geocode")
         b = json.loads(self.path.read_text(encoding="utf-8"))
         self.assertEqual(board._frontier(b), "city")

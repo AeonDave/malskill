@@ -208,8 +208,8 @@ def strip_to_faces(im: Image.Image, order: str = "lfrbud", axis: str = "vertical
 class View:
     """A loaded panorama level that can render any direction: kind 'equirect' | 'cube' | 'photo'."""
 
-    def __init__(self, kind: str, data, heading: float, hfov: float | None = None):
-        self.kind, self.data, self.heading, self.hfov = kind, data, heading, hfov
+    def __init__(self, kind: str, data, heading: float):
+        self.kind, self.data, self.heading = kind, data, heading
 
     def render(self, bearing: float, pitch: float = 0.0, hfov: float = 90.0, w: int = 1024, h: int = 768) -> Image.Image:
         if self.kind == "equirect":
@@ -228,7 +228,7 @@ class View:
 
 def load(entry: dict, level: str = "low") -> View:
     """Load one level ("low" or "high") of a manifest entry; falls back to the other level when missing."""
-    spec = entry.get(level) or entry.get("high" if level == "low" else "low") or entry.get("image")
+    spec = entry.get(level) or entry.get("high" if level == "low" else "low")
     if not spec:
         raise ValueError(f"{key(entry)}: no image spec")
     heading = float(entry.get("heading") or 0.0)
@@ -253,7 +253,7 @@ def load(entry: dict, level: str = "low") -> View:
         return View("cube", faces, heading)
     if kind == "photo":
         im = _open(spec.get("url") or spec["path"]).convert("RGB")
-        return View("photo", np.asarray(im), heading, spec.get("hfov"))
+        return View("photo", np.asarray(im), heading)
     if kind == "streetlevel":
         return _streetlevel_view(entry, spec)
     raise ValueError(f"unknown image kind {kind!r}")

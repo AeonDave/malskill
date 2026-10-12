@@ -36,6 +36,7 @@ The page re-reads the folder every 2 s and shows:
               faint coverage dots; click a marker for its card, buttons toggle the layers
   analysis    images whose name says what they are (ridge, fit, overlay, evidence, match, sheet, pose, _rank)
   skyline     terrain.py fit --sheet's <sheet>_skyline.jpg/.json: the top three synthetic skylines over the photo, ranked, summit names
+  coverage    every panorama of the session's lists (gsv.py area, pano.py list/index) as selectable dots: id, provider, date, road, a link to open it
               in their own gallery
   close       the page's Close button stops this server (POST /api/stop); the analysis is not affected
   snapshot    finish, truth, stop and Close all write <session>/viewer.html: the same page with the state, the
@@ -71,6 +72,8 @@ UI_DIR = SKILL_DIR / "assets" / "viewer"
 COUNTRIES_FILE = SKILL_DIR / "assets" / "data" / "countries.json"
 sys.path.insert(0, str(HERE))
 import board as _board  # noqa: E402  (share computation and level order stay in one place)
+import photo_session as _ps  # noqa: E402  (gut call parser, required checks, When text, heading hint, session.json writer)
+from geolib.geomath import dest as _dest  # noqa: E402
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 TEXT_EXT = {".md", ".txt", ".log", ".json", ".geojson", ".csv"}
@@ -192,21 +195,10 @@ def candidate_geometry(level: str, cand: dict, name: str) -> dict | None:
 
 # ---------------------------------------------------------------- state
 
-GUT_LINE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s*\**([^\d%—–:(]+?)\**\s*[:(]?\s*(\d{1,3})\s*%", re.M)
-
-
 def gut_candidates(report: str) -> list[dict]:
     """The ranked shortlist of the report's gut call, as candidate rows, for the time before board.py is used."""
-    if "## Gut call" not in report:
-        return []
-    try:
-        from photo_session import gut_call        # the same parser that scores the gut call later
-        parsed = gut_call(report)
-    except Exception:  # noqa: BLE001
-        section = report.split("## Gut call", 1)[1].split("\n## ", 1)[0]
-        parsed = [(m.group(1).strip(" \t*-"), float(m.group(2))) for m in GUT_LINE.finditer(section)]
     rows, total = [], 0.0
-    for name, pct in parsed:
+    for name, pct in _ps.gut_call(report):          # the same parser that scores the gut call later
         if not name or name.lower().startswith(("region", "would change")):
             continue
         geo = country_geometry(name)
@@ -262,8 +254,7 @@ def focus_of(session: dict, b: dict | None, rows: list[dict]) -> dict | None:
     nearest ancestor that has one)."""
     result = session.get("result") or {}
     if session.get("status") == "completed" and result.get("latitude") is not None and result.get("longitude") is not None:
-        city = result.get("city_or_nearest_locality") or result.get("city")   # photo_session.py finish writes the long key
-        name = ", ".join(str(v) for v in (city, result.get("region"), result.get("country")) if v)
+        name = ", ".join(str(v) for v in (result.get("city_or_nearest_locality"), result.get("region"), result.get("country")) if v)
         radius_m = result.get("radius_m")
         return {"lat": float(result["latitude"]), "lon": float(result["longitude"]),
                 "radius_km": (float(radius_m) / 1000.0) if radius_m else 0.5, "radius_known": bool(radius_m),
@@ -302,13 +293,9 @@ def write_marks(folder: Path, marks: list[dict]) -> None:
 
 
 def destination(lat: float, lon: float, bearing_deg: float, km: float) -> tuple[float, float]:
-    """Point km away along a bearing (spherical earth)."""
-    r = 6371.0088
-    p1, l1, b = math.radians(lat), math.radians(lon), math.radians(bearing_deg)
-    d = km / r
-    p2 = math.asin(math.sin(p1) * math.cos(d) + math.cos(p1) * math.sin(d) * math.cos(b))
-    l2 = l1 + math.atan2(math.sin(b) * math.sin(d) * math.cos(p1), math.cos(d) - math.sin(p1) * math.sin(p2))
-    return round(math.degrees(p2), 6), round((math.degrees(l2) + 540) % 360 - 180, 6)
+    """Point km away along a bearing (geolib.geomath.dest), longitude wrapped to [-180, 180)."""
+    lat2, lon2 = _dest((lat, lon), bearing_deg, km * 1000)
+    return round(lat2, 6), round((lon2 + 540) % 360 - 180, 6)
 
 
 def ingest_ranks(folder: Path) -> list[dict]:
@@ -356,19 +343,37 @@ def index_files(folder: Path) -> list[Path]:
     return sorted(files)[:24]
 
 
-def ingest_coverage(folder: Path) -> list[list[float]]:
-    """Every panorama position of the session's panorama lists (gsv.py area/targets, pano.py list), thinned."""
+def ingest_coverage(folder: Path) -> list[dict]:
+    """Every panorama of the session's panorama lists, thinned to MAX_COVERAGE, with what its card shows.
+    gsv.py area/targets: {id: {wgs, date, road}} or a list of {id, wgs, …}; pano.py list/index: {id: {provider, id, lat, lon,
+    heading, low/high: {url}}} or a list of those. Ranked lists (match.py) are the Matches layer, not coverage."""
     pts = []
     for f in index_files(folder):
         items = _read_json(f)
-        if isinstance(items, dict):                      # gsv.py area: {id: {wgs, date, road}}
-            items = list(items.values())
-        if not (isinstance(items, list) and items and isinstance(items[0], dict) and "wgs" in items[0] and "rank" not in items[0]):
+        if isinstance(items, dict):
+            items = [{"id": k, **v} if isinstance(v, dict) else v for k, v in items.items()]
+        if not (isinstance(items, list) and items and isinstance(items[0], dict)) or "rank" in items[0]:
             continue
         for it in items:
-            w = it.get("wgs") if isinstance(it, dict) else None
+            if not isinstance(it, dict):
+                continue
+            w = it.get("wgs")
             if isinstance(w, list) and len(w) == 2:
-                pts.append([round(float(w[0]), 5), round(float(w[1]), 5)])
+                lat, lon = w
+            elif isinstance(it.get("lat"), (int, float)) and isinstance(it.get("lon"), (int, float)):
+                lat, lon = it["lat"], it["lon"]
+            else:
+                continue
+            try:
+                lat, lon = float(lat), float(lon)
+            except (TypeError, ValueError):
+                continue
+            spec = it.get("high") if isinstance(it.get("high"), dict) else it.get("low") if isinstance(it.get("low"), dict) else {}
+            url = it.get("url") or spec.get("url")
+            pts.append({"lat": round(lat, 5), "lon": round(lon, 5), "id": (str(it.get("id"))[:80] if it.get("id") is not None else None),
+                        "provider": it.get("provider") or None, "date": it.get("date") or None, "road": it.get("road") or it.get("name") or None,
+                        "heading": it["heading"] if isinstance(it.get("heading"), (int, float)) else None,
+                        "url": url if isinstance(url, str) and url.startswith("http") else None, "list": f.name})
     if len(pts) > MAX_COVERAGE:
         pts = pts[:: max(1, len(pts) // MAX_COVERAGE)]
     return pts
@@ -377,9 +382,8 @@ def ingest_coverage(folder: Path) -> list[list[float]]:
 def map_layers(folder: Path) -> dict:
     marks = read_marks(folder)
     for m in marks:
-        if m.get("kind") == "image" and m.get("file"):
-            p = folder / m["file"]
-            m["url"] = "/files/" + m["file"] if p.is_file() else None
+        if m.get("file"):                                 # image marks, and point marks with --image: the card shows the file
+            m["url"] = "/files/" + m["file"] if (folder / m["file"]).is_file() else None
     return {"cameras": [m for m in marks if m["kind"] == "camera"], "lines": [m for m in marks if m["kind"] == "line"],
             "points": [m for m in marks if m["kind"] == "point"], "images": [m for m in marks if m["kind"] == "image"],
             "matches": ingest_ranks(folder), "coverage": ingest_coverage(folder)}
@@ -444,7 +448,7 @@ def board_activity(b: dict | None) -> list[dict]:
     return out
 
 
-def stage_of(session: dict, b: dict | None, report: str, artifacts: list[dict], folder: Path) -> str:
+def stage_of(session: dict, b: dict | None, artifacts: list[dict], folder: Path) -> str:
     """The stage a step is *in*, from its first trace on disk (a folder being filled counts), never only from its end."""
     if session.get("status") == "completed":
         return "Done"
@@ -473,8 +477,7 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
     warning = None
     result = session.get("result") or {}
     if result and result.get("latitude") is not None:
-        try:
-            import photo_session as _ps                   # same dir: the When text and the heading hint of older sessions
+        try:                                              # the When text and the heading hint of older sessions
             if not result.get("when_text"):
                 result["when_text"] = _ps.when_text(_read_text(folder / "report.md"))
             if result.get("heading") is None and not result.get("heading_hint"):
@@ -513,7 +516,7 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
         "status": session.get("status", "pending"), "started_at": session.get("started_at"),
         "completed_at": session.get("completed_at"), "result": session.get("result"), "truth": session.get("truth"),
         "photo_url": photos[0]["url"] if photos else None,
-        "stage": stage_of(session, b, report, artifacts, folder), "stages": STAGES,
+        "stage": stage_of(session, b, artifacts, folder), "stages": STAGES,
         "focus": focus_of(session, b, rows) if source == "board" else gut_focus(session, rows),
         "candidates": rows, "candidates_source": source, "coherence": coherence_notes(b, rows) if source == "board" else [],
         "clues": [{"id": k, **v} for k, v in (b or {}).get("clues", {}).items()],
@@ -533,7 +536,6 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
 def _checks_of(folder: Path) -> list[dict]:
     """The scene's required checks and their status (photo_session.required_checks), never fatal."""
     try:
-        import photo_session as _ps
         return [{k: c.get(k) for k in ("name", "why", "done", "files")} for c in _ps.required_checks(folder)]
     except Exception:  # noqa: BLE001
         return []
@@ -726,7 +728,7 @@ def record_viewer_url(session: Path, url: str) -> None:
         meta = json.loads(p.read_text(encoding="utf-8-sig"))
         if meta.get("viewer_url") != url:
             meta["viewer_url"] = url
-            p.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+            _ps.save_json(p, meta)                        # atomic, like every other session.json write
     except (OSError, ValueError):
         pass
 

@@ -23,10 +23,8 @@ Examples:
 from __future__ import annotations
 
 import argparse
-from geolib.net import PROXY_HELP
-from geolib.net import model_proxy_env
+from geolib.net import PROXY_HELP, model_proxy_env
 import json
-import math
 import os
 import re
 import sys
@@ -40,6 +38,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
 import tiles  # noqa: E402
+from match import CLIPN, _feat, _tensor  # noqa: E402  (CLIP preprocessing shared with match.py)
 
 CLIP_ID = "openai/clip-vit-base-patch32"
 NEG_COMMON = ["a satellite image of residential buildings and streets", "a satellite image of a road intersection",
@@ -64,57 +63,15 @@ PRESETS = {
 }
 
 
-def _proxy_env(proxy: str | None) -> None:
-    model_proxy_env(proxy)
-
-
-def cell_image(lat: float, lon: float, zoom: int, size: int, source: str, proxy: str | None, cache: Path) -> Image.Image:
-    """Stitch a size×size satellite image centered on (lat, lon) (reuses the tile cache)."""
-    gx, gy = geo.ll2px(zoom, lat, lon)
-    x0, y0 = gx - size / 2, gy - size / 2
-    tile = Image.new("RGB", (size, size), "gray")
-    for tx in range(int(x0 // 256), int((x0 + size) // 256) + 1):
-        for ty in range(int(y0 // 256), int((y0 + size) // 256) + 1):
-            p = cache / f"{source}_{zoom}_{tx}_{ty}.jpg"
-            if tiles._get(tiles.tile_url(source, tx, ty, zoom, proxy), p, proxy):
-                try:
-                    tile.paste(Image.open(p), (int(tx * 256 - x0), int(ty * 256 - y0)))
-                except Exception:  # noqa: BLE001
-                    pass
-    return tile
-
-
 def prefetch(points: dict, zoom: int, size: int, source: str, proxy: str | None, cache: Path) -> None:
+    """Download every tile the cells need in one parallel batch; cell_image then only reads the cache."""
     need = set()
     for lat, lon in points.values():
         gx, gy = geo.ll2px(zoom, lat, lon)
-        x0, y0 = gx - size / 2, gy - size / 2
-        for tx in range(int(x0 // 256), int((x0 + size) // 256) + 1):
-            for ty in range(int(y0 // 256), int((y0 + size) // 256) + 1):
-                need.add((tx, ty))
+        need.update(tiles.cell_tiles(gx - size / 2, gy - size / 2, size))
     cache.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(16) as ex:
-        list(ex.map(lambda t: tiles._get(tiles.tile_url(source, t[0], t[1], zoom, proxy), cache / f"{source}_{zoom}_{t[0]}_{t[1]}.jpg", proxy), need))
-
-
-CLIPN = ([0.48145466, 0.4578275, 0.40821073], [0.26862954, 0.26130258, 0.27577711])
-
-
-def _tensor(ims: list[Image.Image], torch):
-    mean, std = (np.array(v, dtype=np.float32).reshape(1, 3, 1, 1) for v in CLIPN)
-    arr = np.stack([np.asarray(im.convert("RGB"), dtype=np.float32) / 255.0 for im in ims]).transpose(0, 3, 1, 2)
-    return torch.from_numpy((arr - mean) / std)
-
-
-def _feat(out):
-    """In transformers 5, get_*_features returns BaseModelOutputWithPooling with the projected vector in pooler_output; older versions return the tensor directly."""
-    if hasattr(out, "shape"):
-        return out
-    for k in ("pooler_output", "text_embeds", "image_embeds"):
-        v = getattr(out, k, None)
-        if v is not None and hasattr(v, "shape"):
-            return v
-    return out[0]
+        list(ex.map(lambda t: tiles._get(tiles.tile_url(source, *t, zoom, proxy), tiles.tile_path(cache, source, zoom, *t), proxy), need))
 
 
 class Scorer:
@@ -151,7 +108,7 @@ class Scorer:
         probs = []
         with self.torch.no_grad():
             for i in range(0, len(flat), batch):
-                x = _tensor(flat[i:i + batch], self.torch).to(self.dev)
+                x = _tensor(flat[i:i + batch], CLIPN, self.torch).to(self.dev)
                 f = _feat(self.model.get_image_features(pixel_values=x))
                 f = f / f.norm(dim=1, keepdim=True)
                 logits = 100.0 * f.float() @ self.text.T
@@ -167,8 +124,8 @@ def _blank(im: Image.Image) -> bool:
 
 
 def _sheet(rows: list[dict], ims: list[Image.Image], out: Path, cols: int, size: int) -> list[Path]:
-    from baidu_pano import _font
-    f = _font(14)
+    from geolib.cli import font
+    f = font(14, prefer_wide=True)
     per = cols * cols
     pages = []
     for pi in range(0, len(rows), per):
@@ -189,7 +146,7 @@ def _sheet(rows: list[dict], ims: list[Image.Image], out: Path, cols: int, size:
     return pages
 
 
-def _heat(rows: list[dict], names: list[str], out: Path) -> None:
+def _heat(rows: list[dict], out: Path) -> None:
     """Lay the cells out as a matrix by cell name rXXcYY, mapping score to color."""
     rc = {}
     for r in rows:
@@ -211,7 +168,7 @@ def _heat(rows: list[dict], names: list[str], out: Path) -> None:
 
 
 def run(points: dict, args) -> None:
-    _proxy_env(args.proxy)
+    model_proxy_env(args.proxy)
     cache = Path(args.cache)
     if args.preset:
         pos, neg = PRESETS[args.preset]
@@ -225,7 +182,7 @@ def run(points: dict, args) -> None:
     prefetch(points, args.zoom, args.size, args.source, args.proxy, cache)
     names = list(points)
     with ThreadPoolExecutor(8) as ex:
-        ims = list(ex.map(lambda n: cell_image(points[n][0], points[n][1], args.zoom, args.size, args.source, args.proxy, cache), names))
+        ims = list(ex.map(lambda n: tiles.cell_image(points[n][0], points[n][1], args.zoom, args.size, args.source, args.proxy, cache), names))
     t1 = time.time()
     sc = Scorer(pos, neg)
     scores = sc.score(ims, args.multi_scale)
@@ -260,7 +217,7 @@ def run(points: dict, args) -> None:
         for p in _sheet(rows[: args.top], ims, Path(args.sheet), args.cols, args.size):
             print(f"-> {p}")
     if getattr(args, "heat", None):
-        _heat(rows, names, Path(args.heat))
+        _heat(rows, Path(args.heat))
         print(f"-> {args.heat} (rows north to south, columns west to east; brighter = more alike)")
 
 

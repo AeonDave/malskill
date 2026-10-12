@@ -136,25 +136,6 @@ def cmd_score(args) -> None:
         Path(args.out).write_text(json.dumps({"metrics": m, "rounds": pairs}, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
-def consistent_guess(d: dict) -> dict | None:
-    """Best guess from a prior.json that is internally consistent: the top combined country, and inside it the
-    heaviest GeoCLIP cluster (else its most probable gallery point, else the country's centre)."""
-    comb = d.get("combined") or []
-    gc = d.get("geoclip") or {}
-    if not comb:
-        cl = gc.get("clusters") or []
-        return {"lat": cl[0]["lat"], "lon": cl[0]["lon"], "country": (cl[0].get("near") or {}).get("country")} if cl else None
-    cc = comb[0]["iso2"]
-    for c in gc.get("clusters") or []:
-        if (c.get("near") or {}).get("country") == cc:
-            return {"lat": c["lat"], "lon": c["lon"], "country": cc}
-    for la, lo, _p in gc.get("points") or []:
-        if geodata.reverse_country(la, lo) == cc:
-            return {"lat": la, "lon": lo, "country": cc}
-    c = geodata.countries().get(cc, {})
-    return {"lat": c["center"][0], "lon": c["center"][1], "country": cc} if c.get("center") else None
-
-
 def cmd_prior(args) -> None:
     root = Path(args.bench)
     imgs = sorted((root / "images").glob("*.jpg"))
@@ -167,12 +148,15 @@ def cmd_prior(args) -> None:
                 print(f"{im.stem}: prior failed {r.stderr[-200:]}")
                 continue
         d = json.loads((od / "prior.json").read_text(encoding="utf-8"))
-        g = consistent_guess(d)
-        if g:
-            preds[im.stem] = g
         cl = (d.get("geoclip") or {}).get("clusters") or []
-        if cl:
-            preds_gc[im.stem] = {"lat": cl[0]["lat"], "lon": cl[0]["lon"], "country": (cl[0].get("near") or {}).get("country")}
+        gc_top = {"lat": cl[0]["lat"], "lon": cl[0]["lon"], "country": (cl[0].get("near") or {}).get("country")} if cl else None
+        # prior.py's consistent guess when a combined country ranking exists (None if its ladder found no point);
+        # GeoCLIP's top cluster only when there is no combined ranking at all
+        g = d.get("best_guess") if d.get("combined") else gc_top
+        if g:
+            preds[im.stem] = {k: g.get(k) for k in ("lat", "lon", "country")}
+        if gc_top:
+            preds_gc[im.stem] = gc_top
         print(f"{im.stem}: {preds.get(im.stem)}", flush=True)
     Path(args.out).write_text(json.dumps(preds, indent=1, ensure_ascii=False), encoding="utf-8")
     gc_out = Path(args.out).with_name(Path(args.out).stem + "_geoclip_only.json")
@@ -188,7 +172,7 @@ def cmd_sessions(args) -> None:
     root = Path(args.root)
     pairs = []
     for f in sorted(root.glob("*/session.json")):
-        m = json.loads(f.read_text(encoding="utf-8"))
+        m = json.loads(f.read_text(encoding="utf-8-sig"))      # photo_session.py reads session files with utf-8-sig
         t, r = m.get("truth"), m.get("result")
         if t and r:
             pairs.append({"id": f.parent.name, "error_km": t["error_km"], "country_true": t.get("country"), "country_pred": r.get("country")})

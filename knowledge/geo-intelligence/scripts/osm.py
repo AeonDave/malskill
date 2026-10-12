@@ -47,7 +47,6 @@ Examples (江苏省 = Jiangsu Province, 长江 = Yangtze River):
 from __future__ import annotations
 
 import argparse
-from geolib.net import curl_args, PROXY_HELP
 import hashlib
 import json
 import math
@@ -57,6 +56,10 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+from geolib.cli import neg_coords
+from geolib.geomath import haversine_m
+from geolib.net import curl_args, PROXY_HELP
 
 # Independent services only: overpass.kumi.systems is the old name of private.coffee (same server), so it can't confirm or replace it
 ENDPOINTS = [
@@ -203,18 +206,12 @@ def _points(data: dict) -> dict:
     return out
 
 
-def _dist(a, b) -> float:
-    la1, lo1, la2, lo2 = map(math.radians, (*a, *b))
-    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
-    return 2 * 6371008.8 * math.asin(math.sqrt(h))
-
-
 def _cluster(items: list[tuple[str, list[float], dict]], radius: float) -> list[dict]:
     """Merge results within radius meters into one place (a bridge is often split into several ways; a level crossing has one node per track)."""
     groups: list[dict] = []
     for name, ll, tags in items:
         for g in groups:
-            if _dist(g["center"], ll) <= radius:
+            if haversine_m(g["center"], ll) <= radius:
                 g["members"].append((name, ll, tags))
                 n = len(g["members"])
                 g["center"] = [(g["center"][0] * (n - 1) + ll[0]) / n, (g["center"][1] * (n - 1) + ll[1]) / n]
@@ -232,7 +229,7 @@ def _sample(elements: list[dict], step: float) -> list[list[float]]:
         acc = 0.0
         for a, b in zip(geom, geom[1:]):
             pa, pb = (a["lat"], a["lon"]), (b["lat"], b["lon"])
-            seg = _dist(pa, pb)
+            seg = haversine_m(pa, pb)
             while seg > 0 and acc <= seg:
                 t = acc / seg
                 pts.append([round(pa[0] + (pb[0] - pa[0]) * t, 6), round(pa[1] + (pb[1] - pa[1]) * t, 6)])
@@ -389,7 +386,7 @@ def cmd_intersect(args) -> dict:
         c_ll, rmin, rmax = args.ring.split(":")
         c = tuple(map(float, c_ll.split(",")))
         before = len(rows)
-        rows = [r for r in rows if float(rmin) <= _dist(c, r["ll"]) <= float(rmax)]
+        rows = [r for r in rows if float(rmin) <= haversine_m(c, r["ll"]) <= float(rmax)]
         print(f"--ring: {len(rows)}/{before} places kept in the ring {rmin}–{rmax} m from {c_ll}")
     print(f"A {len(A)} lines × B {len(B)} lines → {len(hits)} crossing points, merged into {len(groups)} clusters")
     if args.bend_min > 0:
@@ -440,7 +437,7 @@ def cmd_along(args) -> dict:
         g = [(n["lat"], n["lon"]) for n in w["geometry"]]
         acc = 0.0
         for a, b in zip(g, g[1:]):
-            seg = _dist(a, b)
+            seg = haversine_m(a, b)
             if seg <= 0:
                 continue
             kx = 111320 * math.cos(math.radians(a[0]))
@@ -456,7 +453,7 @@ def cmd_along(args) -> dict:
                     lon += nx * args.offset / kx
                 ll = (round(lat, 6), round(lon, 6))
                 inside = not args.bbox or (args.bbox[0] <= ll[0] <= args.bbox[2] and args.bbox[1] <= ll[1] <= args.bbox[3])
-                if inside and not any(_dist(ll, s) < args.step * 0.5 for s in seen[-200:]):
+                if inside and not any(haversine_m(ll, s) < args.step * 0.5 for s in seen[-200:]):
                     seen.append(ll)
                     name = (w.get("tags") or {}).get("ref") or (w.get("tags") or {}).get("name") or f"w{w['id']}"
                     pts[f"{len(pts):04d} {name}"] = list(ll)
@@ -503,7 +500,7 @@ def cmd_buildings(args) -> dict:
     for r in big:
         ci, cj = int(r["c"][0] / cs), int(r["c"][1] / cs)
         r["neighbors"] = sum(1 for di in (-1, 0, 1) for dj in (-1, 0, 1) for o in cells.get((ci + di, cj + dj), [])
-                             if o is not r and _dist(r["c"], o["c"]) <= args.within)
+                             if o is not r and haversine_m(r["c"], o["c"]) <= args.within)
     big.sort(key=(lambda r: (r["neighbors"], -r["area"])) if args.sort == "sparse" else (lambda r: -r["area"]))
     print(f"{len(rows)} buildings, {len(big)} with footprint ≥{args.min_area:.0f} m² (sorted by {'sparse surroundings' if args.sort == 'sparse' else 'area'}; nb=number of other buildings within {args.within:.0f} m)")
     pts = {}
@@ -555,8 +552,8 @@ def _rank_rows(rows: list[dict], flt: str, args) -> list[dict]:
         print(f"--rank-near {flt} found no features; not ranking")
         return rows
     for r in rows:
-        name, ll = min(refs, key=lambda t: _dist(r["ll"], t[1]))
-        r["near_m"], r["near_name"] = _dist(r["ll"], ll), name
+        name, ll = min(refs, key=lambda t: haversine_m(r["ll"], t[1]))
+        r["near_m"], r["near_name"] = haversine_m(r["ll"], ll), name
     rows.sort(key=lambda r: r["near_m"])
     print(f"  ranked by distance to the nearest {flt} ({len(refs)} found), nearest first")
     return rows
@@ -761,10 +758,6 @@ def cmd_street_scan(args) -> dict:
     return cands
 
 
-
-from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
-
-
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--proxy", default=os.environ.get("GEO_PROXY"), help=PROXY_HELP)
@@ -866,7 +859,7 @@ def main() -> None:
     ss.add_argument("--every", type=float, default=30)
     scope(ss)
 
-    args = ap.parse_args(_neg_coords(sys.argv[1:]))
+    args = ap.parse_args(neg_coords(sys.argv[1:]))
     if args.cmd == "crossings":
         pts = cmd_crossings(args)
     elif args.cmd == "route":
@@ -926,7 +919,7 @@ def main() -> None:
                     geom = el.get("geometry") or ([{"lat": el["lat"], "lon": el["lon"]}] if el["type"] == "node" else [])
                     if not geom:
                         continue
-                    dmin = min(_dist(ll, (g["lat"], g["lon"])) for g in geom)
+                    dmin = min(haversine_m(ll, (g["lat"], g["lon"])) for g in geom)
                     t = el.get("tags") or {}
                     keep = {k2: v for k2, v in t.items() if k2 in
                             ("name", "voltage", "electrified", "highspeed", "railway", "power", "waterway", "highway", "tracks")}

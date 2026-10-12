@@ -7,12 +7,12 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-_NEG = re.compile(r"^-\d[\d.]*([,:]-?[\d.]+)+$")   # lat,lon and lat,lon:lat,lon spans (board.py --covers)
+_NEG = re.compile(r"^-\d[\d.]*([,:@]-?[\d.]+)+$")   # lat,lon; lat,lon:lat,lon spans (board.py --covers); lat,lon@bearing (geo.py --sight)
 
 
 def neg_coords(argv: list[str]) -> list[str]:
     """argparse treats negative coordinates like -1.45,-48.5 as option names; a leading space makes them plain values
-    (float() ignores it). Needed for every southern- or western-hemisphere point."""
+    (float() ignores it). Needed for every southern- or western-hemisphere point, in every lat,lon-led value shape."""
     return [" " + a if _NEG.match(a) else a for a in argv]
 
 

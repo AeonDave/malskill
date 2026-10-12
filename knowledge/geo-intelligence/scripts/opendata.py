@@ -238,7 +238,7 @@ def cmd_points(args) -> None:
     text = raw.decode("utf-8", "replace").lstrip()
     if text[:1] in "{[":
         obj = json.loads(text)
-        fc = obj if obj.get("type") == "FeatureCollection" else {"features": obj if isinstance(obj, list) else [obj]}
+        fc = obj if isinstance(obj, dict) and obj.get("type") == "FeatureCollection" else {"features": obj if isinstance(obj, list) else [obj]}
         pts = _points_from_geojson(fc, args.name_field, args.limit) or _points_from_rows(
             [f.get("properties", f) for f in fc["features"]], args.name_field, args.limit)
     else:
@@ -291,7 +291,7 @@ def _emit(pts: dict, out) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--proxy", default=argparse.SUPPRESS, help=PROXY_HELP)
+    ap.add_argument("--proxy", default=None, help=PROXY_HELP)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("search")
@@ -330,8 +330,6 @@ def main() -> None:
     gr.add_argument("--out", type=Path)
 
     args = ap.parse_args()
-    if not hasattr(args, "proxy"):
-        args.proxy = None
     try:
         {"search": cmd_search, "columns": cmd_columns, "get": cmd_get, "points": cmd_points, "group": cmd_group}[args.cmd](args)
     except RuntimeError as e:

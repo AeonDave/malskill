@@ -222,8 +222,8 @@ def main() -> None:
     L = [f"# Steps 0–3 report: {photo.name}", "", f"Total time {time.time() - t_all:.0f}s; per step: " + ", ".join(f"{k} {v}s" for k, v in timings.items()), "",
          "Next: record clues on board.py (`clue`), lookup clues with `apply`; list the candidates in full first (`children`), then rank.", ""]
     L += ["## Metadata", ""]
-    gps = exif_json.get("gps") or exif_json.get("GPS")
-    if exif_json and (gps or exif_json.get("datetime") or exif_json.get("DateTimeOriginal") or (exif_json.get("time") or {}).get("DateTimeOriginal")):
+    gps = exif_json.get("gps")
+    if exif_json and (gps or (exif_json.get("time") or {}).get("DateTimeOriginal")):
         shown = {k: exif_json[k] for k in ("gps", "time", "optics", "camera", "notice") if exif_json.get(k)} or exif_json
         L.append("```\n" + json.dumps(shown, ensure_ascii=False, indent=1)[:1500] + "\n```")
         L.append("Metadata is an assumption (it can be edited, it can be stripped): check both GPS and time against the image.")

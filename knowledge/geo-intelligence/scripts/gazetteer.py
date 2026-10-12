@@ -25,7 +25,6 @@ Examples:
 from __future__ import annotations
 
 import argparse
-from geolib.net import PROXY_HELP
 import json
 import math
 import os
@@ -34,12 +33,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-import geo  # noqa: E402
 import osm  # noqa: E402
 import regions  # noqa: E402
+from geolib.cli import neg_coords  # noqa: E402
+from geolib.geomath import dest, haversine_m  # noqa: E402
+from geolib.net import PROXY_HELP  # noqa: E402
 
-LEVEL_NAMES = {"CN": {4: "province", 5: "prefecture", 6: "county", 7: "township"}, "FR": {4: "region", 6: "department", 8: "commune"},
-               "US": {4: "state", 6: "county", 8: "city"}, "*": {2: "country", 4: "first-level admin division", 6: "second-level admin division", 8: "third-level admin division"}}
 MIN_COVER = 0.3   # children auto level pick: this level's combined bbox area must be at least this fraction of the parent's bbox
 
 
@@ -190,7 +189,7 @@ def urban(name: str, proxy: str | None, cache: Path, within: str | None) -> dict
 
         chosen, how = None, ""
         if seat:
-            near = [c for c in blocks if geo.distance(seat["ll"], (((bb := block_bbox(c))[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2)) <= 12000]
+            near = [c for c in blocks if haversine_m(seat["ll"], (((bb := block_bbox(c))[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2)) <= 12000]
             if near:
                 chosen, how = max(near, key=block_area), f"contiguous land use nearest the admin seat {seat['name']}"
         if chosen is None:
@@ -198,8 +197,8 @@ def urban(name: str, proxy: str | None, cache: Path, within: str | None) -> dict
         bb = block_bbox(chosen)
         if seat and not (bb[0] <= seat["ll"][0] <= bb[2] and bb[1] <= seat["ll"][1] <= bb[3]):
             # The block doesn't cover the admin seat: merge in 1.5 km around the seat
-            s2, w2 = geo.dest(geo.dest(seat["ll"], 180, 1500), 270, 1500)
-            n2, e2 = geo.dest(geo.dest(seat["ll"], 0, 1500), 90, 1500)
+            s2, w2 = dest(dest(seat["ll"], 180, 1500), 270, 1500)
+            n2, e2 = dest(dest(seat["ll"], 0, 1500), 90, 1500)
             bb = [min(bb[0], s2), min(bb[1], w2), max(bb[2], n2), max(bb[3], e2)]
             how += "; merged in 1.5 km around the admin seat"
         out.update({"urban_bbox": [round(v, 5) for v in bb], "urban_bbox_km2": round(_bbox_km2(bb), 1),
@@ -208,8 +207,8 @@ def urban(name: str, proxy: str | None, cache: Path, within: str | None) -> dict
     if seat:
         pop = seat["population"]
         rad = max(1500.0, min(12000.0, math.sqrt(max(pop, 20000) / 6000 / math.pi) * 1000))  # about 6000 people/km²
-        s, w = geo.dest(geo.dest(seat["ll"], 180, rad), 270, rad)
-        n, e = geo.dest(geo.dest(seat["ll"], 0, rad), 90, rad)
+        s, w = dest(dest(seat["ll"], 180, rad), 270, rad)
+        n, e = dest(dest(seat["ll"], 0, rad), 90, rad)
         out.update({"urban_bbox": [round(s, 5), round(w, 5), round(n, 5), round(e, 5)],
                     "urban_bbox_km2": round(_bbox_km2([s, w, n, e]), 1), "source": "place-node",
                     "place": seat["name"], "population": pop,
@@ -228,9 +227,6 @@ def cost(bbox: list[float], zoom: int, cell: int, cols: int) -> dict:
     cells = rows_ * cols_
     return {"bbox": bbox, "km2": round(_bbox_km2(bbox), 1), "zoom": zoom, "cell_px": cell, "cell_m": round(cell * mpp),
             "cells": cells, "pages": math.ceil(cells / (cols * cols)), "per_page": cols * cols}
-
-
-from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
 
 
 def main() -> None:
@@ -268,7 +264,7 @@ def main() -> None:
     k.add_argument("--cell", type=int, default=320)
     k.add_argument("--cols", type=int, default=5)
 
-    args = ap.parse_args(_neg_coords(sys.argv[1:]))
+    args = ap.parse_args(neg_coords(sys.argv[1:]))
     cache = _cache(args)
     if args.cmd == "cost":
         print(json.dumps(cost([float(v) for v in args.bbox.split(",")], args.zoom, args.cell, args.cols), ensure_ascii=False))

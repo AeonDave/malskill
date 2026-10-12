@@ -6,7 +6,6 @@
 """Offline runtime regressions. Run: uv run scripts/tests/test_runtime.py"""
 from __future__ import annotations
 
-import asyncio
 import http.server
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -16,7 +15,6 @@ import io
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import sys
 import tempfile
 import threading

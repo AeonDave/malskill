@@ -26,12 +26,11 @@ import argparse
 from geolib.net import fetch_bytes, PROXY_HELP
 import io
 import json
-import math
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
@@ -149,12 +148,6 @@ def render(pid: str, heading: float, pitch: float = 10, fov: float = 80,
     if cache:
         (cache / key).write_bytes(data)
     return Image.open(io.BytesIO(data))
-
-
-def _font(size: int, text: str = ""):
-    """Label font from geolib.cli.font: CJK-capable by default, per-script choice when text is given, Windows fonts included."""
-    from geolib.cli import font
-    return font(size, text, prefer_wide=True)
 
 
 def sheet(items: list[dict], out: Path, cols: int = 3, tw: int = 480, th: int = 360,

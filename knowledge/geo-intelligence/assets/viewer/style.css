@@ -284,6 +284,7 @@ body:not(.running) .progress i { display: none; }
 .card p { margin: 0; }
 .card #card-title { font-weight: 600; }
 .card #card-meta { color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.card .card-link { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--amber); }
 
 .card-close {
   position: absolute;
@@ -432,8 +433,6 @@ body:not(.running) .progress i { display: none; }
 
 body.stopped .progress { display: none; }
 body.stopped .panel-bar button { display: none; }
-body.static .progress { background: var(--teal); }
-body.static .progress i { display: none; }
 body.static .panel-bar { display: none; }
 
 .panel h2 {

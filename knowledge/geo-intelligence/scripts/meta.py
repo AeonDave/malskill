@@ -17,7 +17,7 @@ Finds what plain EXIF readers miss:
 
   meta.py photo.jpg --out-dir meta/        → meta/meta.json, meta/meta.md, meta/thumb_*.jpg
   meta.py photo.jpg                        → print the summary
-  meta.py a.jpg b.heic --json              → one compact JSON digest per file (GPS + GCJ-02, time, optics; was exif.py)
+  meta.py a.jpg b.heic --json              → one compact JSON digest per file (GPS + GCJ-02, time, optics)
 
 Without exiftool a pure-Python fallback reads EXIF, GPS, XMP (incl. DJI XMP fields) and video ISO 6709 location and
 flags an APP11 C2PA/JUMBF manifest (its content needs exiftool or c2patool);
@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import re
 import shutil
 import subprocess
@@ -43,8 +42,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import geo  # noqa: E402  (GCJ-02 conversion, field of view from the 35 mm focal)
 
-ZONE_TAB = [Path("/usr/share/zoneinfo/zone1970.tab"), Path("/usr/share/zoneinfo/zone.tab")]
+ZONE_DIR = Path("/usr/share/zoneinfo")          # system tz database on Linux/macOS, tried after zoneinfo.TZPATH
 
 FILENAME_PATTERNS = [
     (r"^IMG-\d{8}-WA\d+", "WhatsApp (Android) — recompressed, metadata stripped; date = received/sent date"),
@@ -344,7 +344,7 @@ def parse_offset(s) -> int | None:
 def _zone_tab_text() -> str | None:
     """zone1970.tab (or zone.tab) from the system tz database, else from the tzdata wheel (Windows has no system copy)."""
     import zoneinfo
-    for root in [*map(Path, zoneinfo.TZPATH), *(p.parent for p in ZONE_TAB)]:
+    for root in [*map(Path, zoneinfo.TZPATH), ZONE_DIR]:
         for name in ("zone1970.tab", "zone.tab"):
             f = root / name
             if f.is_file():
@@ -571,10 +571,8 @@ def digest(path: Path, raw: dict) -> dict:
         v, _ = find(raw, k)
         if v not in (None, ""):
             gps[name] = v
-    if gps.get("lat") is not None:
-        import geo
-        if not geo._out_of_china(gps["lat"], gps["lon"]):
-            gps["gcj02"] = [round(x, 7) for x in geo.convert(gps["lat"], gps["lon"], "wgs", "gcj")]   # Amap / Tencent / Baidu input
+    if gps.get("lat") is not None and not geo._out_of_china(gps["lat"], gps["lon"]):
+        gps["gcj02"] = [round(x, 7) for x in geo.convert(gps["lat"], gps["lon"], "wgs", "gcj")]   # Amap / Tencent / Baidu input
     d["gps"] = gps
     # optics: feed focal_35mm to geo.py range / terrain.py instead of guessing the zoom
     opt = {}
@@ -584,7 +582,6 @@ def digest(path: Path, raw: dict) -> dict:
         if fl is not None:
             opt["focal_mm"] = round(float(str(fl).split()[0]), 2)
         if f35 is not None and float(str(f35).split()[0]) > 0:
-            import geo
             opt["focal_35mm"] = round(float(str(f35).split()[0]), 1)
             opt["focal_35mm_source"] = k35
             lf, sf = geo.fov_from_equiv_focal(opt["focal_35mm"])
@@ -753,7 +750,7 @@ def main() -> None:
         if args.json:
             try:
                 d, _, _ = analyse(path, args.out_dir, args.no_previews, quiet=True)
-            except Exception as e:  # noqa: BLE001 - keep one line per input, like the old exif.py
+            except Exception as e:  # noqa: BLE001 - one JSON line per input even when a file fails
                 d = {"file": str(photo), "error": str(e)}
             print(json.dumps(d, ensure_ascii=False, default=str))
             continue

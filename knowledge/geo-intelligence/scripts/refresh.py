@@ -27,6 +27,7 @@ import subprocess
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -335,7 +336,7 @@ PLATE_PAGES = {
     "GB": ("en", "Vehicle registration plates of the United Kingdom"),
     "MA": ("fr", "Plaque d'immatriculation marocaine"),
 }
-GREEK_LOOKALIKE = str.maketrans("ABEZHIKMNOPTYX", "ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ")      # Greek plates use only letters that look Latin
+WIKI_API = "https://{lang}.wikipedia.org/w/api.php?action=parse&format=json&prop=text&redirects=1&page={title}"   # sources_check.py probes it
 
 
 def _wiki_url(lang: str, title: str) -> str:
@@ -343,8 +344,7 @@ def _wiki_url(lang: str, title: str) -> str:
 
 
 def _wiki_html(lang: str, title: str, proxy: str | None) -> str:
-    from urllib.parse import quote
-    raw = _fetch(f"https://{lang}.wikipedia.org/w/api.php?action=parse&format=json&prop=text&redirects=1&page={quote(title)}", proxy)
+    raw = _fetch(WIKI_API.format(lang=lang, title=quote(title)), proxy)
     return json.loads(raw)["parse"]["text"]["*"]
 
 
@@ -650,7 +650,7 @@ def refresh(name: str, raw: str) -> None:
         _write(CN / f"{name.split('/')[1]}.json", {"_meta": dict(extra, **meta, count=len(entries)), "entries": entries})
 
 
-ALIASES = {"cn_plates": "cn/plates", "cn_area_codes": "cn/area_codes", "cn_admin": "cn/admin", "cn_plate_prefixes": "cn/plates"}
+ALIASES = {"cn_plates": "cn/plates", "cn_area_codes": "cn/area_codes", "cn_admin": "cn/admin"}   # old table names, still documented by clues.py update
 
 
 def run(table: str, proxy: str | None, from_dir: Path | None) -> None:

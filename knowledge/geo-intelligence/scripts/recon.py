@@ -51,13 +51,6 @@ def run(name: str, cmd: list[str], log: dict, timeout: int = 1800) -> int:
     return rc
 
 
-def read(p: Path) -> str:
-    try:
-        return p.read_text(encoding="utf-8")
-    except OSError:
-        return ""
-
-
 def jload(p: Path) -> dict:
     try:
         return json.loads(p.read_text(encoding="utf-8"))
@@ -87,7 +80,7 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
             L.append(f"- Filename: {h['pattern']}")
         if meta.get("camera"):
             L.append(f"- Camera/software: {json.dumps(meta['camera'], ensure_ascii=False)}")
-        for pv in jload(out / "meta" / "meta.json").get("digest", {}).get("previews", []) or []:
+        for pv in meta.get("previews") or []:
             if pv.get("note"):
                 L.append(f"- Embedded {pv['tag']}: {pv['note']} → `meta/{pv['file']}`")
         for mv in meta.get("motion_video", []) or []:

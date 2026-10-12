@@ -40,19 +40,17 @@ import base64
 import json
 import math
 import os
-import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import pano as P  # noqa: E402  (importing it bounds every requests timeout to P.HTTP_TIMEOUT_S)
-from geolib.net import curl_args  # noqa: E402
+from geolib.net import model_proxy_env, request  # noqa: E402
 
-HTTP_TIMEOUT_S = P.HTTP_TIMEOUT_S
 UA = P.UA
 PROVIDERS = {
     "google": "Google Street View official imagery (car, trekker); worldwide where covered; dates and history via gsv.py near",
@@ -67,12 +65,6 @@ PROVIDERS = {
     "panoramax": "Panoramax open federated street imagery (CC-BY-SA); France, growing in Europe and Africa",
     "mapillary": "Mapillary crowd-sourced photos and 360s; worldwide, patchy — set MAPILLARY_TOKEN (free account)",
 }
-
-
-def _font(size: int, text: str = ""):
-    """Label font from geolib.cli.font: CJK-capable by default, per-script choice when text is given, Windows fonts included."""
-    from geolib.cli import font
-    return font(size, text, prefer_wide=True)
 
 
 from geolib.geomath import bearing, haversine_m as dist_m  # noqa: E402,F401  (shared helpers)
@@ -104,15 +96,11 @@ def grid(bb, spacing: float) -> list[tuple[float, float]]:
 
 
 def http_json(url: str, data: dict | None = None, timeout: int = 40, proxy: str | None = None):
-    """GET (or form POST) JSON through curl; proxy None = GEO_PROXY."""
-    cmd = ["curl", "-q", "-sS", "--fail", "-L", "--max-time", str(timeout), "-A", UA, *curl_args(proxy), url]
-    if data is not None:
-        for k, v in data.items():
-            cmd += ["--data-urlencode", f"{k}={v}"]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if r.returncode:
-        raise RuntimeError(f"HTTP failed ({r.returncode}) {url}: {r.stderr.strip()[:200]}")
-    return json.loads(r.stdout)
+    """GET (or form POST) JSON; proxy None = GEO_PROXY. Transport failures and non-2xx replies both raise."""
+    code, _, body = request(url, proxy, timeout, {"User-Agent": UA}, form=data)
+    if not 200 <= code < 300:
+        raise RuntimeError(f"HTTP {code} {url}")
+    return json.loads(body.decode("utf-8", "replace"))
 
 
 def tiles17(bb) -> list[tuple[int, int]]:
@@ -594,6 +582,7 @@ def main() -> None:
             s.add_argument("--limit", type=int, default=12)
             s.add_argument("--cols", type=int, default=4)
     a = ap.parse_args(_neg_coords(sys.argv[1:]))
+    model_proxy_env()     # GEO_PROXY (or direct) also for the streetlevel package's requests calls, as curl already honours it
     {"providers": cmd_providers, "coverage": cmd_coverage, "list": cmd_list, "render": cmd_render, "sheet": cmd_sheet}[a.cmd](a)
 
 

@@ -28,9 +28,9 @@ import sys
 import warnings
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))      # geolib: device picker, label font, cache dir
 warnings.filterwarnings("ignore")
-import numpy as np  # noqa: E402
-from PIL import Image, ImageDraw, ImageFont, ImageOps  # noqa: E402
+from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
 MODEL = "google/owlv2-base-patch16-ensemble"
 CLASSES = {
@@ -57,7 +57,6 @@ CLASSES = {
 
 
 def device(want: str | None = None):
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import device as pick
     return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → mps → DirectML → cpu
 
@@ -142,7 +141,6 @@ def main() -> None:
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
         from geolib.paths import cache_dir
         tmp = cache_dir("selftest")
         tmp.mkdir(parents=True, exist_ok=True)
@@ -197,7 +195,6 @@ def main() -> None:
     # annotated overview + contact sheet
     ov = im.copy()
     dr = ImageDraw.Draw(ov)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import font as _label_font
     f = _label_font(max(14, W // 90))
     for d in kept:

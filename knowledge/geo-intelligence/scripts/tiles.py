@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 from geolib.net import curl_args, PROXY_HELP
 import json
+import math
 import os
 import re
 import subprocess
@@ -149,6 +150,33 @@ def _get(url: str, path: Path, proxy: str | None) -> bool:
     return path.exists() and path.stat().st_size > 1000
 
 
+def tile_path(cache: Path, source: str, zoom: int, x: int, y: int) -> Path:
+    """Cached tile file; one name per source so sat_scan.py and the sheet/wayback commands share downloads."""
+    return cache / f"{_src_tag(source)}_{zoom}_{x}_{y}.jpg"
+
+
+def cell_tiles(x0: float, y0: float, size: int) -> list[tuple[int, int]]:
+    """Tiles (x, y) touched by a size×size pixel window whose top-left global pixel is (x0, y0)."""
+    return [(tx, ty) for tx in range(int(x0 // 256), int((x0 + size) // 256) + 1)
+            for ty in range(int(y0 // 256), int((y0 + size) // 256) + 1)]
+
+
+def cell_image(lat: float, lon: float, zoom: int, size: int, source: str, proxy: str | None, cache: Path) -> Image.Image:
+    """size×size image centred on (lat, lon), stitched from cached tiles (grey where a tile is missing)."""
+    cache.mkdir(parents=True, exist_ok=True)
+    gx, gy = geo.ll2px(zoom, lat, lon)
+    x0, y0 = gx - size / 2, gy - size / 2
+    tile = Image.new("RGB", (size, size), "gray")
+    for tx, ty in cell_tiles(x0, y0, size):
+        p = tile_path(cache, source, zoom, tx, ty)
+        if _get(tile_url(source, tx, ty, zoom, proxy), p, proxy):
+            try:
+                tile.paste(Image.open(p), (int(tx * 256 - x0), int(ty * 256 - y0)))
+            except Exception:  # noqa: BLE001
+                pass
+    return tile
+
+
 def fetch(center: tuple[float, float], zoom: int, radius: int, out: Path, source: str,
           proxy: str | None, cache: Path) -> dict:
     cache.mkdir(parents=True, exist_ok=True)
@@ -160,7 +188,7 @@ def fetch(center: tuple[float, float], zoom: int, radius: int, out: Path, source
 
     def job(t):
         x, y = t
-        p = cache / f"{_src_tag(source)}_{zoom}_{x}_{y}.jpg"
+        p = tile_path(cache, source, zoom, x, y)
         ok = _get(tile_url(source, x, y, zoom, proxy), p, proxy)
         return t, p, ok
 
@@ -274,12 +302,10 @@ def mark(image: Path, points: dict, out: Path, label: bool, geojsons: list[Path]
 
 def grid_points(bbox: str, zoom: int, size: int, step: float | None) -> dict:
     """Tile s,w,n,e into grid points; default spacing = 90% of the width each cell covers."""
-    import math
-
     s, w, n, e = (float(v) for v in bbox.split(","))
-    mpp = 156543.03392 * math.cos(math.radians((s + n) / 2)) / 2 ** zoom
-    step = step or size * mpp * 0.9
-    dlat, dlon = step / 110574, step / (111320 * math.cos(math.radians((s + n) / 2)))
+    mid = (s + n) / 2
+    step = step or size * geo.meters_per_px(zoom, mid) * 0.9
+    dlat, dlon = step / 110574, step / (111320 * math.cos(math.radians(mid)))
     pts, r, lat = {}, 0, n - dlat / 2
     while lat > s:
         c, lon = 0, w + dlon / 2
@@ -302,19 +328,8 @@ def sheet(points: dict, zoom: int, size: int, cols: int, out: Path, source: str,
         S = Image.new("RGB", (cols * size, rows * size), "black")
         dr = ImageDraw.Draw(S)
         for k, (name, ll) in enumerate(chunk):
-            gx, gy = geo.ll2px(zoom, ll[0], ll[1])
-            x0, y0 = gx - size / 2, gy - size / 2
-            tile = Image.new("RGB", (size, size), "gray")
-            for tx in range(int(x0 // 256), int((x0 + size) // 256) + 1):
-                for ty in range(int(y0 // 256), int((y0 + size) // 256) + 1):
-                    p = cache / f"{_src_tag(source)}_{zoom}_{tx}_{ty}.jpg"
-                    if _get(tile_url(source, tx, ty, zoom, proxy), p, proxy):
-                        try:
-                            tile.paste(Image.open(p), (int(tx * 256 - x0), int(ty * 256 - y0)))
-                        except Exception:  # noqa: BLE001
-                            pass
             cx, cy = (k % cols) * size, (k // cols) * size
-            S.paste(tile, (cx, cy))
+            S.paste(cell_image(ll[0], ll[1], zoom, size, source, proxy, cache), (cx, cy))
             c = size / 2
             dr.line([cx + c - 12, cy + c, cx + c + 12, cy + c], fill="red", width=2)
             dr.line([cx + c, cy + c - 12, cx + c, cy + c + 12], fill="red", width=2)
@@ -389,7 +404,7 @@ def main() -> None:
         args.cache.mkdir(parents=True, exist_ok=True)
 
         def probe(r):
-            p = args.cache / f"wayback-{r['id']}_{args.zoom}_{tx}_{ty}.jpg"
+            p = tile_path(args.cache, f"wayback:{r['id']}", args.zoom, tx, ty)
             ok = _get(tile_url(f"wayback:{r['id']}", tx, ty, args.zoom, args.proxy), p, args.proxy)
             return r, (hashlib.sha1(p.read_bytes()).hexdigest() if ok else None)
         with ThreadPoolExecutor(12) as ex:

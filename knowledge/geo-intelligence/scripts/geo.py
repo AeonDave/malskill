@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = ["numpy", "pillow"]
 # ///
-"""Coordinate-system conversion + bearing/distance + camera geometry. All other scripts import this file.
+"""Coordinate-system conversion + bearing/distance + camera geometry (spherical helpers live in geolib/geomath.py).
 
 Coordinate systems:
   wgs   WGS84: GPS / Google satellite imagery / OSM
@@ -181,11 +181,7 @@ def convert(a: float, b: float, src: str, dst: str) -> tuple[float, float]:
 # ---------------------------------------------------------------- bearing, distance, Web Mercator (shared: geolib/geomath.py)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from geolib.geomath import R as _R, bearing, dest, haversine_m as distance, ll2px, px2ll  # noqa: E402,F401
-
-
-def meters_per_px(zoom: int, lat: float) -> float:
-    return 156543.03392 * math.cos(math.radians(lat)) / 2 ** zoom
+from geolib.geomath import R as _R, bearing, dest, haversine_m as distance, ll2px, meters_per_px, px2ll  # noqa: E402,F401
 
 
 # ---------------------------------------------------------------- camera geometry
@@ -198,11 +194,6 @@ def focal_px(image_width_px: float, hfov_deg: float) -> float:
 def range_from_size(real_size_m: float, size_px: float, image_width_px: float, hfov_deg: float) -> float:
     """Known real width of an object and its pixel width in the frame → depth distance (meters)."""
     return real_size_m * focal_px(image_width_px, hfov_deg) / size_px
-
-
-def angle_from_center(px: float, center_px: float, image_width_px: float, hfov_deg: float) -> float:
-    """Horizontal angle of a point in the frame relative to the optical axis (degrees, right positive). Same for vertical: pass vertical pixels."""
-    return math.degrees(math.atan((px - center_px) / focal_px(image_width_px, hfov_deg)))
 
 
 # Common phone main-camera field of view (35mm equivalent focal length → long-side/short-side field of view for a 4:3 frame)
@@ -382,7 +373,7 @@ to get that structure's chainage (distance along the line). When camera position
 Score pier = dispersion CV of the chainage differences + |log(mean chainage difference / span)| (plus --mono-penalty if the chainage is not monotonic).
 
 With spacing alone, the solution is a band along the sight-line direction (in practice scattered within about 800 m). Give --ridge to score jointly with the skyline
-(as in joint.py: tot = skyline rms + --flat-weight × flat-horizon penalty + --ridge-weight × spacing score),
+(tot = skyline rms + --flat-weight × flat-horizon penalty + --ridge-weight × spacing score),
 which in practice narrows it to about 300 m. The skyline part downloads elevation tiles (the AWS Terrain Tiles used by terrain.py, cached in --cache).
 
 Grouping in --cols: when the foreground breaks the structures into segments, group them with ';'; neighbor differences are only computed within a group (the difference across a break is not one span).
@@ -396,8 +387,7 @@ Output JSON:
                    "pier": spacing score, "cam": [lat, lon], "f": focal length px, "H": heading°,
                    "cc": skyline pitch correction° (null without --ridge),
                    "span_m": mean solved span m, "d_first": distance to the first structure m,
-                   "d_last": distance to the last structure m}, …top --top sorted by tot ascending]}
-  The field names cam/f/H/cc follow the output of the script written on the spot in that real case (joint.py), so results from both can be compared directly."""
+                   "d_last": distance to the last structure m}, …top --top sorted by tot ascending]}"""
 
 
 def _spacing_col_val(v) -> float:
@@ -443,7 +433,7 @@ def _spacing_cols(spec: str) -> list[list[float]]:
 
 
 def _spacing_focals(spec: str, step: float) -> list[float]:
-    """'1200,1281,1350' → list; '1200:1500' → arithmetic sequence with step. That real case used the list 1200,1281,1350,1430,1500."""
+    """'1200,1281,1350' → list; '1200:1500[:step]' → arithmetic sequence (step defaults to --focal-step)."""
     if ":" in spec:
         parts = [float(v) for v in spec.split(":")]
         lo, hi = parts[0], parts[1]
@@ -451,11 +441,6 @@ def _spacing_focals(spec: str, step: float) -> list[float]:
         n = int(round((hi - lo) / st))
         return [lo + st * k for k in range(n + 1)]
     return [float(v) for v in spec.split(",") if v.strip() != ""]
-
-
-def _spacing_band(spec: str) -> tuple[float, float]:
-    a, b = spec.split(":")
-    return float(a), float(b)
 
 
 def _spacing_line(path: str, name: str | None, index: int):
@@ -512,14 +497,13 @@ def _spacing_ridge(path: str) -> dict:
     Also recognizes two handwritten formats: {"760": 826, …} (column → ridgeline row) and a bare [[x,y]…]."""
     with open(path, encoding="utf-8") as fh:
         d = json.load(fh)
-    out = {"flat": None, "hrow": None, "f0": None}
+    out = {"flat": None, "hrow": None}
     if isinstance(d, list):
         pts = d
     else:
         pts = d.get("ridge")
         out["flat"] = d.get("flat")
         out["hrow"] = d.get("hrow")
-        out["f0"] = d.get("f0")
         if pts is None:
             pts = [[float(k), float(v)] for k, v in d.items() if str(k).lstrip("-").replace(".", "", 1).isdigit()]
     if isinstance(pts, dict):
@@ -572,7 +556,6 @@ def _spacing_run(args) -> dict:
 
     dem = ridge = None
     if args.ridge:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
         import terrain                                            # noqa: PLC0415 — only needed for the joint skyline; don't make other subcommands wait for it
         ridge = _spacing_ridge(args.ridge)
         hrow = args.hrow if args.hrow is not None else ridge["hrow"]
@@ -584,7 +567,7 @@ def _spacing_run(args) -> dict:
         flx = np.arange(flat[0], flat[1] + 1e-9, args.flat_step) if flat else None
         az = np.arange(0, 360, args.az_step)
         dist = args.sky_near * (args.sky_range / args.sky_near) ** (np.arange(args.sky_samples) / (args.sky_samples - 1))
-        drop = dist ** 2 / (2 * terrain.R_EARTH) * (1 - terrain.K_REFRACTION)   # Earth curvature + atmospheric refraction
+        drop = _drop_m(dist)                                                     # Earth curvature + atmospheric refraction, per sample distance
         dem = terrain.DEM((lat0, lon0), args.dem_range, args.dem_zoom, args.cache, args.proxy)
         print(f"Joint skyline: ridgeline {len(rx)} points, horizon row {hrow}, "
               f"flat-horizon columns {f'{flat[0]:g}–{flat[1]:g}' if flat else 'not used'}, DEM z{args.dem_zoom} radius {args.dem_range} m")
@@ -680,7 +663,7 @@ def _aspect(s: str) -> tuple[int, int]:
 
 
 
-from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
+from geolib.cli import neg_coords as _neg_coords, utf8_stdio as _utf8_stdio  # noqa: E402  (shared helpers)
 
 
 def main() -> None:
@@ -770,7 +753,7 @@ def main() -> None:
     sp.add_argument("--center", type=_pair, required=True, help="center of the candidate area lat,lon (also the origin of the local plane coordinates)")
     sp.add_argument("--radius", type=float, default=1500, help="half side length of the candidate area m, default 1500 (searches a ±radius square)")
     sp.add_argument("--grid", type=float, default=50, help="camera-position grid spacing m, default 50")
-    sp.add_argument("--headings", type=_spacing_band, default=(0.0, 360.0), help="heading search range lo:hi (degrees), default 0:360; narrow it if you know the rough heading, much faster")
+    sp.add_argument("--headings", type=_band_f, default=(0.0, 360.0), help="heading search range lo:hi (degrees), default 0:360; narrow it if you know the rough heading, much faster")
     sp.add_argument("--heading-step", type=float, default=0.25, help="heading step (degrees), default 0.25")
     sp.add_argument("--focals", required=True, help="focal lengths (pixels), list 1200,1281,1350,1430,1500 or range 1200:1500[:step]")
     sp.add_argument("--focal-step", type=float, default=50, help="step when --focals is a range, default 50")
@@ -783,7 +766,7 @@ def main() -> None:
     sp.add_argument("--out", help="write the result as JSON (structure above)")
     sp.add_argument("--ridge", help="ridgeline pixel points JSON (output of terrain.py ridge); if given, score jointly with the skyline, downloads elevation tiles")
     sp.add_argument("--hrow", type=float, help="pixel row of the horizon in the photo; not needed if the --ridge file has hrow")
-    sp.add_argument("--flat", type=_spacing_band, help="column range in the frame that should be a flat horizon x0:x1 (e.g. 0:280); defaults to flat from the --ridge file")
+    sp.add_argument("--flat", type=_band_f, help="column range in the frame that should be a flat horizon x0:x1 (e.g. 0:280); defaults to flat from the --ridge file")
     sp.add_argument("--flat-step", type=float, default=20, help="sampling step for flat-horizon columns px, default 20")
     sp.add_argument("--flat-margin", type=float, default=1.0, help="how many degrees the flat horizon may rise above the corrected horizon, default 1.0")
     sp.add_argument("--flat-weight", type=float, default=1.5, help="weight of the flat-horizon penalty, default 1.5")
@@ -1009,7 +992,7 @@ def main() -> None:
         print(f"{args.aspect[0]}:{args.aspect[1]} long_side={lf:.1f}deg short_side={sf:.1f}deg")
     elif args.cmd == "line":
         origin, brg = ray_from_alignment(args.near, args.far)
-        a, b = (float(x) for x in args.range.split(":"))
+        a, b = _band_f(args.range)
         pts, k, dcur = {}, 0, a
         while dcur <= b + 1e-6:
             pts[f"L{int(dcur)}m"] = [round(v, 7) for v in dest(origin, brg, dcur)]
@@ -1048,7 +1031,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # Chinese-locale Windows outputs GBK by default: it crashes on m², ñ, and the Chinese the agent reads is garbled
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+    _utf8_stdio()      # Windows code pages (cp1252, GBK) crash on m², ñ and CJK output
     main()

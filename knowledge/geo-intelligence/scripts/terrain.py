@@ -65,7 +65,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
@@ -101,7 +101,7 @@ def _fetch(z: int, x: int, y: int, cache: Path, proxy: str | None) -> np.ndarray
         a = _decode(p)
         if a is not None:
             return a
-        p.unlink(missing_ok=True)                                     # bad file left by an older version: download again
+        p.unlink(missing_ok=True)                                     # unreadable cached file (partial write, HTTP error body): download again
     tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.part")
     cmd = ["curl", "-q", "-fsS", "-m", "60", "-o", str(tmp), TILE.format(z=z, x=x, y=y)] + curl_args(proxy)
     for k in range(FETCH_TRIES):
@@ -211,7 +211,6 @@ def render(ang: np.ndarray, dist: np.ndarray, azimuths: np.ndarray, pitch: float
     logd = np.log(dist / dist[0]) / np.log(dist[-1] / dist[0])
     for c in range(W):
         idx = np.nonzero(visible[c])[0]
-        prev = row(-90.0)
         # near to far: each visible sample paints this column from "its elevation angle" to "the previous highest point", color from dark to light by distance
         lo_row = height
         for i in idx:
@@ -228,14 +227,13 @@ def render(ang: np.ndarray, dist: np.ndarray, azimuths: np.ndarray, pitch: float
             rr = int(round(row(ang[c, j])))
             if 0 <= rr < height:
                 img[max(0, rr - 1):rr + 2, c] = (220, 30, 30)
-        _ = prev
     return Image.fromarray(img), sky_ang, sky_dist
 
 
-def _font(size: int, text: str = ""):
-    """Label font from geolib.cli.font: CJK-capable by default, per-script choice when text is given, Windows fonts included."""
+def _font(size: int):
+    """Label font from geolib.cli.font, CJK-capable (peak and place names), Windows fonts included."""
     from geolib.cli import font
-    return font(size, text, prefer_wide=True)
+    return font(size, prefer_wide=True)
 
 
 def annotate(im: Image.Image, azimuths: np.ndarray, pitch: float, vfov: float, title: str) -> Image.Image:
@@ -265,17 +263,17 @@ def annotate(im: Image.Image, azimuths: np.ndarray, pitch: float, vfov: float, t
 # so it builds its own large mosaic filled only with "the tiles actually needed", sampled nearest-neighbor (one z10 cell is ~150 m; interpolation is pointless).
 
 
-def _tile_xy(lat: float, lon: float, z: int) -> tuple[float, float]:
-    n = 2 ** z
-    x = (lon + 180) / 360 * n
-    y = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
-    return x, y
-
-
-def _haversine(a: tuple[float, float], b: tuple[float, float]) -> float:
-    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
-    d = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
-    return 2 * R_EARTH * math.asin(math.sqrt(d))
+def _parse_skip_tags(specs: list[str] | None) -> list[tuple[str, str]]:
+    """--skip-tag key=value list (default electrified=no); 'none' or '-' skips nothing."""
+    out = []
+    for s in (specs or ["electrified=no"]):
+        if s.lower() in ("none", "-"):
+            continue
+        if "=" not in s:
+            sys.exit(f"--skip-tag must be written as key=value, got {s!r}")
+        k, v = s.split("=", 1)
+        out.append((k, v))
+    return out
 
 
 class _Mosaic:
@@ -342,7 +340,7 @@ def _line_points(gj: dict, step: float, skip: list[tuple[str, str]], bbox: tuple
         got = 0
         acc = 0.0
         for i in range(1, len(c)):
-            d = _haversine(c[i - 1], c[i])
+            d = geo.distance(c[i - 1], c[i])
             for k in range(int((acc + d) // step)):
                 t = (step * (k + 1) - acc) / d if d else 0
                 pts.append((c[i - 1][0] + (c[i][0] - c[i - 1][0]) * t,
@@ -350,7 +348,7 @@ def _line_points(gj: dict, step: float, skip: list[tuple[str, str]], bbox: tuple
                 got += 1
             acc = (acc + d) % step
         # lines shorter than step overall, or whose ends nearly coincide (loops), get one midpoint added so the whole line isn't missed
-        if got == 0 or _haversine(c[0], c[-1]) < step:
+        if got == 0 or geo.distance(c[0], c[-1]) < step:
             pts.append((c[len(c) // 2][0], c[len(c) // 2][1], tags))
     if bbox:
         s, w, n, e = bbox
@@ -369,7 +367,7 @@ def _cluster(hits: list[dict], km: float) -> list[dict]:
             continue
         n = 0
         for j in range(i, len(order)):
-            if not used[j] and _haversine((p["lat"], p["lon"]), (order[j]["lat"], order[j]["lon"])) <= km * 1000:
+            if not used[j] and geo.distance((p["lat"], p["lon"]), (order[j]["lat"], order[j]["lon"])) <= km * 1000:
                 used[j] = True
                 n += 1
         out.append({**p, "n": n})
@@ -385,14 +383,7 @@ def _cmd_scan(args) -> None:
         sys.exit("--step / --near-step must be greater than 0, --near-radius must not be negative")
     dist = np.array([float(x) for x in args.dist.split(",")], dtype=float)
     near = np.arange(0, args.near_radius + 1e-6, args.near_step, dtype=float)
-    skip = []
-    for s in (args.skip_tag or ["electrified=no"]):
-        if s.lower() in ("none", "-"):
-            continue
-        if "=" not in s:
-            sys.exit(f"--skip-tag must be written as key=value, got {s!r}")
-        k, v = s.split("=", 1)
-        skip.append((k, v))
+    skip = _parse_skip_tags(args.skip_tag)
     bbox = None
     if args.bbox:
         b = [float(x) for x in args.bbox.split(",")]
@@ -408,10 +399,10 @@ def _cmd_scan(args) -> None:
     reach = float(dist.max()) + 500                                   # half a kilometer extra, enough even when a sample point falls on a tile edge
     need: set[tuple[int, int]] = set()
     for lat, lon, _ in pts:
-        x, y = _tile_xy(lat, lon, args.zoom)
-        r = reach / (40075016.7 * math.cos(math.radians(lat)) / 2 ** args.zoom)
-        for tx in range(int(x - r), int(x + r) + 1):
-            for ty in range(int(y - r), int(y + r) + 1):
+        x, y = geo.ll2px(args.zoom, lat, lon)
+        r = reach / geo.meters_per_px(args.zoom, lat)                 # reach in pixels at this latitude
+        for tx in range(int((x - r) / 256), int((x + r) / 256) + 1):
+            for ty in range(int((y - r) / 256), int((y + r) / 256) + 1):
                 need.add((tx, ty))
     print(f"need {len(need)} z{args.zoom} tiles", file=sys.stderr)
     if len(need) > args.max_tiles:
@@ -509,8 +500,8 @@ def _focal_px(photo: Path, w: int, h: int, f0_arg: float | None, f35_default: fl
     if f0_arg:
         return float(f0_arg), "arg", round(f0_arg * 43.2666 / diag, 1)
     try:
-        ifd = Image.open(photo).getexif().get_ifd(0x8769)
-        f35 = ifd.get(0xA405)                                          # FocalLengthIn35mmFilm
+        with Image.open(photo) as im:                                  # getexif() does not load pixels, so nothing else closes the file
+            f35 = im.getexif().get_ifd(0x8769).get(0xA405)            # FocalLengthIn35mmFilm
         if f35 and float(f35) > 0:
             return float(f35) / 43.2666 * diag, "exif", float(f35)
     except Exception:  # noqa: BLE001
@@ -899,7 +890,7 @@ def _cmd_fit(args) -> None:
     if abs(naz * az_step - 360) > 1e-6:
         sys.exit("--az-step must divide 360 evenly")
     if not 0 <= args.roll_max < 15:
-        sys.exit("--roll-max must be between 0–15° (0 = don't solve roll, same as the old version)")
+        sys.exit("--roll-max must be between 0–15° (0 = don't solve roll)")
     roll_max = math.tan(math.radians(args.roll_max))
     AZ = np.arange(naz) * az_step
     HS = np.arange(naz)
@@ -930,17 +921,13 @@ def _cmd_fit(args) -> None:
         scales = [float(x) for x in args.line_scale.split(",")]
         if len(scales) != 3 or min(scales) <= 0:
             sys.exit("--line-scale needs 3 positive numbers, comma-separated")
-        skip = []
-        for s_ in (args.skip_tag or ["electrified=no"]):
-            if s_.lower() in ("none", "-"):
-                continue
-            if "=" not in s_:
-                sys.exit(f"--skip-tag must be written as key=value, got {s_!r}")
-            skip.append(tuple(s_.split("=", 1)))
-        reach_deg = (args.radius + args.line_reach) / 110540 + 0.01
+        skip = _parse_skip_tags(args.skip_tag)
+        reach_m = args.radius + args.line_reach
         lat_c = [c["lat"] for c in centers]
         lon_c = [c["lon"] for c in centers]
-        bbox = (min(lat_c) - reach_deg, min(lon_c) - reach_deg * 1.2, max(lat_c) + reach_deg, max(lon_c) + reach_deg * 1.2)
+        d_lat = reach_m / 110540 + 0.01
+        d_lon = reach_m / (111320 * math.cos(math.radians(max(abs(v) for v in lat_c)))) + 0.01   # a degree of longitude shrinks poleward
+        bbox = (min(lat_c) - d_lat, min(lon_c) - d_lon, max(lat_c) + d_lat, max(lon_c) + d_lon)
         gj = json.loads(Path(args.line).read_text(encoding="utf-8"))
         pts = _line_points(gj, args.line_sample, skip, bbox)
         LP = np.array([[p[0], p[1]] for p in pts], dtype=float) if pts else np.zeros((0, 2))
@@ -1082,7 +1069,7 @@ def _cmd_fit(args) -> None:
                     dmean = diff.mean(axis=1)
                     rr = np.clip(((diff - dmean[:, None]) * oc[None, :]).sum(axis=1) / (oc ** 2).sum(), -roll_max, roll_max)
                     cc = np.clip(dmean - rr * r_off.mean(), -args.cc_max, args.cc_max)
-                else:                                              # --roll-max 0: like the old version, subtract only the median
+                else:                                              # --roll-max 0: no roll term, cc = residual median
                     rr = np.zeros(naz)
                     cc = np.clip(np.median(diff, axis=1), -args.cc_max, args.cc_max)
                 res = diff - cc[:, None] - rr[:, None] * r_off[None, :]
@@ -1437,6 +1424,7 @@ def _cmd_shade(args) -> None:
                        "sun_azimuth": round(az, 2), "sun_elevation": round(el, 2), "shadow_bearing": round((az + 180) % 360, 1),
                        "shadow_len_per_1m": None if el <= 0 else round(1 / math.tan(math.radians(el)), 3),
                        "buildings": len(shadows)})
+        states = _shade_state(dem, checks, az, el, args.step, args.reach, shadows)
         if args.out:
             # render grid: the mosaic's pixels when --map is given, else a square of --size px around --at
             if args.map:
@@ -1502,7 +1490,7 @@ def _cmd_shade(args) -> None:
                 ax, ay = cx + 70 * math.sin(math.radians(az)), cy - 70 * math.cos(math.radians(az))
                 d.line([(cx, cy), (ax, ay)], fill="yellow", width=4)
                 d.ellipse([ax - 7, ay - 7, ax + 7, ay + 7], fill="yellow")
-            for row in _shade_state(dem, checks, az, el, args.step, args.reach, shadows):
+            for row in states:
                 x, y = to_px(row["lat"], row["lon"])
                 col = "lime" if row["lit"] else "red"
                 d.ellipse([x - 7, y - 7, x + 7, y + 7], fill=col, outline="black", width=2)
@@ -1515,13 +1503,12 @@ def _cmd_shade(args) -> None:
             result["image"] = str(args.out)
             result["shaded_fraction"] = round(float(mask.mean()), 3)
             print(f"{txt}\n{mask.mean() * 100:.0f}% of the frame in terrain shadow → {args.out}")
-        states = _shade_state(dem, checks, az, el, args.step, args.reach, shadows)
         result["checks"] = states
         for row in states:
             print(f"  {row['label']:<28} {'LIT' if row['lit'] else 'SHADOW'}" + ("  (terrain)" if row["terrain_shadow"] else "") + ("  (building)" if row["building_shadow"] else ""))
 
     if args.date or args.dates:
-        from datetime import date, datetime, timedelta
+        from datetime import date, datetime, timedelta, timezone
         if args.dates:
             a, b = args.dates.split(":")
             d0, d1 = date.fromisoformat(a), date.fromisoformat(b)
@@ -1536,7 +1523,7 @@ def _cmd_shade(args) -> None:
             n_steps = 24 * 60 // args.minutes
             for i in range(n_steps + 1):
                 local = datetime(day.year, day.month, day.day, tzinfo=zone) + timedelta(minutes=i * args.minutes)
-                t = local.astimezone(sun.timezone.utc)
+                t = local.astimezone(timezone.utc)
                 az, el = sun.sun_position(lat, lon, t)
                 ok = el > 0
                 if ok:
@@ -1546,8 +1533,7 @@ def _cmd_shade(args) -> None:
                 if ok and not prev_ok:
                     start = local
                 if (not ok or i == n_steps) and prev_ok:
-                    end = local if not ok else local
-                    spans.append((start, end))
+                    spans.append((start, local))
                 prev_ok = ok
             days.append({"date": day.isoformat(), "spans": [[s.strftime("%H:%M"), e.strftime("%H:%M")] for s, e in spans]})
             day += timedelta(days=args.date_step)
@@ -1560,6 +1546,83 @@ def _cmd_shade(args) -> None:
     if args.json:
         Path(args.json).write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"→ {args.json}")
+
+
+def _cmd_view(args) -> None:
+    """view and profile: sight lines from one camera position; profile writes the skyline JSON, view renders and overlays it."""
+    lat, lon = map(float, args.at.split(","))
+    dem = DEM((lat, lon), args.range, args.zoom, args.cache, args.proxy, args.allow_missing)
+    ground = float(dem.sample(np.array([lat]), np.array([lon]))[0])
+    if math.isnan(ground):
+        sys.exit("no elevation at the camera position: the tile under it failed to download")
+    eye = args.alt if args.alt is not None else ground + args.height
+    az = np.linspace(args.heading - args.hfov / 2, args.heading + args.hfov / 2, args.width)
+    if eye < ground + 1:
+        print(f"note: eye height {eye:.0f} m is below the ground at this point {ground:.0f} m, so nearby terrain will be taken as the skyline (--alt is wrong, or you should use --height)")
+    ang, dist = cast(dem, (lat, lon), eye, az % 360, args.range, near=args.near)
+
+    if args.cmd == "profile":
+        runmax = np.max(ang, axis=1)
+        far = dist[np.argmax(ang, axis=1)]
+        step = max(1, args.width // 180)
+        out = [{"azimuth": round(float(az[i] % 360), 2), "skyline_deg": round(float(runmax[i]), 3), "skyline_dist_m": round(float(far[i]))}
+               for i in range(0, args.width, step)]
+        args.out.write_text(json.dumps({"at": [lat, lon], "eye_alt_m": round(eye, 1), "ground_m": round(ground, 1), "profile": out}, indent=1, ensure_ascii=False), encoding="utf-8")
+        print(f"ground {ground:.0f} m, eye height {eye:.0f} m → {args.out}")
+        return
+
+    if args.vfov:
+        vfov = args.vfov
+    elif args.hfov >= 170:
+        vfov = 40.0  # panoramic strip (angles map linearly), e.g. --hfov 360 when the heading is unknown
+    else:
+        vfov = 2 * math.degrees(math.atan(math.tan(math.radians(args.hfov / 2)) * 2 / 3))
+    height = int(args.width * vfov / args.hfov)
+    im, sky_ang, sky_dist = render(ang, dist, az, args.pitch, vfov, height)
+    title = (f"camera {lat:.5f},{lon:.5f}  ground {ground:.0f} m eye {eye:.0f} m  heading {args.heading % 360:.0f}°  "
+             f"hfov {args.hfov:.0f}°  farthest skyline {np.nanmax(sky_dist) / 1000:.1f} km")
+    im = annotate(im, az, args.pitch, vfov, title)
+    # summit names, PeakFinder-style: (peak, bearing offset from the frame centre) for the peaks inside the frame, shared by render and overlay.
+    # Only loaded when a label pass will draw them (render below 170 deg hfov, or the photo overlay).
+    want_peaks = bool(args.peaks) and (args.hfov < 170 or bool(args.photo and args.overlay))
+    in_view = [(pk, (pk["bearing"] - args.heading + 180) % 360 - 180)
+               for pk in (peaks_in_view(load_peaks(args.peaks), dem, (lat, lon), eye, az, sky_ang, args.range) if want_peaks else [])]
+    in_view = [(pk, rel) for pk, rel in in_view if abs(rel) <= args.hfov / 2]
+    if args.peaks and args.hfov < 170:
+        labels = [(f"{pk['name']} {pk['ele']} m", (rel + args.hfov / 2) / args.hfov * im.width, (args.pitch + vfov / 2 - pk["angle"]) / vfov * (height - 1))
+                  for pk, rel in in_view]
+        draw_peak_labels(ImageDraw.Draw(im), labels, size=max(13, im.width // 100))
+    if args.roll:
+        im = im.rotate(-args.roll, resample=Image.BICUBIC, fillcolor=(255, 255, 255))
+    if args.photo and args.overlay:
+        ph = Image.open(args.photo).convert("RGB")
+        fpx = (ph.width / 2) / math.tan(math.radians(args.hfov / 2))
+        cr, sr = math.cos(math.radians(args.roll)), math.sin(math.radians(args.roll))
+
+        def proj(rel: float, el: float) -> tuple[float, float]:
+            """Photo pixel of a direction (bearing offset, elevation) under the pinhole model, frame roll applied."""
+            x = fpx * math.tan(math.radians(rel))
+            y = -fpx * math.tan(math.radians(el - args.pitch)) / math.cos(math.radians(rel))
+            return ph.width / 2 + x * cr - y * sr, ph.height / 2 + x * sr + y * cr
+
+        pts = [proj(a - args.heading, e) for a, e in zip(az, sky_ang) if e > -89]
+        ImageDraw.Draw(ph).line(pts, fill=(255, 40, 40), width=max(2, ph.width // 400))
+        if args.peaks:
+            labels = [(f"{pk['name']} {pk['dist_m'] / 1000:.1f} km", *proj(rel, pk["angle"])) for pk, rel in in_view]
+            draw_peak_labels(ImageDraw.Draw(ph), labels, size=max(14, ph.width // 90))
+        ov = args.out.with_name(args.out.stem + "_overlay" + args.out.suffix)
+        ph.save(ov, quality=90)
+        print(f"skyline overlaid on photo -> {ov} (if the red line doesn't match the photo's ridgeline, first adjust --heading/--pitch/--hfov/--roll, then suspect the camera position)")
+    if args.photo:
+        ph = Image.open(args.photo).convert("RGB")
+        ph = ph.resize((args.width, int(ph.height * args.width / ph.width)))
+        S = Image.new("RGB", (args.width, ph.height + im.height), "white")
+        S.paste(ph, (0, 0))
+        S.paste(im, (0, ph.height))
+        im = S
+    im.save(args.out)
+    print(f"ground {ground:.0f} m, eye height {eye:.0f} m, skyline distance {np.nanmin(sky_dist) / 1000:.1f}–{np.nanmax(sky_dist) / 1000:.1f} km → {args.out}")
+
 
 
 def _neg_coords(argv: list[str]) -> list[str]:
@@ -1823,7 +1886,7 @@ cyan dots = photo near points.""")
     ft.add_argument("--f35-range", help="lo:hi 35mm-equivalent focal range for the ladder, e.g. 40:270 after the best focal hit the long end; "
                     "overrides auto even with EXIF")
     ft.add_argument("--focal-metric", choices=["auto", "deg", "px"], default="auto",
-                    help="unit in which scores are compared across focal lengths: deg (as before) or px (score × focal scale). "
+                    help="unit in which scores are compared across focal lengths: deg or px (score × focal scale). "
                          "Default auto: px for an f35 ladder, deg for ×0.9–1.12; degrees favour the longest focal on a wide ladder")
     ft.add_argument("--near-dist", default="3000,5000,8000,12000",
                     help="two-layer only: candidate distances m out to which the near layer reaches, comma-separated (default 3000,5000,8000,12000)")
@@ -1843,7 +1906,7 @@ cyan dots = photo near points.""")
     ft.add_argument("--min-peak", type=float, default=6, help="minimum highest horizon elevation angle in degrees for a camera position to be scored (default 6)")
     ft.add_argument("--cc-max", type=float, default=0.7, help="limit of horizon offset cc ° (default 0.7, i.e. hrow may be off by a dozen or so pixels)")
     ft.add_argument("--roll-max", type=float, default=1.0,
-                    help="roll angle limit ° (default 1.0, the usual range of handheld tilt; 0 = don't solve roll, same as the old version)")
+                    help="roll angle limit ° (default 1.0, the usual range of handheld tilt; 0 = don't solve roll)")
     ft.add_argument("--flat-clear", type=float, default=1.0, help="on the flat-horizon columns, horizon up to this many degrees above cc is not penalized (default 1.0)")
     ft.add_argument("--flat-w", type=float, default=1.5, help="flatpen weight (default 1.5)")
     ft.add_argument("--flat-step", type=float, default=20, help="take one column every this many pixels in the flat-horizon column range (default 20)")
@@ -1872,101 +1935,8 @@ cyan dots = photo near points.""")
     ft.add_argument("--allow-missing", action="store_true", help=MISSING_HELP)
 
     args = ap.parse_args(_neg_coords(sys.argv[1:]))
-    if args.cmd == "scan":
-        _cmd_scan(args)
-        return
-    if args.cmd == "ridge":
-        _cmd_ridge(args)
-        return
-    if args.cmd == "fit":
-        _cmd_fit(args)
-        return
-    if args.cmd == "shade":
-        _cmd_shade(args)
-        return
-    if args.cmd == "elev":
-        _cmd_elev(args)
-        return
-    if args.cmd == "slope":
-        _cmd_slope(args)
-        return
-    lat, lon = map(float, args.at.split(","))
-
-    dem = DEM((lat, lon), args.range, args.zoom, args.cache, args.proxy, args.allow_missing)
-    ground = float(dem.sample(np.array([lat]), np.array([lon]))[0])
-    if math.isnan(ground):
-        sys.exit("no elevation at the camera position: the tile under it failed to download")
-    eye = args.alt if args.alt is not None else ground + args.height
-    az = np.linspace(args.heading - args.hfov / 2, args.heading + args.hfov / 2, args.width)
-    if eye < ground + 1:
-        print(f"note: eye height {eye:.0f} m is below the ground at this point {ground:.0f} m, so nearby terrain will be taken as the skyline (--alt is wrong, or you should use --height)")
-    ang, dist = cast(dem, (lat, lon), eye, az % 360, args.range, near=args.near)
-
-    if args.cmd == "profile":
-        runmax = np.max(ang, axis=1)
-        far = dist[np.argmax(ang, axis=1)]
-        step = max(1, args.width // 180)
-        out = [{"azimuth": round(float(az[i] % 360), 2), "skyline_deg": round(float(runmax[i]), 3), "skyline_dist_m": round(float(far[i]))}
-               for i in range(0, args.width, step)]
-        args.out.write_text(json.dumps({"at": [lat, lon], "eye_alt_m": round(eye, 1), "ground_m": round(ground, 1), "profile": out}, indent=1, ensure_ascii=False), encoding="utf-8")
-        print(f"ground {ground:.0f} m, eye height {eye:.0f} m → {args.out}")
-        return
-
-    if args.vfov:
-        vfov = args.vfov
-    elif args.hfov >= 170:
-        vfov = 40.0  # panoramic strip (angles map linearly), e.g. --hfov 360 when the heading is unknown
-    else:
-        vfov = 2 * math.degrees(math.atan(math.tan(math.radians(args.hfov / 2)) * 2 / 3))
-    height = int(args.width * vfov / args.hfov)
-    im, sky_ang, sky_dist = render(ang, dist, az, args.pitch, vfov, height)
-    title = (f"camera {lat:.5f},{lon:.5f}  ground {ground:.0f} m eye {eye:.0f} m  heading {args.heading % 360:.0f}°  "
-             f"hfov {args.hfov:.0f}°  farthest skyline {np.nanmax(sky_dist) / 1000:.1f} km")
-    im = annotate(im, az, args.pitch, vfov, title)
-    if args.peaks and args.hfov < 170:                                  # summit names on the render, PeakFinder-style
-        labels = []
-        for pk in peaks_in_view(load_peaks(args.peaks), dem, (lat, lon), eye, az, sky_ang, args.range):
-            rel = (pk["bearing"] - args.heading + 180) % 360 - 180
-            if abs(rel) > args.hfov / 2:
-                continue
-            labels.append((f"{pk['name']} {pk['ele']} m", (rel + args.hfov / 2) / args.hfov * im.width, (args.pitch + vfov / 2 - pk["angle"]) / vfov * (height - 1)))
-        draw_peak_labels(ImageDraw.Draw(im), labels, size=max(13, im.width // 100))
-    if args.roll:
-        im = im.rotate(-args.roll, resample=Image.BICUBIC, fillcolor=(255, 255, 255))
-    if args.photo and args.overlay:
-        ph = Image.open(args.photo).convert("RGB")
-        fpx = (ph.width / 2) / math.tan(math.radians(args.hfov / 2))
-        cr, sr = math.cos(math.radians(args.roll)), math.sin(math.radians(args.roll))
-        pts = []
-        for a, e in zip(az, sky_ang):
-            if e <= -89:
-                continue
-            x = fpx * math.tan(math.radians(a - args.heading))
-            y = -fpx * math.tan(math.radians(e - args.pitch)) / math.cos(math.radians(a - args.heading))
-            pts.append((ph.width / 2 + x * cr - y * sr, ph.height / 2 + x * sr + y * cr))
-        ImageDraw.Draw(ph).line(pts, fill=(255, 40, 40), width=max(2, ph.width // 400))
-        if args.peaks:
-            labels = []
-            for pk in peaks_in_view(load_peaks(args.peaks), dem, (lat, lon), eye, az, sky_ang, args.range):
-                rel = (pk["bearing"] - args.heading + 180) % 360 - 180
-                if abs(rel) > args.hfov / 2:
-                    continue
-                x = fpx * math.tan(math.radians(rel))
-                y = -fpx * math.tan(math.radians(pk["angle"] - args.pitch)) / math.cos(math.radians(rel))
-                labels.append((f"{pk['name']} {pk['dist_m'] / 1000:.1f} km", ph.width / 2 + x * cr - y * sr, ph.height / 2 + x * sr + y * cr))
-            draw_peak_labels(ImageDraw.Draw(ph), labels, size=max(14, ph.width // 90))
-        ov = args.out.with_name(args.out.stem + "_overlay" + args.out.suffix)
-        ph.save(ov, quality=90)
-        print(f"skyline overlaid on photo -> {ov} (if the red line doesn't match the photo's ridgeline, first adjust --heading/--pitch/--hfov/--roll, then suspect the camera position)")
-    if args.photo:
-        ph = Image.open(args.photo).convert("RGB")
-        ph = ph.resize((args.width, int(ph.height * args.width / ph.width)))
-        S = Image.new("RGB", (args.width, ph.height + im.height), "white")
-        S.paste(ph, (0, 0))
-        S.paste(im, (0, ph.height))
-        im = S
-    im.save(args.out)
-    print(f"ground {ground:.0f} m, eye height {eye:.0f} m, skyline distance {np.nanmin(sky_dist) / 1000:.1f}–{np.nanmax(sky_dist) / 1000:.1f} km → {args.out}")
+    {"scan": _cmd_scan, "ridge": _cmd_ridge, "fit": _cmd_fit, "shade": _cmd_shade, "elev": _cmd_elev, "slope": _cmd_slope,
+     "view": _cmd_view, "profile": _cmd_view}[args.cmd](args)
 
 
 if __name__ == "__main__":

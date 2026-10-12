@@ -23,14 +23,7 @@ Examples:
   imgprep.py reveal photo.jpg --box 820,540,1080,660 --out-dir reveal/        # read a plate/sign lost in shadow
   imgprep.py piers photo.jpg --rows 926:940 --out cols.json --sheet piers.jpg
 
-piers output JSON:
-  {"image": path, "size": [W, H], "rows": [r0, r1], "cols": [x0, x1],
-   "polarity": "bright" | "dark",            # whether piers are brighter or darker than their surroundings
-   "params": {"min_gap": 20, "min_prominence": 12, "baseline": 61},
-   "count": number of peaks,
-   "piers": [{"col": 38, "prominence": 100.5, "dev": 92.4, "level": 183.2}, ...]}
-  col is the pixel column (integer, original-image coordinates), prominence is the peak's topographic prominence (the main basis for judging real vs. false),
-  dev is the height after baseline removal, level is the column's raw mean brightness over the rows range. piers are sorted by col ascending.
+piers output JSON: `imgprep.py piers --help`.
 """
 from __future__ import annotations
 

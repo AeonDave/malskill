@@ -28,15 +28,15 @@ import sys
 import warnings
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))      # geolib: device picker, label font, cache dir
 warnings.filterwarnings("ignore")
 import numpy as np  # noqa: E402
-from PIL import Image, ImageDraw, ImageFont, ImageOps  # noqa: E402
+from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
 
 def device(want: str | None = None):
     # GeoCalib's optimizer uses float64 linear algebra that MPS/DirectML do not support; CPU is fast enough (~1 s).
     # --device, else GEOINT_DEVICE (cuda|cpu honoured; mps/directml fall back to cpu), else cuda → cpu
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import device as pick
     return pick(allow_mps=False, want=want)
 
@@ -106,7 +106,6 @@ def draw(path: Path, r: dict, out: Path) -> None:
         d.line([tuple(r["horizon"]["left"]), tuple(r["horizon"]["right"])], fill=(255, 40, 40), width=lw)
     d.line([(W / 2, 0), (W / 2, H)], fill=(80, 200, 255), width=1)
     d.line([(0, H / 2), (W, H / 2)], fill=(80, 200, 255), width=1)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import font as _label_font
     f = _label_font(max(14, W // 60))
     u = r["uncertainty"]
@@ -127,7 +126,6 @@ def main() -> None:
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
         from geolib.paths import cache_dir
         tmp = cache_dir("selftest")
         tmp.mkdir(parents=True, exist_ok=True)

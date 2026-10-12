@@ -501,7 +501,6 @@ class Embedder:
         import sys
         import time
 
-        import numpy as np  # noqa: F401  (imported here so the model file itself stays torch-only)
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
 

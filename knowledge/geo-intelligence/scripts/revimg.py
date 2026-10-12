@@ -86,15 +86,10 @@ def _site(url: str) -> str:
     return host
 
 
-def _font(size: int, text: str = ""):
-    """Label font from geolib.cli.font: CJK-capable by default, per-script choice when text is given, Windows fonts included."""
-    from geolib.cli import font
-    return font(size, text, prefer_wide=True)
-
-
 def _similar_sheet(query: Path, items: list[dict], out: Path, cols: int = 5, tile: int = 300, proxy: str | None = None) -> int:
     """Query image + thumbnails of the first N similar images → numbered contact sheet (number = index in the similar array). Returns how many downloaded successfully."""
     from PIL import Image, ImageDraw
+    from geolib.cli import font
 
     def fetch(url: str):
         try:
@@ -115,7 +110,7 @@ def _similar_sheet(query: Path, items: list[dict], out: Path, cols: int = 5, til
     rows = (len(tiles) + cols - 1) // cols
     S = Image.new("RGB", (cols * tile, rows * (tile + bar)), (40, 40, 40))
     d = ImageDraw.Draw(S)
-    f = _font(17)
+    f = font(17, prefer_wide=True)
     for k, (im, label, color) in enumerate(tiles):
         x, y = (k % cols) * tile, (k // cols) * (tile + bar)
         d.rectangle([x, y, x + tile - 1, y + bar - 1], fill="black")

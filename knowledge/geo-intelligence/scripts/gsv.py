@@ -37,7 +37,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import streetlevel as SL  # noqa: E402
-from geolib.cli import font as _font, neg_coords as _neg_coords  # noqa: E402,F401  (refsheet.py imports gsv._font)
+from geolib.cli import neg_coords as _neg_coords  # noqa: E402
 from geolib.paths import cache_dir  # noqa: E402
 from geolib.streetlevel import ServiceError, _coverage_rows, panos_around, tile_panos, tiles_around  # noqa: E402,F401
 import geo  # noqa: E402

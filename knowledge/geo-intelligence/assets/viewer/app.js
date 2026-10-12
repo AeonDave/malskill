@@ -16,7 +16,7 @@
   const FOCUS_FRACTION = 0.28;    // the focus radius fills this fraction of the shorter canvas side
   const COLORS = {
     ocean0: "#17305A", ocean1: "#0C1D38", land: "#1E2F4C", coast: "#3E5A83", grat: "rgba(140,170,220,0.10)",
-    glow: "rgba(96,150,230,0.35)", amber: "#F0B445", amberSoft: "rgba(240,180,69,0.22)", teal: "#49C2B4",
+    glow: "rgba(96,150,230,0.35)", amber: "#F0B445", teal: "#49C2B4",
     muted: "rgba(139,153,179,0.7)", ink: "#E6ECF5", halo: "rgba(11,21,38,0.85)",
   };
 
@@ -102,6 +102,33 @@
 
     follow() { this.manual = null; this.zoomOffset = 0; this.retarget(); }
 
+    // centre and radius (km) of a list of [lat, lon]: where a layer's points are, for flying to them
+    static extent(pts) {
+      const ll = pts.map((p) => Array.isArray(p) ? p : [p.lat, p.lon]);
+      let n = 0, sx = 0, sy = 0, sz = 0;
+      for (const [lat, lon] of ll) {
+        const la = lat * D, lo = lon * D;
+        sx += Math.cos(la) * Math.cos(lo); sy += Math.cos(la) * Math.sin(lo); sz += Math.sin(la); n++;
+      }
+      const lat = Math.atan2(sz, Math.hypot(sx, sy)) / D, lon = Math.atan2(sy, sx) / D;
+      let radius_km = 0;
+      for (const [la, lo] of ll) {
+        const dlat = (la - lat) * D, dlon = (lo - lon) * D * Math.cos(lat * D);
+        radius_km = Math.max(radius_km, Math.hypot(dlat, dlon) * EARTH_KM);
+      }
+      return { lat, lon, radius_km: Math.max(radius_km, 0.05), n };
+    }
+
+    // take the view to a point and a radius (like the focus does), until Follow
+    flyTo(lat, lon, radiusKm) {
+      const px = FOCUS_FRACTION * Math.min(this.w, this.h);
+      const R = px * EARTH_KM / Math.max(radiusKm, 0.02);
+      const z = Math.min(Math.max(Math.log2(R / this.baseRadius()), 0), 16);
+      this.manual = { lat, lon };
+      this.zoomOffset = z - (this.baseZ || 0);
+      this.retarget();
+    }
+
     pick(x, y) {
       let best = null, bd = 16;
       for (const h of this.hits) { const d = Math.hypot(h.x - x, h.y - y); if (d < bd) { bd = d; best = h; } }
@@ -114,8 +141,23 @@
       this.hits = [];
       const d = this.data;
       if (this.layers.coverage && d.coverage.length) {
-        g.fillStyle = "rgba(139,153,179,0.45)";
-        for (const [lat, lon] of d.coverage) { const p = toScreen(lat, lon); if (!p.visible) continue; g.fillRect(p.x - 1, p.y - 1, 2, 2); }
+        // panorama positions: dots when the view resolves them, one ring with the count when they collapse into a few pixels
+        const ext = Stage.extent(d.coverage);
+        const c = toScreen(ext.lat, ext.lon);
+        const rPx = kmToPx(ext.radius_km);
+        if (c.visible && rPx < 14) {
+          g.beginPath(); g.arc(c.x, c.y, 12, 0, Math.PI * 2);
+          g.strokeStyle = COLORS.teal; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.stroke(); g.setLineDash([]);
+          g.fillStyle = COLORS.teal; g.font = "11px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
+          g.fillText(`${d.coverage.length} panoramas`, c.x + 16, c.y);
+        } else {
+          g.fillStyle = "rgba(73,194,180,0.75)";
+          for (const c of d.coverage) {
+            const p = toScreen(c.lat, c.lon); if (!p.visible) continue;
+            g.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+            this.hits.push({ x: p.x, y: p.y, kind: "coverage", item: c });        // a click opens the panorama's card
+          }
+        }
       }
       if (this.layers.matches) {
         const n = d.matches.length;
@@ -529,6 +571,9 @@
     const L = s.layers || {};
     $("layer-matches").textContent = `Matches ${(L.matches || []).length}`;
     $("layer-coverage").textContent = `Coverage ${(L.coverage || []).length}`;
+    $("layer-coverage").title = (L.coverage || []).length
+      ? "Every panorama position found for the search (gsv.py area, pano.py list). On: dots, or one ring with the count when they are too close to tell apart; the view flies to them. Follow returns."
+      : "No panorama list in the session yet (gsv.py area or pano.py list writes one).";
     $("layer-marks").textContent = `Marks ${(L.cameras || []).length + (L.lines || []).length + (L.points || []).length + (L.images || []).length}`;
   }
 
@@ -536,7 +581,7 @@
     const card = $("card");
     if (!sel) { card.hidden = true; return; }
     const it = sel.item, img = $("card-img");
-    let title = "", meta = "", url = null;
+    let title = "", meta = "", url = null, link = null;
     if (sel.kind === "match") {
       title = `Match ${it.rank ?? ""}${it.label ? ": " + it.label : ""}`.trim();
       meta = [it.score != null ? `score ${Number(it.score).toFixed(3)}` : null, it.inliers != null ? `${it.inliers} inliers` : null,
@@ -547,10 +592,18 @@
       meta = [`heading ${Math.round(it.heading)}°`, `field of view ${Math.round(it.fov || 90)}°`, it.radius_m ? `radius ${fmtRadius(it.radius_m / 1000)}` : null, fmtCoord(it.lat, it.lon)].filter(Boolean).join(", ");
     } else if (sel.kind === "image") {
       title = it.label || it.file; meta = [it.heading != null ? `heading ${Math.round(it.heading)}°` : null, fmtCoord(it.lat, it.lon)].filter(Boolean).join(", "); url = it.url;
+    } else if (sel.kind === "coverage") {
+      title = `Panorama ${it.id || ""}`.trim();
+      meta = [it.provider, it.date ? `date ${it.date}` : null, it.road ? `road ${it.road}` : null, it.heading != null ? `heading ${Math.round(it.heading)}°` : null,
+              fmtCoord(it.lat, it.lon), it.list ? `list ${it.list}` : null].filter(Boolean).join(", ");
+      link = it.url || ((it.provider === "google" || (!it.provider && /^[A-Za-z0-9_-]{22}$/.test(it.id || "")))
+        ? `https://www.google.com/maps/@?api=1&map_action=pano&pano=${encodeURIComponent(it.id)}` : null);
     } else {
-      title = it.label || "Point"; meta = fmtCoord(it.lat, it.lon); url = it.file ? (STATIC ? it.file : "/files/" + it.file) : null;
+      title = it.label || "Point"; meta = fmtCoord(it.lat, it.lon); url = it.url || null;
     }
     $("card-title").textContent = title; $("card-meta").textContent = meta;
+    const a = $("card-link");
+    if (link) { a.href = link; a.hidden = false; } else { a.hidden = true; a.removeAttribute("href"); }
     if (url) { img.src = url; img.hidden = false; img.onclick = () => openLightbox(url, title); } else { img.hidden = true; img.src = ""; }
     card.hidden = false;
   }
@@ -616,7 +669,7 @@
     const r = s.result;
     if (s.status !== "completed" || !r || r.latitude == null) { box.hidden = true; return; }
     box.hidden = false;
-    $("answer-place").textContent = [r.city_or_nearest_locality || r.city, r.region, r.country].filter(Boolean).join(", ");
+    $("answer-place").textContent = [r.city_or_nearest_locality, r.region, r.country].filter(Boolean).join(", ");
     $("answer-coords").textContent = fmtCoord(r.latitude, r.longitude);
     const bits = [`Confidence ${r.confidence || "unrated"}`];
     if (r.radius_m) bits.push(`radius ${fmtRadius(r.radius_m / 1000)}`);
@@ -744,6 +797,7 @@
     // when the answer is in, only the answer stays on the map
     stage.markers = s.status === "completed" ? [] : markers;
     stage.data = Object.assign({ cameras: [], lines: [], points: [], images: [], matches: [], coverage: [] }, s.layers || {});
+    stage.data.coverage = (stage.data.coverage || []).map((c) => Array.isArray(c) ? { lat: c[0], lon: c[1] } : c);   // snapshots made before the cards
     layerCounts(s);
     const focus = s.focus ? { ...s.focus } : null;
     if (s.truth && s.truth.latitude != null) {
@@ -821,7 +875,12 @@
     $(`layer-${name}`).addEventListener("click", () => {
       stage.layers[name] = !stage.layers[name];
       $(`layer-${name}`).classList.toggle("on", stage.layers[name]);
-      if (!stage.layers[name]) { stage.selected = null; showCard(null); }
+      if (!stage.layers[name]) { stage.selected = null; showCard(null); return; }
+      // switching a layer on takes the view to its points (Follow returns to the analysis)
+      const pts = name === "coverage" ? stage.data.coverage
+        : name === "matches" ? stage.data.matches.map((m) => [m.lat, m.lon])
+        : [...stage.data.cameras, ...stage.data.points, ...stage.data.images].filter((m) => m.lat != null).map((m) => [m.lat, m.lon]);
+      if (pts.length) { const e = Stage.extent(pts); stage.flyTo(e.lat, e.lon, Math.max(e.radius_km * 1.4, 0.3)); }
     });
   }
   setInterval(placeCard, 50);

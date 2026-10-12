@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import geodata  # noqa: E402
 
 import numpy as np  # noqa: E402
-from PIL import Image, ImageDraw, ImageFont, ImageOps  # noqa: E402
+from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
 STREETCLIP = "geolocal/StreetCLIP"
 TEMPLATES = ["A Street View photo in {}.", "A photo taken in {}."]
@@ -57,7 +57,6 @@ SCENE_PROMPTS = {
 
 
 def device(want: str | None = None):
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import device as pick
     return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → mps → DirectML → cpu
 
@@ -220,7 +219,6 @@ def world_map(path: Path, pts: np.ndarray | None, probs: np.ndarray | None, coun
             x, y = (lo + 180) / 360 * W, (90 - la) / 180 * H
             r = 2 + 9 * math.sqrt(p / mx)
             d.ellipse([x - r, y - r, x + r, y + r], outline=(255, 90, 60), width=2)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from geolib.cli import font as _label_font
     f = _label_font(16)
     C = geodata.countries()

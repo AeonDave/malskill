@@ -95,8 +95,7 @@ def search_osm(kw: str, city: str | None, n: int, proxy: str | None, country: st
     q = {"q": f"{kw} {city}" if city else kw, "format": "jsonv2", "limit": n, "accept-language": "en"}
     if country:
         q["countrycodes"] = country
-    raw = _curl("https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode(q), proxy=proxy,
-                ua="geo-intelligence/1.0 (+https://github.com/AeonDave/malskill)")
+    raw = _curl("https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode(q), proxy=proxy, ua=OSM_UA)
     try:
         d = json.loads(raw)
     except json.JSONDecodeError:
@@ -119,10 +118,6 @@ def search_sug(kw: str, proxy: str | None = None) -> list[dict]:
         if len(parts) >= 4:
             out.append({"src": "sug", "city": parts[0], "area": parts[1], "name": parts[3]})
     return out
-
-
-
-_neg_coords = neg_coords
 
 
 def cmd_search(args) -> None:
@@ -164,7 +159,7 @@ def cmd_search(args) -> None:
     # Deduplicate when two sources return the same place (within 150 m and one name contains the other)
     uniq: list[dict] = []
     for r in rows:
-        if any(geo.distance(r["wgs"], u["wgs"]) < 150 and (r["name"] in u["name"] or u["name"] in r["name"]) for u in uniq):
+        if any(haversine_m(r["wgs"], u["wgs"]) < 150 and (r["name"] in u["name"] or u["name"] in r["name"]) for u in uniq):
             continue
         uniq.append(r)
     print(f"\n{len(uniq)} candidates with coordinates (WGS84):")
@@ -597,7 +592,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = _neg_coords(sys.argv[1:] if argv is None else argv)
+    argv = neg_coords(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] not in SUBCOMMANDS and argv[0] not in ("-h", "--help"):
         argv = ["search", *argv]          # historical CLI: poi.py "<name>" [--city ...]
     args = build_parser().parse_args(argv)

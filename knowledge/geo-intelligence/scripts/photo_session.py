@@ -36,7 +36,8 @@ import unicodedata
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from geolib.paths import SKILL_DIR, local_config as _local_config  # noqa: E402,F401
+from geolib.geomath import haversine_m  # noqa: E402
+from geolib.paths import SKILL_DIR, local_config as _local_config  # noqa: E402
 
 _CONFIG = _local_config()
 # Archive root: --root, else GEOINT_PHOTOS, else config.local.json "photos_root", else ~/geoint-photos
@@ -62,6 +63,17 @@ CHECKS = {
                "command": "gsv.py sheet / pano.py → match.py rank, or evidence.py (SKILL step 6 street row)"},
 }
 RECON_FIRST_PASS = ("recon/intake/", "recon/prior/", "recon/detect/", "recon/meta/", "recon/calib", "recon/recon.")
+
+
+def _artifact_paths(folder: Path) -> list[str]:
+    """Relative POSIX paths of the files a check could have left: the cache, the originals and recon's first pass are not checks."""
+    out = []
+    for p in folder.rglob("*"):
+        rel = p.relative_to(folder).as_posix()
+        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or not p.is_file():
+            continue
+        out.append(rel)
+    return out
 
 
 def scene_tags(folder: Path) -> dict | None:
@@ -90,14 +102,7 @@ def required_checks(folder: Path) -> list[dict]:
     req = checks_for_scene(scene_tags(folder))
     if not req:
         return []
-    files = []
-    for p in folder.rglob("*"):
-        if not p.is_file():
-            continue
-        rel = p.relative_to(folder).as_posix()
-        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS):
-            continue
-        files.append(rel)
+    files = _artifact_paths(folder)
     for c in req:
         hits = [f for f in files if CHECKS[c["name"]]["files"].search(f)]
         c["done"] = bool(hits)
@@ -153,7 +158,7 @@ def start(args: argparse.Namespace) -> dict:
     for image in images:
         if not image.is_file():
             raise ValueError(f"{image} is not a regular file.")
-    if getattr(args, "beside", False):
+    if args.beside:
         if not images:
             raise ValueError("--beside needs --image: the session is created in the folder of the first photo.")
         root = images[0].parent                   # the work lands next to the photo, not in the shared archive
@@ -209,7 +214,7 @@ def start(args: argparse.Namespace) -> dict:
     (folder / "report.md").write_text(REPORT_SKELETON.format(name=name), encoding="utf-8")
     init_board(folder, metadata)
     out = describe(folder, metadata)
-    if getattr(args, "viewer", False):
+    if args.viewer:
         out["viewer"] = metadata["viewer_url"] = launch_viewer(folder, args.viewer_port)
         save_json(folder / "session.json", metadata)        # viewer.py stop finds the port here
     return out
@@ -232,33 +237,35 @@ VERIFICATION_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_ran
 def count_verification_artifacts(folder: Path) -> int:
     """Files that only a check produces (rank, views, sheet, evidence, terrain, pose, marks): zero means the answer is
     untested. recon's own output (detect sheets, reverse-search sheets) is the first pass, not a check."""
-    n = 0
-    for p in folder.rglob("*"):
-        rel = p.relative_to(folder).as_posix()
-        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or not p.is_file():
-            continue
-        if VERIFICATION_MARK.search(p.name) or VERIFICATION_MARK.search(rel):
-            n += 1
-    return n
+    return sum(1 for rel in _artifact_paths(folder) if VERIFICATION_MARK.search(rel.rsplit("/", 1)[-1]) or VERIFICATION_MARK.search(rel))
 
 
-def country_centre(name: str) -> tuple[float, float, float]:
-    """Population-weighted centre of a country and a radius (m) covering its populated extent, from assets/data/countries.json."""
+def _country_row(name: str) -> tuple[str, dict] | None:
+    """(table key, row) of assets/data/countries.json for a country name, GeoNames name, ISO2 or ISO3 (case-insensitive); None when unknown."""
     table = json.loads((SKILL_DIR / "assets" / "data" / "countries.json").read_text(encoding="utf-8-sig"))
     key = name.strip().lower()
     for code, row in table.items():
         if code.startswith("_") or not isinstance(row, dict):
             continue
         if key in {str(v).lower() for v in (row.get("name"), row.get("geonames_name"), row.get("iso2"), row.get("iso3"), code) if v}:
-            lat, lon = row["center"]
-            radius = 100_000.0
-            if row.get("bbox"):
-                s, w, n, e = row["bbox"]
-                dlat = (n - s) / 2 * 111_000
-                dlon = (e - w) / 2 * 111_000 * max(math.cos(math.radians(lat)), 0.05)
-                radius = max(radius, math.hypot(dlat, dlon))
-            return float(lat), float(lon), round(radius)
-    raise ValueError(f"Unknown country '{name}' for the coordinate fallback: give --latitude and --longitude.")
+            return code, row
+    return None
+
+
+def country_centre(name: str) -> tuple[float, float, float]:
+    """Population-weighted centre of a country and a radius (m) covering its populated extent, from assets/data/countries.json."""
+    hit = _country_row(name)
+    if not hit:
+        raise ValueError(f"Unknown country '{name}' for the coordinate fallback: give --latitude and --longitude.")
+    row = hit[1]
+    lat, lon = row["center"]
+    radius = 100_000.0
+    if row.get("bbox"):
+        s, w, n, e = row["bbox"]
+        dlat = (n - s) / 2 * 111_000
+        dlon = (e - w) / 2 * 111_000 * max(math.cos(math.radians(lat)), 0.05)
+        radius = max(radius, math.hypot(dlat, dlon))
+    return float(lat), float(lon), round(radius)
 
 
 def _free_port(preferred: int) -> int:
@@ -444,13 +451,10 @@ def finish(args: argparse.Namespace) -> dict:
         coordinate_source = "country centre: no coordinates were given, unverified"
         print(f"Warning: no coordinates given; pinned the centre of {country} ({lat:.4f}, {lon:.4f}) with a {radius / 1000:.0f} km radius, "
               f"confidence low. A road-snapped point inside the settled area would have been better.", file=sys.stderr)
-    if not math.isfinite(lat) or not -90 <= lat <= 90:
-        raise ValueError("Latitude must be a finite number from -90 to 90.")
-    if not math.isfinite(lon) or not -180 <= lon <= 180:
-        raise ValueError("Longitude must be a finite number from -180 to 180.")
+    _check_coords(lat, lon)
     artifacts = count_verification_artifacts(folder)
     taken = None
-    taken_arg = (getattr(args, "taken", None) or "").strip()
+    taken_arg = (args.taken or "").strip()
     when_line = when_text(report)
     if taken_arg and taken_arg.lower() not in ("unknown", "none", "-"):
         taken = {**parse_taken(taken_arg), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
@@ -475,11 +479,11 @@ def finish(args: argparse.Namespace) -> dict:
               + ". A Street View frame that shows the scene, the road bearing when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
     # the scene's required checks: a mountain or lake photo closes only with a skyline file, a street photo with a panorama/match file
     try:
-        elapsed_min_all = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
+        elapsed_min = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
     except (KeyError, ValueError, TypeError):
-        elapsed_min_all = UNVERIFIED_CLOCK_MIN
+        elapsed_min = UNVERIFIED_CLOCK_MIN
     skips = {}
-    for s in getattr(args, "skip_check", None) or []:
+    for s in args.skip_check or []:
         name, _, why = s.partition(":")
         skips[name.strip()] = why.strip()
     checks = required_checks(folder)
@@ -491,7 +495,7 @@ def finish(args: argparse.Namespace) -> dict:
             raise ValueError(
                 f"Required check '{c['name']}' not done ({c['why']}, recon's scene tags): run {c['command']}; it leaves a file this check "
                 f"recognises. To close without it: --skip-check {c['name']}:\"<reason>\" (before {UNVERIFIED_CLOCK_MIN} min only when the user stopped you).")
-        if elapsed_min_all < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(why):
+        if elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(why):
             raise ValueError(
                 f"--skip-check {c['name']} before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason); "
                 f"'{why[:60]}' is not that. Run {c['command']}.")
@@ -499,11 +503,7 @@ def finish(args: argparse.Namespace) -> dict:
         print(f"Warning: required check '{c['name']}' skipped ({why}): the answer must say the {c['name']} check was not done.", file=sys.stderr)
     accepted_unverified = None
     if artifacts == 0:
-        try:
-            elapsed_min = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
-        except (KeyError, ValueError, TypeError):
-            elapsed_min = UNVERIFIED_CLOCK_MIN
-        reason = (getattr(args, "accept_unverified", None) or "").strip()
+        reason = (args.accept_unverified or "").strip()
         if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(reason):
             raise ValueError(
                 f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason). "
@@ -598,7 +598,6 @@ def gut_call(report: str) -> list[tuple[str, float]]:
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    from geolib.geomath import haversine_m
     return haversine_m((lat1, lon1), (lat2, lon2)) / 1000
 
 
@@ -611,16 +610,10 @@ def _same(a: str | None, b: str | None) -> bool | None:
 def country_iso2(name: str) -> str | None:
     """ISO2 for a country name, alias, ISO2 or ISO3 (assets/data/countries.json); None when unknown."""
     try:
-        table = json.loads((SKILL_DIR / "assets" / "data" / "countries.json").read_text(encoding="utf-8-sig"))
+        hit = _country_row(name)
     except (OSError, ValueError):
         return None
-    key = name.strip().lower()
-    for code, row in table.items():
-        if code.startswith("_") or not isinstance(row, dict):
-            continue
-        if key in {str(v).lower() for v in (row.get("name"), row.get("geonames_name"), row.get("iso2"), row.get("iso3"), code) if v}:
-            return row.get("iso2") or code
-    return None
+    return (hit[1].get("iso2") or hit[0]) if hit else None
 
 
 def _same_country(a: str | None, b: str | None) -> bool | None:
@@ -664,7 +657,7 @@ def truth(args: argparse.Namespace) -> dict:
         "gut_country_hit": (gut_p is not None) if (args.country and gut) else None,
         "gut_p_truth": (gut_p if gut_p is not None else 0.0) if (args.country and gut) else None,
     }
-    if getattr(args, "taken", None):
+    if args.taken:
         truth_taken = parse_taken(args.taken)
         record["taken"] = truth_taken["text"]
         answered = result.get("taken")

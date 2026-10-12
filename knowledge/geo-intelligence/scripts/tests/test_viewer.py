@@ -181,7 +181,18 @@ class StateTests(unittest.TestCase):
         self.assertEqual(L["images"][0]["url"], "/files/sign.png")
         self.assertEqual([m["id"] for m in L["matches"]], ["def", "abc", "plain"])                  # inliers first, then score; rank.json counts too
         self.assertEqual(L["matches"][1]["view"], "/files/kalo_rank_views/01_abc_h0.jpg")
-        self.assertEqual(len(L["coverage"]), 3)
+        (self.folder / "town.index.json").write_text(json.dumps([
+            {"cell": 0, "provider": "mapillary", "id": "m1", "lat": 40.4866, "lon": 21.1342, "bearing": 10.0},
+            {"cell": 1, "provider": "google", "id": "g1", "lat": "bad", "lon": 21.1}]), encoding="utf-8")        # pano.py list rows: lat/lon keys
+        (self.folder / "apple.json").write_text(json.dumps({"a1": {"provider": "apple", "id": "a1", "lat": 40.4867, "lon": 21.1343, "heading": 33.4,
+                                                                  "low": {"kind": "equirect", "url": "https://x.example/a1.jpg"}}}), encoding="utf-8")
+        L = viewer.build_state(self.folder)["layers"]
+        cov = {c["id"]: c for c in L["coverage"]}
+        self.assertEqual(set(cov), {"abc", "def", "ghi", "m1", "a1"})                         # wgs rows, lat/lon rows, dict and list forms; no coordinates → dropped
+        self.assertEqual(cov["a1"]["url"], "https://x.example/a1.jpg")
+        self.assertEqual((cov["a1"]["provider"], cov["a1"]["heading"]), ("apple", 33.4))
+        self.assertEqual(cov["m1"]["list"], "town.index.json")
+        self.assertIsNone(cov["ghi"]["url"])
         self.assertEqual(viewer.main(["mark", "clear", "--kind", "line", "--session", s]), 0)
         self.assertEqual(len(viewer.read_marks(self.folder)), 3)
         self.assertEqual(viewer.main(["mark", "clear", "--session", s]), 0)

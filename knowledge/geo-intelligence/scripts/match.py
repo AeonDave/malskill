@@ -37,11 +37,9 @@ Examples:
 from __future__ import annotations
 
 import argparse
-from geolib.net import PROXY_HELP
-from geolib.net import model_proxy_env
+from geolib.net import PROXY_HELP, model_proxy_env
 import glob
 import json
-import math
 import os
 import re
 import sys
@@ -50,21 +48,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
+from geolib.coverage import USER_UPLOAD_PREFIXES, official  # noqa: E402
 
 MODELS = {"dino": "facebook/dinov2-small", "clip": "openai/clip-vit-base-patch32", "megaloc": "gberton/MegaLoc"}
-
-
-def _proxy_env(proxy: str | None) -> None:
-    model_proxy_env(proxy)
-
-
-def _device():
-    from geolib.cli import device
-    return device()                     # cuda, else mps, else cpu (was mps/cpu only)
 
 
 IMNET = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -94,8 +84,9 @@ class Embedder:
 
     def __init__(self, method: str):
         import torch
+        from geolib.cli import device
         self.method = method
-        self.dev = _device()
+        self.dev = device()
         self.torch = torch
         if method == "megaloc":
             from geolib import megaloc as _megaloc
@@ -185,6 +176,12 @@ def sift_inliers(a: Image.Image, b: Image.Image, max_side: int = 1024) -> tuple[
 
 # ---------------------------------------------------------------- candidate sources
 
+def _image_files(spec: str) -> list[Path]:
+    """Image files of a directory (jpg/jpeg then png, sorted) or of a glob pattern."""
+    p = Path(spec)
+    return sorted(p.glob("*.jp*g")) + sorted(p.glob("*.png")) if p.is_dir() else [Path(x) for x in sorted(glob.glob(spec))]
+
+
 def _items_from_panos(args) -> list[dict]:
     import baidu_pano as bp
     panos = json.loads(Path(args.panos).read_text(encoding="utf-8"))
@@ -228,8 +225,7 @@ def _render_items(items: list[dict], engine: str, proxy: str | None, cache: Path
 def _load_candidates(args) -> tuple[list[dict], list[Image.Image]]:
     cache = Path(args.cache)
     if args.images:
-        p = Path(args.images)
-        files = sorted(p.glob("*.jp*g")) + sorted(p.glob("*.png")) if p.is_dir() else [Path(x) for x in sorted(glob.glob(args.images))]
+        files = _image_files(args.images)
         if not files:
             sys.exit(f"--images has no images: {args.images}")
         items = [{"id": f.stem, "file": str(f)} for f in files]
@@ -254,7 +250,8 @@ def _load_candidates(args) -> tuple[list[dict], list[Image.Image]]:
         items = items[: args.max_candidates]
     if not items:
         sys.exit("no candidates left: widen --within/--spread, or check the index file")
-    engine = args.render or ("gsv" if str(items[0].get("id", "")).startswith(("CAoS", "CIHM")) or len(str(items[0].get("id", ""))) == 22 else "baidu")
+    first = str(items[0].get("id", ""))                # Google ids (official or user upload) render with gsv, the rest with Baidu
+    engine = args.render or ("gsv" if official(first) or first.startswith(USER_UPLOAD_PREFIXES) else "baidu")
     ims = _render_items(items, engine, args.proxy, cache)
     ok_items, ok_ims = [], []
     for it, im in zip(items, ims):
@@ -268,25 +265,19 @@ def _load_candidates(args) -> tuple[list[dict], list[Image.Image]]:
     return ok_items, ok_ims
 
 
-def _sheet(rows: list[dict], ims: dict, out: Path, cols: int = 3, tw: int = 480, th: int = 360) -> None:
-    from baidu_pano import _font
-    n = len(rows)
-    S = Image.new("RGB", (cols * tw, max(1, (n + cols - 1) // cols) * th), "black")
-    d = ImageDraw.Draw(S)
-    f = _font(16)
-    for i, r in enumerate(rows):
-        x, y = (i % cols) * tw, (i // cols) * th
-        S.paste(ims[r["id_key"]].convert("RGB").resize((tw, th)), (x, y))
+def _sheet(rows: list[dict], ims: list[Image.Image], out: Path) -> None:
+    from geolib.cli import contact_sheet
+    cells = []
+    for r in rows:
         t = f"#{r['rank']} inliers {r['inliers'] if r['inliers'] is not None else '-'} global {r['score_global']:.3f} …{str(r['id'])[-9:]}"
         if r.get("heading") is not None:
             t += f" h{r['heading']:.0f}"
-        d.rectangle([x, y, x + tw, y + 22], fill="black")
-        d.text((x + 4, y + 2), t, fill="yellow", font=f)
-    S.save(out, quality=88)
+        cells.append((ims[r["id_key"]], t))
+    contact_sheet(cells, out)
 
 
 def cmd_rank(args) -> None:
-    _proxy_env(args.proxy)
+    model_proxy_env(args.proxy)
     q = Image.open(args.query)
     if args.query_box:
         x0, y0, x1, y1 = (int(float(v)) for v in args.query_box.split(","))
@@ -335,22 +326,21 @@ def cmd_rank(args) -> None:
               "for look-alikes alike; there, trust the global ranking plus your own comparison of invariant structure")
     if not args.out:                                   # always keep the ranking: the live map and the evidence need it
         args.out = Path(args.sheet).with_name(Path(args.sheet).stem + "_rank.json") if args.sheet else Path(f"rank_{time.strftime('%H%M%S')}.json")
-    if args.out:
-        views_dir = Path(args.out).with_name(Path(args.out).stem + "_views")   # the top views as files: evidence, and the live map shows them
-        views_dir.mkdir(parents=True, exist_ok=True)
-        for r in out_rows:
-            safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(r["id"]))[-24:]
-            name = f"{r['rank']:02d}_{safe}" + (f"_h{r['heading']:.0f}" if r.get("heading") is not None else "") + ".jpg"
-            try:
-                ims[r["id_key"]].convert("RGB").save(views_dir / name, "JPEG", quality=85)
-                r["view"] = f"{views_dir.name}/{name}"
-            except OSError:
-                pass
-        Path(args.out).write_text(json.dumps([{k: v for k, v in r.items() if k != "id_key"} for r in rows], ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"-> {args.out} (all {len(rows)} rows; top {len(out_rows)} views in {views_dir.name}/)")
-        _auto_camera_mark(Path(args.out), out_rows, args)
+    views_dir = Path(args.out).with_name(Path(args.out).stem + "_views")   # the top views as files: evidence, and the live map shows them
+    views_dir.mkdir(parents=True, exist_ok=True)
+    for r in out_rows:
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(r["id"]))[-24:]
+        name = f"{r['rank']:02d}_{safe}" + (f"_h{r['heading']:.0f}" if r.get("heading") is not None else "") + ".jpg"
+        try:
+            ims[r["id_key"]].convert("RGB").save(views_dir / name, "JPEG", quality=85)
+            r["view"] = f"{views_dir.name}/{name}"
+        except OSError:
+            pass
+    Path(args.out).write_text(json.dumps([{k: v for k, v in r.items() if k != "id_key"} for r in rows], ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"-> {args.out} (all {len(rows)} rows; top {len(out_rows)} views in {views_dir.name}/)")
+    _auto_camera_mark(Path(args.out), out_rows, args)
     if args.sheet:
-        _sheet(out_rows, {r["id_key"]: ims[r["id_key"]] for r in out_rows}, Path(args.sheet))
+        _sheet(out_rows, ims, Path(args.sheet))
         print(f"-> {args.sheet}")
 
 
@@ -387,9 +377,8 @@ def _auto_camera_mark(out: Path, rows: list[dict], args) -> None:
 
 
 def cmd_index(args) -> None:
-    _proxy_env(args.proxy)
-    p = Path(args.images)
-    files = sorted(p.glob("*.jp*g")) + sorted(p.glob("*.png")) if p.is_dir() else [Path(x) for x in sorted(glob.glob(args.images))]
+    model_proxy_env(args.proxy)
+    files = _image_files(args.images)
     emb = Embedder(args.method)
     feats = emb.embed([Image.open(f) for f in files], multi=False)[:, 0]
     np.savez(args.out, ids=np.array([f.stem for f in files]), files=np.array([str(f) for f in files]), feats=feats, method=args.method)

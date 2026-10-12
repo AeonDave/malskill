@@ -317,6 +317,9 @@ class GeolibHelperTests(unittest.TestCase):
     def test_neg_coords_and_font(self):
         from geolib import cli
         self.assertEqual(cli.neg_coords(["-1.45,-48.5", "-3", "x"]), [" -1.45,-48.5", "-3", "x"])
+        # every lat,lon-led value shape: --covers spans, --ring specs and geo.py --sight lat,lon@bearing
+        self.assertEqual(cli.neg_coords(["-35.81,144.74:-36,145", "-33.87,151.21:50:500:50:30", "-33.87,151.21@45"]),
+                         [" -35.81,144.74:-36,145", " -33.87,151.21:50:500:50:30", " -33.87,151.21@45"])
         for text in ("Rua Augusta", "广东省", "서울", ""):
             self.assertTrue(hasattr(cli.font(14, text), "getbbox"))
 

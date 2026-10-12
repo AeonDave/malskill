@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import streetlevel as SL  # noqa: E402
 import geodata  # noqa: E402
 from geolib.net import PROXY_HELP, model_proxy_env  # noqa: E402
-from gsv import _font  # noqa: E402
+from geolib.cli import font as _font  # noqa: E402
 
 SIDE_OFFSET = {"ahead": 0.0, "right": 90.0, "behind": 180.0, "left": 270.0}
 
@@ -79,7 +79,7 @@ def candidates(spec: str, mode: str, args=None) -> list[dict]:
 
 
 def one_cell(cand: dict, town: dict, args) -> dict | None:
-    hits = SL.find_near(town["lat"], town["lon"], args.radius, max_ring=args.max_ring)
+    hits = SL.find_near(town["lat"], town["lon"], args.radius, max_ring=args.max_ring, proxy=args.proxy)
     for h in hits[:2]:
         m = SL.metadata(h["id"])
         if not m:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-R = 6371008.8           # mean Earth radius (m), the same constant geo.py has always used
+R = 6371008.8           # mean Earth radius (m)
 
 
 def haversine_m(p: tuple[float, float], q: tuple[float, float]) -> float:
@@ -50,3 +50,8 @@ def tile_xy(lat: float, lon: float, z: int = 17) -> tuple[int, int]:
     """Web Mercator tile (x, y) containing the point at zoom z."""
     x, y = ll2px(z, lat, lon)
     return int(x // 256), int(y // 256)
+
+
+def meters_per_px(zoom: int, lat: float) -> float:
+    """Ground size of one Web Mercator pixel at this zoom and latitude (256 px tiles)."""
+    return 156543.03392 * math.cos(math.radians(lat)) / 2 ** zoom

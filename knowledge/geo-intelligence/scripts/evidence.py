@@ -40,7 +40,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
-from baidu_pano import _font  # noqa: E402
+from geolib.cli import font  # noqa: E402
 from tiles import Mosaic  # noqa: E402
 
 
@@ -81,7 +81,7 @@ def build(spec: dict, base: Path, out: Path) -> None:
     im = Image.alpha_composite(im, ov).convert("RGB")
 
     d = ImageDraw.Draw(im)
-    f = _font(int(42 * scale_font))
+    f = font(int(42 * scale_font), prefer_wide=True)
     for lb in spec.get("labels", []):
         ax, ay = m.to_px(*lb["at"])
         r = 8 * scale_font
@@ -103,7 +103,7 @@ def build(spec: dict, base: Path, out: Path) -> None:
     if panels:
         pw = W // len(panels)
         ph = int(pw * 3 / 4)
-        cf = _font(20)
+        cf = font(20, prefer_wide=True)
         lines_per = []
         for p in panels:                                   # wrap captions to the panel width so they don't overlap the neighboring panel
             cap, cur, lines = p.get("caption", ""), "", []
@@ -151,7 +151,7 @@ def build_match(spec: dict, base: Path, out: Path) -> None:
     S = Image.new("RGB", (W, H + cap), (16, 16, 16))
     S.paste(lim, (0, cap)); S.paste(rim, (lim.width + gap, cap))
     d = ImageDraw.Draw(S)
-    f = _font(22)
+    f = font(22, prefer_wide=True)
     d.text((6, 6), spec["left"].get("caption", "photo"), font=f, fill="white")
     d.text((lim.width + gap + 6, 6), spec["right"].get("caption", "reference"), font=f, fill="white")
     xoff = lim.width + gap
@@ -163,7 +163,7 @@ def build_match(spec: dict, base: Path, out: Path) -> None:
     for col, _, a, b in pts:
         for cx, cy in (a, b):
             d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=col, width=3)
-    lf = _font(18)
+    lf = font(18, prefer_wide=True)
     for col, label, (ax, ay), _ in pts:                     # labels last, on a dark box, kept inside the left image
         if not label:
             continue

@@ -62,11 +62,13 @@ import re
 import subprocess
 import sys
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import regions  # noqa: E402
 from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper: --covers -35.81,144.74 and --bbox s,w,n,e in the south/west)
+from geolib.geomath import haversine_m  # noqa: E402
 
 HERE = Path(__file__).parent
 # uv run writes its own path into the UV env var: call child scripts with it, so uv is found even when it isn't on PATH (e.g. just installed, terminal not reopened)
@@ -82,7 +84,7 @@ STATUS = ["observed", "read", "inferred", "computed", "model"]
 # "model" = output of a trained model (world prior, CLIP ranking): it never counts as verified and can never exclude.
 LR_CAP = {"inferred": 3.0, "observed": 5.0, "read": 50.0, "computed": 50.0, "model": 3.0}
 UNVERIFIED = ("inferred", "observed", "model")
-GLOBAL_KINDS = ("calling-code", "driving-side", "territories", "coverage")   # clues.py tables in assets/data/, not region packs
+GLOBAL_KINDS = ("calling-code", "driving-side", "territories", "coverage")   # clues.py kinds where --country is the observation target or ignored, never a filter (plate-code filters by it, so it stays out)
 CHEAP_OPS = [
     ("text/lookup", "any readable text, phone number, domain, brand, currency → `textgeo.py --text \"…\"` then `board.py ingest`"),
     ("plate/area-code/calling-code", "plate, area code or calling code readable → `clues.py lookup` + `board.py apply`; "
@@ -111,7 +113,7 @@ def _clue_kind(kind: str) -> str:
 def _load(p: Path) -> dict:
     if not p.exists():
         sys.exit(f"No {p}: run `board.py init --photo photo.jpg` first")
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8-sig"))
 
 
 def _save(p: Path, b: dict) -> None:
@@ -245,10 +247,6 @@ def _settled_country(b: dict) -> str | None:
     return None
 
 
-def _has_open_descendant(b: dict, name: str) -> bool:
-    return any(c.get("parent") == name and c.get("status") != "excluded" for c in b["candidates"].values())
-
-
 def _has_supported_descendant(b: dict, name: str) -> bool:
     """An open descendant, at any depth, that carries evidence of its own: a bare name below a candidate proves nothing."""
     supported = {e["candidate"] for e in b["evidence"] if e.get("lr", 1) > 1}
@@ -319,10 +317,7 @@ def _frontier(b: dict) -> str | None:
             n = min(n, 1)
         if n >= 2:
             return lv
-    for lv in reversed(LEVELS):
-        if any(c["level"] == lv and c.get("status") != "excluded" for c in b["candidates"].values()):
-            return lv
-    return None
+    return _deepest(b)
 
 
 def _cost_of(c: dict, args) -> tuple[int | None, str]:
@@ -391,25 +386,11 @@ def _coords(g) -> list[tuple[float, float]]:
     return out
 
 
-_COUNTRY_TABLE: dict | None = None
-
-
+@lru_cache(maxsize=None)
 def _iso2_of(name: str) -> str | None:
-    """ISO 3166-1 alpha-2 for a country written as a name or code (assets/data/countries.json)."""
-    global _COUNTRY_TABLE
-    if _COUNTRY_TABLE is None:
-        try:
-            raw = json.loads((Path(__file__).resolve().parent.parent / "assets" / "data" / "countries.json").read_text(encoding="utf-8-sig"))
-        except (OSError, ValueError):
-            raw = {}
-        _COUNTRY_TABLE = {}
-        for code, row in raw.items():
-            if code.startswith("_") or not isinstance(row, dict):
-                continue
-            for key in (row.get("name"), row.get("geonames_name"), row.get("iso2"), row.get("iso3"), code):
-                if key:
-                    _COUNTRY_TABLE.setdefault(str(key).lower(), row.get("iso2") or code)
-    return _COUNTRY_TABLE.get(name.strip().lower())
+    """ISO 3166-1 alpha-2 for a country written as a name, alias or ISO code (geodata.country); None if unknown.
+    Cached: the ranking asks for every country candidate on each pass."""
+    return (_country(name) or {}).get("iso2")
 
 
 def _country_of(b: dict, name: str | None) -> str | None:
@@ -436,9 +417,9 @@ def _geocode(name: str, cc: str | None) -> dict | None:
     if cc:
         cmd += ["--country", cc]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+        r = _run(cmd, timeout=120)                    # a timeout leaves stdout empty: no placement, no crash
         rows = json.loads(r.stdout) if r.stdout.strip().startswith("[") else []
-    except (OSError, subprocess.SubprocessError, ValueError):
+    except (OSError, ValueError):
         return None
     rows = [x for x in rows if isinstance(x, dict) and "lat" in x and "lon" in x and (not cc or str(x.get("country", "")).upper() == cc)]
     if not rows:
@@ -705,16 +686,15 @@ def cmd_clue(args, p: Path) -> None:
     print(f"{kid} recorded. Status {args.status}: likelihood ratio cap {cap:g}" + (", can only rank, can't exclude" if args.status in ("inferred", "observed") else ", usable for exclude (still needs a computed file)"))
 
 
-def _parse_lr(items: list[str] | None, default: float | None) -> list[tuple[str, float]]:
+def _parse_lr(items: list[str] | None, default: float) -> list[tuple[str, float]]:
+    """name:likelihood_ratio pairs; a bare name gets the default (3 for --for, 1/3 for --against)."""
     out = []
     for it in items or []:
         if ":" in it:
             name, v = it.rsplit(":", 1)
             out.append((name, float(v)))
-        elif default is not None:
-            out.append((it, default))
         else:
-            sys.exit(f"Write it as name:likelihood_ratio, e.g. {it}:5")
+            out.append((it, default))
     return out
 
 
@@ -724,7 +704,7 @@ def cmd_evidence(args, p: Path) -> None:
         sys.exit(f"No clue {args.clue}; run `board.py clue` first")
     cl = b["clues"][args.clue]
     cap = LR_CAP[cl["status"]]
-    pairs = _parse_lr(args.for_, 3.0) + [(n, v) for n, v in _parse_lr(args.against, 1 / 3)]
+    pairs = _parse_lr(args.for_, 3.0) + _parse_lr(args.against, 1 / 3)
     if not pairs:
         sys.exit("Give at least one --for name:likelihood_ratio or --against name:likelihood_ratio")
     clipped = []
@@ -772,7 +752,7 @@ def cmd_exclude(args, p: Path) -> None:
             sys.exit("--covers must parse to coordinates: 'lat,lon' (single point) or 'lat,lon:lat,lon' (span)")
         r = _covers_ratio(c, pts)
         if r is not None and r[0] < COVERS_MIN:
-            cov_m = _cov_span_m(pts[0], pts[-1]) if len(pts) >= 2 else 0.0
+            cov_m = haversine_m(pts[0], pts[-1]) if len(pts) >= 2 else 0.0
             sys.exit(
                 f"--covers covers only about {r[0]:.0%} of {cname} (evidence {cov_m:.0f} m / candidate extent diagonal {r[1]:.0f} m): "
                 f"not enough to exclude the whole thing. Add comparison images for the remaining stretches before excluding, or down-weight first: "
@@ -827,16 +807,14 @@ def cmd_falsify(args, p: Path) -> None:
     print("Falsification condition recorded. If it shows up, give up; don't look for reasons to explain it away.")
 
 
-def cmd_rank(args, p: Path, quiet: bool = False) -> dict:
+def cmd_rank(args, p: Path) -> None:
     b = _load(p)
-    out = {}
+    shown = False
     for lv in LEVELS:
         rows = _scores(b, lv, args.prior_by)
         if not rows:
             continue
-        out[lv] = rows
-        if quiet:
-            continue
+        shown = True
         print(f"\n[{LEVEL_LABEL[lv]}] {len(rows)} candidates ({sum(1 for r in rows if not r['excluded'])} not excluded)")
         print(f"  {'candidate':<14}{'share':>7}{'evidence':>9}{'verified':>9}{'pages':>6}  {'share/page':>10}  note")
         for r in rows[: args.limit]:
@@ -847,9 +825,8 @@ def cmd_rank(args, p: Path, quiet: bool = False) -> dict:
                   f"  {(f'{ratio:.4f}' if ratio is not None else '?'):>10}  {flag} {src if pages is not None else ''} {r['c'].get('note', '')[:30]}")
         if len(rows) > args.limit:
             print(f"  … {len(rows) - args.limit} more (raise --limit)")
-    if not out and not quiet:
+    if not shown:
         print("No candidates: run `board.py add` or `board.py children` first")
-    return out
 
 
 def _corridor_pending(b: dict) -> list[str]:
@@ -936,11 +913,6 @@ def _parse_covers(s: str) -> list[tuple[float, float]]:
     return pts
 
 
-def _cov_span_m(a: tuple[float, float], b: tuple[float, float]) -> float:
-    kx = 111320.0 * math.cos(math.radians((a[0] + b[0]) / 2))
-    return math.hypot((b[1] - a[1]) * kx, (b[0] - a[0]) * 110540.0)
-
-
 def _covers_ratio(c: dict, pts: list[tuple[float, float]]) -> tuple[float, float] | None:
     """(evidence coverage length / candidate extent diagonal, diagonal in meters). None if the candidate has no bbox (can't compute, only warn)."""
     bb = c.get("bbox") or c.get("scan_bbox")
@@ -950,10 +922,10 @@ def _covers_ratio(c: dict, pts: list[tuple[float, float]]) -> tuple[float, float
         sw, ww, nn, ee = (float(v) for v in bb)
     except (TypeError, ValueError):
         return None
-    diag = _cov_span_m((sw, ww), (nn, ee))
+    diag = haversine_m((sw, ww), (nn, ee))
     if diag <= 1.0:
         return None
-    cov = _cov_span_m(pts[0], pts[-1]) if len(pts) >= 2 else 0.0
+    cov = haversine_m(pts[0], pts[-1]) if len(pts) >= 2 else 0.0
     return cov / diag, diag
 
 
@@ -1156,7 +1128,7 @@ def cmd_report(args, p: Path) -> None:
                                                and b["candidates"][e["candidate"]].get("status") != "excluded"})
     if args.merge:
         mp = Path(args.merge)
-        base = json.loads(mp.read_text(encoding="utf-8")) if mp.exists() else {}
+        base = json.loads(mp.read_text(encoding="utf-8-sig")) if mp.exists() else {}
         res = base.get("result") if isinstance(base.get("result"), dict) else {}   # photo_session.py session.json shape
         lat, lon = base.get("lat", res.get("latitude")), base.get("lon", res.get("longitude"))
         radius, heading = (v if isinstance(v, (int, float)) else None                      # non-numeric values are ignored, never a crash
@@ -1396,7 +1368,7 @@ def cmd_ingest(args, p: Path) -> None:
     """Load the "signals" of a tool output: each signal → one clue + LR evidence (capped by its status)."""
     b = _load(p)
     src = Path(args.file)
-    d = json.loads(src.read_text(encoding="utf-8"))
+    d = json.loads(src.read_text(encoding="utf-8-sig"))
     a = d.get("assessment") or {}
     if a.get("informative") is False:
         print(f"Not ingested: {src} assesses its own output as uninformative for this image "

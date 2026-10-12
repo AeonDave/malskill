@@ -19,9 +19,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from .coverage import USER_UPLOAD_PREFIXES, official  # noqa: F401
-from .geomath import haversine_m
-from .geomath import tile_xy as _tile_xy
+# coverage tiles live in coverage.py (stdlib only); re-exported here for gsv.py, refsheet.py, bench.py and the tests
+from .coverage import COVERAGE_MAX_AGE_S, ServiceError, _coverage_rows, official, panos_around, tile_panos, tiles_around  # noqa: F401
+from .geomath import haversine_m as dist_m, tile_xy  # noqa: F401  (gsv.py, pano.py and bench.py use SL.tile_xy / SL.dist_m)
+from .pano import bound_requests_timeout, equirect_view
 from .paths import cache_dir
 
 _SV = None
@@ -41,27 +42,12 @@ def streetview():
             def __init__(self, *a, **k):
                 raise RuntimeError("pyexiv2 is unavailable; streetlevel's EXIF writing is disabled")
 
-        stub.ImageData = stub.Image = _Unavailable
+        stub.ImageData = stub.Image = _Unavailable   # streetlevel/exif.py references pyexiv2.ImageData at import time
         sys.modules["pyexiv2"] = stub
-    from .pano import bound_requests_timeout  # bound every streetlevel HTTP call (60 s default)
-    bound_requests_timeout()
+    bound_requests_timeout()                # bound every streetlevel HTTP call (60 s default)
     from streetlevel import streetview as sv
     _SV = sv
     return sv
-
-
-def tile_xy(lat: float, lon: float, z: int = 17) -> tuple[int, int]:
-    return _tile_xy(lat, lon, z)
-
-
-def dist_m(a: tuple[float, float], b: tuple[float, float]) -> float:
-    return haversine_m(a, b)
-
-
-# coverage tiles live in coverage.py (stdlib only); re-exported here for gsv.py, refsheet.py, bench.py and the tests
-from .coverage import (COVERAGE, COVERAGE_MAX_AGE_S, UA, ServiceError, _coverage_rows, _curl, panos_around,  # noqa: E402,F401
-                       tile_panos, tiles_around)
-from . import coverage as _cov  # noqa: E402
 
 
 def find_near(lat: float, lon: float, radius: float = 50.0, max_ring: int = 5, workers: int = 8,
@@ -78,7 +64,7 @@ def find_near(lat: float, lon: float, radius: float = 50.0, max_ring: int = 5, w
 
     def fetch(xy):
         try:
-            return _cov.tile_panos(*xy, proxy, cache, COVERAGE_MAX_AGE_S)
+            return tile_panos(*xy, proxy, cache, COVERAGE_MAX_AGE_S)
         except ServiceError as e:
             errors.append(str(e))
             return []
@@ -143,23 +129,6 @@ def equirect(pid: str, cache: Path, zoom: int = 3) -> tuple[np.ndarray, float]:
 
 def perspective(eq: np.ndarray, pano_heading: float, yaw: float, pitch: float = 0.0, hfov: float = 90.0,
                 w: int = 1024, h: int = 768) -> Image.Image:
-    """Pinhole view from an equirectangular panorama. yaw: compass bearing; pitch: + looks up; hfov in degrees."""
-    H, W = eq.shape[:2]
-    f = (w / 2) / math.tan(math.radians(hfov) / 2)
-    u, v = np.meshgrid(np.arange(w) - (w - 1) / 2, np.arange(h) - (h - 1) / 2)
-    x, y, z = u, -v, np.full_like(u, f, dtype=float)
-    cp, sp = math.cos(math.radians(pitch)), math.sin(math.radians(pitch))
-    y2, z2 = y * cp + z * sp, -y * sp + z * cp
-    lon = np.arctan2(x, z2)                       # right of the view direction = positive
-    lat = np.arctan2(y2, np.hypot(x, z2))
-    az = np.radians(yaw - pano_heading) + lon     # relative to the panorama centre (car heading)
-    px = ((az / (2 * math.pi) + 0.5) % 1.0) * W - 0.5
-    py = (0.5 - lat / math.pi) * H - 0.5
-    x0 = np.floor(px).astype(int)
-    y0 = np.clip(np.floor(py).astype(int), 0, H - 1)
-    y1 = np.clip(y0 + 1, 0, H - 1)
-    fx, fy = (px - np.floor(px))[..., None], np.clip(py - np.floor(py), 0, 1)[..., None]
-    x0w, x1w = x0 % W, (x0 + 1) % W
-    out = (eq[y0, x0w] * (1 - fx) * (1 - fy) + eq[y0, x1w] * fx * (1 - fy)
-           + eq[y1, x0w] * (1 - fx) * fy + eq[y1, x1w] * fx * fy)
-    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+    """Pinhole view from an equirectangular panorama. yaw: compass bearing; pitch: + looks up; hfov in degrees.
+    Same renderer as pano.equirect_view (the panorama centre column looks along pano_heading)."""
+    return equirect_view(eq, pano_heading, yaw, pitch, hfov, w, h)

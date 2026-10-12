@@ -92,7 +92,7 @@ def sun_position(lat: float, lon: float, dt_utc: datetime, refraction: bool = Tr
     decl, eqt = _sun_core(dt_utc)
     minutes = dt_utc.hour * 60 + dt_utc.minute + dt_utc.second / 60 + dt_utc.microsecond / 6e7
     tst = (minutes + eqt + 4 * lon) % 1440
-    ha = tst / 4 + 180 if tst / 4 < 0 else tst / 4 - 180
+    ha = tst / 4 - 180                           # tst is reduced mod 1440 above, so the hour angle already lies in [-180, 180)
     cz = math.sin(_R(lat)) * math.sin(_R(decl)) + math.cos(_R(lat)) * math.cos(_R(decl)) * math.cos(_R(ha))
     zen = _D(math.acos(max(-1.0, min(1.0, cz))))
     elev = 90 - zen
@@ -499,6 +499,14 @@ def _px_angle(x: float, width: float, hfov: float) -> float:
     return math.degrees(math.atan((x - width / 2) / f))
 
 
+def _arc(angles: list[float]) -> tuple[float, float]:
+    """Smallest clockwise arc (start, end) covering all bearings; a set that straddles north gives (358, 2), not (2, 358)."""
+    a = sorted(x % 360 for x in angles)
+    gaps = [(a[i + 1] - a[i], i) for i in range(len(a) - 1)] + [(a[0] + 360 - a[-1], len(a) - 1)]
+    _, i = max(gaps)
+    return a[(i + 1) % len(a)], a[i]
+
+
 def cmd_compass(args) -> None:
     """Sun in the frame → camera heading, and the true bearing of any pixel column in the frame (tower, chimney, intersection).
 
@@ -547,23 +555,18 @@ def cmd_compass(args) -> None:
         return
     h0, h1 = (float(x) for x in args.hfov.split(":"))
     xs = [float(v) for s in (args.x or []) for v in s.split(",")]
+    offs = [_px_angle(args.sun_x, args.width, hf) for hf in (h0, h1)]
     for name, azs in groups.items():
-        lo, hi = min(azs), max(azs)
-        cands = []
-        for hf in (h0, h1):
-            off = _px_angle(args.sun_x, args.width, hf)
-            cands += [(lo - off) % 360, (hi - off) % 360]
+        # clockwise arcs throughout: heading = sun azimuth − sun offset, so the arc shifts by the offset range and
+        # still reads clockwise when it crosses north (southern-hemisphere noon, polar sunrise)
+        lo, hi = _arc(azs)
         print(f"{name}: sun azimuth {lo:.1f}°–{hi:.1f}°; sun at frame x={args.sun_x:.0f} (offset from center "
-              f"{_px_angle(args.sun_x, args.width, h0):+.1f}° to {_px_angle(args.sun_x, args.width, h1):+.1f}°)"
-              f" → camera heading about {min(cands):.0f}°–{max(cands):.0f}°")
+              f"{offs[0]:+.1f}° to {offs[1]:+.1f}°)"
+              f" → camera heading about {(lo - max(offs)) % 360:.0f}°–{(hi - min(offs)) % 360:.0f}°")
         for x in xs:
-            bs = []
-            for hf in (h0, h1):
-                rel = _px_angle(x, args.width, hf) - _px_angle(args.sun_x, args.width, hf)
-                bs += [(lo + rel) % 360, (hi + rel) % 360]
-            print(f"    object at x={x:.0f}: bearing about {min(bs):.0f}°–{max(bs):.0f}° (relative to the sun "
-                  f"{_px_angle(x, args.width, h0) - _px_angle(args.sun_x, args.width, h0):+.1f}° to "
-                  f"{_px_angle(x, args.width, h1) - _px_angle(args.sun_x, args.width, h1):+.1f}°)")
+            rels = [_px_angle(x, args.width, hf) - off for hf, off in zip((h0, h1), offs)]
+            print(f"    object at x={x:.0f}: bearing about {(lo + min(rels)) % 360:.0f}°–{(hi + max(rels)) % 360:.0f}° "
+                  f"(relative to the sun {rels[0]:+.1f}° to {rels[1]:+.1f}°)")
     print("When a range crosses north (e.g. 350°–10°), read it clockwise. If the field of view is uncertain, widen --hfov; when the sunrise and sunset groups can't be told apart, you must build top-down templates for both headings.")
 
 
@@ -743,11 +746,9 @@ def main() -> None:
     wg.add_argument("--dates", help="date range 2024-07-01:2024-07-31")
     we.add_argument("--hours", help="local hour window lo:hi (default 6:20 for a day, 9:16 for a range)")
     we.add_argument("--tz", help="IANA time zone; default auto (resolved from the point)")
-    we.add_argument("--proxy", default=argparse.SUPPRESS, help="proxy URL or 'direct' (default: $GEO_PROXY)")
+    we.add_argument("--proxy", help="proxy URL or 'direct' (default: $GEO_PROXY)")
 
     args = ap.parse_args(_neg_coords(sys.argv[1:]))
-    if not hasattr(args, "proxy"):
-        args.proxy = None
     {"pos": cmd_pos, "ratio": cmd_ratio, "locate": cmd_locate, "when": cmd_when, "dish": cmd_dish,
      "street": cmd_street, "facing": cmd_facing, "compass": cmd_compass, "weather": cmd_weather}[args.cmd](args)
 

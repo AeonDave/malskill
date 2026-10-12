@@ -32,7 +32,6 @@ import json
 import math
 import os
 import pickle
-import random
 import re
 import subprocess
 import sys
@@ -47,11 +46,12 @@ except ImportError:  # pragma: no cover
     np = None
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from geolib.net import PROXY_HELP, curl_args  # noqa: E402
+from geolib.cli import neg_coords  # noqa: E402
+from geolib.net import PROXY_HELP, curl_args, fetch_bytes  # noqa: E402
+from geolib.paths import DATA_DIR as DATA, cache_dir  # noqa: E402  (cache_dir: textgeo.py and prior.py reach it through this module)
 
-HERE = Path(__file__).resolve().parent
-from geolib.paths import DATA_DIR as DATA, cache_dir as _cache_dir  # noqa: E402
 GEONAMES = "https://download.geonames.org/export/dump/"
+NOMINATIM_UA = "geo-intelligence/1.0 (+https://github.com/AeonDave/malskill)"   # Nominatim's usage policy wants an identifying client
 PLACES_FILE = "cities500"
 CACHE_VERSION = 3
 
@@ -104,12 +104,6 @@ ALIASES = {
 
 
 # ------------------------------------------------------------------ helpers
-
-def cache_dir(*parts: str) -> Path:
-    p = _cache_dir(*parts)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
 
 def norm(s: str) -> str:
     """Case- and accent-insensitive key: 'São Tomé' → 'sao tome', 'München' → 'munchen'; other scripts kept."""
@@ -485,12 +479,12 @@ def towns(cc: str | None = None, admin1_query: str | None = None, near: tuple[fl
 # ------------------------------------------------------------------ build countries.json
 
 def build_countries(proxy: str | None) -> dict:
-    raw = subprocess.run(["curl", "-q", "-fsSL", "--max-time", "60", *curl_args(proxy), GEONAMES + "countryInfo.txt"],
-                         capture_output=True, text=True, encoding="utf-8")
-    if raw.returncode:
-        sys.exit(f"Could not fetch countryInfo.txt (curl exit {raw.returncode})")
+    try:
+        text = fetch_bytes(GEONAMES + "countryInfo.txt", proxy, 60).decode("utf-8")
+    except RuntimeError as e:
+        sys.exit(f"Could not fetch countryInfo.txt: {e}")
     out: dict[str, dict] = {}
-    for line in raw.stdout.splitlines():
+    for line in text.splitlines():
         if line.startswith("#") or not line.strip():
             continue
         p = line.split("\t")
@@ -609,7 +603,7 @@ def main() -> None:
     rg.add_argument("country")
     rg.add_argument("--out")
     sub.add_parser("build-countries")
-    args = ap.parse_args([(" " + a if re.match(r"^-\d", a) else a) for a in sys.argv[1:]])
+    args = ap.parse_args(neg_coords(sys.argv[1:]))
 
     if args.cmd == "fetch":
         admin1(args.proxy)
@@ -643,13 +637,12 @@ def main() -> None:
         if args.osm:
             url = ("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&addressdetails=1&accept-language=en&"
                    f"lat={lat}&lon={lon}")
-            r2 = subprocess.run(["curl", "-q", "-fsSL", "--max-time", "20", *curl_args(args.proxy), "-A",
-                                 "geo-intelligence/1.0 (+https://github.com/AeonDave/malskill)", url], capture_output=True, text=True, encoding="utf-8", errors="replace")
+            # Optional enrichment: any failure (curl exit, timeout, malformed body) is reported in-band, never a traceback
             try:
-                d = json.loads(r2.stdout)
+                d = json.loads(fetch_bytes(url, args.proxy, 20, {"User-Agent": NOMINATIM_UA}).decode("utf-8", "replace"))
                 out["osm"] = {"display_name": d.get("display_name"), "address": d.get("address")}
-            except Exception:  # noqa: BLE001
-                out["osm"] = {"error": f"Nominatim unavailable (curl exit {r2.returncode})"}
+            except Exception as e:  # noqa: BLE001
+                out["osm"] = {"error": f"Nominatim unavailable ({e})"}
         print(json.dumps(out, ensure_ascii=False, indent=1))
     elif args.cmd == "sample":
         c = country(args.country)

@@ -62,7 +62,9 @@ page re-reads the folder every 2 s and shows, for the user watching:
   "Close viewer" stops the server without touching the analysis;
 - map layers: the top views of every `match.py rank` (position, heading, score, the saved view on click; a strong
   top match also writes a camera mark with its view cone),
-  the panoramas of every `*.index.json` as faint coverage dots, and your marks: `viewer.py mark camera` (point +
+  the panoramas of every `*.index.json` as the Coverage layer (off by default; switching a layer on flies the view to
+  its points, one ring with the count when they are too close to tell apart; Follow returns to the analysis; a dot's
+  card shows id, provider, date, road and a link that opens the panorama), and your marks: `viewer.py mark camera` (point +
   view cone), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
   at its position); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/
   evidence/match/sheet/pose get their own gallery in the panel; `terrain.py fit --sheet` adds a Skyline card (the

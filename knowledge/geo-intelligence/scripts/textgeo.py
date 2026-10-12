@@ -43,7 +43,6 @@ import geodata  # noqa: E402
 from geolib.net import PROXY_HELP  # noqa: E402
 from geolib.paths import DATA_DIR  # noqa: E402
 
-HERE = Path(__file__).resolve().parent
 SIG = json.loads((DATA_DIR / "text_signals.json").read_text(encoding="utf-8"))
 NSI_URL = "https://cdn.jsdelivr.net/npm/name-suggestion-index@8.0.20260918/dist/json/nsi.min.json"
 M49 = {"001": "world", "150": "Europe", "002": "Africa", "019": "Americas", "142": "Asia", "009": "Oceania",
@@ -163,8 +162,7 @@ def analyse_scripts(lines: list[dict], ev: Board) -> dict:
             if not s:
                 continue
             if is_digit:
-                if s not in ("LATIN",) and s != "DIGIT":
-                    digits[s] += 1
+                digits[s] += 1        # script_of() returns None for ASCII digits, so only non-Latin digit systems land here
                 continue
             letters[s] += 1
             examples.setdefault(s, ln["text"][:40])
@@ -261,7 +259,12 @@ def analyse_letters(lines: list[dict], ev: Board) -> dict:
 
 
 _DETECTOR = None
-PHONE_TYPES: dict[int, str] = {}
+
+
+def _phone_types() -> dict[int, str]:
+    """phonenumbers.number_type() code → name (FIXED_LINE, MOBILE, …)."""
+    import phonenumbers
+    return {v: k for k, v in vars(phonenumbers.PhoneNumberType).items() if k.isupper() and isinstance(v, int)}
 
 
 def analyse_language(lines: list[dict], ev: Board) -> list[dict]:
@@ -301,8 +304,7 @@ def analyse_language(lines: list[dict], ev: Board) -> list[dict]:
 def analyse_phones(lines: list[dict], ev: Board, shortlist: list[str]) -> list[dict]:
     import phonenumbers
     from phonenumbers import carrier, geocoder
-    global PHONE_TYPES
-    PHONE_TYPES = {v: k for k, v in vars(phonenumbers.PhoneNumberType).items() if k.isupper() and isinstance(v, int)}
+    types = _phone_types()
     found: dict[str, dict] = {}
     regions = [r for r in shortlist if r in phonenumbers.SUPPORTED_REGIONS][:12]
     texts = [ln["text"] for ln in lines]
@@ -322,7 +324,7 @@ def analyse_phones(lines: list[dict], ev: Board, shortlist: list[str]) -> list[d
                 rec = found.setdefault(e164, {"raw": m.raw_string, "e164": e164, "international": t.strip().startswith("+") or m.raw_string.strip().startswith("+") or m.raw_string.strip().startswith("00"),
                                               "regions": set(), "description": geocoder.description_for_number(n, "en"),
                                               "carrier": carrier.name_for_number(n, "en"),
-                                              "type": PHONE_TYPES.get(phonenumbers.number_type(n), "UNKNOWN")})
+                                              "type": types.get(phonenumbers.number_type(n), "UNKNOWN")})
                 if rc:
                     rec["regions"].add(rc)
                 if region == "ZZ":
@@ -590,7 +592,7 @@ def analyse_places(lines: list[dict], ev: Board, cc: str | None, deep: bool, pro
         for g in sorted(set(grams), key=lambda s: -len(s)):
             if len(g) < 4 or g in STOP or g.isdigit() or all(t in STOP for t in g.split()):
                 continue
-            rows = geodata.search(g, cc, limit=40, deep=deep, proxy=proxy) if (deep or cc) else geodata.search(g, None, limit=40)
+            rows = geodata.search(g, cc, limit=40, deep=deep, proxy=proxy)
             for r in rows:
                 key = r["geonameid"]
                 if key not in hits:
@@ -691,6 +693,7 @@ def enumerate_phone(pattern: str, region: str | None) -> None:
     if qmarks > 5:
         sys.exit(f"{qmarks} unknown digits = {10 ** qmarks} combinations; read more of the number first (max 5 '?').")
     pos = [i for i, ch in enumerate(raw) if ch == "?"]
+    types = _phone_types()
     hits = []
     for combo in range(10 ** qmarks):
         s = list(raw)
@@ -707,7 +710,7 @@ def enumerate_phone(pattern: str, region: str | None) -> None:
         natl = phonenumbers.format_number(n, phonenumbers.PhoneNumberFormat.NATIONAL)
         rc = phonenumbers.region_code_for_number(n)
         where = geocoder.description_for_number(n, "en")
-        typ = {v: k for k, v in vars(phonenumbers.PhoneNumberType).items() if k.isupper() and isinstance(v, int)}.get(phonenumbers.number_type(n), "?")
+        typ = types.get(phonenumbers.number_type(n), "?")
         hits.append((e164, natl, rc, typ, where, carrier.name_for_number(n, "en")))
     print(f"{qmarks} unknown digit(s) → {len(hits)} valid number(s)" + (f" in region {region}" if region else "") + ":")
     for e164, natl, rc, typ, where, car in hits:

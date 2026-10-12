@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import math
 import os
 import re
 import sys
@@ -38,6 +37,7 @@ from typing import Callable
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from geolib import net  # noqa: E402
+from geolib.geomath import ll2px, tile_xy  # noqa: E402
 from geolib.net import PROXY_HELP  # noqa: E402
 
 UA = "geo-intelligence/1.0 (+https://github.com/AeonDave/malskill; sources_check)"
@@ -85,11 +85,6 @@ def const(script: str, name: str):
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
             return ast.literal_eval(node.value)
     raise KeyError(f"{script}: {name} not found")
-
-
-def tile_xy(lat: float, lon: float, z: int) -> tuple[float, float]:
-    n = 2 ** z
-    return (lon + 180.0) / 360.0 * n, (1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0 * n
 
 
 def get(url: str, ctx: Ctx, headers: dict | None = None, form: dict | None = None) -> bytes:
@@ -196,7 +191,7 @@ def overpass_any(ctx: Ctx) -> str:
 
 def tile_probe(source: str, lat: float, lon: float, z: int) -> tuple[str, Callable[[Ctx], str]]:
     import tiles
-    x, y = (int(v) for v in tile_xy(lat, lon, z))
+    x, y = tile_xy(lat, lon, z)
     url = tiles.tile_url(source, x, y, z)
     return url, lambda ctx: image_magic(url, ctx)
 
@@ -215,7 +210,7 @@ def terrarium(ctx: Ctx) -> str:
     from PIL import Image
     z = 12
     lat, lon, elev = MONT_BLANC
-    xf, yf = tile_xy(lat, lon, z)
+    xf, yf = (v / 256 for v in ll2px(z, lat, lon))        # fractional tile coordinates: the pixel inside the tile
     url = const("terrain.py", "TILE").format(z=z, x=int(xf), y=int(yf))
     im = Image.open(io.BytesIO(get(url, ctx))).convert("RGB")
     px, py = int((xf % 1) * 256), int((yf % 1) * 256)
@@ -392,9 +387,10 @@ def osrm(mode: str, a: tuple, b: tuple, lo_km: float, hi_km: float, max_kmh: flo
     return url, run
 
 
-# refresh.py (maintainers): MediaWiki parse API for the plate pages, raw GitHub for the China admin table
-WIKI_PLATES = "https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&redirects=1&page=Vehicle_registration_plates_of_Italy"
-CN_ADMIN_URL = "https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json"
+# refresh.py (maintainers): MediaWiki parse API for the plate pages, raw GitHub for the China admin table; the exact URLs it requests
+_IT_LANG, _IT_TITLE = const("refresh.py", "PLATE_PAGES")["IT"]
+WIKI_PLATES = const("refresh.py", "WIKI_API").format(lang=_IT_LANG, title=urllib.parse.quote(_IT_TITLE))
+CN_ADMIN_URL = const("refresh.py", "SOURCES")["cn/admin"][0]
 
 
 def wikipedia_plates(ctx: Ctx) -> str:
