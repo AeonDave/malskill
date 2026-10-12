@@ -51,6 +51,7 @@ TRUTH_START = "<!-- geogussr-truth -->"
 TRUTH_END = "<!-- /geogussr-truth -->"
 THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
+UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
 
 
 def now() -> datetime:
@@ -409,9 +410,22 @@ def finish(args: argparse.Namespace) -> dict:
               + (f"; the best ranked view {hint['distance_m']} m from the answer looks at {hint['heading']:.0f}° ({hint['inliers']} inliers, {hint['source']}): pass --heading {hint['heading']:.0f} if that view is the shot" if hint
                  else (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else ""))
               + ". A Street View frame that shows the scene, the road bearing when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
+    accepted_unverified = None
     if artifacts == 0:
-        print("Warning: this session holds no verification artifact (no rank, sheet, evidence, terrain, pose or mark file): "
-              "the answer is an unverified estimate and must say so.", file=sys.stderr)
+        try:
+            elapsed_min = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
+        except (KeyError, ValueError, TypeError):
+            elapsed_min = UNVERIFIED_CLOCK_MIN
+        reason = (getattr(args, "accept_unverified", None) or "").strip()
+        if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:
+            raise ValueError(
+                f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Run the decisive check for the scene "
+                f"(SKILL.md step 6: mountains, or a lake/coast with a skyline → osm.py geom + terrain.py scan/ridge/fit; a road, railway or "
+                f"power line → osm.py + terrain.py scan; a facility → osm.py find + sat_scan.py; a street → gsv.py sheet + match.py rank; "
+                f"look-alike countries → refsheet.py), or go Deep. Close without one only when the user stops you or the budget is gone: "
+                f"--accept-unverified \"<reason>\".")
+        accepted_unverified = reason or f"clock: {elapsed_min:.0f} min without a verification artifact"
+        print(f"Warning: no verification artifact ({accepted_unverified}): the answer is an unverified estimate and must say so.", file=sys.stderr)
     names = [slug(value) for value in (country, region, city) if value]
     destination = folder.parent / (timestamp + "__" + "__".join(names))
     if destination != folder and destination.exists():
@@ -437,6 +451,7 @@ def finish(args: argparse.Namespace) -> dict:
             "heading": heading,
             "confidence": confidence,
             "verification_artifacts": artifacts,
+            "accepted_unverified": accepted_unverified,
             "taken": taken,
             "when_text": when_line,
             "heading_hint": hint,
@@ -710,6 +725,7 @@ def main() -> int:
     complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
+    complete.add_argument("--accept-unverified", metavar="REASON", help="Close with no verification artifact before the clock runs out (only when the user stopped the analysis or the budget is gone); the reason is recorded.")
     complete.set_defaults(handler=finish)
     scored = subparsers.add_parser("truth", help="Record the real location of a finished session and score it.")
     scored.add_argument("folder", type=Path)

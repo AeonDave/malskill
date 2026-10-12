@@ -45,6 +45,8 @@ class PhotoArchiveTests(unittest.TestCase):
             extra += ["--heading", "unknown"]
         if "--taken" not in extra:
             extra += ["--taken", "unknown"]
+        if "--accept-unverified" not in extra:
+            extra += ["--accept-unverified", "test fixture, no checks"]
         return self.command(
             "finish", folder, "--country", "Slovakia", "--region", "Prešov",
             "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
@@ -142,7 +144,7 @@ class PhotoArchiveTests(unittest.TestCase):
         report = report.replace('<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->',
                                 "not determinable: no metadata, no dated imagery checked")
         (folder / "report.md").write_text(report, encoding="utf-8")
-        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500", "--heading", "unknown", "--taken", "unknown")
+        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "test")
         meta = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))
         r = meta["result"]
         self.assertTrue(-29 < r["latitude"] < -16 and 11 < r["longitude"] < 26, r)       # inside Namibia
@@ -154,15 +156,15 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue((Path(out["folder"]) / "viewer.html").is_file())        # offline snapshot beside the photos
         folder2 = Path(self.start()["folder"])
         (folder2 / "report.md").write_text(report, encoding="utf-8")
-        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", "--heading", "unknown", "--taken", "unknown", success=False)
+        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "test", success=False)
         self.assertIn("Unknown country", err)
-        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", "--heading", "unknown", "--taken", "unknown", success=False)
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "test", success=False)
         self.assertIn("both", err)
         r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder2), "--country", "Namibia", "--city", "x", "--confidence", "low", "--taken", "unknown"],
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 2)                                                    # argparse: --heading is required
         self.assertIn("--heading", r.stderr)                                                 # the camera direction must be stated, even as unknown
-        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--heading", "east", "--taken", "unknown", success=False)
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--heading", "east", "--taken", "unknown", "--accept-unverified", "test", success=False)
         self.assertIn("degrees", err)
 
     def test_viewer_port_falls_back_when_taken(self):
@@ -276,6 +278,29 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertIn("suggested, not asserted", footer)
         self.assertIn("Taken: not given (report: Season: spring", footer)
 
+    def test_finish_refuses_an_unverified_answer_before_the_clock(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), "--country", "Austria", "--city", "Plansee", "--latitude", "47.55",
+                            "--longitude", "10.79", "--confidence", "low", "--heading", "unknown", "--taken", "unknown"],
+                           cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("not an answer yet", r.stderr)
+        self.assertIn("terrain.py", r.stderr)
+        self.assertTrue(folder.is_dir())                                                        # nothing renamed
+        (folder / "shore_rank.json").write_text("[]", encoding="utf-8")                          # one check later, it closes
+        out = self.command("finish", folder, "--country", "Austria", "--city", "Plansee", "--latitude", "47.55", "--longitude", "10.79",
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["verification_artifacts"], 1)
+        self.assertIsNone(res["accepted_unverified"])
+        folder2 = Path(self.start()["folder"])
+        (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        out = self.command("finish", folder2, "--country", "Austria", "--city", "x", "--latitude", "47.55", "--longitude", "10.79",
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped the run")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["accepted_unverified"], "user stopped the run")
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")
@@ -347,7 +372,7 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue(started["timezone"])
         folder = Path(started["folder"])
         (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
-        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675", "--heading", "unknown", "--taken", "unknown",
+        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "test",
                              "--confidence", "low", env=env)
         report = Path(final["report"]).read_text(encoding="utf-8")
         self.assertNotIn("(None)", report)

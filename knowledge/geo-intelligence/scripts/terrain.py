@@ -308,7 +308,15 @@ def _line_points(gj: dict, step: float, skip: list[tuple[str, str]], bbox: tuple
     """Take one point every step meters along each LineString; return [(lat, lon, properties)]."""
     pts = []
     n_line = n_skip = 0
+    feats = []                                         # polygons (lakes, coasts) and multi-lines become plain lines: shores are paths too
     for f in gj.get("features", []):
+        g = f.get("geometry") or {}
+        gt, cc = g.get("type"), g.get("coordinates", [])
+        parts = [cc] if gt == "LineString" else cc if gt in ("MultiLineString", "Polygon") else \
+            [ring for poly in cc for ring in poly] if gt == "MultiPolygon" else []
+        for part in parts:
+            feats.append({"geometry": {"type": "LineString", "coordinates": part}, "properties": f.get("properties", {}) or {}})
+    for f in feats:
         g = f.get("geometry") or {}
         if g.get("type") != "LineString" or len(g.get("coordinates", [])) < 2:
             continue
@@ -1231,7 +1239,7 @@ Output JSON (--out):
                  "name","hs"(highspeed),"elec"(electrified),"id": OSM tags of the line}, ...],
    "clusters": [{...same as above..., "n": number of points in the cluster}, ...]}   # sorted by max_ang from largest to smallest; the cluster representative is the steepest point
 --clusters-out writes a separate JSON with only the cluster list (exactly the clusters field).""")
-    sc.add_argument("--lines", required=True, help="linear infrastructure GeoJSON (output of osm.py geom); only LineString is read")
+    sc.add_argument("--lines", required=True, help="GeoJSON from osm.py geom: LineString, MultiLineString and the rings of polygons (lake shores, coasts) are all read as lines")
     sc.add_argument("--out", required=True, help="output JSON")
     sc.add_argument("--clusters-out", help="also write a separate JSON with only the cluster list")
     sc.add_argument("--bbox", help="only scan sample points inside this range s,w,n,e (for validation and chunked runs; omitted = the whole geojson)")
