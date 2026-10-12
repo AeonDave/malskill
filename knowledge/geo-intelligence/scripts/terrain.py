@@ -473,6 +473,10 @@ def _cmd_scan(args) -> None:
 
     clusters = _cluster(hits, args.cluster_km)
     print(f"{len(hits)} hit points → {len(clusters)} clusters", file=sys.stderr)
+    if len(clusters) > 80:
+        print(f"Note: {len(clusters)} clusters cost roughly {len(clusters) * 5 / 60:.0f}–{len(clusters) * 12 / 60:.0f} min in fit at its defaults (2 km / 250 m / z11). "
+              f"fit stops at --budget-min (default 20) with a partial ranking; run it in the background, read the ranking at the stop, "
+              f"continue with --select, or cut the count first (--cluster-km 6, --min-peak closer to the photo estimate).", file=sys.stderr)
     if n_missing:
         print(f"WARNING: {n_missing}/{len(pts)} sample points not scanned because they touch missing tiles", file=sys.stderr)
     out = {
@@ -953,9 +957,17 @@ def _cmd_fit(args) -> None:
                 for dx in np.arange(-args.radius, args.radius + 1e-6, args.grid) if dx * dx + dy * dy <= args.radius ** 2]
     if args.radius == 0:
         grid_pts = [(0.0, 0.0)]
+    t_start = time.monotonic()
+    unscored: list[int] = []                                           # clusters left when --budget-min ran out
     for ci, c in enumerate(centers):
         lat, lon = float(c["lat"]), float(c["lon"])
         name = c.get("name", "")
+        elapsed_min = (time.monotonic() - t_start) / 60
+        if args.budget_min and elapsed_min > args.budget_min and ci > 0:
+            unscored = [cc["src_idx"] for cc in centers[ci:]]
+            print(f"budget of {args.budget_min:g} min reached after {ci}/{len(centers)} clusters: writing the partial ranking; "
+                  f"continue with --select {','.join(map(str, unscored[:60]))}{'…' if len(unscored) > 60 else ''} (or raise --budget-min)", file=sys.stderr)
+            break
         try:
             dem = DEM((lat, lon), args.radius + args.range + 500, args.zoom, args.cache, args.proxy, args.allow_missing)
         except SystemExit as e:
@@ -1124,8 +1136,10 @@ def _cmd_fit(args) -> None:
                 best_c = best
         clusters_out.append({"hit": c["src_idx"], "name": name, "hit_ll": [round(lat, 5), round(lon, 5)],
                              "n": c.get("n"), "max_ang": c.get("max_ang"), "n_cams": n_c, "best": best_c})
+        per = (time.monotonic() - t_start) / (ci + 1)
+        eta = f"  [{per:.1f} s/cluster, ~{per * (len(centers) - ci - 1) / 60:.0f} min left]" if len(centers) > 3 else ""
         print(f"cluster {ci + 1}/{len(centers)} hit{c['src_idx']} {name or '-'}: scored {n_c} camera positions"
-              + (f", best total {best_c['total']}  H {best_c['H']}  cam {best_c['cam']}" if best_c else ", no camera position passed the filters"), file=sys.stderr)
+              + (f", best total {best_c['total']}  H {best_c['H']}  cam {best_c['cam']}" if best_c else ", no camera position passed the filters") + eta, file=sys.stderr)
 
     recs.sort(key=lambda r: r["total"])
     clusters_out.sort(key=lambda x: x["best"]["total"] if x["best"] else float("inf"))
@@ -1157,12 +1171,14 @@ def _cmd_fit(args) -> None:
                    "line_w": args.line_w, "line_min_m": args.line_min, "line_sample_m": args.line_sample, "line_reach_m": args.line_reach,
                    "photo": {"f0_px": f0, "hrow": hrow, "cx": cx, "hfov_deg_at_fs1": round(hfov, 1), "n_ridge": int(RX.size), "flat": flat}},
         "n_clusters": len(clusters_out), "n_cams": len(recs), "n_skipped": skipped, "dem_failed_clusters": dem_failed,
+        "partial": bool(unscored), "unscored_clusters": unscored, "elapsed_min": round((time.monotonic() - t_start) / 60, 1),
         "focal_edge": focal_edge,
         "clusters": clusters_out,
         "cams": recs[:args.keep],
     }
     Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=0), encoding="utf-8")
-    print(f"clusters {len(clusters_out)}, camera positions {len(recs)}, skipped {skipped} → {args.out}", file=sys.stderr)
+    print(f"clusters {len(clusters_out)}, camera positions {len(recs)}, skipped {skipped} → {args.out}"
+          + (f"  PARTIAL: {len(unscored)} clusters not scored (budget); the ranking below covers the scored ones only" if unscored else ""), file=sys.stderr)
     if skipped["missing_dem"]:
         print(f"WARNING: {skipped['missing_dem']} camera positions not scored because their sight lines touch missing tiles", file=sys.stderr)
     for x in clusters_out[:min(args.top, 10)]:
@@ -1844,6 +1860,8 @@ cyan dots = photo near points.""")
     ft.add_argument("--line-sample", type=float, default=50, help="take one point every this many meters along the infrastructure line (default 50)")
     ft.add_argument("--line-reach", type=float, default=3000, help="only consider infrastructure points within this distance of the camera position m (default 3000)")
     ft.add_argument("--skip-tag", action="append", help="in --line, skip lines carrying this tag, key=value, repeatable (default electrified=no; none means skip none)")
+    ft.add_argument("--budget-min", type=float, default=20, help="stop scoring new clusters after this many minutes and write the partial ranking (default 20; 0 = no limit); "
+                    "the clusters left are listed in fit.json (unscored_clusters) and in the --select command printed at the stop")
     ft.add_argument("--top", type=int, default=20, help="how many top entries to print in the terminal and draw in --sheet (default 20)")
     ft.add_argument("--keep", type=int, default=5000, help="maximum number of entries written to the cams list (default 5000)")
     ft.add_argument("--sheet", help="overlay sheet jpg of the top --top; also writes <sheet>_skyline.jpg/.json, the top 3 stacked full-width over the photo (the live page's Skyline card)")

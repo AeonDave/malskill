@@ -417,6 +417,11 @@ def finish(args: argparse.Namespace) -> dict:
         except (KeyError, ValueError, TypeError):
             elapsed_min = UNVERIFIED_CLOCK_MIN
         reason = (getattr(args, "accept_unverified", None) or "").strip()
+        if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not re.search(r"user|utente|usuario|utilisateur|benutzer|stopp|interrupt|abort|cancel", reason, re.I):
+            raise ValueError(
+                f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason). "
+                f"'{reason[:60]}' is not that: the Quick budget is never a reason to close unverified; go Deep with the decisive check "
+                f"(SKILL.md step 6 by scene type) and finish when it leaves a file.")
         if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:
             raise ValueError(
                 f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Run the decisive check for the scene "
@@ -725,7 +730,7 @@ def main() -> int:
     complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
-    complete.add_argument("--accept-unverified", metavar="REASON", help="Close with no verification artifact before the clock runs out (only when the user stopped the analysis or the budget is gone); the reason is recorded.")
+    complete.add_argument("--accept-unverified", metavar="REASON", help="Close with no verification artifact: before the 25-minute clock only when the user stopped the analysis (the reason must say so), afterwards for any stated reason; the reason is recorded.")
     complete.set_defaults(handler=finish)
     scored = subparsers.add_parser("truth", help="Record the real location of a finished session and score it.")
     scored.add_argument("folder", type=Path)

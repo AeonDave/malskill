@@ -152,6 +152,26 @@ class SkylineCardTests(unittest.TestCase):
                 self.assertLessEqual(im.width, 1000)
 
 
+class BudgetTests(unittest.TestCase):
+    def test_fit_stops_at_the_budget_with_a_partial_ranking(self):
+        with tempfile.TemporaryDirectory() as td:
+            ridge, out, hits = Path(td) / "ridge.json", Path(td) / "fit.json", Path(td) / "hits.json"
+            synth_ridge(ridge, 26.0, 270.0, False)
+            clusters = [{"lat": LAT0 + i * 0.01, "lon": LON0, "name": f"c{i}", "h0": 0, "max_ang": 5, "az": 270, "n": 1} for i in range(6)]
+            hits.write_text(json.dumps({"params": {}, "n_samples": 6, "n_hits": 6, "n_clusters": 6, "hits": clusters, "clusters": clusters}), encoding="utf-8")
+            argv = ["terrain.py", "fit", "--hits", str(hits), "--radius", "0", "--ridge", str(ridge), "--out", str(out), "--range", "30000",
+                    "--min-peak", "2", "--nsamp", "400", "--focal-scales", "1", "--budget-min", "0.000001"]
+            err = io.StringIO()
+            with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+                terrain.main()
+            res = json.loads(out.read_text(encoding="utf-8"))
+            self.assertTrue(res["partial"])
+            self.assertEqual(res["n_clusters"], 1)                                   # the first cluster is always scored
+            self.assertEqual(len(res["unscored_clusters"]), 5)
+            self.assertIn("--select", err.getvalue())
+            self.assertIn("PARTIAL", err.getvalue())
+
+
 class CamLevelTests(unittest.TestCase):
     def test_cam_level_keeps_shore_positions_and_drops_the_slope(self):
         with tempfile.TemporaryDirectory() as td:

@@ -100,6 +100,9 @@ Every analysis starts in Quick mode: about 10 minutes of tools after the gut cal
 one more block only with a decisive test already named. Deep mode is entered only on the user's request or when the
 Quick answer is unsatisfactory (requested level not reached, decisive checks in contradiction, a single supporting
 clue), and it continues the same session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before
+Long tools are bounded, never awaited open-ended: `terrain.py fit` stops at `--budget-min` (20 min) with a partial
+ranking and the `--select` list to continue; `scan` prints what its cluster count will cost. Start them in the
+background, read the partial result at the stop, and decide from it.
 widening, and never start a whole-town ranking without first trying to name the junction from text and road geometry.
 When the clock runs out, report the settled level, the radius it supports and the test that would have separated the
 remaining candidates, and `finish`: never stop to ask whether to continue (autonomy), offer the next step in the answer.
