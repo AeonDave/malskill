@@ -59,7 +59,8 @@ page re-reads the folder every 2 s and shows, for the user watching:
   after `truth`, the real spot in teal with a dashed line to the answer and the error in km; the wheel, the + and −
   buttons and dragging move the map by hand, "Follow" hands it back to the analysis; every text is selectable;
   "Close viewer" stops the server without touching the analysis;
-- map layers: the top views of every `match.py rank --out` (position, heading, score, the saved view on click),
+- map layers: the top views of every `match.py rank` (position, heading, score, the saved view on click; a strong
+  top match also writes a camera mark with its view cone),
   the panoramas of every `*.index.json` as faint coverage dots, and your marks: `viewer.py mark camera` (point +
   view cone), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
   at its position); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/

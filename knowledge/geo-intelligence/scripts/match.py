@@ -348,9 +348,42 @@ def cmd_rank(args) -> None:
                 pass
         Path(args.out).write_text(json.dumps([{k: v for k, v in r.items() if k != "id_key"} for r in rows], ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"-> {args.out} (all {len(rows)} rows; top {len(out_rows)} views in {views_dir.name}/)")
+        _auto_camera_mark(Path(args.out), out_rows, args)
     if args.sheet:
         _sheet(out_rows, {r["id_key"]: ims[r["id_key"]] for r in out_rows}, Path(args.sheet))
         print(f"-> {args.sheet}")
+
+
+STRONG_SCORE, STRONG_INLIERS = 0.30, 15
+
+
+def _auto_camera_mark(out: Path, rows: list[dict], args) -> None:
+    """A strong top match is a camera position: put it on the live map (viewer_marks.json in the session root) with its
+    heading and field of view, so the view cone appears without a separate `viewer.py mark camera` call."""
+    if not rows:
+        return
+    top = rows[0]
+    strong = (top.get("score_global") or 0) >= STRONG_SCORE or (top.get("inliers") or 0) >= STRONG_INLIERS
+    if not strong or not top.get("wgs") or top.get("heading") is None:
+        return
+    root = next((p for p in (out.resolve().parent, *out.resolve().parents) if (p / "session.json").is_file()), None)
+    if root is None:
+        return
+    marks_file = root / "viewer_marks.json"
+    try:
+        marks = json.loads(marks_file.read_text(encoding="utf-8-sig")) if marks_file.is_file() else []
+        if not isinstance(marks, list):
+            marks = []
+    except (OSError, ValueError):
+        marks = []
+    label = f"best match {out.stem} ({top.get('score_global', 0):.2f}, {top.get('inliers') or 0} inliers)"
+    marks = [m for m in marks if not (isinstance(m, dict) and m.get("auto") == out.stem)]
+    marks.append({"kind": "camera", "lat": top["wgs"][0], "lon": top["wgs"][1], "heading": float(top["heading"]) % 360,
+                  "fov": float(getattr(args, "fov", 90) or 90), "label": label, "radius_m": None, "auto": out.stem,
+                  "t": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    marks_file.write_text(json.dumps(marks, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"-> camera mark on the map: {label} at {top['wgs'][0]:.5f},{top['wgs'][1]:.5f} heading {top['heading']:.0f}° "
+          f"(pass --heading {top['heading']:.0f} to finish if this is the shot)")
 
 
 def cmd_index(args) -> None:
