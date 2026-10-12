@@ -72,6 +72,36 @@ def fit(ridge: Path, out: Path, *extra: str) -> tuple[dict, str]:
     return json.loads(out.read_text(encoding="utf-8")), err.getvalue()
 
 
+class ShoreDEM(FakeDEM):
+    """FakeDEM plus a 30 % slope rising west of the camera: east of it is the lake (flat), the camera stands at the shore."""
+
+    def sample(self, lat, lon):
+        x = (np.asarray(lon) - LON0) * 111320 * math.cos(math.radians(LAT0))
+        return super().sample(lat, lon) + np.where(x < 0, -0.3 * x, 0.0)
+
+
+class CamLevelTests(unittest.TestCase):
+    def test_cam_level_keeps_shore_positions_and_drops_the_slope(self):
+        with tempfile.TemporaryDirectory() as td:
+            ridge, out = Path(td) / "ridge.json", Path(td) / "fit.json"
+            synth_ridge(ridge, 26.0, 270.0, False)
+            common = ["--radius", "300", "--grid", "100", "--cam-flat", "10000", "--focal-scales", "1"]
+            argv = ["terrain.py", "fit", "--at", f"{LAT0},{LON0}", "--ridge", str(ridge), "--out", str(out),
+                    "--range", "30000", "--min-peak", "2", "--nsamp", "400", *common]
+            with patch.object(terrain, "DEM", ShoreDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(io.StringIO()):
+                terrain.main()
+            free = json.loads(out.read_text(encoding="utf-8"))
+            argv += ["--cam-level", "5"]
+            with patch.object(terrain, "DEM", ShoreDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(io.StringIO()):
+                terrain.main()
+            level = json.loads(out.read_text(encoding="utf-8"))
+            self.assertGreater(level["n_skipped"]["off_level"], 0)                      # slope positions dropped
+            self.assertEqual(free["n_skipped"]["off_level"], 0)
+            self.assertLess(level["n_cams"], free["n_cams"])
+            self.assertEqual(level["params"]["cam_level_m"], 5)
+            self.assertGreater(level["n_cams"], 0)                                      # the lake side still scores
+
+
 class FocalTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

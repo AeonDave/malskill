@@ -601,23 +601,34 @@ def cmd_addr(args) -> dict:
     return pts
 
 
+def _geom_feature(el: dict) -> dict | None:
+    """One Overpass element → one GeoJSON feature. Nodes: Point. Ways: LineString (Polygon for closed buildings/areas).
+    Relations: MultiLineString of every member way (a multipolygon lake's shore, a coastline, a route); relations
+    only come with members under `out geom` / `out body geom`, never under `out tags`."""
+    tags = el.get("tags") or {}
+    if el["type"] == "node":
+        geom = {"type": "Point", "coordinates": [el["lon"], el["lat"]]}
+    elif el.get("geometry"):
+        coords = [[g["lon"], g["lat"]] for g in el["geometry"]]
+        closed = len(coords) > 3 and coords[0] == coords[-1]
+        geom = {"type": "Polygon", "coordinates": [coords]} if closed and ("building" in tags or "area" in tags) \
+            else {"type": "LineString", "coordinates": coords}
+    elif el["type"] == "relation":
+        parts = [[[g["lon"], g["lat"]] for g in m["geometry"]] for m in el.get("members") or [] if m.get("geometry")]
+        parts = [p for p in parts if len(p) >= 2]
+        if not parts:
+            return None
+        geom = {"type": "MultiLineString", "coordinates": parts}
+    else:
+        return None
+    return {"type": "Feature", "id": f"{el['type']}/{el['id']}", "properties": tags, "geometry": geom}
+
+
 def cmd_geom(args) -> dict:
     """Any filter → GeoJSON (keeps geometry for lines, polygons and points), for custom analysis or overlays."""
     pre, sc = _scope(args)
-    data = run(f"[out:json][timeout:180];{pre}nwr{args.filter}{sc};out geom tags;", args.proxy, args.cache)
-    feats = []
-    for el in data.get("elements", []):
-        tags = el.get("tags") or {}
-        if el["type"] == "node":
-            geom = {"type": "Point", "coordinates": [el["lon"], el["lat"]]}
-        elif el.get("geometry"):
-            coords = [[g["lon"], g["lat"]] for g in el["geometry"]]
-            closed = len(coords) > 3 and coords[0] == coords[-1]
-            geom = {"type": "Polygon", "coordinates": [coords]} if closed and ("building" in tags or "area" in tags) \
-                else {"type": "LineString", "coordinates": coords}
-        else:
-            continue
-        feats.append({"type": "Feature", "id": f"{el['type']}/{el['id']}", "properties": tags, "geometry": geom})
+    data = run(f"[out:json][timeout:180];{pre}nwr{args.filter}{sc};out geom;", args.proxy, args.cache)
+    feats = [f for f in (_geom_feature(el) for el in data.get("elements", [])) if f]
     gj = {"type": "FeatureCollection", "features": feats}
     out = args.out or Path("osm_geom.geojson")
     out.write_text(json.dumps(gj, ensure_ascii=False), encoding="utf-8")

@@ -859,7 +859,7 @@ def _cmd_fit(args) -> None:
     done: set[tuple[int, int]] = set()
     recs: list[dict] = []
     clusters_out: list[dict] = []
-    skipped = {"not_flat": 0, "no_peak": 0, "no_line": 0, "dup": 0, "missing_dem": 0, "no_perp_line": 0}
+    skipped = {"not_flat": 0, "off_level": 0, "no_peak": 0, "no_line": 0, "dup": 0, "missing_dem": 0, "no_perp_line": 0}
     dem_failed = []
     grid_pts = [(dx, dy) for dy in np.arange(-args.radius, args.radius + 1e-6, args.grid)
                 for dx in np.arange(-args.radius, args.radius + 1e-6, args.grid) if dx * dx + dy * dy <= args.radius ** 2]
@@ -875,6 +875,14 @@ def _cmd_fit(args) -> None:
             dem_failed.append(c["src_idx"])
             continue
         kx = 111320 * math.cos(math.radians(lat))
+        level_h = None
+        if args.cam_level is not None:                       # shore / bank / beach: the camera stands at the water's level
+            level_h = c.get("h0")
+            if level_h is None:
+                level_h = float(dem.sample(np.array([lat]), np.array([lon]))[0])
+            if math.isnan(level_h):
+                print(f"cluster {c['src_idx']} {name}: no elevation at the cluster point, --cam-level not applied", file=sys.stderr)
+                level_h = None
         sub = None
         if LP is not None and len(LP):
             m = (np.abs(LP[:, 0] - lat) * 110540 < args.radius + args.line_reach) & (np.abs(LP[:, 1] - lon) * kx < args.radius + args.line_reach)
@@ -899,6 +907,9 @@ def _cmd_fit(args) -> None:
                 skipped["not_flat"] += 1
                 continue
             g0 = float(g[:, 0].mean())
+            if level_h is not None and abs(g0 - float(level_h)) > args.cam_level:
+                skipped["off_level"] += 1
+                continue
             ang, dist_v = cast(dem, (clat, clon), g0 + args.eye, AZ, args.range, near=args.near, n=args.nsamp, keep_nan=True)
             if np.isnan(ang).any():                                   # a missing far tile would drop a ridge out of the skyline; don't rank on it
                 skipped["missing_dem"] += 1
@@ -1051,7 +1062,7 @@ def _cmd_fit(args) -> None:
                    "focal": focal_how, "focal_metric": "px" if px_metric else "deg", "f35_ladder": [round(f35_0 * x, 1) for x in fscales],
                    "near_dist_m": near_dists if two else None, "near_clear_w": args.near_clear_w,
                    "perp_line": args.perp_line, "perp_tol_deg": args.perp_tol if args.perp_line else None,
-                   "cam_flat_m": args.cam_flat, "cam_flat_radius_m": args.cam_flat_radius, "min_peak_deg": args.min_peak,
+                   "cam_flat_m": args.cam_flat, "cam_flat_radius_m": args.cam_flat_radius, "cam_level_m": args.cam_level, "min_peak_deg": args.min_peak,
                    "cc_max_deg": args.cc_max, "roll_max_deg": args.roll_max, "flat_clear_deg": args.flat_clear, "flat_w": args.flat_w, "flat_step_px": args.flat_step,
                    "line": args.line, "line_dist": args.line_dist, "line_win": args.line_win if args.line else None,
                    "line_scale": args.line_scale if args.line else None, "line_order": args.line_order if args.line else None,
@@ -1334,6 +1345,9 @@ convert ridge.json's ridge points to (bearing offset, elevation angle), and comp
             the error of the ridge sampling itself (a few to a dozen or so pixels), the skyline can't separate them; you need a second constraint
 Camera positions first pass two filters: height difference within --cam-flat-radius ≤ --cam-flat (the camera stands on flat ground in the frame),
 highest horizon elevation angle ≥ --min-peak (there are mountains to compare).
+Lake shore, coast, riverbank (the camera stands at the water's edge with a slope right behind it): the flat filter rejects the true position, and
+with it off the grid climbs the slope and scores cameras 100 m above the water. Use --cam-level N instead: only positions whose ground elevation is
+within N m of the cluster point's (the scan hit's h0, or the --at point) are scored; --cam-flat 10000 turns the flat filter off.
 With --line (GeoJSON from osm.py geom), one more independent constraint is added: for each heading, the nearest distance dL/dC/dR of infrastructure sample points inside the frame's left/center/right bearing windows
 (--line-win); distances outside the --line-dist intervals are penalized by meters/--line-scale (--line-order can also penalize the order),
 total = score + --line-w × line_pen; headings where any of the three windows has no infrastructure don't count. Without --line, total = score.
@@ -1360,7 +1374,7 @@ Method in references/geometry.md 7.4, corridors.md 4.3.
 
 Output JSON (--out):
   {"params": {...all parameters used in this run, including f0/hrow/cx/hfov under photo...},
-   "n_clusters", "n_cams": number of camera positions scored, "n_skipped": {"not_flat","no_peak","no_line","dup","missing_dem","no_perp_line"},
+   "n_clusters", "n_cams": number of camera positions scored, "n_skipped": {"not_flat","off_level","no_peak","no_line","dup","missing_dem","no_perp_line"},
    "focal_edge": null | {"top1": "long"|"short"|null, "long", "short", "of": leading results counted, "range_f35": [lo, hi] mm},
    "dem_failed_clusters": hit indices whose elevation tiles failed to download (not scored),
    "clusters": [{"hit": the cluster's index in --hits, "name", "hit_ll": [lat,lon], "n", "max_ang", "n_cams", "rank",
@@ -1404,6 +1418,7 @@ cyan dots = photo near points.""")
     ft.add_argument("--eye", type=float, default=1.6, help="eye height above ground m (default 1.6)")
     ft.add_argument("--cam-flat", type=float, default=8, help="height difference limit around the camera position m; above it, it isn't a flat-ground camera position (default 8; fine search has used 6)")
     ft.add_argument("--cam-flat-radius", type=float, default=300, help="radius m for judging whether the camera position is flat (default 300; fine search has used 200)")
+    ft.add_argument("--cam-level", type=float, default=None, metavar="M", help="only camera positions whose ground elevation is within M m of the cluster point's (scan hit h0 or the --at point): lake shore, coast, riverbank; pair with --cam-flat 10000 (default off)")
     ft.add_argument("--min-peak", type=float, default=6, help="minimum highest horizon elevation angle in degrees for a camera position to be scored (default 6)")
     ft.add_argument("--cc-max", type=float, default=0.7, help="limit of horizon offset cc ° (default 0.7, i.e. hrow may be off by a dozen or so pixels)")
     ft.add_argument("--roll-max", type=float, default=1.0,

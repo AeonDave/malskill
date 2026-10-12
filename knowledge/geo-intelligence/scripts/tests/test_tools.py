@@ -51,6 +51,20 @@ def signals(*texts: str, places: bool = False, brands: bool = False) -> tuple[li
 
 
 class CountryDataTests(unittest.TestCase):
+    def test_osm_geom_keeps_relations_as_multilinestrings(self):
+        import osm
+        rel = {"type": "relation", "id": 6422525, "tags": {"natural": "water", "name": "Lago di Tovel", "type": "multipolygon"},
+               "members": [{"type": "way", "ref": 1, "role": "outer", "geometry": [{"lat": 46.26, "lon": 10.94}, {"lat": 46.27, "lon": 10.95}]},
+                           {"type": "way", "ref": 2, "role": "outer", "geometry": [{"lat": 46.27, "lon": 10.95}, {"lat": 46.26, "lon": 10.96}]},
+                           {"type": "node", "ref": 3, "role": "label", "lat": 46.265, "lon": 10.95}]}
+        f = osm._geom_feature(rel)
+        self.assertEqual(f["geometry"]["type"], "MultiLineString")
+        self.assertEqual(len(f["geometry"]["coordinates"]), 2)
+        self.assertEqual(f["properties"]["name"], "Lago di Tovel")
+        self.assertIsNone(osm._geom_feature({"type": "relation", "id": 1, "tags": {}}))          # `out tags` reply: no members
+        way = {"type": "way", "id": 5, "tags": {"natural": "water"}, "geometry": [{"lat": 46.0, "lon": 11.0}, {"lat": 46.1, "lon": 11.0}]}
+        self.assertEqual(osm._geom_feature(way)["geometry"]["type"], "LineString")
+
     def test_aliases_and_driving_side(self):
         self.assertEqual(geodata.country("Czech Republic")["iso2"], "CZ")
         self.assertEqual(geodata.country("UK")["iso2"], "GB")
