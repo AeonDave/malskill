@@ -391,9 +391,15 @@ def finish(args: argparse.Namespace) -> dict:
     if taken_arg and taken_arg.lower() not in ("unknown", "none", "-"):
         taken = {**parse_taken(taken_arg), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
     else:
-        years = sorted(set(re.findall(r"\b(19\d\d|20\d\d)\b", when_line or "")))
-        print("Note: --taken unknown" + (f", yet the report's When section names {', '.join(years)}: encode it (`--taken {years[0]}..` for 'from {years[0]} on', "
-              f"`--taken {years[0]}` for that year, `..{years[-1]}` for 'before')" if years else ": the answer still says why the date could not be determined")
+        dated = when_line or ""
+        try:                                            # a poster that reads "NOVEMBRE 2025" is a clue on the board, not only a line in the report
+            clues = json.loads((folder / "board.json").read_text(encoding="utf-8-sig")).get("clues", {})
+            dated += " " + " ".join(str(c.get("text", "")) for c in clues.values())
+        except (OSError, ValueError):
+            pass
+        years = sorted(set(re.findall(r"\b(19\d\d|20\d\d)\b", dated)))
+        print("Note: --taken unknown" + (f", yet the report or the board's clues name {', '.join(years)}: encode it (`--taken {years[0]}..` for 'from {years[0]} on', "
+              f"`--taken {years[0]}` for that year, `--taken {years[0]}-MM` for a month, `..{years[-1]}` for 'before')" if years else ": the answer still says why the date could not be determined")
               + ".", file=sys.stderr)
     hint = None
     if heading is None:
