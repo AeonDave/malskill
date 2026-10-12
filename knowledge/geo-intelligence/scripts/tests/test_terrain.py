@@ -151,6 +151,9 @@ class SkylineCardTests(unittest.TestCase):
             from PIL import Image
             with Image.open(card) as im:
                 self.assertLessEqual(im.width, 1000)
+            with Image.open(sheet) as im:
+                self.assertLessEqual(im.width, 360)                                           # one record: one tile, no empty columns
+            self.assertIn("peakfinder_url", side["top"][0])
 
 
 class BudgetTests(unittest.TestCase):
@@ -171,6 +174,20 @@ class BudgetTests(unittest.TestCase):
             self.assertEqual(len(res["unscored_clusters"]), 5)
             self.assertIn("--select", err.getvalue())
             self.assertIn("PARTIAL", err.getvalue())
+
+
+class TieTests(unittest.TestCase):
+    def test_tie_extent_measures_the_stretch_along_the_sight_line(self):
+        cams = [{"hit": 0, "cam": [LAT0, LON0 + i * 100 / (111320 * math.cos(math.radians(LAT0)))], "total": 0.30 + 0.005 * i} for i in range(5)]
+        cams.append({"hit": 0, "cam": [LAT0 + 0.01, LON0], "total": 0.9})                           # far and bad: not a tie
+        t = terrain.tie_extent(cams, 0.30, 0.03)
+        self.assertEqual(t["n"], 5)
+        self.assertAlmostEqual(t["span_m"], 400.0, delta=2.0)
+        self.assertAlmostEqual(t["bearing"], 90.0, delta=1.0)                                        # east-west stretch
+        self.assertEqual(terrain.tie_extent(cams[:1], 0.30, 0.03)["n"], 1)
+        self.assertIsNone(terrain.tie_extent([], 0.30, 0.03))
+        url = terrain.peakfinder_url(46.26, 10.95, 59.4, 67.0, 1180.0)
+        self.assertEqual(url, "https://www.peakfinder.com/?lat=46.26000&lng=10.95000&azi=59&fov=67&ele=1180")
 
 
 class CamLevelTests(unittest.TestCase):

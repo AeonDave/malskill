@@ -218,6 +218,7 @@ Downloaded once into the shared cache (`workflow.md`, Paths and settings).
 |---|---|
 | `sun.py` (NOAA algorithm, within ≤0.02° of NREL SPA) | Sun position, shadows, bands, times, dishes |
 | SunCalc (suncalc.org) | Manual cross-check of sun azimuth, elevation and shadow at a point and time; `sun.py pos` prints the link (`suncalc_url`) |
+| PeakFinder (peakfinder.com) | Labelled mountain panorama from any point and heading, for the user's eyes; `terrain.py fit/view` print the link (`peakfinder_url`, parameters as documented by the community: lat, lng, azi, fov, ele); the offline counterpart is `terrain.py view --peaks` with OSM peak names |
 | ShadeMap (shademap.app) | Terrain and building shadows on a map at a date and time, for the user's eyes; `sun.py pos` prints the link (`shademap_url`); offline counterpart `terrain.py shade` |
 | Bellingcat Shadow Finder | Whole-earth search of where an object's shadow length fits a date and time; cross-check for `sun.py locate` |
 | Historical daily weather (temperature, sun/rain) | `sun.py weather` (Open-Meteo ERA5 archive, no key): check "frozen", "sunny"; with a date, rank or test places; with a place, rank the days |

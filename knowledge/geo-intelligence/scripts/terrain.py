@@ -762,6 +762,35 @@ def draw_peak_labels(d: ImageDraw.ImageDraw, labels: list[tuple[str, float, floa
         d.text((x + 3, y - lift - size + 2), text, fill="white", font=font, stroke_width=2, stroke_fill="black")
 
 
+
+def peakfinder_url(lat: float, lon: float, heading: float, hfov: float, ground: float) -> str:
+    """The same camera in PeakFinder (labelled panorama, for the user's eyes). Parameters as documented by the community
+    (lat, lng, azi, fov 8–90, ele); the site may ignore ones it does not know."""
+    return (f"https://www.peakfinder.com/?lat={lat:.5f}&lng={lon:.5f}&azi={heading % 360:.0f}"
+            f"&fov={min(max(hfov, 8), 90):.0f}&ele={ground:.0f}")
+
+
+def tie_extent(cams: list[dict], best_total: float, delta: float) -> dict | None:
+    """Camera positions whose total is within delta of the best: how many, how far they spread (principal axis, metres)
+    and along which compass bearing. A skyline fixes a sight line; this is the stretch of it the score cannot separate."""
+    ties = [c for c in cams if c.get("total") is not None and c["total"] <= best_total + delta]
+    if len(ties) < 2:
+        return {"n": len(ties), "span_m": 0.0, "bearing": None, "delta": delta} if ties else None
+    lat0 = sum(c["cam"][0] for c in ties) / len(ties)
+    lon0 = sum(c["cam"][1] for c in ties) / len(ties)
+    kx = 111320 * math.cos(math.radians(lat0))
+    xy = np.array([[(c["cam"][1] - lon0) * kx, (c["cam"][0] - lat0) * 110540] for c in ties])
+    cov = np.cov(xy.T) if len(ties) > 2 else np.outer(xy[1] - xy[0], xy[1] - xy[0])
+    w, v = np.linalg.eigh(cov)
+    axis = v[:, int(np.argmax(w))]
+    proj = xy @ axis
+    span = float(proj.max() - proj.min())
+    bearing = (math.degrees(math.atan2(axis[0], axis[1])) + 360) % 180          # an axis: 0–180°
+    return {"n": len(ties), "span_m": round(span, 1), "bearing": round(bearing, 1), "delta": delta,
+            "bbox": [round(min(c["cam"][0] for c in ties), 5), round(min(c["cam"][1] for c in ties), 5),
+                     round(max(c["cam"][0] for c in ties), 5), round(max(c["cam"][1] for c in ties), 5)]}
+
+
 def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, args, az: np.ndarray, dist_n: int,
                style: str = "grid", peaks: list[dict] | None = None) -> None:
     """grid: --sheet-cols × --sheet-width thumbnails with a three-line header. stack: one full-width tile per record (≤1000 px),
@@ -773,7 +802,7 @@ def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, arg
     base = None
     if photo and photo.exists():
         base = Image.open(photo).convert("RGB").resize((tw, th))
-    cols = max(1, args.sheet_cols) if style == "grid" else 1
+    cols = max(1, min(args.sheet_cols, len(recs))) if style == "grid" else 1      # no empty tiles: one record, one tile
     rows = math.ceil(len(recs) / cols)
     sheet = Image.new("RGB", (tw * cols, th * rows), "white")
     font = _font(13 if style == "grid" else 18)
@@ -1124,8 +1153,9 @@ def _cmd_fit(args) -> None:
             n_c += 1
             if best_c is None or best["total"] < best_c["total"]:
                 best_c = best
+        tie = tie_extent([r for r in recs if r["hit"] == c["src_idx"]], best_c["total"], args.tie) if best_c else None
         clusters_out.append({"hit": c["src_idx"], "name": name, "hit_ll": [round(lat, 5), round(lon, 5)],
-                             "n": c.get("n"), "max_ang": c.get("max_ang"), "n_cams": n_c, "best": best_c})
+                             "n": c.get("n"), "max_ang": c.get("max_ang"), "n_cams": n_c, "best": best_c, "tie": tie})
         per = (time.monotonic() - t_start) / (ci + 1)
         eta = f"  [{per:.1f} s/cluster, ~{per * (len(centers) - ci - 1) / 60:.0f} min left]" if len(centers) > 3 else ""
         print(f"cluster {ci + 1}/{len(centers)} hit{c['src_idx']} {name or '-'}: scored {n_c} camera positions"
@@ -1176,8 +1206,23 @@ def _cmd_fit(args) -> None:
         if b:
             line_txt = f"  L/C/R {b['dL']}/{b['dC']}/{b['dR']} pen {b['line_pen']}" if "line_pen" in b else ""
             near_txt = (f"  D1 {b['D1'] / 1000:g} km near {b.get('rms_near_px', '-')} px clear {b['nclearpen']}" if "D1" in b else "")
+            t = x.get("tie") or {}
+            tie_txt = f"  span {t['span_m']:.0f} m along {t['bearing']:.0f}° ({t['n']} positions within {t['delta']})" if t.get("n", 0) > 1 else ""
             print(f"  {x['rank']:>3}. hit{x['hit']} {x['name'] or '-'}  cam {b['cam']}  H {b['H']}  f {b['f']:.0f} ({b['f35']:.0f} mm)  "
-                  f"rms {b['rms']} ({b['rms_px']} px)  flat {b['flatpen']}{near_txt}{line_txt}  total {b['total']}", file=sys.stderr)
+                  f"rms {b['rms']} ({b['rms_px']} px)  flat {b['flatpen']}{near_txt}{line_txt}  total {b['total']}{tie_txt}", file=sys.stderr)
+    lead = clusters_out[0] if clusters_out else None
+    if lead and lead.get("best"):
+        t = lead.get("tie") or {}
+        W_, _ = ridge["image_size"]
+        hfov_best = 2 * math.degrees(math.atan((W_ / 2) / lead["best"]["f"]))
+        if t.get("n", 0) > 1 and t["span_m"] > args.grid:
+            print(f"Position ambiguity: {t['n']} camera positions score within {t['delta']} of the best and span {t['span_m']:.0f} m along "
+                  f"{t['bearing']:.0f}°. The skyline fixes a sight line, not a point: put the answer on the road, shore or building inside this "
+                  f"stretch (osm.py geom / satellite) and give a radius of at least {t['span_m'] / 2:.0f} m; a finer grid will not separate them.", file=sys.stderr)
+        elif args.radius == 0:
+            print("Single camera position (--radius 0): the score says how well this point fits, not how far along the sight line the camera "
+                  "could move; test the alternatives (the road, the field edge) with the same command before closing.", file=sys.stderr)
+        print(f"PeakFinder, same camera for the eyes: {peakfinder_url(lead['best']['cam'][0], lead['best']['cam'][1], lead['best']['H'], hfov_best, lead['best']['g'])}", file=sys.stderr)
     if focal_edge:
         lo_mm, hi_mm = focal_edge["range_f35"]
         side = focal_edge["top1"] or ("long" if focal_edge["long"] >= focal_edge["short"] else "short")
@@ -1211,7 +1256,10 @@ def _cmd_fit(args) -> None:
             _fit_sheet(best3, ridge, photo, stack, args, AZ, args.nsamp, style="stack", peaks=peaks)
             side = {"image": stack.name, "fit": str(args.out), "photo": str(photo) if photo else None, "peaks_file": args.peaks,
                     "top": [{"rank": i + 1, "hit": r["hit"], "name": r["name"] or "-", "cam": r["cam"], "heading": r["H"], "f35": r.get("f35"),
-                             "rms_px": r.get("rms_px"), "total": r["total"], "peaks": r.get("peaks", [])} for i, r in enumerate(best3)]}
+                             "rms_px": r.get("rms_px"), "total": r["total"], "peaks": r.get("peaks", []),
+                             "tie": next((x.get("tie") for x in clusters_out if x["hit"] == r["hit"]), None),
+                             "peakfinder_url": peakfinder_url(r["cam"][0], r["cam"][1], r["H"], 2 * math.degrees(math.atan((W / 2) / r["f"])), r["g"])}
+                            for i, r in enumerate(best3)]}
             stack.with_suffix(".json").write_text(json.dumps(side, ensure_ascii=False, indent=1), encoding="utf-8")
             print(f"skyline card → {stack} + {stack.with_suffix('.json').name} (top {len(best3)} stacked over the photo"
                   + (f", {sum(len(r.get('peaks', [])) for r in best3)} summit labels" if peaks else "") + ")", file=sys.stderr)
@@ -1625,6 +1673,8 @@ def _cmd_view(args) -> None:
         im = S
     im.save(args.out)
     print(f"ground {ground:.0f} m, eye height {eye:.0f} m, skyline distance {np.nanmin(sky_dist) / 1000:.1f}–{np.nanmax(sky_dist) / 1000:.1f} km → {args.out}")
+    if args.hfov < 170:
+        print(f"PeakFinder, same camera for the eyes: {peakfinder_url(lat, lon, args.heading, args.hfov, ground)}")
 
 
 
@@ -1928,6 +1978,7 @@ cyan dots = photo near points.""")
     ft.add_argument("--skip-tag", action="append", help="in --line, skip lines carrying this tag, key=value, repeatable (default electrified=no; none means skip none)")
     ft.add_argument("--budget-min", type=float, default=20, help="stop scoring new clusters after this many minutes and write the partial ranking (default 20; 0 = no limit); "
                     "the clusters left are listed in fit.json (unscored_clusters) and in the --select command printed at the stop")
+    ft.add_argument("--tie", type=float, default=0.03, help="position ambiguity: camera positions whose total lies within this of a cluster's best are reported as one stretch (span and bearing; default 0.03)")
     ft.add_argument("--top", type=int, default=20, help="how many top entries to print in the terminal and draw in --sheet (default 20)")
     ft.add_argument("--keep", type=int, default=5000, help="maximum number of entries written to the cams list (default 5000)")
     ft.add_argument("--sheet", help="overlay sheet jpg of the top --top; also writes <sheet>_skyline.jpg/.json, the top 3 stacked full-width over the photo (the live page's Skyline card)")

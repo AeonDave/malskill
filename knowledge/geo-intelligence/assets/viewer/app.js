@@ -548,8 +548,10 @@
       const bits = [`score ${Number(t.total).toFixed(3)}`, `heading ${Math.round(t.heading)}°`];
       if (t.f35) bits.push(`${Math.round(t.f35)} mm`);
       if (t.rms_px != null) bits.push(`rms ${Math.round(t.rms_px)} px`);
+      if (t.tie && t.tie.n > 1 && t.tie.span_m > 0) bits.push(`${t.tie.n} positions tie over ${Math.round(t.tie.span_m)} m along ${Math.round(t.tie.bearing)}°`);
       const peaks = (t.peaks || []).map((p) => `${p.name} (${(p.dist_m / 1000).toFixed(1)} km)`).join(", ");
-      return `<li><b>#${t.rank}</b> ${esc(t.name)} <span class="muted">${esc(bits.join(" · "))}</span>${peaks ? `<br><span class="muted">summits: ${esc(peaks)}</span>` : ""}</li>`;
+      const pf = t.peakfinder_url ? ` <a href="${esc(t.peakfinder_url)}" target="_blank" rel="noopener" title="The same camera in PeakFinder, with peak names">PeakFinder</a>` : "";
+      return `<li><b>#${t.rank}</b> ${esc(t.name)} <span class="muted">${esc(bits.join(" · "))}</span>${pf}${peaks ? `<br><span class="muted">summits: ${esc(peaks)}</span>` : ""}</li>`;
     }).join("");
     $("skyline").innerHTML = `<button type="button" class="skyline-img" data-url="${esc(k.image)}" data-cap="Skyline: top ${k.top.length} candidates over the photo"><img src="${esc(k.image)}" alt="synthetic skyline of the best candidates over the photo"></button>`
       + `<ol class="skyline-top">${rows}</ol>`
