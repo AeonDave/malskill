@@ -134,6 +134,8 @@ class PhotoArchiveTests(unittest.TestCase):
         for marker in ("<!-- fill: ranked shortlist with percentages and the cues behind each; region hunch; what would change your mind -->",
                        "<!-- fill: country / region / city, coordinates (WGS84; GCJ-02 too in mainland China), confidence per level, radius and what it rests on -->"):
             report = report.replace(marker, "1. Namibia 80% — yellow edge lines, red sand" if "shortlist" in marker else "Namibia, country level only")
+        report = report.replace('<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->',
+                                "not determinable: no metadata, no dated imagery checked")
         (folder / "report.md").write_text(report, encoding="utf-8")
         out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500")
         meta = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))
@@ -209,6 +211,32 @@ class PhotoArchiveTests(unittest.TestCase):
         err = self.command("start", "--beside", "--root", self.root / "archives", success=False)
         self.assertIn("--beside needs --image", err)
 
+    def test_taken_is_recorded_and_scored(self):
+        self.assertEqual(photo_session.parse_taken("2019")["from"], "2019-01-01")
+        self.assertEqual(photo_session.parse_taken("2019")["to"], "2019-12-31")
+        self.assertEqual(photo_session.parse_taken("2019-06..2019-09")["to"], "2019-09-30")
+        t = photo_session.parse_taken("2019-06-21T14:30")
+        self.assertEqual((t["from"], t["to"], t["time"]), ("2019-06-21", "2019-06-21", "14:30"))
+        with self.assertRaises(ValueError):
+            photo_session.parse_taken("summer 2019")
+        with self.assertRaises(ValueError):
+            photo_session.parse_taken("2020..2019")
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        out = self.finish(folder, "--taken", "2019-06..2019-09", "--taken-confidence", "medium", "--taken-basis", "leaves full, sun high, 2018 pano lacks the kiosk")
+        r = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(r["taken"]["from"], "2019-06-01")
+        self.assertEqual(r["taken"]["confidence"], "medium")
+        self.assertIn("Taken: 2019-06..2019-09", (Path(out["folder"]) / "report.md").read_text(encoding="utf-8"))
+        scored = self.command("truth", out["folder"], "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia", "--taken", "2019-07-14")
+        self.assertTrue(scored["truth"]["taken_hit"])
+        self.assertEqual(scored["truth"]["taken_error_days"], 0)
+        scored = self.command("truth", out["folder"], "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia", "--taken", "2020-01-10")
+        self.assertFalse(scored["truth"]["taken_hit"])
+        self.assertEqual(scored["truth"]["taken_error_days"], 102)
+        board = self.command("scoreboard", "--root", self.root / "archives")
+        self.assertEqual(board["taken_hit_rate"], 0.0)
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")
@@ -268,7 +296,10 @@ class PhotoArchiveTests(unittest.TestCase):
         filled = skeleton.replace("## Gut call (before tools)\n<!-- fill:", "## Gut call (before tools)\nSlovakia 60% (Tatras)\n<!--")
         (folder / "report.md").write_text(filled, encoding="utf-8")
         self.assertIn("Answer", self.finish(folder, success=False))
-        (folder / "report.md").write_text(filled.replace("## Answer\n<!-- fill:", "## Answer\nPoprad, medium\n<!--"), encoding="utf-8")
+        filled = filled.replace("## Answer\n<!-- fill:", "## Answer\nPoprad, medium\n<!--")
+        (folder / "report.md").write_text(filled, encoding="utf-8")
+        self.assertIn("When", self.finish(folder, success=False))                        # when is an answer too
+        (folder / "report.md").write_text(filled.replace("## When\n<!-- fill:", "## When\nSummer 2019, afternoon (shadows)\n<!--"), encoding="utf-8")
         self.assertTrue(self.finish(folder)["folder"].endswith("__slovakia__presov__poprad"))
 
     def test_timezone_name_is_resolved_never_none(self):

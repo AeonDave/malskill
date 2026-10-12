@@ -1,6 +1,6 @@
 # geo-intelligence
 
-An agent skill for geolocating and chronolocating images: photos, screenshots, video frames and street-level / GeoGuessr-style rounds. Given an image, the agent works out country, region, city, street, camera position and heading, and when the picture was taken, and proves it with files produced in the session. The deliverable is one best answer with coordinates, an error radius, tiered confidence, alternatives with the test that separates them, and an evidence image.
+An agent skill for geolocating and chronolocating images: photos, screenshots, video frames and street-level / GeoGuessr-style rounds. Given an image, the agent works out country, region, city, street, camera position and heading, and when the picture was taken, and proves it with files produced in the session. The deliverable is one best answer with coordinates, an error radius, tiered confidence, when the photo was taken (year, season, date, time of day, as far as the evidence goes), alternatives with the test that separates them, and an evidence image.
 
 The skill follows the [AgentSkills specification](https://agentskills.io/specification): `SKILL.md` is the method the agent reads, `references/` are deep dives loaded on demand, `scripts/` are command-line tools the agent runs, `assets/data/` are offline lookup tables.
 

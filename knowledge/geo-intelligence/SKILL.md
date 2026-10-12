@@ -11,7 +11,7 @@ metadata:
 
 # Geo Intelligence
 
-Find where (and when) an image was taken, to the finest level the evidence supports, and prove it: every claim points at a clue, the command that tested it and the file it produced. Output is one best answer with coordinates, error radius, heading, tiered confidence, alternatives with the test that separates them, and an evidence image.
+Find where and when an image was taken, to the finest level the evidence supports, and prove it: every claim points at a clue, the command that tested it and the file it produced. Output is one best answer with coordinates, error radius, heading, tiered confidence, alternatives with the test that separates them, and an evidence image.
 
 Two halves work together: the player's eye (read soil, light, road paint, poles, plates, script, architecture in seconds and commit to a ranked guess) and the investigator's discipline (text, search, maps, street-level imagery and geometry; never claim more than the files show). Your own knowledge of the world is the first instrument, the web is the second, the scripts make you faster and measure what eyes cannot.
 
@@ -137,7 +137,21 @@ Then read the regional file in `references/world/` (strongest tells first, "comm
 
 Street level: compare **invariant** features (building outlines, window spacing, pole positions, curbs, ridgelines), never cars, signs or foliage; ≥2 unique features for road level, ≥3 plus two constraints for building level. Low SIFT inliers do not reject a candidate (season, old capture, sidewalk vs road); across years they are noise.
 
-### 7. Verify, falsify, red-team
+### 7. When (after where, always)
+
+Climb the ladder as far as the evidence goes and record each rung in `## When` of `report.md` with its clue and file; "not determinable" with the reason is a valid rung. "Not asked" is not: the answer always carries a when line.
+
+| Rung | How | Read |
+|---|---|---|
+| Metadata | `recon/meta/meta.md`: capture time with its UTC offset and the countries that had it that day; a hypothesis, not a fact (rule 3): screenshots, re-saves and games strip it; a date that contradicts the scene loses | `meta.py` |
+| Year or year range | brackets from dated imagery: what the photo shows that imagery of a known date lacks, and vice versa (`gsv.py` panorama dates and history, `tiles.py wayback`, Sentinel by year, `pano.py` dates); signs, shops and works with known opening or closing dates (web); newest vehicle, plate or sign format as a lower bound (`world/general.md` "Format changes that date a photo"; game screenshots: `world/streetview.md` §5, camera generation and © year) | `streetlevel.md` §5, `verify.md` |
+| Season | foliage, crops, snow, clothing, daylight length at the latitude, sun too high or low for a season | `sky.md` §4 |
+| Date | `sun.py when --dates` from shadow elevation and bearing (two symmetric date sets, state the sensitivity first); dated notices, posters, events; with a range and a distinctive sky, `sun.py weather` ranks the days | `sky.md` §4, §6 |
+| Time of day | `sun.py when --date` from shadows (morning and afternoon separated by shadow direction), clocks, shop hours, traffic, lights on | `sky.md` §4 |
+
+Then `finish --taken <YYYY | YYYY-MM | YYYY-MM-DD[THH:MM] | A..B> --taken-confidence … --taken-basis "…"`; `truth --taken` scores it later.
+
+### 8. Verify, falsify, red-team
 
 Before calling it (`references/verify.md`): never reject a road or area lead on how the landscape "should" look: render three panoramas along it (`osm.py geom` → `gsv.py sheet --points … --along`, one minute) and compare; memory of a region is not evidence, and a guide's spotlight is a lead worth that minute. Write 2–3 falsification conditions before looking at the candidate; run the bearing self-check (left/right order, near/far occlusion, heading vs sun); redo the decisive step with another crop or tool; for hard or high-stakes cases hand a fresh sub-agent only the photo and your answer and ask for the strongest reason it is wrong. Then:
 
@@ -148,7 +162,7 @@ uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py spec.json --out evidence.jpg     
 uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py match.json --out match.jpg --match    # colour-coded feature lines photo ↔ reference
 ```
 
-### 8. Answer and archive
+### 9. Answer and archive
 
 Rate each level separately and report the finest level rated medium or better:
 
@@ -160,11 +174,12 @@ Rate each level separately and report the finest level rated medium or better:
 | Street | ground-level match on ≥2 unique features | layout fits + 1 feature; or, with no ground imagery at all, area high + bearing self-check passed (a satellite-only road claim needs a ≥z18 crop in the evidence image) | satellite layout only |
 | Building / camera point | two independent constraints + ≥3-feature match | one of the two | estimate |
 | Floor | two kinds of reference agree | one reference | do not give |
+| When | metadata whose offset fits the place, or an imagery bracket of a year or less plus a sun date or time | one dated bracket, or sun time alone | season or era from looks only |
 
-Fill `## Answer` in `report.md` first (finish refuses a placeholder), then lead the answer with the fixed format in `references/workflow.md` (bold place line, bold coordinates in DMS and decimal, one confidence/radius line, decisive clues, evidence image, analysis timestamp with links to the folder and `report.md`), in the user's language, source text verbatim with a translation. When only a city or region is settled, pin the best-supported specific area inside it snapped to a real road, never a midpoint between rivals; if nothing inside is better supported, the population-weighted centre (`geodata.py regions <CC>`) with an honest radius. Then:
+Fill `## Answer` and `## When` in `report.md` first (finish refuses a placeholder), then lead the answer with the fixed format in `references/workflow.md` (bold place line, bold coordinates in DMS and decimal, one confidence/radius line, decisive clues, evidence image, analysis timestamp with links to the folder and `report.md`), in the user's language, source text verbatim with a translation. When only a city or region is settled, pin the best-supported specific area inside it snapped to a real road, never a midpoint between rivals; if nothing inside is better supported, the population-weighted centre (`geodata.py regions <CC>`) with an honest radius. Then:
 
 ```bash
-cd .. && uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py finish "<session folder>" --country … --region … --city … --latitude … --longitude … --confidence high|medium|low [--radius-m <m> --heading <deg>]   # from outside the folder: the rename fails while a shell sits inside it
+cd .. && uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py finish "<session folder>" --country … --region … --city … --latitude … --longitude … --confidence high|medium|low [--radius-m <m> --heading <deg>] --taken <when> --taken-confidence … --taken-basis "…"   # from outside the folder: the rename fails while a shell sits inside it
 uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py truth "<folder>" --latitude … --longitude … --country …   # when the real answer becomes known
 uv run ${CLAUDE_SKILL_DIR}/scripts/viewer.py stop "<folder>"                                                       # after the answer, unless the user wants the page kept
 ```

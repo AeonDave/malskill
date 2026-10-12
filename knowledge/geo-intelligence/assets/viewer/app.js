@@ -558,7 +558,9 @@
       $("scope-level").textContent = `Answer, ${f.confidence || "unrated"} confidence`;
       $("scope-name").textContent = f.name;
       $("scope-coords").textContent = fmtCoord(f.lat, f.lon);
-      note.textContent = (f.radius_known ? `Radius ${fmtRadius(f.radius_km)}` : "No radius given") + (f.heading != null ? `, camera heading ${Math.round(f.heading)}°` : "") + ".";
+      const tk = s.result && s.result.taken;
+      note.textContent = (f.radius_known ? `Radius ${fmtRadius(f.radius_km)}` : "No radius given") + (f.heading != null ? `, camera heading ${Math.round(f.heading)}°` : "")
+        + (tk ? `. Taken ${tk.text}${tk.time ? " " + tk.time : ""} (${tk.confidence})` : "") + ".";
       const tr = $("scope-truth");
       if (s.truth && s.truth.latitude != null) {
         tr.hidden = false;
@@ -589,6 +591,8 @@
     const bits = [`Confidence ${r.confidence || "unrated"}`];
     if (r.radius_m) bits.push(`radius ${fmtRadius(r.radius_m / 1000)}`);
     if (r.heading != null) bits.push(`heading ${Math.round(r.heading)}°`);
+    if (r.taken) bits.push(`taken ${r.taken.text}${r.taken.time ? " " + r.taken.time : ""} (${r.taken.confidence}${r.taken.basis ? ": " + r.taken.basis : ""})`);
+    else bits.push("when: not given");
     $("answer-detail").textContent = bits.join(", ") + ".";
     const tr = $("answer-truth");
     if (s.truth && s.truth.latitude != null) {

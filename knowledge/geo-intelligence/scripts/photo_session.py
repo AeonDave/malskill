@@ -20,7 +20,8 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import date, datetime
+import calendar
 import hashlib
 import json
 import math
@@ -260,13 +261,46 @@ REPORT_SKELETON = """# Geolocation report: {name}
 ## Answer
 <!-- fill: country / region / city, coordinates (WGS84; GCJ-02 too in mainland China), confidence per level, radius and what it rests on -->
 
+## When
+<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->
+
 ## Alternatives and how to separate them
 <!-- fill if any -->
 
 ## Excluded candidates and unresolved clues
 <!-- fill if any -->
 """
-REQUIRED_SECTIONS = ("## Gut call (before tools)\n<!-- fill:", "## Answer\n<!-- fill:")
+REQUIRED_SECTIONS = ("## Gut call (before tools)\n<!-- fill:", "## Answer\n<!-- fill:", "## When\n<!-- fill:")
+
+
+def parse_taken(text: str) -> dict:
+    """`2019` | `2019-06` | `2019-06-21` | `2019-06-21T14:30` | ranges `A..B` (each side any precision) -> {from, to, time}."""
+    s = text.strip()
+    time_part = None
+
+    def bound(part: str, end: bool) -> date:
+        nonlocal time_part
+        m = re.fullmatch(r"(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?(?:T(\d{2}:\d{2}))?", part.strip())
+        if not m:
+            raise ValueError(f"--taken {text!r}: use YYYY, YYYY-MM, YYYY-MM-DD, optionally THH:MM, or a range A..B")
+        y, mo, d, t = m.groups()
+        if t:
+            time_part = t
+        y_i = int(y)
+        if d:
+            return date(y_i, int(mo), int(d))
+        if mo:
+            return date(y_i, int(mo), calendar.monthrange(y_i, int(mo))[1] if end else 1)
+        return date(y_i, 12, 31) if end else date(y_i, 1, 1)
+
+    if ".." in s:
+        a, b = s.split("..", 1)
+        frm, to = bound(a, False), bound(b, True)
+    else:
+        frm, to = bound(s, False), bound(s, True)
+    if to < frm:
+        raise ValueError(f"--taken {text!r}: the range end is before its start")
+    return {"text": s, "from": frm.isoformat(), "to": to.isoformat(), "time": time_part}
 
 
 def finish(args: argparse.Namespace) -> dict:
@@ -307,6 +341,11 @@ def finish(args: argparse.Namespace) -> dict:
     if not math.isfinite(lon) or not -180 <= lon <= 180:
         raise ValueError("Longitude must be a finite number from -180 to 180.")
     artifacts = count_verification_artifacts(folder)
+    taken = None
+    if getattr(args, "taken", None):
+        taken = {**parse_taken(args.taken), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
+    else:
+        print("Warning: no --taken: the answer must still say when the photo was taken (year or range, season, date, time) or 'not determinable' and why.", file=sys.stderr)
     if heading is None:
         hints = ranked_headings(folder)
         print("Warning: no --heading, so the map draws no view cone" + (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else "")
@@ -339,6 +378,7 @@ def finish(args: argparse.Namespace) -> dict:
             "heading": heading,
             "confidence": confidence,
             "verification_artifacts": artifacts,
+            "taken": taken,
         },
     })
     body = report.split(FOOTER, 1)[0].rstrip().replace(str(folder), str(destination))
@@ -349,7 +389,9 @@ def finish(args: argparse.Namespace) -> dict:
         f"Result: {lat:.6f}, {lon:.6f} (WGS84{'' if coordinate_source == 'given' else ', ' + coordinate_source})"
         + (f"; radius {radius:g} m" if radius is not None else "") + (f"; heading {heading:g}°" if heading is not None else "")
         + f"; confidence {confidence}; verification artifacts {artifacts}  \n"
-        f"Archive: [{destination.name}](<{destination}>)\n"
+        + (f"Taken: {taken['text']}" + (f" {taken['time']}" if taken.get("time") else "") + f" ({taken['confidence']}"
+           + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else "Taken: not given  \n")
+        + f"Archive: [{destination.name}](<{destination}>)\n"
     )
     (destination / "report.md").write_text(body + footer, encoding="utf-8")
     save_json(destination / "session.json", metadata)
@@ -452,6 +494,21 @@ def truth(args: argparse.Namespace) -> dict:
         "gut_country_hit": (gut_p is not None) if (args.country and gut) else None,
         "gut_p_truth": (gut_p if gut_p is not None else 0.0) if (args.country and gut) else None,
     }
+    if getattr(args, "taken", None):
+        truth_taken = parse_taken(args.taken)
+        record["taken"] = truth_taken["text"]
+        answered = result.get("taken")
+        if answered:
+            lo, hi = date.fromisoformat(answered["from"]), date.fromisoformat(answered["to"])
+            t_lo, t_hi = date.fromisoformat(truth_taken["from"]), date.fromisoformat(truth_taken["to"])
+            inside = t_hi >= lo and t_lo <= hi
+            gap = 0 if inside else min(abs((t_lo - hi).days), abs((lo - t_hi).days))
+            record["taken_hit"] = inside
+            record["taken_error_days"] = gap
+            record["taken_span_days"] = (hi - lo).days + 1
+        else:
+            record["taken_hit"] = None
+            record["taken_error_days"] = None
     metadata["truth"] = record
     save_json(folder / "session.json", metadata)
     if TRUTH_START in report:
@@ -465,7 +522,8 @@ def truth(args: argparse.Namespace) -> dict:
         + (f"; source: {args.source}" if args.source else "") + "  \n"
         f"Error: {distance:.2f} km; approximate world-map game score {record['game_score_estimate']}; "
         f"country hit: {hit(record['country_hit'])}; region hit: {hit(record['region_hit'])}; "
-        f"gut call: {hit(record['gut_country_hit'])}"
+        + (f"taken: {record['taken']} → {'inside the answered range' if record.get('taken_hit') else ('no range answered' if record.get('taken_hit') is None else str(record.get('taken_error_days')) + ' days off')}; " if record.get("taken") else "")
+        +         f"gut call: {hit(record['gut_country_hit'])}"
         + (f" ({record['gut_p_truth']:g}% on the true country)" if record["gut_p_truth"] is not None else "")
         + f"; stated confidence: {result.get('confidence')}.\n\n{TRUTH_END}\n"
     )
@@ -513,7 +571,7 @@ def scoreboard(args: argparse.Namespace) -> dict:
         if t and r:
             rows.append({"folder": folder.name, "started_at": m.get("started_at"), "chosen": r.get("city_or_nearest_locality"),
                          "country": r.get("country"), "confidence": r.get("confidence"), "error_km": t["error_km"],
-                         "score": t.get("game_score_estimate"), "country_hit": t.get("country_hit"),
+                         "score": t.get("game_score_estimate"), "country_hit": t.get("country_hit"), "taken_hit": t.get("taken_hit"),
                          "gut_country_hit": t.get("gut_country_hit"), "gut_p_truth": t.get("gut_p_truth")})
     errors = [x["error_km"] for x in rows]
     summary = {"root": str(root), "scored_sessions": len(rows),
@@ -522,6 +580,8 @@ def scoreboard(args: argparse.Namespace) -> dict:
                "within_km": {str(k): round(sum(e <= k for e in errors) / len(errors), 3) if errors else None for k in THRESHOLDS_KM},
                "country_hit_rate": (round(sum(1 for x in rows if x["country_hit"]) / len([x for x in rows if x["country_hit"] is not None]), 3)
                                     if any(x["country_hit"] is not None for x in rows) else None),
+               "taken_hit_rate": (round(sum(1 for x in rows if x.get("taken_hit")) / len([x for x in rows if x.get("taken_hit") is not None]), 3)
+                                  if any(x.get("taken_hit") is not None for x in rows) else None),
                "gut_country_hit_rate": (round(sum(1 for x in rows if x["gut_country_hit"]) / len([x for x in rows if x["gut_country_hit"] is not None]), 3)
                                         if any(x["gut_country_hit"] is not None for x in rows) else None)}
     calib = {}
@@ -585,6 +645,9 @@ def main() -> int:
     complete.add_argument("--confidence", required=True, choices=("high", "medium", "low"))
     complete.add_argument("--radius-m", type=float, help="Error radius of the answer in metres (what the stated precision rests on).")
     complete.add_argument("--heading", type=float, help="Camera heading in degrees (0 = north, 90 = east).")
+    complete.add_argument("--taken", help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], or a range A..B (e.g. 2019-06..2019-09).")
+    complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
+    complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
     complete.set_defaults(handler=finish)
     scored = subparsers.add_parser("truth", help="Record the real location of a finished session and score it.")
     scored.add_argument("folder", type=Path)
@@ -594,6 +657,7 @@ def main() -> int:
     scored.add_argument("--region", default="")
     scored.add_argument("--city", default="")
     scored.add_argument("--source", default="", help="Where the truth comes from (owner, puzzle answer, game reveal…).")
+    scored.add_argument("--taken", help="True capture date/time: YYYY-MM-DD[THH:MM] (or a coarser YYYY / YYYY-MM when that is all that is known).")
     scored.set_defaults(handler=truth)
     board = subparsers.add_parser("scoreboard", help="Accuracy and calibration over all scored sessions.")
     board.add_argument("--root", type=Path, default=DEFAULT_ROOT)

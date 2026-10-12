@@ -111,8 +111,8 @@ remaining candidates, and `finish`: never stop to ask whether to continue (auton
 
 ## report.md
 
-`start` creates a skeleton (gut call, evidence, answer, alternatives, exclusions); `finish` refuses while the
-gut call or answer section is still a placeholder. Write it as you go, in the user's language, keeping source
+`start` creates a skeleton (gut call, evidence, answer, when, alternatives, exclusions); `finish` refuses while the
+gut call, answer or when section is still a placeholder. Write it as you go, in the user's language, keeping source
 text verbatim with a translation. It contains: the gut call (written before tools), observations, decisive
 clues with the files that show them, commands actually run, sources with links, the chosen location and
 coordinates (WGS84; GCJ-02 too for mainland China), confidence per level and the radius it is based on,
@@ -129,7 +129,8 @@ uv run scripts/photo_session.py finish "/absolute/session/path" --country "Count
 Use the real values (those are only syntax). Without `--latitude/--longitude` the pin is the country centre with a
 ≥100 km radius and confidence low (`result.coordinate_source` says so); `result.verification_artifacts` counts the
 rank, sheet, evidence, terrain, pose and mark files, and `finish` warns when it is zero. Add `--radius-m <m>` and
-`--heading <deg>` when the answer has them; `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
+`--heading <deg>` when the answer has them, and `--taken <YYYY | YYYY-MM | YYYY-MM-DD[THH:MM] | A..B>` with
+`--taken-confidence` and `--taken-basis` (the session records them; without `--taken`, `finish` warns); `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and
 result; `report.md` gets the final path and timestamps appended. Use the printed paths from then on.
 
@@ -140,6 +141,8 @@ Lead with exactly:
 **Country: … | Region: … | City / nearest locality: …**
 
 **Coordinates: 38°34'14.4"N 7°54'30.1"W (38.570667, -7.908361)**
+
+**Taken: 2019-06..2019-09, afternoon ~15:00 local (medium: full foliage, sun 55°, the kiosk absent from the 2018 panorama)**
 
 The place line also carries the camera heading, the direction of travel (moving platform) and the capture time
 when they are known. In mainland China add a second coordinate line in the local datum (`GCJ-02: … | BD-09: …`
@@ -168,6 +171,9 @@ Then add whatever decided or misled the case to the matching `world/<region>.md`
 A decisive street-level source also goes into [streetlevel.md](streetlevel.md).
 
 ## Scoring and test sets
+
+`truth --taken YYYY-MM-DD[THH:MM]` scores the when line too: `taken_hit` (the true date inside the answered
+range), `taken_error_days` (distance outside it) and `scoreboard` `taken_hit_rate`.
 
 **Scoreboard over real sessions** (every session with a recorded truth):
 
