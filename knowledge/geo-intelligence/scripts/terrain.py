@@ -34,7 +34,9 @@ Examples:
   terrain.py scan --lines rail_bridges.geojson --bbox 35.1,138.3,36.0,139.2 --out hits.json   # get the lines with osm.py geom first
   terrain.py ridge photo.jpg --x0 760 --x1 1260 --step 20 --flat 0:280 --out ridge.json --png ridge.png
   terrain.py ridge photo.jpg --points "X,Y;X,Y;..." --near "X,Y;X,Y;..." --near-clear X0:X1@ROW --hrow ROW --out ridge.json   # two-layer
-  terrain.py fit --hits hits.json --ridge ridge.json --out fit.json --sheet top.jpg            # coarse search: per cluster 2 km / 250 m / z11
+  terrain.py fit --hits hits.json --ridge ridge.json --out fit.json --sheet top.jpg            # coarse search: per cluster 2 km / 250 m / z11;
+                                                                                             # --sheet also writes top_skyline.jpg/.json (top 3 stacked over the photo, the live page's Skyline card)
+  terrain.py fit --at <lat,lon> --ridge ridge.json --sheet top.jpg --peaks peaks.geojson      # names the summits on the skyline (osm.py geom '["natural"="peak"]["name"]')
   terrain.py fit --at 35.4983,138.7688 --ridge ridge.json --radius 800 --grid 100 --zoom 13 --az-step 0.25 \\
              --line rail.geojson --line-dist 350-750:550-900:800-1700 --out fine.json          # fine search + infrastructure distance constraint
   terrain.py fit --hits hits.json --ridge ridge.json --range 45000 --min-peak 2 --perp-line lines.geojson --out fit.json   # far range + wires overhead
@@ -709,18 +711,76 @@ def _skyline_xy(hor: np.ndarray, az: np.ndarray, H: float, f: float, cc: float, 
     return list(zip(x[o].tolist(), y[o].tolist()))
 
 
-def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, args, az: np.ndarray, dist_n: int) -> None:
+
+# ---------------------------------------------------------------- named peaks on the skyline (PeakFinder-style labels)
+def load_peaks(path) -> list[dict]:
+    """Named peaks from osm.py geom '["natural"="peak"]["name"]' output (Point features; the ele tag when present)."""
+    gj = json.loads(Path(path).read_text(encoding="utf-8"))
+    out = []
+    for ft in gj.get("features", []):
+        g = ft.get("geometry") or {}
+        if g.get("type") != "Point":
+            continue
+        tags = ft.get("properties") or {}
+        name = tags.get("name") or tags.get("name:en")
+        if not name:
+            continue
+        ele = None
+        m = re.match(r"\s*(-?[0-9]+(?:\.[0-9]+)?)", str(tags.get("ele", "")).replace(",", "."))
+        if m:
+            ele = float(m.group(1))
+        out.append({"name": name, "lat": float(g["coordinates"][1]), "lon": float(g["coordinates"][0]), "ele": ele})
+    return out
+
+
+def peaks_in_view(peaks: list[dict], dem, cam, eye_alt: float, az: np.ndarray, hor: np.ndarray, rng: float, tol: float = 0.4) -> list[dict]:
+    """The named peaks that stand on the skyline seen from cam: name, bearing, elevation angle, distance, height.
+    hor = skyline elevation angle per az column (degrees); a peak lower than the skyline at its bearing by more than tol is hidden."""
+    order = np.argsort(az)
+    azs, hors = np.asarray(az, float)[order], np.asarray(hor, float)[order]
+    out = []
+    for p in peaks:
+        d = geo.distance(cam, (p["lat"], p["lon"]))
+        if d < 50 or d > rng:
+            continue
+        ele = p.get("ele")
+        if ele is None:
+            ele = float(dem.sample(np.array([p["lat"]]), np.array([p["lon"]]))[0])
+            if math.isnan(ele):
+                continue
+        brg = geo.bearing(cam, (p["lat"], p["lon"])) % 360
+        drop = d * d / (2 * R_EARTH) * (1 - K_REFRACTION)
+        ang = math.degrees(math.atan2(ele - drop - eye_alt, d))
+        if ang < float(np.interp(brg, azs, hors, period=360)) - tol:
+            continue
+        out.append({"name": p["name"], "bearing": round(brg, 1), "angle": round(ang, 2), "dist_m": int(round(d)), "ele": int(round(ele))})
+    return out
+
+
+def draw_peak_labels(d: ImageDraw.ImageDraw, labels: list[tuple[str, float, float]], size: int = 14) -> None:
+    """labels: (text, x, y) in image pixels, y on the skyline; staggered on two levels so neighbours do not overlap."""
+    font = _font(size)
+    for i, (text, x, y) in enumerate(sorted(labels, key=lambda t: t[1])):
+        lift = 30 + 26 * (i % 2)
+        d.line([(x, y), (x, y - lift + 4)], fill=(255, 255, 255), width=1)
+        d.text((x + 3, y - lift - size + 2), text, fill="white", font=font, stroke_width=2, stroke_fill="black")
+
+
+def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, args, az: np.ndarray, dist_n: int,
+               style: str = "grid", peaks: list[dict] | None = None) -> None:
+    """grid: --sheet-cols × --sheet-width thumbnails with a three-line header. stack: one full-width tile per record (≤1000 px),
+    one header line each, summit names when peaks are given — the image the live page shows as the Skyline card."""
     W, H = ridge["image_size"]
-    tw = args.sheet_width
+    tw = args.sheet_width if style == "grid" else min(1000, W)
     s = tw / W
     th = int(H * s)
     base = None
     if photo and photo.exists():
         base = Image.open(photo).convert("RGB").resize((tw, th))
-    cols = max(1, args.sheet_cols)
+    cols = max(1, args.sheet_cols) if style == "grid" else 1
     rows = math.ceil(len(recs) / cols)
     sheet = Image.new("RGB", (tw * cols, th * rows), "white")
-    font = _font(13)
+    font = _font(13 if style == "grid" else 18)
     for i, r in enumerate(recs):
         tile = base.copy() if base else Image.new("RGB", (tw, th), (120, 120, 120))
         d = ImageDraw.Draw(tile)
@@ -732,7 +792,21 @@ def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, arg
             dem = DEM(tuple(r["cam"]), args.range + 500, args.zoom, args.cache, args.proxy, args.allow_missing)
             ang, dist_v = cast(dem, tuple(r["cam"]), r["g"] + args.eye, az, args.range, near=args.near, n=dist_n)
             pts = _skyline_xy(ang.max(axis=1), az, r["H"], f, r["cc"], cx, hrow, W / 2, r.get("roll", 0.0))
-            d.line([(x * s, y * s) for x, y in pts], fill=(255, 40, 40), width=2)
+            d.line([(x * s, y * s) for x, y in pts], fill=(255, 40, 40), width=2 if style == "grid" else 3)
+            if peaks:
+                labels = []
+                r["peaks"] = []
+                lim = math.degrees(math.atan((W / 2) / f))          # half the horizontal field of view: behind the camera tan() wraps
+                for pk in peaks_in_view(peaks, dem, tuple(r["cam"]), r["g"] + args.eye, az, ang.max(axis=1), args.range):
+                    rel = (pk["bearing"] - r["H"] + 180) % 360 - 180
+                    if abs(rel) > lim:
+                        continue
+                    x = cx + f * math.tan(math.radians(rel))
+                    y = hrow - f * math.tan(math.radians(pk["angle"] - r["cc"])) + math.tan(math.radians(r.get("roll", 0.0))) * (x - cx)
+                    labels.append((f"{pk['name']} {pk['dist_m'] / 1000:.1f} km", x * s, y * s))
+                    r["peaks"].append({**pk, "x": int(round(x)), "y": int(round(y))})
+                if style != "grid":
+                    draw_peak_labels(d, labels, size=15)
             if r.get("D1"):
                 pts = _skyline_xy(ang[:, dist_v <= r["D1"]].max(axis=1), az, r["H"], f, r["cc"], cx, hrow, W / 2, r.get("roll", 0.0))
                 d.line([(x * s, y * s) for x, y in pts], fill=(255, 140, 0), width=2)
@@ -745,11 +819,17 @@ def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, arg
         for x0, x1, row in ridge.get("near_clear") or []:
             d.line([(x0 * s, row * s), (x1 * s, row * s)], fill=(0, 220, 255), width=2)
         line_txt = f"  L/C/R {r['dL']:.0f}/{r['dC']:.0f}/{r['dR']:.0f} pen {r['line_pen']:.2f}" if "line_pen" in r else ""
-        txt = (f"#{i + 1} hit{r['hit']} {r['name'] or '-'}  {r['cam'][0]:.5f},{r['cam'][1]:.5f}\n"
-               f"H {r['H']:.1f}  f {f:.0f} ({r.get('f35', 0):.0f}mm)  cc {r['cc']:+.2f}  rms {r['rms']:.3f}  flat {r['flatpen']:.3f}{line_txt}\n"
-               f"total {r['total']:.3f}")
-        d.rectangle([0, 0, tw, 46], fill=(0, 0, 0))
-        d.text((4, 2), txt, fill="yellow", font=font)
+        if style == "grid":
+            txt = (f"#{i + 1} hit{r['hit']} {r['name'] or '-'}  {r['cam'][0]:.5f},{r['cam'][1]:.5f}\n"
+                   f"H {r['H']:.1f}  f {f:.0f} ({r.get('f35', 0):.0f}mm)  cc {r['cc']:+.2f}  rms {r['rms']:.3f}  flat {r['flatpen']:.3f}{line_txt}\n"
+                   f"total {r['total']:.3f}")
+            d.rectangle([0, 0, tw, 46], fill=(0, 0, 0))
+            d.text((4, 2), txt, fill="yellow", font=font)
+        else:
+            txt = (f"#{i + 1}  {r['name'] or '-'}   score {r['total']:.3f} · heading {r['H']:.0f}° · {r.get('f35', 0):.0f} mm"
+                   f"{' · rms ' + str(int(round(r['rms_px']))) + ' px' if r.get('rms_px') is not None else ''} · {r['cam'][0]:.5f},{r['cam'][1]:.5f}")
+            d.rectangle([0, 0, tw, 30], fill=(0, 0, 0))
+            d.text((6, 4), txt, fill="yellow", font=font)
         sheet.paste(tile, ((i % cols) * tw, (i // cols) * th))
     sheet.save(out, quality=88)
     print(f"overlay → {out} (red line = synthetic skyline, orange line = synthetic near layer, yellow dots = photo ridge points, "
@@ -1119,6 +1199,16 @@ def _cmd_fit(args) -> None:
                 print("photo not found (--overlay not given, and the photo path in ridge.json can't be found either); drawing the overlay on a gray background", file=sys.stderr)
                 photo = None
             _fit_sheet(top, ridge, photo, Path(args.sheet), args, AZ, args.nsamp)
+            stack = Path(args.sheet).with_name(Path(args.sheet).stem + "_skyline.jpg")       # the live page's Skyline card
+            peaks = load_peaks(args.peaks) if args.peaks else None
+            best3 = top[:3]
+            _fit_sheet(best3, ridge, photo, stack, args, AZ, args.nsamp, style="stack", peaks=peaks)
+            side = {"image": stack.name, "fit": str(args.out), "photo": str(photo) if photo else None, "peaks_file": args.peaks,
+                    "top": [{"rank": i + 1, "hit": r["hit"], "name": r["name"] or "-", "cam": r["cam"], "heading": r["H"], "f35": r.get("f35"),
+                             "rms_px": r.get("rms_px"), "total": r["total"], "peaks": r.get("peaks", [])} for i, r in enumerate(best3)]}
+            stack.with_suffix(".json").write_text(json.dumps(side, ensure_ascii=False, indent=1), encoding="utf-8")
+            print(f"skyline card → {stack} + {stack.with_suffix('.json').name} (top {len(best3)} stacked over the photo"
+                  + (f", {sum(len(r.get('peaks', [])) for r in best3)} summit labels" if peaks else "") + ")", file=sys.stderr)
     if dem_failed:                                                    # output is written, but the ranking is missing these clusters
         sys.exit(f"{len(dem_failed)}/{len(centers)} clusters not scored because their DEM failed "
                  f"(hit {', '.join(map(str, dem_failed))}); re-run to retry them, the ranking above is incomplete")
@@ -1505,6 +1595,7 @@ def main() -> None:
     v.add_argument("--photo", type=Path, help="scale the photo to the same width and place it above the render for comparison")
     v.add_argument("--roll", type=float, default=0, help="frame roll angle (clockwise positive), for downward shots from tall buildings and handheld tilt")
     v.add_argument("--overlay", action="store_true", help="also output a separate image: draw the synthetic skyline (red line) directly on the photo with the same heading/pitch/field of view")
+    v.add_argument("--peaks", help="named peaks GeoJSON (osm.py geom '[\"natural\"=\"peak\"][\"name\"]' --bbox …): label the summits that stand on the skyline, on the render and on --overlay")
 
     pr = sub.add_parser("profile")
     common(pr)
@@ -1755,7 +1846,8 @@ cyan dots = photo near points.""")
     ft.add_argument("--skip-tag", action="append", help="in --line, skip lines carrying this tag, key=value, repeatable (default electrified=no; none means skip none)")
     ft.add_argument("--top", type=int, default=20, help="how many top entries to print in the terminal and draw in --sheet (default 20)")
     ft.add_argument("--keep", type=int, default=5000, help="maximum number of entries written to the cams list (default 5000)")
-    ft.add_argument("--sheet", help="overlay sheet jpg of the top --top")
+    ft.add_argument("--sheet", help="overlay sheet jpg of the top --top; also writes <sheet>_skyline.jpg/.json, the top 3 stacked full-width over the photo (the live page's Skyline card)")
+    ft.add_argument("--peaks", help="named peaks GeoJSON (osm.py geom '[\"natural\"=\"peak\"][\"name\"]' --bbox …): summit names on the stacked skyline image and in its .json")
     ft.add_argument("--overlay", "--photo", dest="photo", help="photo for the overlay; if omitted, uses the path recorded in ridge.json")
     ft.add_argument("--sheet-cols", type=int, default=4, help="overlay images per row (default 4)")
     ft.add_argument("--sheet-width", type=int, default=360, help="width of each overlay image px (default 360)")
@@ -1813,6 +1905,14 @@ cyan dots = photo near points.""")
     title = (f"camera {lat:.5f},{lon:.5f}  ground {ground:.0f} m eye {eye:.0f} m  heading {args.heading % 360:.0f}°  "
              f"hfov {args.hfov:.0f}°  farthest skyline {np.nanmax(sky_dist) / 1000:.1f} km")
     im = annotate(im, az, args.pitch, vfov, title)
+    if args.peaks and args.hfov < 170:                                  # summit names on the render, PeakFinder-style
+        labels = []
+        for pk in peaks_in_view(load_peaks(args.peaks), dem, (lat, lon), eye, az, sky_ang, args.range):
+            rel = (pk["bearing"] - args.heading + 180) % 360 - 180
+            if abs(rel) > args.hfov / 2:
+                continue
+            labels.append((f"{pk['name']} {pk['ele']} m", (rel + args.hfov / 2) / args.hfov * im.width, (args.pitch + vfov / 2 - pk["angle"]) / vfov * (height - 1)))
+        draw_peak_labels(ImageDraw.Draw(im), labels, size=max(13, im.width // 100))
     if args.roll:
         im = im.rotate(-args.roll, resample=Image.BICUBIC, fillcolor=(255, 255, 255))
     if args.photo and args.overlay:
@@ -1827,6 +1927,16 @@ cyan dots = photo near points.""")
             y = -fpx * math.tan(math.radians(e - args.pitch)) / math.cos(math.radians(a - args.heading))
             pts.append((ph.width / 2 + x * cr - y * sr, ph.height / 2 + x * sr + y * cr))
         ImageDraw.Draw(ph).line(pts, fill=(255, 40, 40), width=max(2, ph.width // 400))
+        if args.peaks:
+            labels = []
+            for pk in peaks_in_view(load_peaks(args.peaks), dem, (lat, lon), eye, az, sky_ang, args.range):
+                rel = (pk["bearing"] - args.heading + 180) % 360 - 180
+                if abs(rel) > args.hfov / 2:
+                    continue
+                x = fpx * math.tan(math.radians(rel))
+                y = -fpx * math.tan(math.radians(pk["angle"] - args.pitch)) / math.cos(math.radians(rel))
+                labels.append((f"{pk['name']} {pk['dist_m'] / 1000:.1f} km", ph.width / 2 + x * cr - y * sr, ph.height / 2 + x * sr + y * cr))
+            draw_peak_labels(ImageDraw.Draw(ph), labels, size=max(14, ph.width // 90))
         ov = args.out.with_name(args.out.stem + "_overlay" + args.out.suffix)
         ph.save(ov, quality=90)
         print(f"skyline overlaid on photo -> {ov} (if the red line doesn't match the photo's ridgeline, first adjust --heading/--pitch/--hfov/--roll, then suspect the camera position)")

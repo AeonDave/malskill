@@ -35,6 +35,7 @@ The page re-reads the folder every 2 s and shows:
               (position, heading, score, the saved view as a thumbnail), the panoramas of every *.index.json as
               faint coverage dots; click a marker for its card, buttons toggle the layers
   analysis    images whose name says what they are (ridge, fit, overlay, evidence, match, sheet, pose, _rank)
+  skyline     terrain.py fit --sheet's <sheet>_skyline.jpg/.json: the top three synthetic skylines over the photo, ranked, summit names
               in their own gallery
   close       the page's Close button stops this server (POST /api/stop); the analysis is not affected
   snapshot    finish, truth, stop and Close all write <session>/viewer.html: the same page with the state, the
@@ -520,11 +521,25 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
         "now": now, "warning": warning, "activity": activity, "artifacts": artifacts,
         "layers": map_layers(folder),
         "analysis_images": [a for a in artifacts if a["kind"] == "image" and a["path"] not in original_paths
-                            and "_views/" not in a["path"] and ANALYSIS_MARK.search(a["path"])][:24],
+                            and "_views/" not in a["path"] and not a["path"].endswith("_skyline.jpg") and ANALYSIS_MARK.search(a["path"])][:24],
+        "skyline": skyline_of(folder, artifacts),
         "report_md": report, "recon_md": recon, "tiles": tiles,
     }
     state["version"] = hashlib.sha1(json.dumps(state, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
     return state
+
+
+def skyline_of(folder: Path, artifacts: list[dict]) -> dict | None:
+    """The newest Skyline card: terrain.py fit --sheet writes <sheet>_skyline.json beside <sheet>_skyline.jpg (top 3 stacked)."""
+    for a in artifacts:                                       # newest first
+        if not a["path"].endswith("_skyline.json"):
+            continue
+        side = _read_json(folder / a["path"]) or {}
+        img = a["path"][:-len(".json")] + ".jpg"
+        if not side.get("top") or not (folder / img).exists():
+            continue
+        return {"image": "/files/" + img, "json": a["url"], "fit": side.get("fit"), "top": side["top"], "time": a["time"]}
+    return None
 
 
 def open_folder(folder: Path) -> None:

@@ -292,6 +292,18 @@ class StateTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             viewer.viewer_port(str(other), None)                                     # random ports: no silent default
 
+    def test_skyline_card_comes_from_the_fit_sidecar(self):
+        self.assertIsNone(viewer.build_state(self.folder)["skyline"])
+        side = {"image": "top_skyline.jpg", "fit": "fit.json", "top": [{"rank": 1, "hit": 62, "name": "Lago di Tovel", "cam": [46.2586, 10.9491],
+                "heading": 59.0, "f35": 24.3, "rms_px": 18.0, "total": 0.859, "peaks": [{"name": "Cima X", "dist_m": 3200}]}]}
+        (self.folder / "top_skyline.json").write_text(json.dumps(side), encoding="utf-8")
+        self.assertIsNone(viewer.build_state(self.folder)["skyline"])                     # no image yet: no card
+        (self.folder / "top_skyline.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        s = viewer.build_state(self.folder)
+        self.assertEqual(s["skyline"]["image"], "/files/top_skyline.jpg")
+        self.assertEqual(s["skyline"]["top"][0]["name"], "Lago di Tovel")
+        self.assertNotIn("top_skyline.jpg", [a["path"] for a in s["analysis_images"]])      # the card, not the gallery
+
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]
         viewer.main(["say", "next step", "--session", str(self.folder)])

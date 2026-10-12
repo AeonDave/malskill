@@ -65,7 +65,8 @@ page re-reads the folder every 2 s and shows, for the user watching:
   the panoramas of every `*.index.json` as faint coverage dots, and your marks: `viewer.py mark camera` (point +
   view cone), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
   at its position); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/
-  evidence/match/sheet/pose get their own gallery in the panel;
+  evidence/match/sheet/pose get their own gallery in the panel; `terrain.py fit --sheet` adds a Skyline card (the
+  top three synthetic skylines stacked over the photo with score, heading and focal, summit names with `--peaks`);
 - the panel: "Now" (the last `viewer.py say` line), candidates per level with shares, verified counts and exclusions,
   the activity feed (`say` lines, `board.py` log, every new file with thumbnails that open full size), `report.md` and
   `recon/recon.md` rendered.

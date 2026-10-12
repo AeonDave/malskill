@@ -627,6 +627,9 @@ def _geom_feature(el: dict) -> dict | None:
 def cmd_geom(args) -> dict:
     """Any filter → GeoJSON (keeps geometry for lines, polygons and points), for custom analysis or overlays."""
     pre, sc = _scope(args)
+    if args.bbox and (args.bbox[2] - args.bbox[0]) * (args.bbox[3] - args.bbox[1]) > 4.5:
+        print(f"Note: --bbox spans {(args.bbox[2] - args.bbox[0]):.1f}° × {(args.bbox[3] - args.bbox[1]):.1f}°: line queries over a whole mountain arc "
+              f"take minutes and often time out. Split it into parts of about 2° × 2° and run the gut-call region first.", file=sys.stderr)
     data = run(f"[out:json][timeout:180];{pre}nwr{args.filter}{sc};out geom;", args.proxy, args.cache)
     feats = [f for f in (_geom_feature(el) for el in data.get("elements", [])) if f]
     gj = {"type": "FeatureCollection", "features": feats}

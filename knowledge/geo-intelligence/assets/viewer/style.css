@@ -297,6 +297,12 @@ body:not(.running) .progress i { display: none; }
   cursor: pointer;
 }
 
+.skyline button.skyline-img { display: block; width: 100%; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); background: none; cursor: zoom-in; border-radius: 6px; overflow: hidden; }
+.skyline img { display: block; width: 100%; }
+.skyline-top { margin: 8px 0 0; padding-left: 22px; font-size: 13px; }
+.skyline-top li { margin: 3px 0; }
+.skyline .muted { color: var(--muted); }
+.skyline p.small { font-size: 12px; margin: 6px 0 0; }
 .gallery {
   display: grid;
   grid-template-columns: 1fr 1fr;

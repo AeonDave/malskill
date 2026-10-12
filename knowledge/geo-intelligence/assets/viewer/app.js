@@ -494,6 +494,26 @@
     if (s.folder !== lastFolder) { $("folder").textContent = s.folder; lastFolder = s.folder; }
   }
 
+  let lastSkyline = "";
+  function renderSkyline(s) {
+    const k = s.skyline;
+    $("skyline-section").hidden = !k;
+    if (!k) { lastSkyline = ""; return; }
+    const key = k.image + (k.time || "") + k.top.length;
+    if (key === lastSkyline) return;
+    lastSkyline = key;
+    const rows = k.top.map((t) => {
+      const bits = [`score ${Number(t.total).toFixed(3)}`, `heading ${Math.round(t.heading)}°`];
+      if (t.f35) bits.push(`${Math.round(t.f35)} mm`);
+      if (t.rms_px != null) bits.push(`rms ${Math.round(t.rms_px)} px`);
+      const peaks = (t.peaks || []).map((p) => `${p.name} (${(p.dist_m / 1000).toFixed(1)} km)`).join(", ");
+      return `<li><b>#${t.rank}</b> ${esc(t.name)} <span class="muted">${esc(bits.join(" · "))}</span>${peaks ? `<br><span class="muted">summits: ${esc(peaks)}</span>` : ""}</li>`;
+    }).join("");
+    $("skyline").innerHTML = `<button type="button" class="skyline-img" data-url="${esc(k.image)}" data-cap="Skyline: top ${k.top.length} candidates over the photo"><img src="${esc(k.image)}" alt="synthetic skyline of the best candidates over the photo"></button>`
+      + `<ol class="skyline-top">${rows}</ol>`
+      + `<p class="muted small">Red line: the skyline computed from elevation data at each candidate camera; yellow dots: the ridge read from the photo. Ranked by fit score, best first; a match fixes a sight line, not a point.</p>`;
+  }
+
   let lastGallery = "";
   function renderGallery(s) {
     const imgs = s.analysis_images || [];
@@ -753,6 +773,7 @@
     renderAnswer(s);
     renderCandidates(s);
     renderActivity(s);
+    renderSkyline(s);
     renderGallery(s);
     renderText(s);
     applyGlobe(s);
@@ -790,6 +811,7 @@
   stage.onSelect = showCard;
   $("card-close").addEventListener("click", () => { stage.selected = null; showCard(null); });
   $("analysis").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) openLightbox(b.dataset.url, b.dataset.cap); });
+  $("skyline").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) openLightbox(b.dataset.url, b.dataset.cap); });
   for (const name of ["matches", "coverage", "marks"]) {
     $(`layer-${name}`).addEventListener("click", () => {
       stage.layers[name] = !stage.layers[name];

@@ -122,6 +122,36 @@ class ShadeTests(unittest.TestCase):
             self.assertLess(end, "17:30")
 
 
+class SkylineCardTests(unittest.TestCase):
+    def test_sheet_writes_the_stacked_card_and_names_visible_peaks(self):
+        with tempfile.TemporaryDirectory() as td:
+            ridge, out, sheet = Path(td) / "ridge.json", Path(td) / "fit.json", Path(td) / "top.jpg"
+            synth_ridge(ridge, 26.0, 270.0, False)
+            kx = 111320 * math.cos(math.radians(LAT0))
+            peaks = {"type": "FeatureCollection", "features": [
+                {"type": "Feature", "properties": {"name": "Far Crest", "natural": "peak", "ele": "1800"},
+                 "geometry": {"type": "Point", "coordinates": [LON0 - 20000 / kx, LAT0]}},            # on the far range crest: visible
+                {"type": "Feature", "properties": {"name": "Low Knoll", "natural": "peak", "ele": "60"},
+                 "geometry": {"type": "Point", "coordinates": [LON0 - 4000 / kx, LAT0]}},             # 4 km west, 60 m: under the near range's skyline
+                {"type": "Feature", "properties": {"name": "Behind Me", "natural": "peak", "ele": "900"},
+                 "geometry": {"type": "Point", "coordinates": [LON0 + 5000 / kx, LAT0]}}]}            # east: outside the frame
+            (Path(td) / "peaks.geojson").write_text(json.dumps(peaks), encoding="utf-8")
+            res, err = fit(ridge, out, "--sheet", str(sheet), "--peaks", str(Path(td) / "peaks.geojson"), "--focal-scales", "1")
+            card = sheet.with_name("top_skyline.jpg")
+            self.assertTrue(card.exists())
+            self.assertIn("skyline card", err)
+            side = json.loads(card.with_suffix(".json").read_text(encoding="utf-8"))
+            self.assertEqual(side["top"][0]["rank"], 1)
+            self.assertAlmostEqual(side["top"][0]["heading"], 270.0, delta=2.0)
+            names = [p["name"] for p in side["top"][0]["peaks"]]
+            self.assertIn("Far Crest", names)
+            self.assertNotIn("Low Knoll", names)
+            self.assertNotIn("Behind Me", names)
+            from PIL import Image
+            with Image.open(card) as im:
+                self.assertLessEqual(im.width, 1000)
+
+
 class CamLevelTests(unittest.TestCase):
     def test_cam_level_keeps_shore_positions_and_drops_the_slope(self):
         with tempfile.TemporaryDirectory() as td:
