@@ -200,6 +200,15 @@ class PhotoArchiveTests(unittest.TestCase):
         pending = self.command("start", "--root", self.root / "archives")                     # no --image: still a board
         self.assertTrue((Path(pending["folder"]) / "board.json").is_file())
 
+    def test_beside_puts_the_session_next_to_the_photo(self):
+        out = self.command("start", "--image", self.source, "--beside")
+        folder = Path(out["folder"])
+        self.assertEqual(folder.parent, self.source.parent)
+        self.assertTrue((folder / "original" / self.source.name).is_file())
+        self.assertTrue(self.source.is_file())                                             # the photo itself is untouched
+        err = self.command("start", "--beside", "--root", self.root / "archives", success=False)
+        self.assertIn("--beside needs --image", err)
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")

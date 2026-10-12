@@ -19,7 +19,8 @@ These defaults apply whenever this skill runs, from any project folder.
 - Scripts: `scripts/x.py` in every reference means `${CLAUDE_SKILL_DIR}/scripts/x.py`. Run each with `uv run`
   (each script declares its dependencies).
 - Archive root: `--root`, else `$GEOINT_PHOTOS`, else `photos_root` in `config.local.json` next to `SKILL.md`,
-  else `~/geoint-photos/`.
+  else `~/geoint-photos/`. `start --beside` ignores the root and creates the session next to the first photo
+  (`scoreboard` and `list` then need `--root <that folder>`).
 - Archive time zone: `$GEOINT_TZ`, else `timezone` in `config.local.json`, else this computer's (set an IANA name such as `Europe/Rome`; otherwise the footer shows the OS's local zone name).
 - Shared cache (GeoNames, panorama indexes, sweep descriptors, Wayback list, test-set panoramas):
   `$GEOINT_CACHE`, else `~/.cache/geoint` (on Windows without `~/.cache`, `%LOCALAPPDATA%/geoint`).

@@ -104,7 +104,7 @@ The same tools can be run by hand. A minimal manual session:
 ```bash
 # 1. archive the photo (prints the session folder; run everything from inside it)
 #    --viewer also opens http://127.0.0.1:8765/ : a globe that narrows to the answer plus the live activity panel
-uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py start --image "/abs/path/photo.jpg" --viewer   # repeat --image for several photos of one scene
+uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py start --image "/abs/path/photo.jpg" --viewer   # repeat --image for several photos of one scene; --beside = session next to the photo
 cd "<printed folder>"
 uv run ${CLAUDE_SKILL_DIR}/scripts/viewer.py say "Reading the road sign"      # one line per step for the panel
 #    start also creates board.json; recon.py feeds its text and prior signals into it
@@ -169,7 +169,7 @@ Everything is optional; defaults work out of the box.
 
 | Variable | Purpose |
 |---|---|
-| `GEOINT_PHOTOS` | Root for session archives (default `~/geoint-photos/`; `--root` overrides per call) |
+| `GEOINT_PHOTOS` | Root for session archives (default `~/geoint-photos/`; `--root` overrides per call, `start --beside` uses the photo's own folder) |
 | `GEOINT_TZ` | IANA time zone for session timestamps (default: the machine's zone) |
 | `GEOINT_CACHE` | Shared cache for GeoNames, panorama indexes, descriptors (default `~/.cache/geoint`, on Windows `%LOCALAPPDATA%\geoint`) |
 | `GEOINT_DEVICE` | `cuda`, `mps`, `cpu`, `directml` or `auto` for the local models |

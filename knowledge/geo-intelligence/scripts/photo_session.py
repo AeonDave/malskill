@@ -6,7 +6,8 @@
 """Create, finalize and score one timestamped geo-intelligence archive per photograph.
 
   start     new archive for one photo, or several photos of the same scene (--image repeated); the untouched
-            originals are copied with their checksums, the first one is the reference `original`
+            originals are copied with their checksums, the first one is the reference `original`;
+            --beside puts the session folder next to the photo instead of under the archive root
             --viewer also opens the live page (viewer.py serve) in the default browser; board.json is created too
   finish    append the chosen country/region/city to the folder name, record the result
   truth     record the real location later (from the photo's owner, a puzzle answer, a game reveal)
@@ -87,7 +88,12 @@ def start(args: argparse.Namespace) -> dict:
     for image in images:
         if not image.is_file():
             raise ValueError(f"{image} is not a regular file.")
-    root = args.root.expanduser().resolve()
+    if getattr(args, "beside", False):
+        if not images:
+            raise ValueError("--beside needs --image: the session is created in the folder of the first photo.")
+        root = images[0].parent                   # the work lands next to the photo, not in the shared archive
+    else:
+        root = args.root.expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
     while True:
         started = now()
@@ -565,6 +571,7 @@ def main() -> int:
     create = subparsers.add_parser("start", help="Create a new archive and copy the original image.")
     create.add_argument("--image", type=Path, action="append", default=[], help="Source image to copy unchanged; repeat it for several photos of the same scene.")
     create.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Archive root (default: GEOINT_PHOTOS, config.local.json, or ~/geoint-photos).")
+    create.add_argument("--beside", action="store_true", help="Create the session folder next to the first --image instead of under --root (scoreboard then needs --root <that folder>).")
     create.add_argument("--viewer", action="store_true", help="Also start viewer.py serve for this session and open it in the browser.")
     create.add_argument("--viewer-port", type=int, default=8765, help="Port for --viewer on 127.0.0.1 (default 8765).")
     create.set_defaults(handler=start)
