@@ -283,6 +283,15 @@ class StateTests(unittest.TestCase):
         self.assertEqual(s["result"]["heading_hint"]["heading"], 77.0)
         self.assertEqual(s["focus"]["heading_hint"], 77.0)
 
+    def test_viewer_url_is_recorded_and_stop_needs_it(self):
+        viewer.record_viewer_url(self.folder, "http://127.0.0.1:48770/")
+        self.assertEqual(json.loads((self.folder / "session.json").read_text(encoding="utf-8"))["viewer_url"], "http://127.0.0.1:48770/")
+        self.assertEqual(viewer.viewer_port(str(self.folder), None), 48770)
+        self.assertEqual(viewer.viewer_port(str(self.folder), 99), 99)
+        other = make_session(self.tmp / "noport")
+        with self.assertRaises(SystemExit):
+            viewer.viewer_port(str(other), None)                                     # random ports: no silent default
+
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]
         viewer.main(["say", "next step", "--session", str(self.folder)])
@@ -437,7 +446,6 @@ class ServerTests(unittest.TestCase):
         meta["viewer_url"] = "http://127.0.0.1:4321/"
         (folder / "session.json").write_text(json.dumps(meta), encoding="utf-8")
         self.assertEqual(viewer.viewer_port(str(folder), None), 4321)
-        self.assertEqual(viewer.viewer_port(str(folder), 99), 99)
         server = viewer.make_server(folder, 0, "esri")
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()

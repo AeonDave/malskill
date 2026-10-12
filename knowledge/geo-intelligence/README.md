@@ -103,7 +103,7 @@ The same tools can be run by hand. A minimal manual session:
 
 ```bash
 # 1. archive the photo (prints the session folder; run everything from inside it)
-#    --viewer also opens http://127.0.0.1:8765/ : a globe that narrows to the answer plus the live activity panel
+#    --viewer also opens the live page (random free port, URL printed and stored in session.json): a globe that narrows to the answer plus the activity panel
 uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py start --image "/abs/path/photo.jpg" --viewer   # repeat --image for several photos of one scene; --beside = session next to the photo
 cd "<printed folder>"
 uv run ${CLAUDE_SKILL_DIR}/scripts/viewer.py say "Reading the road sign"      # one line per step for the panel

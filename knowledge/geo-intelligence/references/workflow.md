@@ -50,7 +50,8 @@ uv run scripts/photo_session.py start --image "/absolute/path/to/photo.jpg"
 ## Live view
 
 `photo_session.py start --viewer` (or `viewer.py serve <session> --open`, any time later) serves the session on
-`http://127.0.0.1:8765/` (`--viewer-port` / `--port`; `0` picks a free one) and opens it in the default browser. The
+`http://127.0.0.1:<random free port>/` (`--viewer-port` / `--port` force one), prints the URL, stores it as
+`viewer_url` in `session.json` and opens it in the default browser. The
 page re-reads the folder every 2 s and shows, for the user watching:
 
 - the globe: countries on the board are highlighted by share; the top-ranked open candidate at the finest level is
@@ -80,8 +81,9 @@ Habits that keep it honest and useful:
   them is shown on its nearest ancestor that has some.
 - The server reads files only; it binds 127.0.0.1 and serves nothing outside the session folder. It keeps serving
   after `finish` renames the folder.
-- Several sessions at once: `start --viewer` takes the next free port when 8765 is busy and records it in
-  `session.json`; `viewer.py stop <session>` refuses to stop another session's viewer (only `--force` does).
+- Several sessions at once: every viewer takes a random free port (`start --viewer`, `viewer.py serve`), prints
+  the URL and records it as `viewer_url` in `session.json`; `viewer.py stop <session>` reads it and refuses to stop
+  another session's viewer (only `--force` does).
 - Snapshot: `finish`, `truth`, `stop` and Close write `<session>/viewer.html`, the same page with state, outlines,
   styles and script inlined and file links relative: it opens from the folder without a server (tiles need the
   network); `viewer.py export <session>` refreshes it by hand.

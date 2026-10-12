@@ -198,7 +198,7 @@ def country_centre(name: str) -> tuple[float, float, float]:
 
 
 def _free_port(preferred: int) -> int:
-    """The preferred port when free, else one the OS hands out: parallel sessions must not fight over 8765."""
+    """A port the viewer can bind: the requested one when free, else one the OS hands out (0 = random, the default)."""
     import socket
     for cand in (preferred, 0):
         try:
@@ -695,7 +695,7 @@ def main() -> int:
     create.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Archive root (default: GEOINT_PHOTOS, config.local.json, or ~/geoint-photos).")
     create.add_argument("--beside", action="store_true", help="Create the session folder next to the first --image instead of under --root (scoreboard then needs --root <that folder>).")
     create.add_argument("--viewer", action="store_true", help="Also start viewer.py serve for this session and open it in the browser.")
-    create.add_argument("--viewer-port", type=int, default=8765, help="Port for --viewer on 127.0.0.1 (default 8765).")
+    create.add_argument("--viewer-port", type=int, default=0, help="Port for --viewer on 127.0.0.1 (default: a random free one; the URL is printed and stored in session.json).")
     create.set_defaults(handler=start)
     complete = subparsers.add_parser("finish", help="Append the location to a session with a saved report.")
     complete.add_argument("folder", type=Path)

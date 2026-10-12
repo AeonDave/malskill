@@ -6,7 +6,8 @@
 """Live view of one geolocation session in the browser: a globe that turns and zooms to the answer, and a panel with
 what the analysis is doing right now.
 
-  viewer.py serve [SESSION] [--port 8765] [--open] [--tiles esri|osm]   serve the session on 127.0.0.1; --open starts the default browser
+  viewer.py serve [SESSION] [--port N] [--open] [--tiles esri|osm]      serve the session on 127.0.0.1 on a random free port (printed, and
+                                                                        stored as viewer_url in session.json); --open starts the browser
   viewer.py say "text" [--session SESSION]                              one line about the current step; shown first in the panel
   viewer.py state [SESSION]                                             print the JSON the page polls (debugging, tests)
   viewer.py export [SESSION] [--out viewer.html]                        one self-contained HTML snapshot next to the photos (offline, no server)
@@ -693,6 +694,18 @@ class _Server(http.server.ThreadingHTTPServer):
     allow_reuse_address = os.name != "nt"
 
 
+def record_viewer_url(session: Path, url: str) -> None:
+    """viewer_url in session.json: how `stop <session>`, the page's reader and the analyst find this viewer (never fatal)."""
+    p = session / "session.json"
+    try:
+        meta = json.loads(p.read_text(encoding="utf-8-sig"))
+        if meta.get("viewer_url") != url:
+            meta["viewer_url"] = url
+            p.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    except (OSError, ValueError):
+        pass
+
+
 def make_server(session: Path, port: int, tiles: str) -> http.server.ThreadingHTTPServer:
     handler = partial(Handler, session=session, tiles=tiles)
     server = _Server(("127.0.0.1", port), handler)
@@ -723,18 +736,22 @@ def viewer_port(session_arg: str | None, port: int | None) -> int:
     except SystemExit:
         meta = {}
     m = re.search(r":(\d+)/?$", meta.get("viewer_url") or "")
-    return int(m.group(1)) if m else 8765
+    if not m:
+        raise SystemExit("no viewer_url in session.json and no --port given: which viewer? (ports are random; the URL is printed by serve)")
+    return int(m.group(1))
 
 
 def cmd_serve(args) -> int:
     session = find_session(args.session)
     if not (UI_DIR / "index.html").is_file():
         raise SystemExit(f"viewer page missing: {UI_DIR}")
+    port = 0 if args.port is None else args.port       # a random free port every time: parallel analyses never collide
     try:
-        server = make_server(session, args.port, args.tiles)
+        server = make_server(session, port, args.tiles)
     except OSError as exc:
-        raise SystemExit(f"cannot listen on 127.0.0.1:{args.port} ({exc}): pick another --port, or 0 for a free one") from exc
+        raise SystemExit(f"cannot listen on 127.0.0.1:{port} ({exc}): omit --port to get a free one") from exc
     url = f"http://127.0.0.1:{server.server_address[1]}/"
+    record_viewer_url(session, url)
     print(f"Viewer: {url}  (session {session.name}; Ctrl+C stops)", flush=True)
     if args.idle_minutes > 0:
         start_watchdog(server, args.idle_minutes * 60)
@@ -873,14 +890,14 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("serve", help="serve the live page for one session")
     s.add_argument("session", nargs="?", help="session folder (default: cwd or a parent holding session.json)")
-    s.add_argument("--port", type=int, default=8765, help="127.0.0.1 port (0 = any free port)")
+    s.add_argument("--port", type=int, default=None, help="127.0.0.1 port (default: a random free one, recorded in session.json)")
     s.add_argument("--open", action="store_true", help="open the page in the default browser")
     s.add_argument("--tiles", choices=("esri", "osm"), default="esri", help="close-up tile source fetched by the browser")
     s.add_argument("--idle-minutes", type=float, default=30.0, help="exit after this long without any request (0 = never)")
     s.set_defaults(fn=cmd_serve)
     k = sub.add_parser("stop", help="stop a running viewer")
     k.add_argument("session", nargs="?", help="session folder whose session.json records the viewer port")
-    k.add_argument("--port", type=int, help="port of the viewer to stop (default: from session.json, else 8765)")
+    k.add_argument("--port", type=int, help="port of the viewer to stop (default: viewer_url in session.json)")
     k.add_argument("--force", action="store_true", help="stop whatever viewer answers on that port, even another session's")
     k.set_defaults(fn=cmd_stop)
     y = sub.add_parser("say", help="record what the analysis is doing now")
