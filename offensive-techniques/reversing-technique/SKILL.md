@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images,.NET assemblies, network captures; User-mode focus; kernel RE referenced but not detailed."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
   category: analysis
   language: asm,c,cpp,rust,go,python,csharp
   objectives: "malware-analysis, software-protection-analysis, patch-diffing, firmware-reversing, dotnet-reversing, protocol-reversing, vulnerability-hunting, exploitability-triage, secrets-extraction, custom-vm-reversing, anti-analysis-bypass, side-channel-re, language-specific-re"
@@ -479,7 +479,7 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 **Core sequence:**
 
 - [references/triage.md](references/triage.md) — start here for the first 5–10 minutes: format detection, entropy, imports, language/runtime fingerprints, and next-step decisioning.
-- [references/re-workflow.md](references/re-workflow.md) — load after triage for static/dynamic reconstruction, or when validating/updating OS/runtime behavior with matching-build sources, symbols, and traces.
+- [references/re-workflow.md](references/re-workflow.md) — load after triage for static/dynamic reconstruction, when validating OS/runtime behavior with matching-build sources/symbols/traces, or when comparing versioned probe runs before saving a reusable rule.
 
 **Format supplements:**
 

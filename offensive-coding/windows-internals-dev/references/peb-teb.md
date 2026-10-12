@@ -90,13 +90,9 @@ Doubly linked lists of loaded modules, three separate orderings.
 
 Each `LIST_ENTRY` head contains `Flink` and `Blink` pointers. The list is circular — walking back to the original list-head pointer signals completion.
 
-**Which list to walk?**
+**Diagnostic list identity**
 
-- `InLoadOrderModuleList` — load order. First entry is the main executable
-- `InMemoryOrderModuleList` — layout order in VA. First entry is ntdll.dll (loader init constraint)
-- `InInitializationOrderModuleList` — constructor call order. Main exe **not** in this list
-
-For offensive module hunting, use InMemoryOrder — ntdll is always first, kernel32/kernelbase second/third.
+Record which list was traversed; an observation from `InLoadOrderModuleList` does not validate the other lists. Do not infer a module's identity, virtual-address sort order, or initialization sequence from its ordinal. Microsoft's [PEB_LDR_DATA definition](https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data) documents the loaded-module list and warns that the structure may change; it does not guarantee fixed module positions. Check private fields against matching symbols when those symbols expose the required types; matching a PDB does not establish field semantics or a stable ABI. Leave claims unresolved when matching type/source evidence is unavailable.
 
 ---
 
@@ -149,6 +145,20 @@ typedef struct _UNICODE_STRING {
 ```
 
 `Length` is always byte count. For character count, divide by `sizeof(WCHAR) == 2`. Buffer is **not guaranteed** null-terminated — always respect Length when reading.
+
+---
+
+## Read-only LDR plausibility checks
+
+Load this section when interpreting a diagnostic loader-list walk or investigating inconsistent module inventories.
+
+- Bound the entry count and copied spans; record whether traversal returned to the original head, hit the limit, or failed a read. A cap is not a complete inventory.
+- Validate UTF-16 byte lengths, `Length <= MaximumLength`, and readability of the entire declared name spans. Preserve the full declared length separately from a truncated display name.
+- Distinguish a readable `DllBase` from a validated PE image and an identified file. Check image headers/ranges and actual module identity separately when that is the claim under investigation.
+- Treat readability as a snapshot, not a lifetime guarantee. Loading/unloading can change the list during traversal; retain the capture conditions and corroborate inconsistencies with a debugger snapshot.
+- Field plausibility does not establish reciprocal links, agreement among loader lists, absence of hidden mappings, or a stable private ABI.
+
+In Ashura survey v5, `ldr` walks the current process's **in-load-order** list with a 32-entry cap. `sane=1` checks base readability, non-null name buffers, aligned byte lengths, length bounds, and readable name spans. It does not check link reciprocity or validate the complete mapped PE. The displayed basename is capped at 63 UTF-16 code units; the first-entry dump is bounded to `0x110` bytes. Load [build-survey.md](build-survey.md) for the versioned cohort and collection limits.
 
 ---
 

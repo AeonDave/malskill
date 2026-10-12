@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Windows 10 1809 through Windows 11 24H2, x86-64 and ARM64; Kernel structures referenced from Windows 11 22H2/24H2 public debug symbols."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # windows-internals
@@ -41,6 +41,7 @@ Everything below is a pointer into a reference file. Load only what you need.
 | Domain | File | Covers |
 |--------|------|--------|
 | **Process/thread state blocks** | `references/peb-teb.md` | PEB, TEB, LDR data, InMemoryOrderModuleList, ApiSetMap, module walking, hash-based resolution |
+| **Build survey evidence** | [references/build-survey.md](references/build-survey.md) | Load when comparing x64 Windows survey logs: per-run observations, provenance, collection status, and bounded diagnostic checks |
 | **PE / COFF and startup** | `references/pe-format.md` | Load for PE parsing or before-user-entry diagnosis: headers, TLS/CRT boundaries, matching source, symbols, and debugger steps |
 | **Syscalls** | `references/syscalls.md` | Syscall ABI (x64/ARM64), SSN resolution strategies, direct/indirect dispatch, gate variants, stub layout |
 | **Exception handling** | `references/exception-unwind.md` | SEH, VEH, UNWIND_INFO, RtlLookupFunctionEntry, RtlVirtualUnwind, KiUserExceptionDispatcher, call-stack spoofing frames |
@@ -135,7 +136,7 @@ These are the 12 offsets you will look up most often. Full layouts in `reference
 ```
 Need to invoke an Nt* function without touching ntdll's hooked stub?
 │
-├── Can ntdll.dll be walked? (99% yes — ntdll is first LDR entry)
+├── Can ntdll.dll be walked?
 │   │
 │   ├── YES → Use PEB walk to resolve Nt* address
 │   │         │
@@ -218,9 +219,8 @@ When you apply any technique, the following signals are potentially visible. Thi
 
 ## Pitfalls and invariants
 
-**PEB walk invariants**
-- First entry after list head in `InLoadOrderModuleList` is the main executable
-- First entry in `InMemoryOrderModuleList` is ntdll.dll (loader init guarantees this)
+**PEB walk checks**
+- List positions and counts describe the sampled process; do not identify modules by a fixed ordinal. For diagnostic plausibility checks, load `references/peb-teb.md`.
 - `BaseDllName` is a `UNICODE_STRING` (16 bytes: Length, MaximumLength, Buffer). Length is in **bytes**, not chars
 - Module name comparisons must be case-insensitive (use lowercase for both operands of hash)
 

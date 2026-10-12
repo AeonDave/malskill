@@ -57,6 +57,17 @@ Set `$modulePath` to the image actually loaded by the target. For WinDbg, `.symf
 
 For startup-specific boundaries and executable commands, load `linux-internals-dev` → `references/elf-format.md` or `windows-internals-dev` → `references/pe-format.md`.
 
+### Compare versioned probe results
+
+Load when a multi-host survey or collected runtime logs will become a reusable OS rule.
+
+- Inspect the collector revision before interpreting its fields: identify units, scan bounds, early exits, side effects, and success criteria. A field name alone is not its contract.
+- Keep one row per run, including repeated builds. Preserve per-check outcomes and distinguish an observed zero from missing, skipped, faulted, or unexecuted checks. Hash raw inputs before summarizing them.
+- Separate OS revision, image identity, collector version/schema, and process state. A changed result across different hosts does not isolate an OS change; compare matched cohorts or vary one factor in a controlled repeat.
+- Scope negatives to the searched region and sampling limit. Pattern matches and readable fields are candidates until the claimed semantics are corroborated with matching symbols/disassembly or a controlled trace.
+
+For the Ashura v5 Windows cohort, load [Windows build survey evidence](../../../offensive-coding/windows-internals-dev/references/build-survey.md); its tables retain collection limits separately from observed values.
+
 ### 2.1 Entry Point Analysis
 - Distinguish interpreter/loader entry, executable ELF `e_entry` or PE `AddressOfEntryPoint`, and user `main`/`WinMain`/`DllMain`.
 - Follow initialization through the actual runtime; a breakpoint at `main` can miss earlier application logic.
