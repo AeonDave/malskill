@@ -125,6 +125,7 @@ uv run ${CLAUDE_SKILL_DIR}/scripts/board.py next
 uv run ${CLAUDE_SKILL_DIR}/scripts/gsv.py --help          # Street View panoramas near a point or in an area
 uv run ${CLAUDE_SKILL_DIR}/scripts/match.py --help        # rank panoramas against the photo
 uv run ${CLAUDE_SKILL_DIR}/scripts/sun.py --help          # shadows, lit faces, time, date, dishes
+uv run ${CLAUDE_SKILL_DIR}/scripts/terrain.py shade --help   # terrain and building shadows at a time; which times leave given points lit or shaded
 uv run ${CLAUDE_SKILL_DIR}/scripts/terrain.py --help      # skylines, ridges, scans, fit
 
 # 5. verify, report, archive

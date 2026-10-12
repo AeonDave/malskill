@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pillow", "numpy"]
+# dependencies = ["pillow", "numpy", "tzdata"]
 # ///
 """Offline terrain.py fit regressions on synthetic terrain. Run: uv run scripts/tests/test_terrain.py"""
 from __future__ import annotations
@@ -78,6 +78,48 @@ class ShoreDEM(FakeDEM):
     def sample(self, lat, lon):
         x = (np.asarray(lon) - LON0) * 111320 * math.cos(math.radians(LAT0))
         return super().sample(lat, lon) + np.where(x < 0, -0.3 * x, 0.0)
+
+
+class ShadeTests(unittest.TestCase):
+    """FakeDEM: a 350 m range 6 km west of the camera (3.3° above it), a 1500 m range 20 km west (4.3°), flat to the east."""
+
+    def test_shadow_mask_follows_the_sun(self):
+        dem = FakeDEM()
+        la, lo = np.array([LAT0]), np.array([LON0])
+        self.assertTrue(terrain.shadow_mask(dem, la, lo, 270, 2.0, step=50, reach=25000)[0])      # low sun behind the near range
+        self.assertFalse(terrain.shadow_mask(dem, la, lo, 270, 10.0, step=50, reach=25000)[0])    # sun above both ranges
+        self.assertFalse(terrain.shadow_mask(dem, la, lo, 90, 2.0, step=50, reach=25000)[0])      # east is flat
+        self.assertTrue(terrain.shadow_mask(dem, la, lo, 90, -1.0, step=50, reach=25000)[0])      # night
+        self.assertTrue(terrain.shadow_mask(dem, la, lo, 270, 2.0, step=50, reach=4000)[0] is np.False_ or
+                        not terrain.shadow_mask(dem, la, lo, 270, 2.0, step=50, reach=4000)[0])   # reach shorter than the range: not seen
+
+    def test_building_shadows_and_point_tests(self):
+        gj = {"features": [{"type": "Feature", "properties": {"building": "yes", "building:levels": "5"},
+                            "geometry": {"type": "Polygon", "coordinates": [[[LON0, LAT0], [LON0 + 0.0003, LAT0], [LON0 + 0.0003, LAT0 + 0.0002], [LON0, LAT0 + 0.0002], [LON0, LAT0]]]}}]}
+        sh = terrain.building_shadows(gj, az=180, el=45, default_h=8, level_h=3)                  # sun due south: shadow due north, 15 m long
+        self.assertEqual(sh[0]["height_m"], 15.0)
+        self.assertAlmostEqual(sh[0]["shadow_m"], 15.0, places=3)
+        north = LAT0 + 0.0002 + 10 / 110540                                                      # 10 m north of the north wall: shaded
+        self.assertTrue(terrain.in_building_shadow(north, LON0 + 0.00015, sh))
+        self.assertFalse(terrain.in_building_shadow(LAT0 + 0.0002 + 25 / 110540, LON0 + 0.00015, sh))   # 25 m north: beyond the shadow
+        self.assertFalse(terrain.in_building_shadow(LAT0 - 10 / 110540, LON0 + 0.00015, sh))        # south side: lit
+        self.assertEqual(terrain.building_shadows(gj, az=180, el=0, default_h=8, level_h=3), [])
+
+    def test_sweep_finds_the_daylight_window_cut_by_the_western_range(self):
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "sweep.json"
+            # winter: the sun sets at ~240°, straight behind the near range (its y-span is -4000..1000 m); in June it sets at ~300° and misses it
+            argv = ["terrain.py", "shade", "--at", f"{LAT0},{LON0}", "--date", "2025-12-21", "--tz", "Asia/Shanghai",
+                    "--lit", f"{LAT0},{LON0}:camera", "--step", "100", "--reach", "25000", "--minutes", "5", "--json", str(out)]
+            with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+                terrain.main()
+            spans = json.loads(out.read_text(encoding="utf-8"))["sweep"]["days"][0]["spans"]
+            self.assertEqual(len(spans), 1)
+            start, end = spans[0]
+            self.assertGreater(start, "08:00")              # flat east: lit from sunrise (~08:17 at 38 N, 106 E on Dec 21)
+            self.assertLess(start, "08:40")
+            self.assertGreater(end, "16:45")                # sunset ~17:39; the near range (3.3° high) cuts the last ~20 minutes
+            self.assertLess(end, "17:30")
 
 
 class CamLevelTests(unittest.TestCase):

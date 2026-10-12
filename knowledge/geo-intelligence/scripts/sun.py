@@ -232,10 +232,15 @@ def cmd_pos(args) -> None:
     t = _to_utc(args.time, args.tz)
     az, el = sun_position(lat, lon, t)
     ss = subsolar_point(t)
+    local = t.astimezone(_zone(args.tz))
     print(json.dumps({
         "utc": t.isoformat(timespec="minutes"), "sun_azimuth": round(az, 2), "sun_elevation": round(el, 2),
         "shadow_len_per_1m": None if el <= 0 else round(shadow_ratio(el), 3),
         "shadow_bearing": round((az + 180) % 360, 1), "subsolar_point": [round(ss[0], 3), round(ss[1], 3)],
+        # the same moment in the two web tools, for the user's eyes: SunCalc draws the sun path and one object's shadow,
+        # ShadeMap draws every terrain and building shadow on the map (terrain.py shade is the offline counterpart)
+        "suncalc_url": f"https://www.suncalc.org/#/{lat:.5f},{lon:.5f},15/{local.strftime('%Y.%m.%d')}/{local.strftime('%H:%M')}/{args.object_height:g}/1",
+        "shademap_url": f"https://shademap.app/@{lat:.5f},{lon:.5f},15z,{int(t.timestamp() * 1000)}t",
     }, ensure_ascii=False))
 
 
@@ -654,6 +659,7 @@ def main() -> None:
     p.add_argument("--at", type=_pair, required=True, help="lat,lon")
     p.add_argument("--time", required=True, help="2024-06-06T15:39, may include +08:00")
     p.add_argument("--tz", help="IANA time zone, e.g. Asia/Shanghai, Europe/Berlin")
+    p.add_argument("--object-height", type=float, default=1.0, help="object height m for the shadow drawn in the SunCalc link (default 1)")
 
     r = sub.add_parser("ratio", help="shadow ratio ↔ elevation angle")
     g = r.add_mutually_exclusive_group(required=True)

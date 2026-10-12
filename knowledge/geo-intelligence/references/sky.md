@@ -7,9 +7,13 @@
 - [4. Known location → capture time and date](#4-known-location--capture-time-and-date)
 - [5. Satellite TV dishes](#5-satellite-tv-dishes)
 - [6. Weather on the day: which day, and does the place fit?](#6-weather-on-the-day-which-day-and-does-the-place-fit)
+- [7. Shadow map: which slopes, walls and streets are lit at a time](#7-shadow-map-which-slopes-walls-and-streets-are-lit-at-a-time)
 - [Common mistakes](#common-mistakes)
 
-Scripts: `scripts/sun.py` (`pos` / `ratio` / `locate` / `when` / `street` / `facing` / `compass` / `dish` / `weather`).
+Scripts: `scripts/sun.py` (`pos` / `ratio` / `locate` / `when` / `street` / `facing` / `compass` / `dish` / `weather`) and
+`scripts/terrain.py shade` (terrain and building shadows on a map, point checks, time sweep). `sun.py pos` prints a SunCalc
+link (sun path and one object's shadow at the point) and a ShadeMap link (every terrain and building shadow on the map) for
+the same moment, for the user's own eyes; the offline counterparts are `sun.py` and `terrain.py shade`.
 When there are no landmarks and text only gets you to a province or country, this is the main way to shrink hundreds of kilometers to tens of kilometers.
 
 ## When to take this branch
@@ -167,6 +171,32 @@ uv run scripts/tiles.py fetch 38.72,-9.14 --zoom 7 --radius 2 --source gibs:2024
   the photo's sky or ground can be matched to it to place the camera inside a region. Zoom ≤ 9.
 - The archive lags about five days and sky conditions change within the hour: weather ranks days and places, it
   never excludes on its own unless the photo's sky is unambiguous.
+
+## 7. Shadow map: which slopes, walls and streets are lit at a time
+
+`sun.py` answers "where is the sun"; `terrain.py shade` answers "where do the shadows lie" once terrain (elevation tiles) and
+buildings (OSM footprints) stand in the way. Use it when the photo shows a mountain's shadow on a valley, lake or town, a
+lit face against a dark one, a street with one side in shade, or a sunlit beach under a dark wall.
+
+```bash
+# the moment: shadows on a hillshade (or over tiles.py imagery with --map), LIT / SHADOW for each named point
+uv run scripts/terrain.py shade --at <lat,lon> --time 2025-07-20T14:30 --tz Europe/Rome --radius 2500 --out shade.png \
+    --check <lat,lon>:east-wall --check <lat,lon>:beach [--map area.jpg] [--buildings b.geojson]
+# the inverse: which times of the day leave the east wall lit and the beach in shadow (both constraints at once)
+uv run scripts/terrain.py shade --at <lat,lon> --date 2025-07-20 --tz Europe/Rome --lit <lat,lon>:east-wall --shaded <lat,lon>:beach
+# the season: the same pattern over the year, one day a week → which weeks are possible at all
+uv run scripts/terrain.py shade --at <lat,lon> --dates 2025-01-01:2025-12-31 --date-step 7 --tz <zone> --lit … --shaded … --json when.json
+```
+
+- Points are what the photo shows: a wall or slope seen bright → `--lit`; seen dark while the sky is clear → `--shaded`. Give
+  them well inside their state: a 15 m DEM cell moves a shadow edge by a few minutes, a 30 m cell by 5–10.
+- Building shadows need footprints: `osm.py geom '["building"]' --bbox <block> --out b.geojson`; height from the `height`
+  tag, else `building:levels` × 3 m, else 8 m (`--default-height`). A street's shaded side is the first thing to test.
+- Terrain shadow reach: `--reach 8000` m by default; a low sun under a high range needs 20000.
+- The sweep gives windows per day; combine with `sun.py when` (shadow length and bearing) — `shade` uses what blocks the
+  sun, `when` uses the sun itself; both must agree. Two date sets a year are symmetric about the solstices, as in section 4.
+- For the user: `sun.py pos` prints `suncalc_url` and `shademap_url` for the same place and moment (ShadeMap reads the time
+  from the last URL segment; if it opens at another time, set it in the page).
 
 ## Common mistakes
 

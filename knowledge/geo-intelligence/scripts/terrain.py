@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pillow", "numpy"]
+# dependencies = ["pillow", "numpy", "tzdata"]
 # ///
 """Use elevation data to "look" out from a candidate camera position: synthesize a layered terrain view and skyline to compare ridgelines with the photo.
 
@@ -15,6 +15,8 @@ Elevation comes from AWS Terrain Tiles (Terrarium encoding, ~30 m worldwide, no 
   scan     along linear infrastructure (railway, road, power line), compute the 360° horizon point by point, keep the points that are "flat nearby + a mountain + the mountain right next to a stretch of flat horizon"
            and cluster them — when the frame shows only one piece of infrastructure and a mountain you can't recognize, use it to cut a whole large region down to a few hundred patches
   ridge    sample the photo's ridgeline: per column, find the sky-to-mountain brightness jump; output a pixel point list + flat-horizon column range + horizon row + focal length (ridge.json)
+  shade    where the shadows lie at a place and time: terrain (and OSM buildings) cast shadows on a map, point checks "lit or in shadow",
+           and the inverse sweep: which times of a day (or which days) leave the given points lit / shaded — the local ShadeMap
   fit      score each scan cluster against ridge.json: lay a camera-position grid in each cluster, search heading × focal length × horizon offset,
            skyline RMS + flat-horizon penalty (+ optional: near layer of a two-layer photo, heading perpendicular to a line, how far the linear
            infrastructure is at the frame's left/center/right), sort by score, --sheet draws overlays of the top N
@@ -36,6 +38,12 @@ Examples:
   terrain.py fit --at 35.4983,138.7688 --ridge ridge.json --radius 800 --grid 100 --zoom 13 --az-step 0.25 \\
              --line rail.geojson --line-dist 350-750:550-900:800-1700 --out fine.json          # fine search + infrastructure distance constraint
   terrain.py fit --hits hits.json --ridge ridge.json --range 45000 --min-peak 2 --perp-line lines.geojson --out fit.json   # far range + wires overhead
+  terrain.py shade --at 46.2563,10.9450 --time 2025-07-20T14:30 --tz Europe/Rome --radius 2500 --out shade.png \
+             --check 46.2585,10.9560:east-wall --check 46.2628,10.9536:beach                     # shadows now; is each point lit?
+  terrain.py shade --at 46.2563,10.9450 --date 2025-07-20 --tz Europe/Rome --lit 46.2585,10.9560:east-wall --shaded 46.2628,10.9536:beach
+                                                                                             # which times of that day show this pattern
+  terrain.py shade --at <lat,lon> --dates 2025-01-01:2025-12-31 --date-step 7 --tz <zone> --lit <lat,lon> --shaded <lat,lon> --json when.json
+  terrain.py shade --at <lat,lon> --time <local time> --tz <zone> --map area.jpg --buildings b.geojson --out shade.png   # over tiles.py imagery, OSM buildings
 
 For the fields of ridge.json and fit.json, see each subcommand's --help.
 """
@@ -1179,6 +1187,275 @@ def _cmd_slope(args) -> None:
     _write_rows(rows, args.out)
 
 
+
+# ---------------------------------------------------------------- shade: where the shadows lie at a place and time
+def shadow_mask(dem: DEM, lat, lon, az: float, el: float, step: float = 30.0, reach: float = 8000.0, lift: float = 0.0) -> np.ndarray:
+    """True where the ground at (lat, lon) lies in terrain shadow for a sun at compass azimuth az and elevation el (degrees):
+    march toward the sun every `step` m out to `reach` m; any terrain above the sun ray shades the point. `lift` raises the
+    tested point above the ground (a roof, a window). el ≤ 0 → everything is in shadow (night)."""
+    lat = np.asarray(lat, dtype=float).ravel()
+    lon = np.asarray(lon, dtype=float).ravel()
+    if el <= 0:
+        return np.ones(lat.shape, dtype=bool)
+    h0 = dem.sample(lat, lon) + lift
+    k = np.arange(1, int(reach / step) + 1, dtype=float) * step
+    dx = k * math.sin(math.radians(az))
+    dy = k * math.cos(math.radians(az))
+    drop = k ** 2 / (2 * R_EARTH) * (1 - K_REFRACTION)            # earth curvature over the march
+    ray = k * math.tan(math.radians(el)) + drop
+    shaded = np.zeros(lat.shape, dtype=bool)
+    chunk = max(1, 4_000_000 // max(1, k.size))
+    for i0 in range(0, lat.size, chunk):
+        sl = slice(i0, i0 + chunk)
+        kx = 111320 * np.cos(np.radians(lat[sl]))
+        la = lat[sl][:, None] + dy[None, :] / 110540
+        lo = lon[sl][:, None] + dx[None, :] / kx[:, None]
+        rise = dem.sample(la, lo) - h0[sl][:, None] - ray[None, :]
+        rise = np.where(np.isnan(rise), -np.inf, rise)
+        shaded[sl] = rise.max(axis=1) > 0
+    shaded[np.isnan(h0)] = False                                  # no elevation at the point itself: cannot say, treat as lit
+    return shaded
+
+
+def _building_height(tags: dict, default_h: float, level_h: float) -> float:
+    for key in ("height", "building:height", "est_height"):
+        v = tags.get(key)
+        if v:
+            m = re.match(r"\s*([0-9]+(?:\.[0-9]+)?)", str(v).replace(",", "."))
+            if m:
+                return float(m.group(1))
+    lv = tags.get("building:levels")
+    if lv:
+        m = re.match(r"\s*([0-9]+(?:\.[0-9]+)?)", str(lv))
+        if m:
+            return float(m.group(1)) * level_h + float(tags.get("roof:levels") or 0) * level_h
+    return default_h
+
+
+def building_shadows(gj: dict, az: float, el: float, default_h: float = 8.0, level_h: float = 3.0) -> list[dict]:
+    """Shadow polygons (lon/lat rings) of every polygon feature in a GeoJSON (osm.py geom '["building"]' output): the footprint,
+    the footprint moved by the shadow vector, and one quad per edge in between. el ≤ 0 → no building shadows (night, the
+    terrain mask already covers everything)."""
+    out = []
+    if el <= 0:
+        return out
+    L_per_m = 1.0 / math.tan(math.radians(el))
+    sb = math.radians((az + 180) % 360)
+    for ft in gj.get("features", []):
+        g = ft.get("geometry") or {}
+        if g.get("type") not in ("Polygon", "MultiPolygon"):
+            continue
+        rings = g["coordinates"] if g["type"] == "Polygon" else [r for poly in g["coordinates"] for r in poly[:1]]
+        tags = ft.get("properties") or {}
+        h = _building_height(tags, default_h, level_h)
+        L = h * L_per_m
+        for ring in rings[:1]:                                  # outer ring only: a courtyard does not cast a shadow outward
+            if len(ring) < 3:
+                continue
+            lat0 = ring[0][1]
+            dlat = L * math.cos(sb) / 110540
+            dlon = L * math.sin(sb) / (111320 * math.cos(math.radians(lat0)))
+            moved = [[x + dlon, y + dlat] for x, y in ring]
+            polys = [ring, moved]
+            for (x1, y1), (x2, y2), (mx1, my1), (mx2, my2) in zip(ring, ring[1:], moved, moved[1:]):
+                polys.append([[x1, y1], [x2, y2], [mx2, my2], [mx1, my1]])
+            out.append({"id": ft.get("id"), "height_m": round(h, 1), "shadow_m": round(L, 1), "polys": polys})
+    return out
+
+
+def _point_in_poly(x: float, y: float, ring: list) -> bool:
+    inside = False
+    n = len(ring)
+    for i in range(n):
+        x1, y1 = ring[i][0], ring[i][1]
+        x2, y2 = ring[(i + 1) % n][0], ring[(i + 1) % n][1]
+        if (y1 > y) != (y2 > y):
+            xi = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if xi > x:
+                inside = not inside
+    return inside
+
+
+def in_building_shadow(lat: float, lon: float, shadows: list[dict]) -> bool:
+    return any(_point_in_poly(lon, lat, ring) for b in shadows for ring in b["polys"])
+
+
+def _parse_pt(s: str) -> tuple[float, float, str]:
+    """lat,lon[:label] → (lat, lon, label)."""
+    body, _, label = s.partition(":")
+    lat, lon = map(float, body.split(","))
+    return lat, lon, label or f"{lat:.5f},{lon:.5f}"
+
+
+def _shade_state(dem: DEM, pts: list, az: float, el: float, step: float, reach: float, shadows: list[dict]) -> list[dict]:
+    lat = np.array([p[0] for p in pts]); lon = np.array([p[1] for p in pts])
+    terr = shadow_mask(dem, lat, lon, az, el, step, reach) if len(pts) else np.zeros(0, dtype=bool)
+    rows = []
+    for (la, lo, label), ts in zip(pts, terr):
+        bs = bool(in_building_shadow(la, lo, shadows)) if el > 0 else False
+        rows.append({"label": label, "lat": la, "lon": lo, "terrain_shadow": bool(ts), "building_shadow": bs, "lit": not (ts or bs) and el > 0})
+    return rows
+
+
+def _hillshade(h: np.ndarray, mpp: float, az: float, el: float) -> np.ndarray:
+    """Lambertian shading 0..1 of an elevation grid (rows = north→south, cols = west→east)."""
+    hh = np.where(np.isnan(h), np.nanmean(h) if np.isfinite(np.nanmean(h)) else 0.0, h)
+    gy, gx = np.gradient(hh, mpp)                               # gy: increase southward; gx: eastward
+    nx, ny, nz = -gx, gy, np.ones_like(hh)                      # outward normal (east, north, up)
+    norm = np.sqrt(nx * nx + ny * ny + nz * nz)
+    sa, se = math.radians(az), math.radians(max(el, 0.0))
+    sx, sy, sz = math.sin(sa) * math.cos(se), math.cos(sa) * math.cos(se), math.sin(se)
+    return np.clip((nx * sx + ny * sy + nz * sz) / norm, 0.0, 1.0)
+
+
+def _cmd_shade(args) -> None:
+    import sun                                                   # same directory: NOAA sun position, time zone parsing
+    lat, lon = map(float, args.at.split(","))
+    zone = sun._zone(args.tz)
+    if not args.time and not (args.date or args.dates):
+        sys.exit("give --time (render the shadows at that moment) and/or --date / --dates (sweep the day for the --lit / --shaded pattern)")
+    checks = [_parse_pt(s) for s in (args.check or [])]
+    lit_pts = [_parse_pt(s) for s in (args.lit or [])]
+    shd_pts = [_parse_pt(s) for s in (args.shaded or [])]
+    far = max([geo.distance((lat, lon), (p[0], p[1])) for p in checks + lit_pts + shd_pts] + [0.0])
+    dem = DEM((lat, lon), args.radius + args.reach + far + 500, args.zoom, args.cache, args.proxy, args.allow_missing)
+    bgj = json.loads(Path(args.buildings).read_text(encoding="utf-8")) if args.buildings else None
+    result: dict = {"at": [lat, lon], "tz": args.tz or "UTC", "step_m": args.step, "reach_m": args.reach, "zoom": args.zoom}
+
+    if args.time:
+        t = sun._to_utc(args.time, args.tz)
+        az, el = sun.sun_position(lat, lon, t)
+        shadows = building_shadows(bgj, az, el, args.default_height, args.level_height) if bgj else []
+        local = t.astimezone(zone)
+        result.update({"time_local": local.isoformat(timespec="minutes"), "utc": t.isoformat(timespec="minutes"),
+                       "sun_azimuth": round(az, 2), "sun_elevation": round(el, 2), "shadow_bearing": round((az + 180) % 360, 1),
+                       "shadow_len_per_1m": None if el <= 0 else round(1 / math.tan(math.radians(el)), 3),
+                       "buildings": len(shadows)})
+        if args.out:
+            # render grid: the mosaic's pixels when --map is given, else a square of --size px around --at
+            if args.map:
+                meta = json.loads(Path(args.map).with_suffix(".json").read_text(encoding="utf-8"))
+                base = Image.open(args.map).convert("RGB")
+                W, H = base.size
+                z, (ox, oy) = meta["zoom"], meta["origin_tile"]
+                px = np.arange(W, dtype=float) + ox * 256 + 0.5
+                py = np.arange(H, dtype=float) + oy * 256 + 0.5
+                n = 256 * 2 ** z
+                lons = px / n * 360 - 180
+                lats = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * py / n))))
+                mpp = geo.meters_per_px(z, lat)
+
+                def to_px(la, lo):
+                    x, y = geo.ll2px(z, la, lo)
+                    return x - ox * 256, y - oy * 256
+            else:
+                W = H = args.size
+                mpp = 2 * args.radius / args.size
+                base = None
+                kx = 111320 * math.cos(math.radians(lat))
+                lons = lon + (np.arange(W, dtype=float) - W / 2 + 0.5) * mpp / kx
+                lats = lat - (np.arange(H, dtype=float) - H / 2 + 0.5) * mpp / 110540
+
+                def to_px(la, lo):
+                    return (lo - lon) * kx / mpp + W / 2, (lat - la) * 110540 / mpp + H / 2
+            LA, LO = np.meshgrid(lats, lons, indexing="ij")
+            hgrid = dem.sample(LA, LO)
+            mask = np.zeros((H, W), dtype=bool)
+            rows = max(1, 2_000_000 // max(1, W * int(args.reach / args.step)))
+            for r0 in range(0, H, rows):
+                sl = slice(r0, min(H, r0 + rows))
+                mask[sl] = shadow_mask(dem, LA[sl], LO[sl], az, el, args.step, args.reach).reshape(LA[sl].shape)
+            if base is None:
+                hs = _hillshade(hgrid, mpp, az, el)
+                g = (70 + 170 * hs).astype(np.uint8)
+                arr = np.stack([g, g, g], axis=-1)
+            else:
+                arr = np.asarray(base).copy()
+            arr = arr.astype(np.float32)
+            arr[mask] *= 0.42                                       # terrain shadow: darkened
+            img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).convert("RGBA")
+            lay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            d = ImageDraw.Draw(lay)
+            for b in shadows:                                      # building shadows: blue-black
+                for ring in b["polys"]:
+                    pts = [to_px(y, x) for x, y in ring]
+                    if len(pts) >= 3:
+                        d.polygon(pts, fill=(10, 20, 70, 150))
+            if bgj:
+                for ft in bgj.get("features", []):
+                    g2 = ft.get("geometry") or {}
+                    if g2.get("type") == "Polygon":
+                        pts = [to_px(y, x) for x, y in g2["coordinates"][0]]
+                        if len(pts) >= 3:
+                            d.polygon(pts, outline=(255, 255, 255, 200))
+            img = Image.alpha_composite(img, lay)
+            d = ImageDraw.Draw(img)
+            cx, cy = to_px(lat, lon)
+            d.ellipse([cx - 6, cy - 6, cx + 6, cy + 6], outline="yellow", width=3)
+            if el > 0:                                             # arrow toward the sun; the shadow of the centre point falls the other way
+                ax, ay = cx + 70 * math.sin(math.radians(az)), cy - 70 * math.cos(math.radians(az))
+                d.line([(cx, cy), (ax, ay)], fill="yellow", width=4)
+                d.ellipse([ax - 7, ay - 7, ax + 7, ay + 7], fill="yellow")
+            for row in _shade_state(dem, checks, az, el, args.step, args.reach, shadows):
+                x, y = to_px(row["lat"], row["lon"])
+                col = "lime" if row["lit"] else "red"
+                d.ellipse([x - 7, y - 7, x + 7, y + 7], fill=col, outline="black", width=2)
+                d.text((x + 10, y - 7), f"{row['label']}: {'lit' if row['lit'] else 'shadow'}", fill=col, font=_font(16), stroke_width=2, stroke_fill="black")
+            txt = (f"{local.strftime('%Y-%m-%d %H:%M')} {args.tz or 'UTC'}  sun az {az:.1f}° el {el:.1f}°  shadow → {(az + 180) % 360:.0f}°, "
+                   f"1 m casts {1 / math.tan(math.radians(el)) if el > 0 else float('inf'):.2f} m  |  dark = terrain shadow, blue = building shadow  |  {mpp:.1f} m/px")
+            d.rectangle([0, 0, img.size[0], 26], fill=(0, 0, 0, 180))
+            d.text((6, 4), txt, fill="yellow", font=_font(16))
+            img.convert("RGB").save(args.out)
+            result["image"] = str(args.out)
+            result["shaded_fraction"] = round(float(mask.mean()), 3)
+            print(f"{txt}\n{mask.mean() * 100:.0f}% of the frame in terrain shadow → {args.out}")
+        states = _shade_state(dem, checks, az, el, args.step, args.reach, shadows)
+        result["checks"] = states
+        for row in states:
+            print(f"  {row['label']:<28} {'LIT' if row['lit'] else 'SHADOW'}" + ("  (terrain)" if row["terrain_shadow"] else "") + ("  (building)" if row["building_shadow"] else ""))
+
+    if args.date or args.dates:
+        from datetime import date, datetime, timedelta
+        if args.dates:
+            a, b = args.dates.split(":")
+            d0, d1 = date.fromisoformat(a), date.fromisoformat(b)
+        else:
+            d0 = d1 = date.fromisoformat(args.date)
+        if not lit_pts and not shd_pts:
+            lit_pts = [(lat, lon, "centre")]
+        days = []
+        day = d0
+        while day <= d1:
+            prev_ok, start, spans = False, None, []
+            n_steps = 24 * 60 // args.minutes
+            for i in range(n_steps + 1):
+                local = datetime(day.year, day.month, day.day, tzinfo=zone) + timedelta(minutes=i * args.minutes)
+                t = local.astimezone(sun.timezone.utc)
+                az, el = sun.sun_position(lat, lon, t)
+                ok = el > 0
+                if ok:
+                    shadows = building_shadows(bgj, az, el, args.default_height, args.level_height) if bgj else []
+                    st = _shade_state(dem, lit_pts + shd_pts, az, el, args.step, args.reach, shadows)
+                    ok = all(r["lit"] for r in st[:len(lit_pts)]) and all(not r["lit"] for r in st[len(lit_pts):])
+                if ok and not prev_ok:
+                    start = local
+                if (not ok or i == n_steps) and prev_ok:
+                    end = local if not ok else local
+                    spans.append((start, end))
+                prev_ok = ok
+            days.append({"date": day.isoformat(), "spans": [[s.strftime("%H:%M"), e.strftime("%H:%M")] for s, e in spans]})
+            day += timedelta(days=args.date_step)
+        result["sweep"] = {"lit": [p[2] for p in lit_pts], "shaded": [p[2] for p in shd_pts], "minutes": args.minutes, "days": days}
+        print(f"pattern: lit {[p[2] for p in lit_pts]} and shaded {[p[2] for p in shd_pts]} (every {args.minutes} min, local {args.tz or 'UTC'})")
+        for dd in days:
+            print(f"  {dd['date']}: " + (", ".join(f"{s}–{e}" for s, e in dd["spans"]) if dd["spans"] else "never"))
+        if not any(dd["spans"] for dd in days):
+            print("  no time matches: a lit/shaded point may be mislabelled, or the camera position is wrong; loosen one constraint at a time", file=sys.stderr)
+    if args.json:
+        Path(args.json).write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"→ {args.json}")
+
+
 def _neg_coords(argv: list[str]) -> list[str]:
     """argparse treats negative coordinates like -1.45,-48.5 as option names; prefixing a space makes them plain values (float ignores spaces). Needed for any photo in the southern or western hemisphere.
     fit's --line-win -27:-21,-3:3,18:27 is the same case (a string of numbers separated by commas or colons)."""
@@ -1335,6 +1612,43 @@ orange dots / lines = near points / near-clear rows. Look at the image before go
     rg.add_argument("--out", required=True, help="output ridge.json")
     rg.add_argument("--png", help="check image path")
 
+    sh = sub.add_parser("shade", formatter_class=argparse.RawDescriptionHelpFormatter, description="""\
+Where the shadows lie at a place and time (the local counterpart of shademap.app; sun.py pos is the suncalc.org counterpart).
+Terrain shadows come from the elevation tiles (march toward the sun from every pixel; any terrain above the ray shades it);
+building shadows from an OSM footprint GeoJSON (osm.py geom '["building"]' --bbox …): height tag, else building:levels × --level-height, else --default-height.
+
+  --time    render the moment: --out shade.png (over --map imagery from tiles.py fetch, else a hillshade square of --size px, --radius m around --at);
+            --check lat,lon[:label] prints LIT / SHADOW per point (a slope, a wall, a beach seen lit or dark in the photo).
+  --date / --dates   the inverse: every --minutes, which times leave all --lit points lit and all --shaded points in shadow
+            (terrain or building). With --dates (step --date-step days) the pattern's windows per day; the same pattern repeats on
+            two date sets a year, say so. Nothing given: the centre point's own daylight windows.
+Use when the photo shows which faces or slopes are lit and which are dark, or a mountain's shadow on a valley, lake or town:
+with the place known it brackets the time of day and the season; with the time known it tests a candidate position.
+A 10 m DEM cell softens shadow edges by a few minutes; a 30 m cell by 5–10 minutes near the edge: give --lit / --shaded points well inside their state.
+Output JSON (--json): sun position, per-point states, and "sweep": {days: [{date, spans: [[HH:MM, HH:MM], …]}]}.""")
+    sh.add_argument("--at", required=True, help="centre lat,lon (WGS84); the sun position is computed here")
+    sh.add_argument("--time", help="local date-time YYYY-MM-DDTHH:MM (in --tz) to render / check")
+    sh.add_argument("--date", help="sweep this day (YYYY-MM-DD)")
+    sh.add_argument("--dates", help="sweep a date range A:B (YYYY-MM-DD:YYYY-MM-DD), one day every --date-step")
+    sh.add_argument("--date-step", type=int, default=7, help="days between swept dates in --dates (default 7)")
+    sh.add_argument("--minutes", type=int, default=5, help="sweep step in minutes (default 5)")
+    sh.add_argument("--tz", help="IANA time zone of --time / --date (default UTC)")
+    sh.add_argument("--radius", type=float, default=2500, help="half-size of the rendered square m (default 2500; ignored with --map)")
+    sh.add_argument("--size", type=int, default=900, help="rendered square px without --map (default 900)")
+    sh.add_argument("--zoom", type=int, default=13, help="elevation tile zoom (default 13, ~15 m per cell at mid latitudes; 14 for a town, 12 for a wide valley)")
+    sh.add_argument("--step", type=float, default=30, help="march step toward the sun m (default 30)")
+    sh.add_argument("--reach", type=float, default=8000, help="how far a mountain may stand to cast a shadow m (default 8000; 20000 for a low sun under high ranges)")
+    sh.add_argument("--map", help="tiles.py fetch mosaic (its .json must sit beside it): render on it instead of a hillshade")
+    sh.add_argument("--buildings", help="building footprint GeoJSON (osm.py geom '[\"building\"]' output) for building shadows")
+    sh.add_argument("--default-height", type=float, default=8, help="building height m when OSM has no height/levels (default 8)")
+    sh.add_argument("--level-height", type=float, default=3, help="metres per building:levels (default 3)")
+    sh.add_argument("--check", action="append", help="lat,lon[:label], repeatable: report LIT / SHADOW at --time")
+    sh.add_argument("--lit", action="append", help="lat,lon[:label], repeatable: must be lit in the sweep")
+    sh.add_argument("--shaded", action="append", help="lat,lon[:label], repeatable: must be in shadow in the sweep")
+    sh.add_argument("--out", type=Path, help="rendered PNG (with --time)")
+    sh.add_argument("--json", type=Path, help="write the states and sweep as JSON")
+    sh.add_argument("--allow-missing", action="store_true", help=MISSING_HELP)
+
     ft = sub.add_parser("fit", formatter_class=argparse.RawDescriptionHelpFormatter, description="""\
 Batch skyline scoring: in each candidate cluster, lay a camera-position grid (one every --grid meters within --radius), compute the 360° horizon at each camera position,
 convert ridge.json's ridge points to (bearing offset, elevation angle), and compare against all headings × --focal-scales at once:
@@ -1456,6 +1770,9 @@ cyan dots = photo near points.""")
         return
     if args.cmd == "fit":
         _cmd_fit(args)
+        return
+    if args.cmd == "shade":
+        _cmd_shade(args)
         return
     if args.cmd == "elev":
         _cmd_elev(args)
