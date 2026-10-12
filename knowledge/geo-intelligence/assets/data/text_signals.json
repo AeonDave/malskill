@@ -1,0 +1,4154 @@
+{
+ "_meta": {
+  "source": [
+   "Unicode script properties; ISO 639-1 language codes; national alphabets and orthographies (general knowledge, cross-checked against Wikipedia articles on each alphabet); ISO 4217 currency symbols"
+  ],
+  "maintained": "2026-10-08",
+  "note": "Script and letter signals narrow languages, not borders: minorities, tourism, imports and diaspora businesses carry scripts abroad. textgeo.py turns these into capped likelihood ratios; a single signal never excludes a country."
+ },
+ "scripts": {
+  "GREEK": {
+   "countries": [
+    "GR",
+    "CY"
+   ],
+   "strength": "strong"
+  },
+  "CYRILLIC": {
+   "countries": [
+    "RU",
+    "UA",
+    "BY",
+    "BG",
+    "RS",
+    "MK",
+    "ME",
+    "BA",
+    "KZ",
+    "KG",
+    "TJ",
+    "MN"
+   ],
+   "weak_countries": [
+    "UZ",
+    "MD",
+    "TM",
+    "AZ"
+   ],
+   "strength": "medium",
+   "note": "Letters separate the languages: see letters (і ї є ґ Ukrainian, ў Belarusian, ђ ћ Serbian, ѓ ќ ѕ Macedonian, ә ғ қ ң ө ұ ү һ Kazakh)."
+  },
+  "ARMENIAN": {
+   "countries": [
+    "AM"
+   ],
+   "strength": "strong"
+  },
+  "GEORGIAN": {
+   "countries": [
+    "GE"
+   ],
+   "strength": "strong"
+  },
+  "HEBREW": {
+   "countries": [
+    "IL"
+   ],
+   "weak_countries": [
+    "PS"
+   ],
+   "strength": "strong",
+   "note": "Hebrew road signs are trilingual (Hebrew, Arabic, English) in Israel; Hebrew alone in the West Bank points to settlements."
+  },
+  "ARABIC": {
+   "countries": [
+    "MA",
+    "DZ",
+    "TN",
+    "LY",
+    "EG",
+    "SD",
+    "MR",
+    "SA",
+    "YE",
+    "OM",
+    "AE",
+    "QA",
+    "BH",
+    "KW",
+    "IQ",
+    "SY",
+    "LB",
+    "JO",
+    "PS",
+    "IR",
+    "AF",
+    "PK"
+   ],
+   "weak_countries": [
+    "IL",
+    "TD",
+    "SO",
+    "DJ",
+    "KM",
+    "ER",
+    "CN",
+    "IN"
+   ],
+   "strength": "medium",
+   "note": "Persian, Urdu, Pashto, Kurdish and Uyghur add letters (پ چ ژ گ; ٹ ڈ ڑ ں ے; ښ ږ ځ; ێ ۆ ڵ); Persian/Urdu digits ۴ ۵ ۶ differ from Arabic-Indic ٤ ٥ ٦; the Maghreb writes Western digits."
+  },
+  "THAANA": {
+   "countries": [
+    "MV"
+   ],
+   "strength": "strong"
+  },
+  "DEVANAGARI": {
+   "countries": [
+    "IN",
+    "NP"
+   ],
+   "strength": "strong"
+  },
+  "BENGALI": {
+   "countries": [
+    "BD",
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "India: West Bengal, Tripura, Assam (Assamese adds ৰ ৱ)."
+  },
+  "GURMUKHI": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Punjab (India). Pakistani Punjab writes Shahmukhi (Arabic script)."
+  },
+  "GUJARATI": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Gujarat."
+  },
+  "ORIYA": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Odisha."
+  },
+  "TAMIL": {
+   "countries": [
+    "IN",
+    "LK",
+    "SG",
+    "MY"
+   ],
+   "strength": "strong",
+   "note": "Tamil Nadu and Puducherry; northern and eastern Sri Lanka and trilingual Sri Lankan signs; an official language of Singapore; Tamil schools and temples in Malaysia."
+  },
+  "TELUGU": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Andhra Pradesh, Telangana."
+  },
+  "KANNADA": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Karnataka."
+  },
+  "MALAYALAM": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Kerala."
+  },
+  "SINHALA": {
+   "countries": [
+    "LK"
+   ],
+   "strength": "strong"
+  },
+  "THAI": {
+   "countries": [
+    "TH"
+   ],
+   "strength": "strong"
+  },
+  "LAO": {
+   "countries": [
+    "LA"
+   ],
+   "strength": "strong"
+  },
+  "KHMER": {
+   "countries": [
+    "KH"
+   ],
+   "strength": "strong"
+  },
+  "MYANMAR": {
+   "countries": [
+    "MM"
+   ],
+   "strength": "strong"
+  },
+  "TIBETAN": {
+   "countries": [
+    "CN",
+    "BT",
+    "NP",
+    "IN"
+   ],
+   "strength": "medium",
+   "note": "Bhutan writes Dzongkha in Tibetan script on official signs; in China it points to Tibet and Tibetan areas of Qinghai, Sichuan, Gansu, Yunnan; also Ladakh and Sikkim."
+  },
+  "MONGOLIAN": {
+   "countries": [
+    "CN",
+    "MN"
+   ],
+   "strength": "medium",
+   "note": "Vertical traditional script: Inner Mongolia (mandatory on signs there); Mongolia itself mostly writes Cyrillic, with traditional script on some official signs."
+  },
+  "ETHIOPIC": {
+   "countries": [
+    "ET",
+    "ER"
+   ],
+   "strength": "strong"
+  },
+  "HANGUL": {
+   "countries": [
+    "KR",
+    "KP"
+   ],
+   "strength": "strong"
+  },
+  "HIRAGANA": {
+   "countries": [
+    "JP"
+   ],
+   "strength": "strong"
+  },
+  "KATAKANA": {
+   "countries": [
+    "JP"
+   ],
+   "strength": "strong",
+   "note": "Katakana also appears on Japanese brand names abroad; check other signs."
+  },
+  "CJK": {
+   "countries": [
+    "CN",
+    "TW",
+    "HK",
+    "MO",
+    "JP",
+    "SG"
+   ],
+   "weak_countries": [
+    "MY",
+    "KR"
+   ],
+   "strength": "medium",
+   "note": "Separate with simplified vs traditional vs Japanese forms (see hanzi)."
+  },
+  "TIFINAGH": {
+   "countries": [
+    "MA",
+    "DZ"
+   ],
+   "weak_countries": [
+    "LY",
+    "ML",
+    "NE"
+   ],
+   "strength": "strong",
+   "note": "Morocco writes Tifinagh on official buildings and many road signs; Algeria uses it more rarely."
+  },
+  "CANADIAN SYLLABICS": {
+   "countries": [
+    "CA"
+   ],
+   "strength": "strong",
+   "note": "Nunavut, northern Quebec, Cree areas."
+  },
+  "CHEROKEE": {
+   "countries": [
+    "US"
+   ],
+   "strength": "strong",
+   "note": "Cherokee Nation (Oklahoma), Qualla Boundary (North Carolina)."
+  },
+  "BALINESE": {
+   "countries": [
+    "ID"
+   ],
+   "strength": "strong",
+   "note": "Bali: street and office signs repeat the Latin text in Balinese script."
+  },
+  "JAVANESE": {
+   "countries": [
+    "ID"
+   ],
+   "strength": "strong",
+   "note": "Yogyakarta and Central Java street signs."
+  },
+  "SUNDANESE": {
+   "countries": [
+    "ID"
+   ],
+   "strength": "strong",
+   "note": "West Java."
+  },
+  "NKO": {
+   "countries": [
+    "GN",
+    "ML",
+    "CI"
+   ],
+   "strength": "medium"
+  },
+  "VAI": {
+   "countries": [
+    "LR"
+   ],
+   "strength": "medium"
+  },
+  "OL CHIKI": {
+   "countries": [
+    "IN"
+   ],
+   "strength": "strong",
+   "note": "Santali: Jharkhand, West Bengal, Odisha."
+  },
+  "SYRIAC": {
+   "countries": [
+    "SY",
+    "IQ",
+    "TR",
+    "LB"
+   ],
+   "strength": "medium"
+  },
+  "YI": {
+   "countries": [
+    "CN"
+   ],
+   "strength": "strong",
+   "note": "Liangshan (Sichuan) and Yunnan."
+  },
+  "TAI LE": {
+   "countries": [
+    "CN"
+   ],
+   "strength": "strong",
+   "note": "Dehong, Yunnan."
+  },
+  "NEW TAI LUE": {
+   "countries": [
+    "CN"
+   ],
+   "strength": "strong",
+   "note": "Xishuangbanna, Yunnan."
+  },
+  "TAI THAM": {
+   "countries": [
+    "TH",
+    "LA",
+    "MM",
+    "CN"
+   ],
+   "strength": "medium",
+   "note": "Lanna (northern Thailand) temples and some signs."
+  }
+ },
+ "digits": {
+  "ARABIC-INDIC": {
+   "note": "Eastern Arabic digits ٠١٢٣٤٥٦٧٨٩: Egypt, Sudan, the Levant, Iraq and the Gulf on plates, prices and signs; the Maghreb uses Western digits.",
+   "countries": [
+    "EG",
+    "SD",
+    "SA",
+    "AE",
+    "QA",
+    "BH",
+    "KW",
+    "OM",
+    "YE",
+    "IQ",
+    "SY",
+    "LB",
+    "JO",
+    "PS"
+   ]
+  },
+  "EXTENDED ARABIC-INDIC": {
+   "note": "Persian/Urdu digits ۰۱۲۳۴۵۶۷۸۹ (distinct ۴ ۵ ۶): Iran, Afghanistan, Pakistan.",
+   "countries": [
+    "IR",
+    "AF",
+    "PK"
+   ]
+  },
+  "DEVANAGARI": {
+   "note": "Devanagari digits on Nepali plates and signs; rarer in India.",
+   "countries": [
+    "NP",
+    "IN"
+   ]
+  },
+  "BENGALI": {
+   "note": "Bengali digits on Bangladeshi plates and shop signs.",
+   "countries": [
+    "BD",
+    "IN"
+   ]
+  },
+  "THAI": {
+   "note": "Thai digits on some plates, prices, temple and government signs.",
+   "countries": [
+    "TH"
+   ]
+  },
+  "LAO": {
+   "note": "Lao digits.",
+   "countries": [
+    "LA"
+   ]
+  },
+  "KHMER": {
+   "note": "Khmer digits on Cambodian plates and signs.",
+   "countries": [
+    "KH"
+   ]
+  },
+  "MYANMAR": {
+   "note": "Burmese digits on older plates and many signs.",
+   "countries": [
+    "MM"
+   ]
+  }
+ },
+ "letters": {
+  "ß": {
+   "langs": [
+    "de"
+   ],
+   "note": "German (not used in Switzerland or Liechtenstein, which write ss)"
+  },
+  "ő": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "ű": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "ł": {
+   "langs": [
+    "pl"
+   ],
+   "note": "also Sorbian, Kashubian"
+  },
+  "ś": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "ź": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "ń": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "ż": {
+   "langs": [
+    "pl",
+    "mt"
+   ]
+  },
+  "ą": {
+   "langs": [
+    "pl",
+    "lt"
+   ]
+  },
+  "ę": {
+   "langs": [
+    "pl",
+    "lt"
+   ]
+  },
+  "ř": {
+   "langs": [
+    "cs"
+   ]
+  },
+  "ů": {
+   "langs": [
+    "cs"
+   ]
+  },
+  "ě": {
+   "langs": [
+    "cs"
+   ]
+  },
+  "ť": {
+   "langs": [
+    "cs",
+    "sk"
+   ]
+  },
+  "ď": {
+   "langs": [
+    "cs",
+    "sk"
+   ]
+  },
+  "ň": {
+   "langs": [
+    "cs",
+    "sk"
+   ]
+  },
+  "ľ": {
+   "langs": [
+    "sk"
+   ]
+  },
+  "ĺ": {
+   "langs": [
+    "sk"
+   ]
+  },
+  "ŕ": {
+   "langs": [
+    "sk"
+   ]
+  },
+  "ä": {
+   "langs": [
+    "de",
+    "sv",
+    "fi",
+    "et",
+    "sk"
+   ],
+   "note": "also Luxembourgish, Swiss German"
+  },
+  "ș": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "ț": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "ţ": {
+   "langs": [
+    "ro"
+   ],
+   "note": "cedilla form common in older Romanian typesetting"
+  },
+  "ă": {
+   "langs": [
+    "ro",
+    "vi"
+   ]
+  },
+  "î": {
+   "langs": [
+    "ro",
+    "fr"
+   ]
+  },
+  "ş": {
+   "langs": [
+    "tr",
+    "az",
+    "ro"
+   ]
+  },
+  "ğ": {
+   "langs": [
+    "tr",
+    "az"
+   ]
+  },
+  "ı": {
+   "langs": [
+    "tr",
+    "az"
+   ]
+  },
+  "İ": {
+   "langs": [
+    "tr",
+    "az"
+   ]
+  },
+  "ə": {
+   "langs": [
+    "az"
+   ]
+  },
+  "å": {
+   "langs": [
+    "sv",
+    "no",
+    "da",
+    "fi"
+   ],
+   "note": "Finnish only in Swedish loan names; Åland"
+  },
+  "æ": {
+   "langs": [
+    "da",
+    "no",
+    "is",
+    "fo"
+   ]
+  },
+  "ø": {
+   "langs": [
+    "da",
+    "no",
+    "fo"
+   ]
+  },
+  "ð": {
+   "langs": [
+    "is",
+    "fo"
+   ]
+  },
+  "þ": {
+   "langs": [
+    "is"
+   ]
+  },
+  "ñ": {
+   "langs": [
+    "es",
+    "gl",
+    "eu",
+    "tl",
+    "qu",
+    "gn"
+   ],
+   "note": "Spanish; also Galician, Basque, Filipino, Quechua, Guaraní, Breton"
+  },
+  "ã": {
+   "langs": [
+    "pt",
+    "gn",
+    "vi"
+   ]
+  },
+  "õ": {
+   "langs": [
+    "pt",
+    "et",
+    "vi"
+   ]
+  },
+  "ç": {
+   "langs": [
+    "fr",
+    "pt",
+    "ca",
+    "tr",
+    "sq",
+    "az",
+    "ku"
+   ]
+  },
+  "ë": {
+   "langs": [
+    "sq",
+    "nl",
+    "fr",
+    "lb"
+   ],
+   "note": "Albanian (very frequent), Dutch/French/Luxembourgish (occasional)"
+  },
+  "ė": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "į": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "ų": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "ū": {
+   "langs": [
+    "lt",
+    "lv",
+    "mi"
+   ]
+  },
+  "ā": {
+   "langs": [
+    "lv",
+    "mi",
+    "haw",
+    "sm",
+    "to"
+   ]
+  },
+  "ē": {
+   "langs": [
+    "lv",
+    "mi"
+   ]
+  },
+  "ī": {
+   "langs": [
+    "lv",
+    "mi"
+   ]
+  },
+  "ō": {
+   "langs": [
+    "mi",
+    "ja-Latn",
+    "haw"
+   ]
+  },
+  "ķ": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "ļ": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "ņ": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "ģ": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "đ": {
+   "langs": [
+    "hr",
+    "bs",
+    "sr",
+    "vi"
+   ]
+  },
+  "ć": {
+   "langs": [
+    "hr",
+    "bs",
+    "sr",
+    "pl"
+   ]
+  },
+  "č": {
+   "langs": [
+    "cs",
+    "sk",
+    "sl",
+    "hr",
+    "bs",
+    "sr",
+    "lt",
+    "lv"
+   ]
+  },
+  "š": {
+   "langs": [
+    "cs",
+    "sk",
+    "sl",
+    "hr",
+    "bs",
+    "sr",
+    "lt",
+    "lv",
+    "et",
+    "fi"
+   ]
+  },
+  "ž": {
+   "langs": [
+    "cs",
+    "sk",
+    "sl",
+    "hr",
+    "bs",
+    "sr",
+    "lt",
+    "lv",
+    "et"
+   ]
+  },
+  "ŵ": {
+   "langs": [
+    "cy"
+   ]
+  },
+  "ŷ": {
+   "langs": [
+    "cy"
+   ]
+  },
+  "ġ": {
+   "langs": [
+    "mt"
+   ]
+  },
+  "ħ": {
+   "langs": [
+    "mt"
+   ]
+  },
+  "ċ": {
+   "langs": [
+    "mt"
+   ]
+  },
+  "ơ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ư": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ạ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ả": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ấ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ầ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẩ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẫ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ậ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ắ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ằ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẳ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẵ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ặ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẻ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẽ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ế": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ề": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ể": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ễ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ệ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỉ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ị": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỏ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ố": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ồ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ổ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỗ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ộ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ớ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ờ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ở": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỡ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ợ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ụ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ủ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ứ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ừ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ử": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ữ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ự": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỳ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỵ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỷ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ỹ": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ẹ": {
+   "langs": [
+    "yo",
+    "vi"
+   ]
+  },
+  "ọ": {
+   "langs": [
+    "yo",
+    "vi"
+   ]
+  },
+  "ṣ": {
+   "langs": [
+    "yo"
+   ]
+  },
+  "ɛ": {
+   "langs": [
+    "ak",
+    "ee",
+    "ln",
+    "bm"
+   ],
+   "note": "Twi/Akan and Ewe (Ghana, Togo), Lingala, Bambara"
+  },
+  "ɔ": {
+   "langs": [
+    "ak",
+    "ee",
+    "ln",
+    "bm"
+   ]
+  },
+  "ƙ": {
+   "langs": [
+    "ha"
+   ]
+  },
+  "ɗ": {
+   "langs": [
+    "ha",
+    "ff"
+   ]
+  },
+  "ɓ": {
+   "langs": [
+    "ha",
+    "ff"
+   ]
+  },
+  "ƴ": {
+   "langs": [
+    "ha",
+    "ff"
+   ]
+  },
+  "ŋ": {
+   "langs": [
+    "wo",
+    "ff",
+    "se"
+   ],
+   "note": "Wolof/Fula in West Africa; Northern Sami"
+  },
+  "ʻ": {
+   "langs": [
+    "haw",
+    "sm",
+    "to"
+   ],
+   "note": "ʻokina: Hawaiian, Samoan, Tongan"
+  },
+  "і": {
+   "langs": [
+    "uk",
+    "be",
+    "kk"
+   ]
+  },
+  "ї": {
+   "langs": [
+    "uk"
+   ]
+  },
+  "є": {
+   "langs": [
+    "uk"
+   ]
+  },
+  "ґ": {
+   "langs": [
+    "uk"
+   ]
+  },
+  "ў": {
+   "langs": [
+    "be"
+   ]
+  },
+  "ё": {
+   "langs": [
+    "ru",
+    "be"
+   ]
+  },
+  "ы": {
+   "langs": [
+    "ru",
+    "be",
+    "kk",
+    "ky"
+   ]
+  },
+  "э": {
+   "langs": [
+    "ru",
+    "be",
+    "kk",
+    "ky",
+    "mn"
+   ]
+  },
+  "ъ": {
+   "langs": [
+    "ru",
+    "bg"
+   ]
+  },
+  "ђ": {
+   "langs": [
+    "sr"
+   ]
+  },
+  "ћ": {
+   "langs": [
+    "sr"
+   ]
+  },
+  "ј": {
+   "langs": [
+    "sr",
+    "mk"
+   ]
+  },
+  "љ": {
+   "langs": [
+    "sr",
+    "mk"
+   ]
+  },
+  "њ": {
+   "langs": [
+    "sr",
+    "mk"
+   ]
+  },
+  "џ": {
+   "langs": [
+    "sr",
+    "mk"
+   ]
+  },
+  "ѓ": {
+   "langs": [
+    "mk"
+   ]
+  },
+  "ќ": {
+   "langs": [
+    "mk"
+   ]
+  },
+  "ѕ": {
+   "langs": [
+    "mk"
+   ]
+  },
+  "ә": {
+   "langs": [
+    "kk",
+    "tt",
+    "ba"
+   ]
+  },
+  "ғ": {
+   "langs": [
+    "kk",
+    "uz",
+    "tg"
+   ]
+  },
+  "қ": {
+   "langs": [
+    "kk",
+    "uz",
+    "tg"
+   ]
+  },
+  "ң": {
+   "langs": [
+    "kk",
+    "ky",
+    "tt"
+   ]
+  },
+  "ө": {
+   "langs": [
+    "kk",
+    "ky",
+    "mn"
+   ]
+  },
+  "ұ": {
+   "langs": [
+    "kk"
+   ]
+  },
+  "ү": {
+   "langs": [
+    "kk",
+    "ky",
+    "mn"
+   ]
+  },
+  "һ": {
+   "langs": [
+    "kk",
+    "tt",
+    "ba"
+   ]
+  },
+  "ҳ": {
+   "langs": [
+    "tg",
+    "uz"
+   ]
+  },
+  "ӣ": {
+   "langs": [
+    "tg"
+   ]
+  },
+  "ӯ": {
+   "langs": [
+    "tg"
+   ]
+  },
+  "ҷ": {
+   "langs": [
+    "tg"
+   ]
+  },
+  "پ": {
+   "langs": [
+    "fa",
+    "ur",
+    "ps",
+    "ku"
+   ]
+  },
+  "چ": {
+   "langs": [
+    "fa",
+    "ur",
+    "ps",
+    "ku"
+   ]
+  },
+  "ژ": {
+   "langs": [
+    "fa",
+    "ur",
+    "ps",
+    "ku"
+   ]
+  },
+  "گ": {
+   "langs": [
+    "fa",
+    "ur",
+    "ps",
+    "ku"
+   ]
+  },
+  "ٹ": {
+   "langs": [
+    "ur"
+   ]
+  },
+  "ڈ": {
+   "langs": [
+    "ur"
+   ]
+  },
+  "ڑ": {
+   "langs": [
+    "ur"
+   ]
+  },
+  "ں": {
+   "langs": [
+    "ur"
+   ]
+  },
+  "ے": {
+   "langs": [
+    "ur"
+   ]
+  },
+  "ښ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ږ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ځ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "څ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ډ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ړ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ټ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ڼ": {
+   "langs": [
+    "ps"
+   ]
+  },
+  "ێ": {
+   "langs": [
+    "ckb"
+   ]
+  },
+  "ۆ": {
+   "langs": [
+    "ckb",
+    "ug"
+   ]
+  },
+  "ڵ": {
+   "langs": [
+    "ckb"
+   ]
+  },
+  "ڕ": {
+   "langs": [
+    "ckb"
+   ]
+  },
+  "ڨ": {
+   "langs": [
+    "ar"
+   ],
+   "note": "Algerian/Tunisian spelling of a hard g (place names like ڨابس)",
+   "countries": [
+    "DZ",
+    "TN"
+   ]
+  },
+  "ڭ": {
+   "langs": [
+    "ar",
+    "ug"
+   ],
+   "note": "Moroccan spelling of a hard g (e.g. place names) and Uyghur",
+   "countries": [
+    "MA"
+   ]
+  },
+  "ৰ": {
+   "langs": [
+    "as"
+   ],
+   "note": "Assamese",
+   "countries": [
+    "IN"
+   ]
+  },
+  "ৱ": {
+   "langs": [
+    "as"
+   ],
+   "countries": [
+    "IN"
+   ]
+  }
+ },
+ "hanzi": {
+  "simplified": "这个们来时说对发还问车门东马长电书业广场医药银号饮鸡饭汤线楼厅湾边关开风飞买卖价钱图馆气应头脑乐养听战种济经历华乡镇县卫级讲话语读写颜页题选过进远运达环现实宝贝网节艺术杂计设认识证让议记论无为与专丰临丽举义乌习乱争亏产亲亿仅从仓仪众优伙伟传伤伦体侨货贸资费贵贷质购宾宽寝导层岁岛峡币师带帮庄庆库应废开异弃张弯归当录彻径忆总恋惊惯戏户扑执扩扫扬扰抚抛抢护报担拟拥择挂挡挥损换据掷摄摆摇摊撑敌数斋断时旷显晋晒晓晕暂术机杀杂权条来杨极构枪柜标栏树样桥档桦梦检楼榄横欢欧殴毁毕毙气汉汤沟没沪泪泼泽洁洒浅浆浇测济浑浓涂涛涝润涨渊渐渔渗温游湾湿溃滚满滤滥滨滩潇潜澜灭灯灵灾灿炉点炼烂烛烟热焕爱爷牵犹狈独狭狮狱猎猪猫献玛环现玻珐珑琐琼瓯电画畅疗疮疯痒瘫癞皱盏盐监盖盘眯睁矫矿码砖确碍礼祷祸离秃种积称秽稳穷窃窍竖竞笔笼筑筛筹签简粮紧纠红约级纪纯纱纳纸纺线练组细织终绍经绑结绕绘给络绝统继绩绪续绳维绵综绿缓编缘缩缴网罗罚罢羡翘耸职联聪肃肠肤肿胀胁胆脉脏脑脚脱脸腊腾舆舰舱艰艺节芦苏苹茎茧荐荡荣荤药莱获莹营萧萨蓝蔼虏虑虚虽虾蚀蚁蚂蛮蜡蝇衅补衬袄袜装裤见观规视览觉触誉计订认讨让训议讯记讲许论设访证评识诉词译试诗诚话诞询该详语误说请诸诺读课谁调谈谊谋谎谐谓谜谢谣谦谨谱贝负贡财责贤败账货质贩贪贫购贯贴贵贸费贺贼资赋赌赏赔赖赚赛赞赠赵赶趋跃践踪身躯车轨轩转轮软轰轻载轿较辅辆辈辉输辖辩边辽达迁过迈运还这进远违连迟适选递逻遗邓邮邻郑酱酿释鉴针钉钓钟钢钥钩钱钻铁铃铅铜铝铺铭银销锁锅锈锋错锡锣锤键锻镇镜镶长门闪闭问闯闲间闷闹闻阀阁阅队阳阴阵阶际陆陈陕险随隐隶难雾静韩页顶项顺须顽顾顿预领频颗题颜额风飘飞饥饭饮饰饱饲饶饺饼馆馈首驱驳驶驻驾驿骂骄骆骑骗骚骤骨鱼鲁鲜鸟鸡鸣鸭鸽鹅鹰鹿麦黄齐齿龙龟",
+  "traditional": "這個們來時說對發還問車門東馬長電書業廣場醫藥銀號飲雞飯湯線樓廳灣邊關開風飛買賣價錢圖館氣應頭腦樂養聽戰種濟經歷華鄉鎮縣衛級講話語讀寫顏頁題選過進遠運達環現實寶貝網節藝術雜計設認識證讓議記論無為與專豐臨麗舉義烏習亂爭虧雲產親億僅從倉儀眾優夥偉傳傷倫體餘僑貨貿資費貴貸質購賓寬寢導層歲島峽幣師帶幫莊慶庫廢異棄張彎歸當錄徹徑憶總戀驚慣戲戶撲執擴掃揚擾撫拋搶護報擔擬擁擇掛擋揮損換據擲攝擺搖攤撐敵數齋斷曠顯晉曬曉暈暫機殺權條楊極構槍櫃標欄樹樣橋檔樺夢檢欖橫歡歐毆毀畢斃漢溝沒滬淚潑澤潔灑淺漿澆渾濃塗濤澇潤漲淵漸漁滲溫遊濕潰滾滿濾濫濱灘瀟潛瀾滅燈靈災燦爐點煉爛燭煙熱煥愛爺牽猶狽獨狹獅獄獵豬貓獻瑪玻琺瓏瑣瓊甌畫暢療瘡瘋癢癱癩皺盞鹽監蓋盤瞇著睜矯礦碼磚確礙禮禱禍離禿積稱穢穩窮竊竅豎競筆籠築篩籌簽簡糧緊糾紅約紀純紗納紙紡練組細織終紹綁結繞繪給絡絕統繼績緒續繩維綿綜綠緩編緣縮繳羅罰罷羨翹聳職聯聰肅腸膚腫脹脅膽勝脈臟腳脫臉臘騰輿艦艙艱蘆蘇蘋莖範繭薦蕩榮葷萊獲瑩營蕭薩藍藹虜慮虛雖蝦蝕蟻螞蠻蠟蠅釁補襯襖襪裝褲見觀規視覽覺觸譽訂討訓訊許訪評訴詞譯試詩誠誕詢該詳誤請諸諾課誰調談誼謀謊諧謂謎謝謠謙謹譜負貢財責賢敗賬販貪貧貫貼賀賊賦賭賞賠賴賺賽讚贈趙趕趨躍踐蹤軀軌軒轉輪軟轟輕載轎較輔輛輩輝輸轄辯遼遷邁違連遲適遞邏遺鄧郵鄰鄭醬釀釋裡鑑針釘釣鐘鋼鑰鉤鑽鐵鈴鉛銅鋁鋪銘銷鎖鍋鏽鋒錯錫鑼錘鍵鍛鏡鑲閃閉闖閒間悶鬧聞閥閣閱隊陽陰陣階際陸陳陝險隨隱隸難霧靜韓頂項順須頑顧頓預領頻顆額飄饑飾飽飼饒餃餅饋驅駁駛駐駕驛罵驕駱騎騙騷驟魚魯鮮鳥鳴鴨鴿鵝鷹麥黃齊齒龍龜",
+  "japanese": "駅図広県気売鉄沢桜発様営険薬戦単辺関楽歩転円蔵拡竜弁斎稲恵渋浜郷読黒鶏鴎駆検権総庁済渇隣聴徳碁",
+  "note": "Simplified forms → mainland China, Singapore, Malaysian Chinese; traditional → Taiwan, Hong Kong, Macau (and older or decorative signs anywhere); Japanese shinjitai forms such as 駅 図 広 県 気 売 鉄 → Japan even without kana. Japanese and simplified Chinese share 国 学 会 来, so those prove nothing."
+ },
+ "currency": [
+  {
+   "pattern": "€",
+   "countries": [
+    "DE",
+    "FR",
+    "IT",
+    "ES",
+    "PT",
+    "NL",
+    "BE",
+    "AT",
+    "IE",
+    "FI",
+    "GR",
+    "SK",
+    "SI",
+    "EE",
+    "LV",
+    "LT",
+    "LU",
+    "MT",
+    "CY",
+    "HR",
+    "MC",
+    "SM",
+    "VA",
+    "AD",
+    "ME",
+    "XK"
+   ],
+   "note": "euro area and euro users"
+  },
+  {
+   "pattern": "£",
+   "countries": [
+    "GB",
+    "GI",
+    "IM",
+    "JE",
+    "GG",
+    "FK"
+   ],
+   "weak_countries": [
+    "EG",
+    "LB",
+    "SY",
+    "SD",
+    "SS"
+   ],
+   "note": "pound sterling; £ is also used for the Egyptian and Lebanese pound"
+  },
+  {
+   "pattern": "₩",
+   "countries": [
+    "KR",
+    "KP"
+   ]
+  },
+  {
+   "pattern": "₹",
+   "countries": [
+    "IN"
+   ]
+  },
+  {
+   "pattern": "₽",
+   "countries": [
+    "RU"
+   ]
+  },
+  {
+   "pattern": "₺",
+   "countries": [
+    "TR"
+   ]
+  },
+  {
+   "pattern": "₴",
+   "countries": [
+    "UA"
+   ]
+  },
+  {
+   "pattern": "₱",
+   "countries": [
+    "PH"
+   ]
+  },
+  {
+   "pattern": "₫",
+   "countries": [
+    "VN"
+   ]
+  },
+  {
+   "pattern": "฿",
+   "countries": [
+    "TH"
+   ]
+  },
+  {
+   "pattern": "₪",
+   "countries": [
+    "IL",
+    "PS"
+   ]
+  },
+  {
+   "pattern": "₦",
+   "countries": [
+    "NG"
+   ]
+  },
+  {
+   "pattern": "₵",
+   "countries": [
+    "GH"
+   ]
+  },
+  {
+   "pattern": "₸",
+   "countries": [
+    "KZ"
+   ]
+  },
+  {
+   "pattern": "₮",
+   "countries": [
+    "MN"
+   ]
+  },
+  {
+   "pattern": "₲",
+   "countries": [
+    "PY"
+   ]
+  },
+  {
+   "pattern": "₡",
+   "countries": [
+    "CR"
+   ]
+  },
+  {
+   "pattern": "₼",
+   "countries": [
+    "AZ"
+   ]
+  },
+  {
+   "pattern": "₾",
+   "countries": [
+    "GE"
+   ]
+  },
+  {
+   "pattern": "֏",
+   "countries": [
+    "AM"
+   ]
+  },
+  {
+   "pattern": "₭",
+   "countries": [
+    "LA"
+   ]
+  },
+  {
+   "pattern": "៛",
+   "countries": [
+    "KH"
+   ]
+  },
+  {
+   "pattern": "৳",
+   "countries": [
+    "BD"
+   ]
+  },
+  {
+   "pattern": "¥",
+   "countries": [
+    "JP",
+    "CN"
+   ],
+   "note": "yen or yuan; 円 → Japan, 元 → China"
+  },
+  {
+   "pattern": "円",
+   "countries": [
+    "JP"
+   ]
+  },
+  {
+   "pattern": "元",
+   "countries": [
+    "CN",
+    "TW",
+    "HK",
+    "MO"
+   ],
+   "note": "yuan / NT dollar / HK dollar contexts"
+  },
+  {
+   "pattern": "R$",
+   "countries": [
+    "BR"
+   ]
+  },
+  {
+   "pattern": "zł",
+   "countries": [
+    "PL"
+   ]
+  },
+  {
+   "pattern": "Kč",
+   "countries": [
+    "CZ"
+   ]
+  },
+  {
+   "pattern": "Ft",
+   "countries": [
+    "HU"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "lei",
+   "countries": [
+    "RO",
+    "MD"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "лв",
+   "countries": [
+    "BG"
+   ]
+  },
+  {
+   "pattern": "ден",
+   "countries": [
+    "MK"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "дин",
+   "countries": [
+    "RS"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "KM",
+   "countries": [
+    "BA"
+   ],
+   "word": true,
+   "note": "konvertibilna marka; weak, also kilometres"
+  },
+  {
+   "pattern": "CHF",
+   "countries": [
+    "CH",
+    "LI"
+   ]
+  },
+  {
+   "pattern": "Fr.",
+   "countries": [
+    "CH",
+    "LI"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "kr",
+   "countries": [
+    "SE",
+    "NO",
+    "DK",
+    "IS",
+    "FO",
+    "GL"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "Rp",
+   "countries": [
+    "ID"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "RM",
+   "countries": [
+    "MY"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "S/",
+   "countries": [
+    "PE"
+   ]
+  },
+  {
+   "pattern": "Bs",
+   "countries": [
+    "BO",
+    "VE"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "Q",
+   "countries": [
+    "GT"
+   ],
+   "word": true,
+   "note": "quetzal; only next to a number"
+  },
+  {
+   "pattern": "C$",
+   "countries": [
+    "NI",
+    "CA"
+   ]
+  },
+  {
+   "pattern": "RD$",
+   "countries": [
+    "DO"
+   ]
+  },
+  {
+   "pattern": "TT$",
+   "countries": [
+    "TT"
+   ]
+  },
+  {
+   "pattern": "J$",
+   "countries": [
+    "JM"
+   ]
+  },
+  {
+   "pattern": "N$",
+   "countries": [
+    "NA"
+   ]
+  },
+  {
+   "pattern": "GH₵",
+   "countries": [
+    "GH"
+   ]
+  },
+  {
+   "pattern": "KSh",
+   "countries": [
+    "KE"
+   ]
+  },
+  {
+   "pattern": "Ksh",
+   "countries": [
+    "KE"
+   ]
+  },
+  {
+   "pattern": "USh",
+   "countries": [
+    "UG"
+   ]
+  },
+  {
+   "pattern": "TSh",
+   "countries": [
+    "TZ"
+   ]
+  },
+  {
+   "pattern": "FCFA",
+   "countries": [
+    "SN",
+    "CI",
+    "ML",
+    "BF",
+    "NE",
+    "TG",
+    "BJ",
+    "GW",
+    "CM",
+    "GA",
+    "CG",
+    "TD",
+    "CF",
+    "GQ"
+   ]
+  },
+  {
+   "pattern": "CFA",
+   "countries": [
+    "SN",
+    "CI",
+    "ML",
+    "BF",
+    "NE",
+    "TG",
+    "BJ",
+    "GW",
+    "CM",
+    "GA",
+    "CG",
+    "TD",
+    "CF",
+    "GQ"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "Dhs",
+   "countries": [
+    "AE",
+    "MA"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "DH",
+   "countries": [
+    "MA",
+    "AE"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "تومان",
+   "countries": [
+    "IR"
+   ]
+  },
+  {
+   "pattern": "ریال",
+   "countries": [
+    "IR"
+   ]
+  },
+  {
+   "pattern": "ريال",
+   "countries": [
+    "SA",
+    "OM",
+    "QA",
+    "YE",
+    "IR"
+   ]
+  },
+  {
+   "pattern": "درهم",
+   "countries": [
+    "MA",
+    "AE"
+   ]
+  },
+  {
+   "pattern": "دينار",
+   "countries": [
+    "TN",
+    "DZ",
+    "LY",
+    "IQ",
+    "JO",
+    "KW",
+    "BH",
+    "RS"
+   ]
+  },
+  {
+   "pattern": "ج.م",
+   "countries": [
+    "EG"
+   ]
+  },
+  {
+   "pattern": "ر.س",
+   "countries": [
+    "SA"
+   ]
+  },
+  {
+   "pattern": "د.إ",
+   "countries": [
+    "AE"
+   ]
+  },
+  {
+   "pattern": "ر.ق",
+   "countries": [
+    "QA"
+   ]
+  },
+  {
+   "pattern": "د.ك",
+   "countries": [
+    "KW"
+   ]
+  },
+  {
+   "pattern": "ر.ع",
+   "countries": [
+    "OM"
+   ]
+  },
+  {
+   "pattern": "د.ب",
+   "countries": [
+    "BH"
+   ]
+  },
+  {
+   "pattern": "د.ت",
+   "countries": [
+    "TN"
+   ]
+  },
+  {
+   "pattern": "د.ج",
+   "countries": [
+    "DZ"
+   ]
+  },
+  {
+   "pattern": "ل.ل",
+   "countries": [
+    "LB"
+   ]
+  },
+  {
+   "pattern": "د.ا",
+   "countries": [
+    "JO"
+   ]
+  },
+  {
+   "pattern": "Rs",
+   "countries": [
+    "IN",
+    "PK",
+    "LK",
+    "NP",
+    "MU",
+    "SC"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "Nu.",
+   "countries": [
+    "BT"
+   ]
+  },
+  {
+   "pattern": "Rf",
+   "countries": [
+    "MV"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "MVR",
+   "countries": [
+    "MV"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "сом",
+   "countries": [
+    "KG",
+    "UZ"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "сўм",
+   "countries": [
+    "UZ"
+   ]
+  },
+  {
+   "pattern": "сомонӣ",
+   "countries": [
+    "TJ"
+   ]
+  },
+  {
+   "pattern": "Br",
+   "countries": [
+    "ET",
+    "BY"
+   ],
+   "word": true
+  },
+  {
+   "pattern": "грн",
+   "countries": [
+    "UA"
+   ]
+  },
+  {
+   "pattern": "руб",
+   "countries": [
+    "RU",
+    "BY"
+   ]
+  },
+  {
+   "pattern": "TL",
+   "countries": [
+    "TR"
+   ],
+   "word": true,
+   "note": "Turkish lira on price tags; weak"
+  }
+ ],
+ "vanity_tlds": [
+  "co",
+  "io",
+  "tv",
+  "me",
+  "ai",
+  "fm",
+  "ly",
+  "to",
+  "cc",
+  "ws",
+  "gg",
+  "la",
+  "nu",
+  "sh",
+  "vc",
+  "am",
+  "is",
+  "it",
+  "so",
+  "ac"
+ ],
+ "words": {
+  "_note": "Normalized (lowercase, accents removed) signage, address and shop words. langs = languages, countries = when the word itself is regional. Matched as whole words.",
+  "strasse": {
+   "langs": [
+    "de"
+   ]
+  },
+  "gasse": {
+   "langs": [
+    "de"
+   ],
+   "countries": [
+    "AT",
+    "DE",
+    "CH"
+   ]
+  },
+  "platz": {
+   "langs": [
+    "de"
+   ]
+  },
+  "weg": {
+   "langs": [
+    "de",
+    "nl"
+   ]
+  },
+  "apotheke": {
+   "langs": [
+    "de"
+   ]
+  },
+  "backerei": {
+   "langs": [
+    "de"
+   ]
+  },
+  "metzgerei": {
+   "langs": [
+    "de"
+   ],
+   "note": "south and west Germany, Austria, Switzerland"
+  },
+  "fleischerei": {
+   "langs": [
+    "de"
+   ],
+   "note": "north and east Germany"
+  },
+  "trafik": {
+   "langs": [
+    "de"
+   ],
+   "countries": [
+    "AT"
+   ],
+   "note": "Austrian tobacco kiosk (Tabak Trafik)"
+  },
+  "ausfahrt": {
+   "langs": [
+    "de"
+   ]
+  },
+  "umleitung": {
+   "langs": [
+    "de"
+   ]
+  },
+  "straat": {
+   "langs": [
+    "nl",
+    "af"
+   ]
+  },
+  "laan": {
+   "langs": [
+    "nl",
+    "af"
+   ]
+  },
+  "plein": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "gracht": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "steenweg": {
+   "langs": [
+    "nl"
+   ],
+   "countries": [
+    "BE"
+   ]
+  },
+  "apotheek": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "bakkerij": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "slagerij": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "uitrit": {
+   "langs": [
+    "nl"
+   ]
+  },
+  "rue": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "allee": {
+   "langs": [
+    "fr",
+    "de"
+   ]
+  },
+  "chemin": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "impasse": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "chaussee": {
+   "langs": [
+    "fr"
+   ],
+   "countries": [
+    "BE",
+    "FR"
+   ]
+  },
+  "pharmacie": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "boulangerie": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "boucherie": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "tabac": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "alimentation": {
+   "langs": [
+    "fr"
+   ],
+   "note": "corner shops in the Maghreb and francophone Africa"
+  },
+  "teleboutique": {
+   "langs": [
+    "fr"
+   ],
+   "countries": [
+    "MA",
+    "SN"
+   ]
+  },
+  "arret": {
+   "langs": [
+    "fr"
+   ],
+   "note": "ARRÊT on stop signs: Quebec"
+  },
+  "sortie": {
+   "langs": [
+    "fr"
+   ]
+  },
+  "via": {
+   "langs": [
+    "it",
+    "es",
+    "pt"
+   ]
+  },
+  "viale": {
+   "langs": [
+    "it"
+   ]
+  },
+  "piazza": {
+   "langs": [
+    "it"
+   ]
+  },
+  "corso": {
+   "langs": [
+    "it"
+   ]
+  },
+  "vicolo": {
+   "langs": [
+    "it"
+   ]
+  },
+  "contrada": {
+   "langs": [
+    "it"
+   ]
+  },
+  "farmacia": {
+   "langs": [
+    "it",
+    "es"
+   ]
+  },
+  "tabacchi": {
+   "langs": [
+    "it"
+   ]
+  },
+  "macelleria": {
+   "langs": [
+    "it"
+   ]
+  },
+  "ristorante": {
+   "langs": [
+    "it"
+   ]
+  },
+  "trattoria": {
+   "langs": [
+    "it"
+   ]
+  },
+  "uscita": {
+   "langs": [
+    "it"
+   ]
+  },
+  "calle": {
+   "langs": [
+    "es"
+   ]
+  },
+  "avenida": {
+   "langs": [
+    "es",
+    "pt"
+   ]
+  },
+  "plaza": {
+   "langs": [
+    "es"
+   ]
+  },
+  "paseo": {
+   "langs": [
+    "es"
+   ]
+  },
+  "carretera": {
+   "langs": [
+    "es"
+   ]
+  },
+  "camino": {
+   "langs": [
+    "es"
+   ]
+  },
+  "carrera": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "CO"
+   ],
+   "note": "Colombian street grid (Calle × Carrera)"
+  },
+  "jiron": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "PE"
+   ]
+  },
+  "panaderia": {
+   "langs": [
+    "es"
+   ]
+  },
+  "carniceria": {
+   "langs": [
+    "es"
+   ]
+  },
+  "ferreteria": {
+   "langs": [
+    "es"
+   ]
+  },
+  "salida": {
+   "langs": [
+    "es"
+   ]
+  },
+  "llantera": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "MX"
+   ]
+  },
+  "vulcanizadora": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "MX",
+    "GT",
+    "HN",
+    "SV"
+   ]
+  },
+  "gomeria": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "AR",
+    "UY",
+    "PY"
+   ]
+  },
+  "vulcanizacion": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "CL",
+    "PE",
+    "BO"
+   ]
+  },
+  "verduleria": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "AR",
+    "UY"
+   ]
+  },
+  "kiosco": {
+   "langs": [
+    "es"
+   ]
+  },
+  "abarrotes": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "MX",
+    "GT",
+    "PE"
+   ]
+  },
+  "pulperia": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "CR",
+    "HN",
+    "NI",
+    "AR"
+   ]
+  },
+  "colmado": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "DO",
+    "PR"
+   ]
+  },
+  "bodega": {
+   "langs": [
+    "es"
+   ]
+  },
+  "drogueria": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "CO"
+   ]
+  },
+  "alto": {
+   "langs": [
+    "es"
+   ],
+   "note": "ALTO on stop signs: Mexico and Central America"
+  },
+  "pare": {
+   "langs": [
+    "es",
+    "pt"
+   ],
+   "note": "PARE on stop signs: Brazil and much of South America"
+  },
+  "rua": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "travessa": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "praca": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "estrada": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "rodovia": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "beco": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "farmacia popular": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "drogaria": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "padaria": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "acougue": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "talho": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "PT"
+   ],
+   "note": "butcher in Portugal (Brazil says açougue)"
+  },
+  "borracharia": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "lanchonete": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "loterica": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "hortifruti": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ]
+  },
+  "pastelaria": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "saida": {
+   "langs": [
+    "pt"
+   ]
+  },
+  "strada": {
+   "langs": [
+    "ro",
+    "it"
+   ]
+  },
+  "bulevardul": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "calea": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "soseaua": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "aleea": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "farmacie": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "brutarie": {
+   "langs": [
+    "ro"
+   ]
+  },
+  "ulica": {
+   "langs": [
+    "pl",
+    "sk",
+    "hr",
+    "sl",
+    "bs",
+    "sr"
+   ]
+  },
+  "ul": {
+   "langs": [
+    "pl",
+    "ru",
+    "uk",
+    "bg"
+   ]
+  },
+  "aleja": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "osiedle": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "apteka": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "sklep": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "piekarnia": {
+   "langs": [
+    "pl"
+   ]
+  },
+  "ulice": {
+   "langs": [
+    "cs"
+   ]
+  },
+  "namesti": {
+   "langs": [
+    "cs"
+   ]
+  },
+  "lekarna": {
+   "langs": [
+    "cs",
+    "sl"
+   ]
+  },
+  "lekaren": {
+   "langs": [
+    "sk"
+   ]
+  },
+  "potraviny": {
+   "langs": [
+    "cs",
+    "sk"
+   ]
+  },
+  "namestie": {
+   "langs": [
+    "sk"
+   ]
+  },
+  "utca": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "ut": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "korut": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "gyogyszertar": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "patika": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "elelmiszer": {
+   "langs": [
+    "hu"
+   ]
+  },
+  "ljekarna": {
+   "langs": [
+    "hr",
+    "bs"
+   ]
+  },
+  "apoteka": {
+   "langs": [
+    "sr",
+    "bs"
+   ]
+  },
+  "trgovina": {
+   "langs": [
+    "hr",
+    "sl",
+    "bs"
+   ]
+  },
+  "prodavnica": {
+   "langs": [
+    "sr",
+    "bs"
+   ]
+  },
+  "kafana": {
+   "langs": [
+    "sr",
+    "bs"
+   ],
+   "countries": [
+    "RS",
+    "BA",
+    "ME"
+   ]
+  },
+  "gatan": {
+   "langs": [
+    "sv"
+   ]
+  },
+  "vagen": {
+   "langs": [
+    "sv"
+   ]
+  },
+  "torget": {
+   "langs": [
+    "sv",
+    "no"
+   ]
+  },
+  "apotek": {
+   "langs": [
+    "sv",
+    "no",
+    "da",
+    "id"
+   ]
+  },
+  "gate": {
+   "langs": [
+    "no"
+   ]
+  },
+  "veien": {
+   "langs": [
+    "no"
+   ]
+  },
+  "vei": {
+   "langs": [
+    "no"
+   ]
+  },
+  "gade": {
+   "langs": [
+    "da"
+   ]
+  },
+  "vej": {
+   "langs": [
+    "da"
+   ]
+  },
+  "katu": {
+   "langs": [
+    "fi"
+   ]
+  },
+  "tie": {
+   "langs": [
+    "fi"
+   ]
+  },
+  "apteekki": {
+   "langs": [
+    "fi"
+   ]
+  },
+  "tanav": {
+   "langs": [
+    "et"
+   ]
+  },
+  "maantee": {
+   "langs": [
+    "et"
+   ]
+  },
+  "apteek": {
+   "langs": [
+    "et"
+   ]
+  },
+  "iela": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "aptieka": {
+   "langs": [
+    "lv"
+   ]
+  },
+  "gatve": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "prospektas": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "vaistine": {
+   "langs": [
+    "lt"
+   ]
+  },
+  "sokak": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "sokagi": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "cadde": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "caddesi": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "mahallesi": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "bulvari": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "eczane": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "bakkal": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "lokanta": {
+   "langs": [
+    "tr"
+   ]
+  },
+  "улица": {
+   "langs": [
+    "ru",
+    "bg",
+    "sr",
+    "mk"
+   ]
+  },
+  "проспект": {
+   "langs": [
+    "ru",
+    "uk",
+    "bg"
+   ]
+  },
+  "переулок": {
+   "langs": [
+    "ru"
+   ]
+  },
+  "вулиця": {
+   "langs": [
+    "uk"
+   ]
+  },
+  "провулок": {
+   "langs": [
+    "uk"
+   ]
+  },
+  "аптека": {
+   "langs": [
+    "ru",
+    "uk",
+    "bg",
+    "mk",
+    "sr"
+   ]
+  },
+  "магазин": {
+   "langs": [
+    "ru",
+    "uk",
+    "bg"
+   ]
+  },
+  "продукты": {
+   "langs": [
+    "ru"
+   ]
+  },
+  "продукти": {
+   "langs": [
+    "uk",
+    "bg"
+   ]
+  },
+  "οδος": {
+   "langs": [
+    "el"
+   ]
+  },
+  "λεωφορος": {
+   "langs": [
+    "el"
+   ]
+  },
+  "φαρμακειο": {
+   "langs": [
+    "el"
+   ]
+  },
+  "jalan": {
+   "langs": [
+    "id",
+    "ms"
+   ]
+  },
+  "jl": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "jln": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY"
+   ]
+  },
+  "lorong": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY",
+    "SG"
+   ]
+  },
+  "kampung": {
+   "langs": [
+    "id",
+    "ms"
+   ]
+  },
+  "kelurahan": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "kecamatan": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "warung": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "toko": {
+   "langs": [
+    "id",
+    "ms"
+   ]
+  },
+  "kedai": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY",
+    "SG",
+    "BN"
+   ]
+  },
+  "apotik": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "farmasi": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY"
+   ]
+  },
+  "barangay": {
+   "langs": [
+    "tl"
+   ],
+   "countries": [
+    "PH"
+   ]
+  },
+  "brgy": {
+   "langs": [
+    "tl"
+   ],
+   "countries": [
+    "PH"
+   ]
+  },
+  "sari sari": {
+   "langs": [
+    "tl"
+   ],
+   "countries": [
+    "PH"
+   ]
+  },
+  "purok": {
+   "langs": [
+    "tl"
+   ],
+   "countries": [
+    "PH"
+   ]
+  },
+  "poblacion": {
+   "langs": [
+    "tl",
+    "es"
+   ],
+   "countries": [
+    "PH"
+   ]
+  },
+  "duong": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "pho": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "ngo": {
+   "langs": [
+    "vi"
+   ],
+   "note": "ngõ: alley in northern Vietnam"
+  },
+  "hem": {
+   "langs": [
+    "vi"
+   ],
+   "note": "hẻm: alley in southern Vietnam"
+  },
+  "phuong": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "quan": {
+   "langs": [
+    "vi"
+   ]
+  },
+  "soi": {
+   "langs": [
+    "th"
+   ],
+   "countries": [
+    "TH"
+   ]
+  },
+  "thanon": {
+   "langs": [
+    "th"
+   ],
+   "countries": [
+    "TH"
+   ]
+  },
+  "moo": {
+   "langs": [
+    "th"
+   ],
+   "countries": [
+    "TH"
+   ]
+  },
+  "marg": {
+   "langs": [
+    "hi"
+   ],
+   "countries": [
+    "IN",
+    "NP"
+   ]
+  },
+  "nagar": {
+   "langs": [
+    "hi"
+   ],
+   "countries": [
+    "IN"
+   ]
+  },
+  "chowk": {
+   "langs": [
+    "hi",
+    "ur"
+   ],
+   "countries": [
+    "IN",
+    "PK",
+    "NP"
+   ]
+  },
+  "bazar": {
+   "langs": [
+    "hi",
+    "ur",
+    "bn"
+   ]
+  },
+  "tole": {
+   "langs": [
+    "ne"
+   ],
+   "countries": [
+    "NP"
+   ]
+  },
+  "sadak": {
+   "langs": [
+    "hi",
+    "ne"
+   ]
+  },
+  "dukan": {
+   "langs": [
+    "hi",
+    "ur",
+    "bn"
+   ]
+  },
+  "medical store": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "IN",
+    "PK"
+   ]
+  },
+  "general store": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "IN",
+    "PK",
+    "BD",
+    "LK",
+    "NP"
+   ]
+  },
+  "duka": {
+   "langs": [
+    "sw"
+   ],
+   "countries": [
+    "KE",
+    "TZ",
+    "UG"
+   ]
+  },
+  "hoteli": {
+   "langs": [
+    "sw"
+   ],
+   "countries": [
+    "KE",
+    "TZ"
+   ]
+  },
+  "mpesa": {
+   "langs": [
+    "sw",
+    "en"
+   ],
+   "countries": [
+    "KE",
+    "TZ"
+   ]
+  },
+  "m pesa": {
+   "langs": [
+    "sw",
+    "en"
+   ],
+   "countries": [
+    "KE",
+    "TZ"
+   ]
+  },
+  "wakala": {
+   "langs": [
+    "sw"
+   ],
+   "countries": [
+    "TZ",
+    "KE"
+   ]
+  },
+  "spaza": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "ZA"
+   ]
+  },
+  "tuck shop": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "ZA",
+    "ZW",
+    "BW"
+   ]
+  },
+  "bottle store": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "ZA",
+    "BW",
+    "NA",
+    "ZW"
+   ]
+  },
+  "dairy": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "NZ"
+   ],
+   "note": "a Dairy is a corner shop in New Zealand"
+  },
+  "bottle shop": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "AU",
+    "NZ"
+   ]
+  },
+  "bottle o": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "AU"
+   ]
+  },
+  "milk bar": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "AU"
+   ]
+  },
+  "chemist": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "GB",
+    "IE",
+    "AU",
+    "NZ"
+   ]
+  },
+  "off licence": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "GB",
+    "IE"
+   ]
+  },
+  "drugstore": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "US"
+   ]
+  },
+  "liquor store": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "US",
+    "CA"
+   ]
+  },
+  "hanout": {
+   "langs": [
+    "ar"
+   ],
+   "countries": [
+    "MA"
+   ]
+  },
+  "pharmacy": {
+   "langs": [
+    "en"
+   ]
+  },
+  "road": {
+   "langs": [
+    "en"
+   ]
+  },
+  "street": {
+   "langs": [
+    "en"
+   ]
+  },
+  "avenue": {
+   "langs": [
+    "en",
+    "fr"
+   ]
+  },
+  "lane": {
+   "langs": [
+    "en"
+   ]
+  },
+  "ayuntamiento": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "ES",
+    "MX",
+    "DO"
+   ],
+   "note": "Spain, Mexico, Dominican Republic; AR/CL/PE/GT/PY/CR/EC say municipalidad"
+  },
+  "presidencia municipal": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "MX"
+   ]
+  },
+  "municipalidad": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "AR",
+    "CL",
+    "PE",
+    "GT",
+    "PY",
+    "CR",
+    "EC"
+   ]
+  },
+  "intendencia": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "UY",
+    "AR",
+    "CL"
+   ]
+  },
+  "gobernacion": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "CO",
+    "VE",
+    "BO",
+    "PY",
+    "GT",
+    "MX"
+   ],
+   "note": "department/state government seat; MX: Secretaría de Gobernación (federal ministry)"
+  },
+  "alcaldia": {
+   "langs": [
+    "es"
+   ]
+  },
+  "municipio": {
+   "langs": [
+    "es",
+    "pt",
+    "it"
+   ]
+  },
+  "concello": {
+   "langs": [
+    "gl"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Galician town council"
+  },
+  "xunta": {
+   "langs": [
+    "gl"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Galician regional government"
+  },
+  "ajuntament": {
+   "langs": [
+    "ca"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Catalan (Catalonia, Valencia, Balearics); Andorra says comú"
+  },
+  "generalitat": {
+   "langs": [
+    "ca"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Catalan/Valencian regional government"
+  },
+  "udala": {
+   "langs": [
+    "eu"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Basque town council"
+  },
+  "udaletxea": {
+   "langs": [
+    "eu"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "Basque town hall"
+  },
+  "diputacion": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "ES"
+   ],
+   "note": "provincial council"
+  },
+  "cabildo": {
+   "langs": [
+    "es"
+   ],
+   "countries": [
+    "ES",
+    "AR",
+    "UY"
+   ],
+   "note": "Canary Islands island councils; colonial town halls in Buenos Aires, Córdoba, Salta, Montevideo"
+  },
+  "camara municipal": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "PT",
+    "BR",
+    "CV"
+   ],
+   "note": "PT/CV: the municipal executive; BR: the municipal council (the executive is the prefeitura)"
+  },
+  "prefeitura": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "BR"
+   ],
+   "note": "Brazil only (Portugal says câmara municipal)"
+  },
+  "freguesia": {
+   "langs": [
+    "pt"
+   ],
+   "countries": [
+    "PT",
+    "BR"
+   ],
+   "note": "PT parish (Junta de Freguesia); BR a few district names (Rio, São Paulo)"
+  },
+  "gemeente": {
+   "langs": [
+    "nl",
+    "af"
+   ],
+   "countries": [
+    "NL",
+    "BE",
+    "ZA"
+   ],
+   "note": "ZA: Afrikaans church congregation (NG Gemeente)"
+  },
+  "gemeentehuis": {
+   "langs": [
+    "nl"
+   ],
+   "countries": [
+    "NL",
+    "BE"
+   ]
+  },
+  "stadhuis": {
+   "langs": [
+    "nl"
+   ],
+   "countries": [
+    "NL",
+    "BE"
+   ]
+  },
+  "rathaus": {
+   "langs": [
+    "de"
+   ],
+   "countries": [
+    "DE",
+    "AT",
+    "CH",
+    "LI"
+   ],
+   "note": "also on bilingual signs in South Tyrol (IT)"
+  },
+  "landratsamt": {
+   "langs": [
+    "de"
+   ],
+   "countries": [
+    "DE"
+   ],
+   "note": "district office"
+  },
+  "bezirkshauptmannschaft": {
+   "langs": [
+    "de"
+   ],
+   "countries": [
+    "AT"
+   ],
+   "note": "district office"
+  },
+  "mairie": {
+   "langs": [
+    "fr"
+   ],
+   "countries": [
+    "FR",
+    "MC",
+    "CH",
+    "SN",
+    "CI",
+    "CM",
+    "ML",
+    "BF",
+    "BJ",
+    "TG",
+    "NE",
+    "GA",
+    "CG",
+    "CD",
+    "TD",
+    "HT",
+    "DJ"
+   ],
+   "note": "France, Monaco, Geneva communes, francophone Africa, Haiti; Belgium says maison communale"
+  },
+  "comune": {
+   "langs": [
+    "it"
+   ],
+   "countries": [
+    "IT",
+    "CH"
+   ]
+  },
+  "belediye": {
+   "langs": [
+    "tr"
+   ],
+   "countries": [
+    "TR",
+    "CY"
+   ],
+   "note": "CY: northern Cyprus"
+  },
+  "belediyesi": {
+   "langs": [
+    "tr"
+   ],
+   "countries": [
+    "TR",
+    "CY"
+   ],
+   "note": "suffixed form (Ankara Büyükşehir Belediyesi); CY: northern Cyprus"
+  },
+  "ratusz": {
+   "langs": [
+    "pl"
+   ],
+   "countries": [
+    "PL"
+   ]
+  },
+  "gmina": {
+   "langs": [
+    "pl"
+   ],
+   "countries": [
+    "PL"
+   ]
+  },
+  "urzad miasta": {
+   "langs": [
+    "pl"
+   ],
+   "countries": [
+    "PL"
+   ]
+  },
+  "urzad gminy": {
+   "langs": [
+    "pl"
+   ],
+   "countries": [
+    "PL"
+   ]
+  },
+  "radnice": {
+   "langs": [
+    "cs"
+   ],
+   "countries": [
+    "CZ"
+   ]
+  },
+  "radnica": {
+   "langs": [
+    "sk"
+   ],
+   "countries": [
+    "SK"
+   ]
+  },
+  "varoshaza": {
+   "langs": [
+    "hu"
+   ],
+   "countries": [
+    "HU"
+   ]
+  },
+  "primaria municipiului": {
+   "langs": [
+    "ro"
+   ],
+   "countries": [
+    "RO",
+    "MD"
+   ]
+  },
+  "primaria comunei": {
+   "langs": [
+    "ro"
+   ],
+   "countries": [
+    "RO",
+    "MD"
+   ]
+  },
+  "consiliul judetean": {
+   "langs": [
+    "ro"
+   ],
+   "countries": [
+    "RO"
+   ],
+   "note": "county council (Moldova has raions)"
+  },
+  "kommune": {
+   "langs": [
+    "da",
+    "no"
+   ],
+   "countries": [
+    "DK",
+    "NO"
+   ],
+   "note": "municipality name on signs (German signs say Gemeinde/Stadt)"
+  },
+  "kommun": {
+   "langs": [
+    "sv"
+   ],
+   "countries": [
+    "SE"
+   ]
+  },
+  "radhus": {
+   "langs": [
+    "da",
+    "no",
+    "sv"
+   ],
+   "countries": [
+    "DK",
+    "NO",
+    "SE"
+   ]
+  },
+  "opcina": {
+   "langs": [
+    "hr",
+    "bs"
+   ],
+   "countries": [
+    "HR",
+    "BA"
+   ]
+  },
+  "obcina": {
+   "langs": [
+    "sl"
+   ],
+   "countries": [
+    "SI"
+   ]
+  },
+  "opstina": {
+   "langs": [
+    "sr",
+    "bs"
+   ],
+   "countries": [
+    "RS",
+    "ME",
+    "BA"
+   ],
+   "note": "Latin script; Cyrillic општина"
+  },
+  "општина": {
+   "langs": [
+    "sr",
+    "mk"
+   ],
+   "countries": [
+    "RS",
+    "MK",
+    "ME",
+    "BA"
+   ]
+  },
+  "община": {
+   "langs": [
+    "bg"
+   ],
+   "countries": [
+    "BG"
+   ]
+  },
+  "δημος": {
+   "langs": [
+    "el"
+   ],
+   "countries": [
+    "GR",
+    "CY"
+   ],
+   "note": "municipality"
+  },
+  "δημαρχειο": {
+   "langs": [
+    "el"
+   ],
+   "countries": [
+    "GR",
+    "CY"
+   ],
+   "note": "town hall"
+  },
+  "мэрия": {
+   "langs": [
+    "ru"
+   ],
+   "countries": [
+    "RU",
+    "KG"
+   ],
+   "note": "city administration"
+  },
+  "акимат": {
+   "langs": [
+    "kk",
+    "ru"
+   ],
+   "countries": [
+    "KZ"
+   ]
+  },
+  "хокимият": {
+   "langs": [
+    "uz",
+    "ru"
+   ],
+   "countries": [
+    "UZ"
+   ]
+  },
+  "міська рада": {
+   "langs": [
+    "uk"
+   ],
+   "countries": [
+    "UA"
+   ],
+   "note": "city council"
+  },
+  "uy ban": {
+   "langs": [
+    "vi"
+   ],
+   "countries": [
+    "VN"
+   ],
+   "note": "Ủy ban nhân dân (People's Committee) on administrative buildings"
+  },
+  "balai desa": {
+   "langs": [
+    "id"
+   ],
+   "countries": [
+    "ID"
+   ]
+  },
+  "majlis perbandaran": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY"
+   ]
+  },
+  "dewan bandaraya": {
+   "langs": [
+    "ms"
+   ],
+   "countries": [
+    "MY"
+   ]
+  },
+  "halmashauri": {
+   "langs": [
+    "sw"
+   ],
+   "countries": [
+    "TZ"
+   ],
+   "note": "district/town council"
+  },
+  "nagar nigam": {
+   "langs": [
+    "hi"
+   ],
+   "countries": [
+    "IN"
+   ],
+   "note": "municipal corporation"
+  },
+  "nagar palika": {
+   "langs": [
+    "hi"
+   ],
+   "countries": [
+    "IN"
+   ]
+  },
+  "gram panchayat": {
+   "langs": [
+    "hi"
+   ],
+   "countries": [
+    "IN"
+   ]
+  },
+  "tehsil": {
+   "langs": [
+    "hi",
+    "ur"
+   ],
+   "countries": [
+    "IN",
+    "PK"
+   ]
+  },
+  "upazila": {
+   "langs": [
+    "bn"
+   ],
+   "countries": [
+    "BD"
+   ]
+  },
+  "union parishad": {
+   "langs": [
+    "bn"
+   ],
+   "countries": [
+    "BD"
+   ]
+  },
+  "주민센터": {
+   "langs": [
+    "ko"
+   ],
+   "countries": [
+    "KR"
+   ],
+   "note": "community service centre"
+  },
+  "shire council": {
+   "langs": [
+    "en"
+   ],
+   "countries": [
+    "AU"
+   ]
+  }
+ }
+}

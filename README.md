@@ -121,7 +121,7 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 
 ### `knowledge/` - Research and meta-skills
 
-Skills that support the workflow itself: skill authoring, research helpers, and documentation automation. Load when a task needs them, not as background reading.
+Skills that support the workflow itself: skill authoring, research helpers, documentation automation, and geospatial intelligence for image verification. Load when a task needs them, not as background reading.
 
 | Skill | Role |
 |-------|------|
@@ -133,6 +133,7 @@ Skills that support the workflow itself: skill authoring, research helpers, and 
 | `deep-research-generic` | General-purpose deep research |
 | `known-problem-hint-research` | Targeted post-triage research to unblock a known problem signature |
 | `tool-schema-design` | Design LLM-callable tool signatures so the model picks the right tool and supplies valid arguments |
+| `geo-intelligence` | Geolocate and chronolocate photos: gut call, recon scripts (metadata, OCR, text→country, reverse image search, world prior), candidate board, OSM/satellite/terrain/sun geometry, street-level sweeps, evidence images; `sources_check.py` probes every external endpoint |
 
 ### `knowledge-offensive/` - Assessment research and evidence
 

@@ -12,3 +12,5 @@ notes.md
 ctf-solvin
 .import
 .research
+.geo-cache/
+.playwright-mcp/
