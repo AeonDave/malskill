@@ -92,8 +92,10 @@ Habits that keep it honest and useful:
 
 ## Clock
 
-Quick mode: about 10 minutes of tools after the gut call, then answer at the level reached; one more block only with a
-decisive test already named. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before
+Every analysis starts in Quick mode: about 10 minutes of tools after the gut call, then answer at the level reached;
+one more block only with a decisive test already named. Deep mode is entered only on the user's request or when the
+Quick answer is unsatisfactory (requested level not reached, decisive checks in contradiction, a single supporting
+clue), and it continues the same session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before
 widening, and never start a whole-town ranking without first trying to name the junction from text and road geometry.
 When the clock runs out, report the settled level, the radius it supports and the test that would have separated the
 remaining candidates, and `finish`: never stop to ask whether to continue (autonomy), offer the next step in the answer.
