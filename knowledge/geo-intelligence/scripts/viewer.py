@@ -523,10 +523,20 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
         "analysis_images": [a for a in artifacts if a["kind"] == "image" and a["path"] not in original_paths
                             and "_views/" not in a["path"] and not a["path"].endswith("_skyline.jpg") and ANALYSIS_MARK.search(a["path"])][:24],
         "skyline": skyline_of(folder, artifacts),
+        "checks": _checks_of(folder),
         "report_md": report, "recon_md": recon, "tiles": tiles,
     }
     state["version"] = hashlib.sha1(json.dumps(state, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
     return state
+
+
+def _checks_of(folder: Path) -> list[dict]:
+    """The scene's required checks and their status (photo_session.required_checks), never fatal."""
+    try:
+        import photo_session as _ps
+        return [{k: c.get(k) for k in ("name", "why", "done", "files")} for c in _ps.required_checks(folder)]
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def skyline_of(folder: Path, artifacts: list[dict]) -> dict | None:

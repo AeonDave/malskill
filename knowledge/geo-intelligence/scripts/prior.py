@@ -44,6 +44,16 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps  # noqa: E402
 
 STREETCLIP = "geolocal/StreetCLIP"
 TEMPLATES = ["A Street View photo in {}.", "A photo taken in {}."]
+# scene tags: one (present, absent) prompt pair per tag, scored independently (a photo can be mountains + water + road)
+SCENE_PROMPTS = {
+    "mountains": ("a photo with mountains or a rocky ridge on the horizon", "a photo with a flat horizon and no mountains"),
+    "water": ("a photo of a lake, a river or the sea", "a photo with no water in it"),
+    "coast": ("a photo of a sea coast or a beach", "a photo taken far from the sea"),
+    "urban": ("a city street with buildings, shops or traffic", "a natural landscape with no buildings"),
+    "road": ("a photo taken on a road or street", "a photo with no road or street"),
+    "text": ("a photo with readable signs, text or a licence plate", "a photo with no text, signs or plates"),
+    "indoor": ("an indoor photo", "an outdoor photo"),
+}
 
 
 def device(want: str | None = None):
@@ -117,6 +127,21 @@ class StreetCLIPModel:
                 embs.append(f / f.norm(dim=-1, keepdim=True))
             e = t.stack(embs).mean(dim=0)
             return e / e.norm(dim=-1, keepdim=True)
+
+    def scene_tags(self, img_emb) -> dict[str, float]:
+        """p(tag present) per SCENE_PROMPTS pair; photo_session.py turns tags into the checks finish requires."""
+        t = self.torch
+        out = {}
+        with t.no_grad():
+            for tag, (pos, neg) in SCENE_PROMPTS.items():
+                tok = self.proc(text=[pos, neg], return_tensors="pt", padding=True, truncation=True)
+                tok = {k: v.to(self.dev) for k, v in tok.items() if k in ("input_ids", "attention_mask")}
+                f = self.model.get_text_features(**tok)
+                f = getattr(f, "pooler_output", f)
+                f = f / f.norm(dim=-1, keepdim=True)
+                logits = (self.model.logit_scale.exp() * img_emb @ f.T)[0]
+                out[tag] = round(float(t.softmax(logits, dim=-1)[0]), 3)
+        return out
 
     def classify(self, img_emb, names: list[str]) -> np.ndarray:
         t = self.torch
@@ -248,6 +273,7 @@ def run(photo: Path, args) -> tuple[dict, np.ndarray | None, np.ndarray | None]:
                             "p": round(float(rp[j] * p[i]), 4)} for j in ro[:8]]
         res["streetclip"]["regions"] = regions
         res["streetclip"]["seconds"] = round(time.time() - t0, 1)
+        res["scene"] = sc.scene_tags(emb)
         del sc
     gc_country = None
     pts = probs = None
@@ -357,6 +383,9 @@ def to_md(res: dict) -> str:
         L += ["", "## StreetCLIP (zero-shot countries)", "", ", ".join(f"{r['name']} {r['p']:.1%}" for r in sc["countries"][:10])]
         for cc, rs in sc.get("regions", {}).items():
             L.append(f"- Regions of {geodata.country_name(cc)}: " + ", ".join(f"{r['admin1']} {r['p_given_country']:.0%}" for r in rs[:6]))
+    if res.get("scene"):
+        L += ["", "## Scene (zero-shot tags)", "", ", ".join(f"{k} {v:.0%}" for k, v in sorted(res["scene"].items(), key=lambda kv: -kv[1]))
+              + "  — mountains or water ≥ 60% → the skyline route is a required check before finish; urban or road ≥ 60% → the street route (photo_session.py checks)."]
     gc = res.get("geoclip")
     if gc:
         L += ["", "## GeoCLIP (GPS gallery)", "", "Countries: " + ", ".join(f"{r['name']} {r['p']:.1%}" for r in gc["countries"][:10]), "", "Clusters (150 km):"]

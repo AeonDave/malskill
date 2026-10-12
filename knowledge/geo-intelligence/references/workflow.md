@@ -136,7 +136,9 @@ uv run scripts/photo_session.py finish "/absolute/session/path" --country "Count
 
 `--heading` and `--taken` are required; `unknown` is a valid value for either, and the answer then says why. With no
 verification artifact in the session, `finish` refuses before 25 minutes have passed (run the decisive check or go
-Deep); `--accept-unverified "<reason>"` closes anyway and records the reason (`result.accepted_unverified`).
+Deep); it also refuses while a check required by recon's scene tags (skyline for mountains or water, street for a
+city or road) has left no file — `photo_session.py checks <session>` lists them; `--skip-check <name>:"<reason>"`
+is allowed early only for a user stop; `--accept-unverified "<reason>"` closes anyway and records the reason (`result.accepted_unverified`).
 
 ```bash
 ```

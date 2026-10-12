@@ -171,6 +171,13 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
         for cc, rs in list(regs.items())[:2]:
             L.append(f"- Regions of {cc}: " + ", ".join(f"{r['admin1']} {r['p_given_country']:.0%}" for r in rs[:5]))
         L.append("- Map: `prior/prior_map.png`")
+        if pr.get("scene"):
+            import photo_session                                   # same directory: the scene → required checks mapping lives there
+            L.append("- Scene: " + ", ".join(f"{k} {v:.0%}" for k, v in sorted(pr["scene"].items(), key=lambda kv: -kv[1])))
+            req = photo_session.checks_for_scene(pr["scene"])
+            if req:
+                L.append("- **Required before finish** (finish refuses without their files; `photo_session.py checks <session>` lists them): "
+                         + "; ".join(f"**{c['name']}** ({c['why']}) → {c['command']}" for c in req))
     else:
         L.append(f"- not run ({log.get('prior', {}).get('error', 'skipped')[:160]})")
     # camera
@@ -198,6 +205,8 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
         L.append("- The detector found nothing above its threshold: scan the image yourself (edges, corners, distant signs).")
     L.append("- Edge and corner crops: `intake/edges/` (look at every one); OCR boxes: `intake/ocr.png`.")
     L += ["", "## Next", "",
+          "0. The required checks named under Prior (scene) are not optional: a mountain or lake needs the skyline route, a street the panorama "
+          "route, whatever else you find. Start them early; long ones run in the background with a budget.",
           "1. Compare this page with your gut call. Where they disagree, find out why (a misread, an unusual scene, a wrong gut).",
           "2. board.json exists since `photo_session.py start` and already holds the text and prior signals (ingested here): "
           "record your own observations as clues (`board.py clue`), then evidence for the candidates they touch.",

@@ -304,6 +304,15 @@ class StateTests(unittest.TestCase):
         self.assertEqual(s["skyline"]["top"][0]["name"], "Lago di Tovel")
         self.assertNotIn("top_skyline.jpg", [a["path"] for a in s["analysis_images"]])      # the card, not the gallery
 
+    def test_required_checks_reach_the_page(self):
+        self.assertEqual(viewer.build_state(self.folder)["checks"], [])
+        (self.folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (self.folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9, "urban": 0.1}}), encoding="utf-8")
+        ck = viewer.build_state(self.folder)["checks"]
+        self.assertEqual((ck[0]["name"], ck[0]["done"]), ("skyline", False))
+        (self.folder / "fit_x.json").write_text("{}", encoding="utf-8")
+        self.assertTrue(viewer.build_state(self.folder)["checks"][0]["done"])
+
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]
         viewer.main(["say", "next step", "--session", str(self.folder)])

@@ -316,6 +316,42 @@ class PhotoArchiveTests(unittest.TestCase):
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertEqual(res["accepted_unverified"], "the user stopped the analysis")
 
+    def test_scene_checks_gate_finish(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.93, "water": 0.88, "urban": 0.1, "road": 0.2, "text": 0.05, "indoor": 0.02}}), encoding="utf-8")
+        (folder / "refsheet_alps.jpg").write_bytes(b"\xff\xd8\xff\xd9")                       # an artifact, but not the skyline
+        req = photo_session.required_checks(folder)
+        self.assertEqual([c["name"] for c in req], ["skyline"])
+        self.assertFalse(req[0]["done"])
+        base = ["--country", "Italy", "--city", "x", "--latitude", "46.2", "--longitude", "10.9", "--confidence", "low", "--heading", "unknown", "--taken", "unknown"]
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), *base], cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("Required check 'skyline'", r.stderr)
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), *base, "--skip-check", "skyline:Quick budget spent"],
+                           cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 1)                                                     # the budget is not a reason
+        self.assertIn("only for an analysis the user stopped", r.stderr)
+        (folder / "fit_region.json").write_text("{}", encoding="utf-8")                         # the skyline file exists: closes
+        self.assertTrue(photo_session.required_checks(folder)[0]["done"])
+        out = self.command("finish", folder, *base)
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["checks"][0]["name"], "skyline")
+        self.assertTrue(res["checks"][0]["done"])
+        self.assertEqual(res["verification_artifacts"], 2)                                      # refsheet + fit
+        folder2 = Path(self.start()["folder"])
+        (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder2 / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder2 / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9, "urban": 0.7, "road": 0.8}}), encoding="utf-8")
+        self.assertEqual([c["name"] for c in photo_session.required_checks(folder2)], ["skyline", "street"])
+        out = self.command("finish", folder2, *base, "--skip-check", "skyline:user stopped the analysis", "--skip-check", "street:user stopped the analysis",
+                           "--accept-unverified", "user stopped the analysis")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual([c["skipped"] for c in res["checks"]], ["user stopped the analysis"] * 2)
+        self.assertEqual(photo_session.checks_for_scene({"indoor": 0.9, "mountains": 0.9}), [])
+        self.assertEqual(photo_session.checks_for_scene(None), [])
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")

@@ -52,6 +52,69 @@ TRUTH_END = "<!-- /geogussr-truth -->"
 THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
 UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
+USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|stopp|interrupt|abort|cancel", re.I)   # the only reason to skip a check early
+SCENE_THRESHOLD = 0.6
+# required checks by scene (recon's prior tags the scene): each must leave one of these files before finish closes
+CHECKS = {
+    "skyline": {"files": re.compile(r"(^|/)(ridge[^/]*\.json|fit[^/]*\.json|[^/]*_skyline\.json|[^/]*_overlay\.(png|jpg|jpeg))$", re.I),
+                "command": "terrain.py ridge → fit (--at a candidate, or scan the region's lakes/rivers/roads first: SKILL step 6 mountain and lake/coast/valley rows)"},
+    "street": {"files": re.compile(r"(^|/)([^/]*_rank\.json|rank\.json|[^/]*sheet[^/]*\.(jpg|jpeg|png)|match[^/]*\.(jpg|jpeg|png)|evidence[^/]*\.(jpg|jpeg|png))$", re.I),
+               "command": "gsv.py sheet / pano.py → match.py rank, or evidence.py (SKILL step 6 street row)"},
+}
+RECON_FIRST_PASS = ("recon/intake/", "recon/prior/", "recon/detect/", "recon/meta/", "recon/calib", "recon/recon.")
+
+
+def scene_tags(folder: Path) -> dict | None:
+    """recon's zero-shot scene tags (recon/prior/prior.json → scene), None when the prior did not run."""
+    try:
+        return json.loads((folder / "recon" / "prior" / "prior.json").read_text(encoding="utf-8-sig")).get("scene") or None
+    except (OSError, ValueError):
+        return None
+
+
+def checks_for_scene(scene: dict | None) -> list[dict]:
+    """Which checks the scene requires: mountains, or water without a city → skyline; a city or a road → street. Indoor → none."""
+    if not scene or scene.get("indoor", 0) >= SCENE_THRESHOLD:
+        return []
+    out = []
+    m, w, u, r = (scene.get(k, 0) for k in ("mountains", "water", "urban", "road"))
+    if m >= SCENE_THRESHOLD or (w >= SCENE_THRESHOLD and u < 0.5):
+        out.append({"name": "skyline", "why": f"mountains {m:.0%}, water {w:.0%}", "command": CHECKS["skyline"]["command"]})
+    if u >= SCENE_THRESHOLD or r >= SCENE_THRESHOLD:
+        out.append({"name": "street", "why": f"urban {u:.0%}, road {r:.0%}", "command": CHECKS["street"]["command"]})
+    return out
+
+
+def required_checks(folder: Path) -> list[dict]:
+    """The scene's required checks with their status: done when one of the check's files exists in the session."""
+    req = checks_for_scene(scene_tags(folder))
+    if not req:
+        return []
+    files = []
+    for p in folder.rglob("*"):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(folder).as_posix()
+        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS):
+            continue
+        files.append(rel)
+    for c in req:
+        hits = [f for f in files if CHECKS[c["name"]]["files"].search(f)]
+        c["done"] = bool(hits)
+        c["files"] = hits[:6]
+    return req
+
+
+def cmd_checks(args: argparse.Namespace) -> dict:
+    folder = Path(args.folder)
+    scene = scene_tags(folder)
+    req = required_checks(folder)
+    print("Scene: " + (", ".join(f"{k} {v:.0%}" for k, v in sorted(scene.items(), key=lambda kv: -kv[1])) if scene else "no tags (recon's prior did not run)"))
+    if not req:
+        print("Required checks: none from the scene (finish still needs one verification artifact).")
+    for c in req:
+        print(f"  {c['name']:<8} {'DONE  ' if c['done'] else 'MISSING'} ({c['why']})" + (f": {', '.join(c['files'])}" if c["done"] else f" → {c['command']}"))
+    return {"scene": scene, "checks": req}
 
 
 def now() -> datetime:
@@ -163,7 +226,7 @@ def init_board(folder: Path, metadata: dict) -> None:
         print(f"Warning: board.json not created ({exc}); run board.py init in the session folder.", file=sys.stderr)
 
 
-VERIFICATION_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_rank_.*\.json$|_views/|^evidence|refsheet|sheet|^match|terrain|pose|^sun|sat_scan|intersect|\.index\.json$|viewer_marks)", re.I)
+VERIFICATION_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_rank_.*\.json$|_views/|^evidence|refsheet|sheet|^match|terrain|pose|^sun|sat_scan|intersect|\.index\.json$|viewer_marks|^fit[^/]*\.json$|_fit[^/]*\.json$|ridge[^/]*\.json$|_skyline\.json$|_overlay\.(png|jpe?g)$|^shade[^/]*\.(png|json)$)", re.I)
 
 
 def count_verification_artifacts(folder: Path) -> int:
@@ -172,7 +235,7 @@ def count_verification_artifacts(folder: Path) -> int:
     n = 0
     for p in folder.rglob("*"):
         rel = p.relative_to(folder).as_posix()
-        if rel.startswith((".geo-cache/", "original/", "recon")) or not p.is_file():
+        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or not p.is_file():
             continue
         if VERIFICATION_MARK.search(p.name) or VERIFICATION_MARK.search(rel):
             n += 1
@@ -410,6 +473,30 @@ def finish(args: argparse.Namespace) -> dict:
               + (f"; the best ranked view {hint['distance_m']} m from the answer looks at {hint['heading']:.0f}° ({hint['inliers']} inliers, {hint['source']}): pass --heading {hint['heading']:.0f} if that view is the shot" if hint
                  else (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else ""))
               + ". A Street View frame that shows the scene, the road bearing when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
+    # the scene's required checks: a mountain or lake photo closes only with a skyline file, a street photo with a panorama/match file
+    try:
+        elapsed_min_all = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
+    except (KeyError, ValueError, TypeError):
+        elapsed_min_all = UNVERIFIED_CLOCK_MIN
+    skips = {}
+    for s in getattr(args, "skip_check", None) or []:
+        name, _, why = s.partition(":")
+        skips[name.strip()] = why.strip()
+    checks = required_checks(folder)
+    for c in checks:
+        if c["done"]:
+            continue
+        why = skips.get(c["name"])
+        if not why:
+            raise ValueError(
+                f"Required check '{c['name']}' not done ({c['why']}, recon's scene tags): run {c['command']}; it leaves a file this check "
+                f"recognises. To close without it: --skip-check {c['name']}:\"<reason>\" (before {UNVERIFIED_CLOCK_MIN} min only when the user stopped you).")
+        if elapsed_min_all < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(why):
+            raise ValueError(
+                f"--skip-check {c['name']} before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason); "
+                f"'{why[:60]}' is not that. Run {c['command']}.")
+        c["skipped"] = why
+        print(f"Warning: required check '{c['name']}' skipped ({why}): the answer must say the {c['name']} check was not done.", file=sys.stderr)
     accepted_unverified = None
     if artifacts == 0:
         try:
@@ -417,7 +504,7 @@ def finish(args: argparse.Namespace) -> dict:
         except (KeyError, ValueError, TypeError):
             elapsed_min = UNVERIFIED_CLOCK_MIN
         reason = (getattr(args, "accept_unverified", None) or "").strip()
-        if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not re.search(r"user|utente|usuario|utilisateur|benutzer|stopp|interrupt|abort|cancel", reason, re.I):
+        if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(reason):
             raise ValueError(
                 f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason). "
                 f"'{reason[:60]}' is not that: the Quick budget is never a reason to close unverified; go Deep with the decisive check "
@@ -457,6 +544,7 @@ def finish(args: argparse.Namespace) -> dict:
             "confidence": confidence,
             "verification_artifacts": artifacts,
             "accepted_unverified": accepted_unverified,
+            "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped")} for c in checks],
             "taken": taken,
             "when_text": when_line,
             "heading_hint": hint,
@@ -730,8 +818,13 @@ def main() -> int:
     complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
+    complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help="Close although a scene-required check (skyline, street) has no file; repeatable. Before the 25-minute clock only when the user stopped the analysis (the reason must say so). Recorded in the result.")
     complete.add_argument("--accept-unverified", metavar="REASON", help="Close with no verification artifact: before the 25-minute clock only when the user stopped the analysis (the reason must say so), afterwards for any stated reason; the reason is recorded.")
     complete.set_defaults(handler=finish)
+    chk = subparsers.add_parser("checks", help="List the scene's required checks (from recon's scene tags) and whether their files exist.")
+    chk.add_argument("folder", type=Path)
+    chk.set_defaults(handler=cmd_checks)
+
     scored = subparsers.add_parser("truth", help="Record the real location of a finished session and score it.")
     scored.add_argument("folder", type=Path)
     scored.add_argument("--latitude", required=True, type=float)

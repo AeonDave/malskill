@@ -297,6 +297,9 @@ body:not(.running) .progress i { display: none; }
   cursor: pointer;
 }
 
+.checks { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.checks .check-done { color: #8fd18f; }
+.checks .check-missing { color: #ffb366; font-weight: 600; }
 .skyline button.skyline-img { display: block; width: 100%; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); background: none; cursor: zoom-in; border-radius: 6px; overflow: hidden; }
 .skyline img { display: block; width: 100%; }
 .skyline-top { margin: 8px 0 0; padding-left: 22px; font-size: 13px; }

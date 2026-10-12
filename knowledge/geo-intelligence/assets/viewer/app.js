@@ -770,6 +770,11 @@
     renderStages(s);
     renderScope(s);
     $("now").textContent = s.warning ? `Attention: ${s.warning}` : (s.now || "Waiting for the first command.");
+    const ck = s.checks || [];
+    $("checks").hidden = !ck.length;
+    if (ck.length) {
+      $("checks").innerHTML = "Required checks: " + ck.map((c) => `<span class="${c.done ? "check-done" : "check-missing"}" title="${esc(c.why || "")}">${esc(c.name)} ${c.done ? "✓" : "missing"}</span>`).join(" · ");
+    }
     renderAnswer(s);
     renderCandidates(s);
     renderActivity(s);
