@@ -266,6 +266,7 @@ def focus_of(session: dict, b: dict | None, rows: list[dict]) -> dict | None:
         return {"lat": float(result["latitude"]), "lon": float(result["longitude"]),
                 "radius_km": (float(radius_m) / 1000.0) if radius_m else 0.5, "radius_known": bool(radius_m),
                 "level": "point", "name": name or "Final answer", "heading": result.get("heading"),
+                "heading_hint": (result.get("heading_hint") or {}).get("heading"),
                 "confidence": result.get("confidence"), "final": True}
     if not b or not rows:
         return None
@@ -469,6 +470,16 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
     session = _read_json(folder / "session.json") or {}
     warning = None
     result = session.get("result") or {}
+    if result and result.get("latitude") is not None:
+        try:
+            import photo_session as _ps                   # same dir: the When text and the heading hint of older sessions
+            if not result.get("when_text"):
+                result["when_text"] = _ps.when_text(_read_text(folder / "report.md"))
+            if result.get("heading") is None and not result.get("heading_hint"):
+                result["heading_hint"] = _ps.heading_hint(folder, float(result["latitude"]), float(result["longitude"]))
+            session = {**session, "result": result}
+        except Exception:  # noqa: BLE001  (best effort: the page must never fail on an old session)
+            pass
     if session.get("status") == "completed" and result.get("latitude") is None:
         # closed by hand (status edited, no answer): photo_session.py finish never does this; keep the page in analysis mode
         session = {**session, "status": "pending"}

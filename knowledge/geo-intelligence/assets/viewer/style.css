@@ -471,6 +471,9 @@ body.static .panel-bar { display: none; }
 .answer { background: linear-gradient(180deg, rgba(240,180,69,.08), transparent); }
 
 .answer-place { font-size: 18px; font-weight: 600; line-height: 1.3; }
+.answer-when { font-size: 15px; margin-top: 6px; }
+.answer-when b { font-weight: 600; }
+.answer-when .muted { color: var(--muted); }
 .answer-detail { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
 .evidence-link { display: block; margin-top: 12px; }

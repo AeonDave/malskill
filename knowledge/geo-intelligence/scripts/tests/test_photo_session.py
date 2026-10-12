@@ -248,6 +248,34 @@ class PhotoArchiveTests(unittest.TestCase):
         board = self.command("scoreboard", "--root", self.root / "archives")
         self.assertEqual(board["taken_hit_rate"], 0.0)
 
+    def test_open_ranges_when_text_and_heading_hint(self):
+        self.assertEqual(photo_session.parse_taken("2015..")["from"], "2015-01-01")
+        self.assertGreaterEqual(photo_session.parse_taken("2015..")["to"], "2026-01-01")
+        self.assertEqual(photo_session.parse_taken("..2019")["to"], "2019-12-31")
+        with self.assertRaises(ValueError):
+            photo_session.parse_taken("..")
+        folder = Path(self.start()["folder"])
+        report = (folder / "report.md").read_text(encoding="utf-8")
+        report = report.replace("## When\n<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; \"not determinable\" with the reason when it is -->",
+                                "## When\nSeason: spring (full leaf). Year: unknown; top panoramas are from May 2015, so 2015 or later.")
+        report = report.replace("## Gut call (before tools)\n<!-- fill:", "## Gut call (before tools)\nSlovakia 60%\n<!--").replace("## Answer\n<!-- fill:", "## Answer\nPoprad\n<!--")
+        (folder / "report.md").write_text(report, encoding="utf-8")
+        (folder / "m_rank.json").write_text(json.dumps([{"rank": 1, "id": "x", "heading": 120, "inliers": 14, "score_global": 0.2, "wgs": [49.1680, 20.0680]}]), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675",
+                            "--longitude", "20.0675", "--confidence", "medium", "--heading", "unknown", "--taken", "unknown"],
+                           cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("names 2015", r.stderr)                                                 # the report knew a year
+        self.assertIn("looks at 120", r.stderr)                                               # the best match nearby had a heading
+        out = json.loads(r.stdout)
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertIsNone(res["heading"])
+        self.assertEqual(res["heading_hint"]["heading"], 120.0)
+        self.assertIn("2015 or later", res["when_text"])
+        footer = (Path(out["folder"]) / "report.md").read_text(encoding="utf-8")
+        self.assertIn("suggested, not asserted", footer)
+        self.assertIn("Taken: not given (report: Season: spring", footer)
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")

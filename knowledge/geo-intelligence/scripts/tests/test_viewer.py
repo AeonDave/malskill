@@ -272,6 +272,17 @@ class StateTests(unittest.TestCase):
         gone = viewer.build_state(self.tmp / "nowhere")
         self.assertIn("gone", gone["warning"])
 
+    def test_old_sessions_get_when_text_and_heading_hint_from_their_files(self):
+        meta = json.loads((self.folder / "session.json").read_text(encoding="utf-8"))
+        meta.update({"status": "completed", "result": {"country": "Greece", "latitude": 40.0, "longitude": 21.0, "confidence": "low", "heading": None}})
+        (self.folder / "session.json").write_text(json.dumps(meta), encoding="utf-8")
+        (self.folder / "report.md").write_text("# r\n\n## Answer\nx\n\n## When\nSpring 2015 or later (panorama dates)\n\n## Z\n", encoding="utf-8")
+        (self.folder / "r_rank.json").write_text(json.dumps([{"rank": 1, "id": "a", "heading": 77, "inliers": 12, "score_global": 0.2, "wgs": [40.0005, 21.0005]}]), encoding="utf-8")
+        s = viewer.build_state(self.folder)
+        self.assertEqual(s["result"]["when_text"], "Spring 2015 or later (panorama dates)")
+        self.assertEqual(s["result"]["heading_hint"]["heading"], 77.0)
+        self.assertEqual(s["focus"]["heading_hint"], 77.0)
+
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]
         viewer.main(["say", "next step", "--session", str(self.folder)])

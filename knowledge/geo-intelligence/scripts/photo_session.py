@@ -220,19 +220,52 @@ def snapshot(folder: Path) -> Path | None:
         return None
 
 
-def ranked_headings(folder: Path) -> list[str]:
-    """Headings of the top ranked views (match.py rank files), as hints for --heading."""
+def ranked_tops(folder: Path) -> list[dict]:
+    """Top row of every match.py rank file in the session (any name: known by its rows)."""
     out = []
-    for f in sorted(folder.glob("*rank*.json")):
-        if f.name.endswith(".index.json"):
+    for f in sorted(folder.rglob("*.json")):
+        if f.name.endswith(".index.json") or f.name in ("session.json", "board.json", "result.json", "viewer_marks.json") or ".geo-cache" in f.parts:
             continue
         try:
+            if f.stat().st_size > 20_000_000:
+                continue
             rows = json.loads(f.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
-        if isinstance(rows, list) and rows and isinstance(rows[0], dict) and rows[0].get("heading") is not None:
-            out.append(f"{rows[0]['heading']:.0f}° ({f.name})")
+        if isinstance(rows, list) and rows and isinstance(rows[0], dict) and "rank" in rows[0] and rows[0].get("wgs"):
+            top = rows[0]
+            out.append({"file": f.relative_to(folder).as_posix(), "heading": top.get("heading"), "wgs": top["wgs"],
+                        "inliers": top.get("inliers") or 0, "score": top.get("score_global") or 0.0})
     return out
+
+
+def ranked_headings(folder: Path) -> list[str]:
+    """Headings of the top ranked views, as hints for --heading."""
+    return [f"{t['heading']:.0f}° ({t['file']})" for t in ranked_tops(folder) if t.get("heading") is not None]
+
+
+def heading_hint(folder: Path, lat: float, lon: float) -> dict | None:
+    """When no heading was given: the best ranked view within 150 m of the answer, if it is at least a fair match."""
+    best = None
+    for t in ranked_tops(folder):
+        if t.get("heading") is None:
+            continue
+        d_m = haversine_km(lat, lon, float(t["wgs"][0]), float(t["wgs"][1])) * 1000
+        fair = t["inliers"] >= 10 or t["score"] >= 0.25
+        if d_m <= 150 and fair and (best is None or (t["inliers"], t["score"]) > (best["inliers"], best["score"])):
+            best = {"heading": round(float(t["heading"]) % 360, 1), "source": t["file"], "inliers": t["inliers"],
+                    "score": round(float(t["score"]), 3), "distance_m": round(d_m)}
+    return best
+
+
+def when_text(report: str) -> str | None:
+    """The `## When` section of report.md as one line (the model's own dating), without the placeholder."""
+    m = re.search(r"^## When[^\n]*\n(.*?)(?=^## |\Z)", report, re.M | re.S)
+    if not m:
+        return None
+    body = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S)
+    text = " ".join(body.split())
+    return text[:300] or None
 
 
 def launch_viewer(folder: Path, port: int) -> str:
@@ -295,7 +328,10 @@ def parse_taken(text: str) -> dict:
 
     if ".." in s:
         a, b = s.split("..", 1)
-        frm, to = bound(a, False), bound(b, True)
+        if not a.strip() and not b.strip():
+            raise ValueError(f"--taken {text!r}: an open range needs one side (2015.. or ..2019)")
+        frm = bound(a, False) if a.strip() else date(1900, 1, 1)
+        to = bound(b, True) if b.strip() else date.today()
     else:
         frm, to = bound(s, False), bound(s, True)
     if to < frm:
@@ -351,14 +387,22 @@ def finish(args: argparse.Namespace) -> dict:
     artifacts = count_verification_artifacts(folder)
     taken = None
     taken_arg = (getattr(args, "taken", None) or "").strip()
+    when_line = when_text(report)
     if taken_arg and taken_arg.lower() not in ("unknown", "none", "-"):
         taken = {**parse_taken(taken_arg), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
     else:
-        print("Note: --taken unknown: the answer still says why the date could not be determined (metadata absent, no dated imagery compared…).", file=sys.stderr)
+        years = sorted(set(re.findall(r"\b(19\d\d|20\d\d)\b", when_line or "")))
+        print("Note: --taken unknown" + (f", yet the report's When section names {', '.join(years)}: encode it (`--taken {years[0]}..` for 'from {years[0]} on', "
+              f"`--taken {years[0]}` for that year, `..{years[-1]}` for 'before')" if years else ": the answer still says why the date could not be determined")
+              + ".", file=sys.stderr)
+    hint = None
     if heading is None:
+        hint = heading_hint(folder, lat, lon)
         hints = ranked_headings(folder)
-        print("Warning: no --heading, so the map draws no view cone" + (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else "")
-              + ". If you know where the camera looked (matched panorama, road bearing when the photo looks along the road, sun), pass --heading.", file=sys.stderr)
+        print("Warning: --heading unknown, so the map draws no firm view cone"
+              + (f"; the best ranked view {hint['distance_m']} m from the answer looks at {hint['heading']:.0f}° ({hint['inliers']} inliers, {hint['source']}): pass --heading {hint['heading']:.0f} if that view is the shot" if hint
+                 else (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else ""))
+              + ". A Street View frame that shows the scene, the road bearing when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
     if artifacts == 0:
         print("Warning: this session holds no verification artifact (no rank, sheet, evidence, terrain, pose or mark file): "
               "the answer is an unverified estimate and must say so.", file=sys.stderr)
@@ -388,6 +432,8 @@ def finish(args: argparse.Namespace) -> dict:
             "confidence": confidence,
             "verification_artifacts": artifacts,
             "taken": taken,
+            "when_text": when_line,
+            "heading_hint": hint,
         },
     })
     body = report.split(FOOTER, 1)[0].rstrip().replace(str(folder), str(destination))
@@ -399,7 +445,8 @@ def finish(args: argparse.Namespace) -> dict:
         + (f"; radius {radius:g} m" if radius is not None else "") + (f"; heading {heading:g}°" if heading is not None else "")
         + f"; confidence {confidence}; verification artifacts {artifacts}  \n"
         + (f"Taken: {taken['text']}" + (f" {taken['time']}" if taken.get("time") else "") + f" ({taken['confidence']}"
-           + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else "Taken: not given  \n")
+           + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else f"Taken: not given{' (report: ' + when_line + ')' if when_line else ''}  \n")
+        + (f"Heading: unknown; the best ranked view nearby looks at {hint['heading']:.0f}° ({hint['source']}, suggested, not asserted)  \n" if hint else "")
         + f"Archive: [{destination.name}](<{destination}>)\n"
     )
     (destination / "report.md").write_text(body + footer, encoding="utf-8")

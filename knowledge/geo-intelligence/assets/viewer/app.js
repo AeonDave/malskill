@@ -410,6 +410,16 @@
       const p = toScreen(f.lat, f.lon);
       if (!p.visible) return;
       const r = Math.max(kmToPx(f.radius_km), 4);
+      if (f.final && f.heading == null && f.heading_hint != null) {   // suggested by the best match: dashed, labelled
+        const a = (f.heading_hint - 90) * D, len = Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220), 48);
+        g.setLineDash([5, 5]);
+        g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, len, a - 25 * D, a + 25 * D); g.closePath();
+        g.fillStyle = "rgba(240,180,69,0.08)"; g.fill(); g.strokeStyle = "rgba(240,180,69,0.7)"; g.lineWidth = 1; g.stroke();
+        g.setLineDash([]);
+        g.font = "600 11px " + getComputedStyle(document.body).fontFamily; g.lineWidth = 4; g.strokeStyle = COLORS.halo; g.fillStyle = COLORS.muted;
+        const lx = p.x + Math.cos(a) * len * 0.6, ly = p.y + Math.sin(a) * len * 0.6;
+        g.strokeText("suggested heading", lx, ly); g.fillText("suggested heading", lx, ly);
+      }
       if (f.final && f.heading != null) {
         const a = (f.heading - 90) * D, len = Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220), 48);
         g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, len, a - 25 * D, a + 25 * D); g.closePath();
@@ -558,9 +568,9 @@
       $("scope-level").textContent = `Answer, ${f.confidence || "unrated"} confidence`;
       $("scope-name").textContent = f.name;
       $("scope-coords").textContent = fmtCoord(f.lat, f.lon);
-      const tk = s.result && s.result.taken;
+      const tk = s.result && s.result.taken, wt = s.result && s.result.when_text;
       note.textContent = (f.radius_known ? `Radius ${fmtRadius(f.radius_km)}` : "No radius given") + (f.heading != null ? `, camera heading ${Math.round(f.heading)}°` : "")
-        + (tk ? `. Taken ${tk.text}${tk.time ? " " + tk.time : ""} (${tk.confidence})` : "") + ".";
+        + (tk ? `. Taken ${tk.text}${tk.time ? " " + tk.time : ""} (${tk.confidence})` : (wt ? `. When: ${wt.length > 110 ? wt.slice(0, 110) + "…" : wt}` : ". When: not given")) + ".";
       const tr = $("scope-truth");
       if (s.truth && s.truth.latitude != null) {
         tr.hidden = false;
@@ -591,9 +601,16 @@
     const bits = [`Confidence ${r.confidence || "unrated"}`];
     if (r.radius_m) bits.push(`radius ${fmtRadius(r.radius_m / 1000)}`);
     if (r.heading != null) bits.push(`heading ${Math.round(r.heading)}°`);
-    if (r.taken) bits.push(`taken ${r.taken.text}${r.taken.time ? " " + r.taken.time : ""} (${r.taken.confidence}${r.taken.basis ? ": " + r.taken.basis : ""})`);
-    else bits.push("when: not given");
+    if (r.heading == null && r.heading_hint) bits.push(`heading unknown, best match looks at ${Math.round(r.heading_hint.heading)}° (suggested)`);
     $("answer-detail").textContent = bits.join(", ") + ".";
+    const w = $("answer-when");
+    if (r.taken) {
+      w.innerHTML = `<b>Taken:</b> ${esc(r.taken.text)}${r.taken.time ? " " + esc(r.taken.time) : ""} <span class="muted">(${esc(r.taken.confidence)}${r.taken.basis ? ": " + esc(r.taken.basis) : ""})</span>`;
+    } else if (r.when_text) {
+      w.innerHTML = `<b>Taken:</b> not pinned to a date <span class="muted">(report: ${esc(r.when_text)})</span>`;
+    } else {
+      w.innerHTML = `<b>Taken:</b> <span class="muted">not given</span>`;
+    }
     const tr = $("answer-truth");
     if (s.truth && s.truth.latitude != null) {
       tr.hidden = false;
