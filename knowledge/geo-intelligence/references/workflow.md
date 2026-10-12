@@ -86,9 +86,10 @@ Habits that keep it honest and useful:
   styles and script inlined and file links relative: it opens from the folder without a server (tiles need the
   network); `viewer.py export <session>` refreshes it by hand.
 - Stopping: the page's Close button, `viewer.py stop <session>` (port from `session.json`, else `--port`), Ctrl+C in
-  its terminal; it also exits by itself after `--idle-minutes` (30) without a request. Stop it after the answer
-  unless the user wants the page kept, and end every background job before `finish`: on Windows a process with an
-  open file or working directory inside the folder blocks the rename.
+  its terminal; it also exits by itself after `--idle-minutes` (30) without a request. The server lingers 3.5 s so the
+  open page receives the final state (Done after `finish`) and the snapshot path, then the page stops polling. Stop
+  after the answer, never before `finish`, unless the user wants the page kept; and end every background job before
+  `finish`: on Windows a process with an open file or working directory inside the folder blocks the rename.
 
 ## Clock
 
@@ -123,7 +124,13 @@ alternatives with the test that would separate them, excluded candidates and why
 ```bash
 cd ..   # out of the session folder first: Windows refuses to rename a folder that any shell or process sits in
 uv run scripts/photo_session.py finish "/absolute/session/path" --country "Country" \
-  --region "Region" --city "City or nearest locality" --latitude 49.1675 --longitude 20.0675 --confidence medium
+  --region "Region" --city "City or nearest locality" --latitude 49.1675 --longitude 20.0675 --confidence medium \
+  --heading 215 --taken 2019-06..2019-09 --taken-confidence medium --taken-basis "full foliage, 2018 panorama lacks the kiosk"
+```
+
+`--heading` and `--taken` are required; `unknown` is a valid value for either, and the answer then says why.
+
+```bash
 ```
 
 Use the real values (those are only syntax). Without `--latitude/--longitude` the pin is the country centre with a

@@ -802,13 +802,26 @@
     if (stopped) return;
     try {
       const r = await fetch("/api/state", { headers: etag ? { "If-None-Match": etag } : {}, cache: "no-store" });
-      if (r.status === 200) { etag = r.headers.get("ETag"); render(await r.json()); }
+      if (r.status === 200) {
+        etag = r.headers.get("ETag");
+        const s = await r.json();
+        render(s);
+        if (s.stopping) {                               // the server's last word: final state shown, no more polling
+          stopped = true;
+          document.body.classList.remove("running");
+          document.body.classList.add("stopped");
+          $("live").hidden = true;
+          $("now").textContent = (s.status === "completed" ? "Analysis finished; the viewer server has stopped. " : "Viewer server stopped; the analysis may go on. ")
+            + "Offline copy: " + (s.snapshot || "viewer.html in the session folder") + ".";
+          return;
+        }
+      }
       failures = 0;
     } catch (err) {
       failures += 1;
-      if (failures === 3) $("now").textContent = "The viewer server stopped answering. Restart viewer.py serve for this session.";
+      if (failures === 3) $("now").textContent = "The viewer server is gone. If the analysis finished, open viewer.html in the session folder; otherwise run viewer.py serve on it again.";
     } finally {
-      setTimeout(poll, 2000);
+      if (!stopped) setTimeout(poll, 2000);
     }
   }
   setInterval(renderMeta, 1000);

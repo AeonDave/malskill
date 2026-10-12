@@ -40,6 +40,11 @@ class PhotoArchiveTests(unittest.TestCase):
         return self.command("start", "--root", self.root / "archives", "--image", self.source)
 
     def finish(self, folder, *extra, success=True):
+        extra = list(extra)
+        if "--heading" not in extra:
+            extra += ["--heading", "unknown"]
+        if "--taken" not in extra:
+            extra += ["--taken", "unknown"]
         return self.command(
             "finish", folder, "--country", "Slovakia", "--region", "Prešov",
             "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
@@ -137,7 +142,7 @@ class PhotoArchiveTests(unittest.TestCase):
         report = report.replace('<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->',
                                 "not determinable: no metadata, no dated imagery checked")
         (folder / "report.md").write_text(report, encoding="utf-8")
-        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500")
+        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500", "--heading", "unknown", "--taken", "unknown")
         meta = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))
         r = meta["result"]
         self.assertTrue(-29 < r["latitude"] < -16 and 11 < r["longitude"] < 26, r)       # inside Namibia
@@ -149,10 +154,16 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue((Path(out["folder"]) / "viewer.html").is_file())        # offline snapshot beside the photos
         folder2 = Path(self.start()["folder"])
         (folder2 / "report.md").write_text(report, encoding="utf-8")
-        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", success=False)
+        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", "--heading", "unknown", "--taken", "unknown", success=False)
         self.assertIn("Unknown country", err)
-        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", success=False)
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", "--heading", "unknown", "--taken", "unknown", success=False)
         self.assertIn("both", err)
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder2), "--country", "Namibia", "--city", "x", "--confidence", "low", "--taken", "unknown"],
+                           cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 2)                                                    # argparse: --heading is required
+        self.assertIn("--heading", r.stderr)                                                 # the camera direction must be stated, even as unknown
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--heading", "east", "--taken", "unknown", success=False)
+        self.assertIn("degrees", err)
 
     def test_viewer_port_falls_back_when_taken(self):
         import socket
@@ -308,7 +319,7 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue(started["timezone"])
         folder = Path(started["folder"])
         (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
-        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
+        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675", "--heading", "unknown", "--taken", "unknown",
                              "--confidence", "low", env=env)
         report = Path(final["report"]).read_text(encoding="utf-8")
         self.assertNotIn("(None)", report)

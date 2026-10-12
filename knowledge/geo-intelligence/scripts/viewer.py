@@ -446,7 +446,7 @@ def stage_of(session: dict, b: dict | None, report: str, artifacts: list[dict], 
     if session.get("status") == "completed":
         return "Done"
     names = [a["path"] for a in artifacts]
-    if any(n.startswith("evidence") or n == "result.json" for n in names):
+    if any(n.startswith(("evidence", "verify/")) or n == "result.json" for n in names) or (folder / "verify").is_dir():
         return "Verify"
     if any(PINPOINT_MARK.search(n.rsplit("/", 1)[-1]) or PINPOINT_MARK.search(n) for n in names) or (folder / MARKS_FILE).is_file():
         return "Pinpoint"
@@ -528,6 +528,7 @@ def open_folder(folder: Path) -> None:
 # ---------------------------------------------------------------- offline snapshot
 
 SNAPSHOT_NAME = "viewer.html"
+STOP_GRACE_S = 3.5
 
 
 def _relative_urls(value):
@@ -609,6 +610,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = unquote(urlsplit(self.path).path)
         if path == "/api/state":
             state = build_state(self.session, self.tiles)
+            stopping = getattr(self.server, "stopping", None)
+            if stopping:                                   # the last polls before shutdown carry the final state and the snapshot path
+                state["stopping"] = True
+                state["snapshot"] = str(stopping)
+                state["version"] = state["version"] + "-stop"
             etag = '"' + state["version"] + '"'
             if self.headers.get("If-None-Match") == etag:
                 self.send_response(304)
@@ -642,13 +648,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             self._send(204, b"", "text/plain")
             return
-        if path == "/api/stop":                       # the page's Close button: stop this server, the analysis goes on
+        if path == "/api/stop":                       # Close button or viewer.py stop: the analysis goes on
+            snapshot = None
             try:
-                export_html(self.session, tiles=self.tiles)   # the page survives as a file beside the photos
+                snapshot = export_html(self.session, tiles=self.tiles)   # the page survives as a file beside the photos
             except OSError as exc:
                 sys.stderr.write(f"viewer: snapshot not written ({exc})\n")
+            self.server.stopping = snapshot or follow_rename(self.session) / SNAPSHOT_NAME
             self._send(204, b"", "text/plain")
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            # one more poll cycle: the open page must see the final state (Done after finish) before the server is gone
+            threading.Timer(STOP_GRACE_S, self.server.shutdown).start()
             return
         self._send(404, b"not found", "text/plain")
 
@@ -779,8 +788,14 @@ def cmd_stop(args) -> int:
     except OSError:
         print(f"No viewer answering on 127.0.0.1:{port}")
         return 1
-    print(f"Viewer on 127.0.0.1:{port} stopped ({served.name})" if status == 204 else f"Viewer on 127.0.0.1:{port} answered {status}")
-    return 0 if status == 204 else 1
+    if status == 204:
+        deadline = time.time() + STOP_GRACE_S + 6
+        while time.time() < deadline and served_session(port) is not None:
+            time.sleep(0.5)                                # the server lingers a few seconds for the page's last poll
+        print(f"Viewer on 127.0.0.1:{port} stopped ({served.name}); offline copy: {follow_rename(served) / SNAPSHOT_NAME}")
+        return 0
+    print(f"Viewer on 127.0.0.1:{port} answered {status}")
+    return 1
 
 
 def cmd_mark(args) -> int:

@@ -132,7 +132,7 @@ uv run ${CLAUDE_SKILL_DIR}/scripts/board.py check
 uv run ${CLAUDE_SKILL_DIR}/scripts/board.py report --merge result.json
 uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py spec.json --out evidence.jpg
 uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py finish "$PWD" --country Kenya --region Nakuru --city Naivasha \
-    --latitude -0.7172 --longitude 36.4310 --confidence medium --radius-m 400 --heading 215
+    --latitude -0.7172 --longitude 36.4310 --confidence medium --radius-m 400 --heading 215 --taken 2021-07..2021-09 --taken-confidence low
 
 # later, when the real answer is known
 uv run ${CLAUDE_SKILL_DIR}/scripts/photo_session.py truth "<session folder>" --latitude -0.7150 --longitude 36.4290 --country Kenya

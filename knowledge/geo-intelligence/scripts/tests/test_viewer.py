@@ -115,6 +115,8 @@ class StateTests(unittest.TestCase):
         self.assertEqual(viewer.build_state(self.folder)["stage"], "Candidates")
         (self.folder / "koilada_rank.jpg").write_bytes(PNG)
         self.assertEqual(viewer.build_state(self.folder)["stage"], "Pinpoint")
+        (self.folder / "verify").mkdir()
+        self.assertEqual(viewer.build_state(self.folder)["stage"], "Verify")   # a verify/ folder is the verify step
         (self.folder / "evidence.jpg").write_bytes(PNG)
         self.assertEqual(viewer.build_state(self.folder)["stage"], "Verify")
         other = make_session(self.tmp / "b", with_board=False)
@@ -388,7 +390,13 @@ class ServerTests(unittest.TestCase):
         r.read()
         conn.close()
         self.assertEqual(r.status, 204)
-        thread.join(timeout=5)
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)   # the page's last poll still gets the final state
+        conn.request("GET", "/api/state")
+        last = json.loads(conn.getresponse().read())
+        conn.close()
+        self.assertTrue(last["stopping"])
+        self.assertTrue(last["snapshot"].endswith("viewer.html"))
+        thread.join(timeout=viewer.STOP_GRACE_S + 6)
         self.assertFalse(thread.is_alive())
         server.server_close()
         self.assertTrue((folder / "viewer.html").is_file())              # Close leaves the page behind as a file

@@ -320,7 +320,15 @@ def finish(args: argparse.Namespace) -> dict:
     timestamp = metadata["timestamp"]
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-\d{6}[+-]\d{4}", timestamp):
         raise ValueError("Invalid timestamp in session.json.")
-    radius, heading = args.radius_m, args.heading
+    radius = args.radius_m
+    heading_arg = str(args.heading).strip() if args.heading is not None else ""
+    if heading_arg.lower() in ("", "unknown", "none", "-"):
+        heading = None
+    else:
+        try:
+            heading = float(heading_arg)
+        except ValueError as exc:
+            raise ValueError("--heading takes degrees (0 = north, 90 = east) or the word unknown.") from exc
     if radius is not None and not (math.isfinite(radius) and radius > 0):
         raise ValueError("--radius-m must be a positive number of metres.")
     if heading is not None:
@@ -342,10 +350,11 @@ def finish(args: argparse.Namespace) -> dict:
         raise ValueError("Longitude must be a finite number from -180 to 180.")
     artifacts = count_verification_artifacts(folder)
     taken = None
-    if getattr(args, "taken", None):
-        taken = {**parse_taken(args.taken), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
+    taken_arg = (getattr(args, "taken", None) or "").strip()
+    if taken_arg and taken_arg.lower() not in ("unknown", "none", "-"):
+        taken = {**parse_taken(taken_arg), "confidence": args.taken_confidence or "low", "basis": (args.taken_basis or "").strip() or None}
     else:
-        print("Warning: no --taken: the answer must still say when the photo was taken (year or range, season, date, time) or 'not determinable' and why.", file=sys.stderr)
+        print("Note: --taken unknown: the answer still says why the date could not be determined (metadata absent, no dated imagery compared…).", file=sys.stderr)
     if heading is None:
         hints = ranked_headings(folder)
         print("Warning: no --heading, so the map draws no view cone" + (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else "")
@@ -644,8 +653,8 @@ def main() -> int:
     complete.add_argument("--longitude", type=float)
     complete.add_argument("--confidence", required=True, choices=("high", "medium", "low"))
     complete.add_argument("--radius-m", type=float, help="Error radius of the answer in metres (what the stated precision rests on).")
-    complete.add_argument("--heading", type=float, help="Camera heading in degrees (0 = north, 90 = east).")
-    complete.add_argument("--taken", help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], or a range A..B (e.g. 2019-06..2019-09).")
+    complete.add_argument("--heading", required=True, help="Camera heading in degrees (0 = north, 90 = east), or the word unknown: say which.")
+    complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
     complete.set_defaults(handler=finish)
