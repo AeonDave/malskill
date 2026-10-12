@@ -63,6 +63,8 @@ CHECKS = {
                "command": "gsv.py sheet / pano.py → match.py rank, or evidence.py (SKILL step 6 street row)"},
 }
 RECON_FIRST_PASS = ("recon/intake/", "recon/prior/", "recon/detect/", "recon/meta/", "recon/calib", "recon/recon.")
+# files that pin the place by their own geometry; with one of them a scene check that was not run is waived, not refused
+PINNING_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_rank_.*\.json$|^evidence|^match|pose|intersect|sat_scan)", re.I)
 
 
 def _artifact_paths(folder: Path) -> list[str]:
@@ -108,6 +110,20 @@ def required_checks(folder: Path) -> list[dict]:
         c["done"] = bool(hits)
         c["files"] = hits[:6]
     return req
+
+
+def pinning_artifacts(folder: Path) -> list[str]:
+    """Session files whose geometry pins the place (match ranking, evidence/match image, pose, intersection, satellite scan)."""
+    out = []
+    for p in folder.rglob("*"):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(folder).as_posix()
+        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or "_views/" in rel:
+            continue
+        if PINNING_MARK.search(p.name):
+            out.append(rel)
+    return out
 
 
 def cmd_checks(args: argparse.Namespace) -> dict:
@@ -487,10 +503,16 @@ def finish(args: argparse.Namespace) -> dict:
         name, _, why = s.partition(":")
         skips[name.strip()] = why.strip()
     checks = required_checks(folder)
+    pinned = pinning_artifacts(folder)
     for c in checks:
         if c["done"]:
             continue
         why = skips.get(c["name"])
+        if not why and pinned:                                     # strong data is a shortcut: the place is pinned by another geometry
+            c["waived_by"] = pinned[:4]
+            print(f"Note: required check '{c['name']}' not run; waived because the place is pinned by {', '.join(pinned[:3])}. "
+                  f"Say in the answer that the {c['name']} check was not done.", file=sys.stderr)
+            continue
         if not why:
             raise ValueError(
                 f"Required check '{c['name']}' not done ({c['why']}, recon's scene tags): run {c['command']}; it leaves a file this check "
@@ -544,7 +566,7 @@ def finish(args: argparse.Namespace) -> dict:
             "confidence": confidence,
             "verification_artifacts": artifacts,
             "accepted_unverified": accepted_unverified,
-            "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped")} for c in checks],
+            "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped", "waived_by")} for c in checks],
             "taken": taken,
             "when_text": when_line,
             "heading_hint": hint,

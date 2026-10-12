@@ -701,7 +701,8 @@ def _skyline_xy(hor: np.ndarray, az: np.ndarray, H: float, f: float, cc: float, 
     lim = math.degrees(math.atan(half_w / f)) + 1
     m = np.abs(rel) <= lim
     x = cx + f * np.tan(np.radians(rel[m]))
-    y = hrow - f * np.tan(np.radians(hor[m] - cc)) + math.tan(math.radians(roll)) * (x - cx)
+    # pinhole: a ray at horizontal offset rel and elevation e lands at y = hrow − f·tan(e)/cos(rel) (the vertical scale shrinks off-axis)
+    y = hrow - f * np.tan(np.radians(hor[m] - cc)) / np.cos(np.radians(rel[m])) + math.tan(math.radians(roll)) * (x - cx)
     o = np.argsort(x)
     return list(zip(x[o].tolist(), y[o].tolist()))
 
@@ -797,7 +798,7 @@ def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, arg
                     if abs(rel) > lim:
                         continue
                     x = cx + f * math.tan(math.radians(rel))
-                    y = hrow - f * math.tan(math.radians(pk["angle"] - r["cc"])) + math.tan(math.radians(r.get("roll", 0.0))) * (x - cx)
+                    y = hrow - f * math.tan(math.radians(pk["angle"] - r["cc"])) / math.cos(math.radians(rel)) + math.tan(math.radians(r.get("roll", 0.0))) * (x - cx)
                     labels.append((f"{pk['name']} {pk['dist_m'] / 1000:.1f} km", x * s, y * s))
                     r["peaks"].append({**pk, "x": int(round(x)), "y": int(round(y))})
                 if style != "grid":
@@ -1056,13 +1057,15 @@ def _cmd_fit(args) -> None:
                 nh = nhs[D1]
                 f = f0 * fs
                 r_off = np.degrees(np.arctan((RX - cx) / f))
-                r_el = np.degrees(np.arctan((hrow - RY) / f))
+                # elevation angle of a pixel off the optical axis: atan(dy·cos(rel)/f), not atan(dy/f); at a 30° offset the
+                # difference is 2° on a 15° ridge, which fit would otherwise absorb into focal and heading
+                r_el = np.degrees(np.arctan((hrow - RY) * np.cos(np.radians(r_off)) / f))
                 # solve horizon offset cc (pitch/hrow inaccurate) and roll rr together by least squares: a 1° handheld tilt puts the ridgeline at both ends of the frame
                 # off by a dozen-plus pixels; left unsolved, the ground truth gets crowded into the same rms tier as a pile of wrong candidates (one real photo: 11.1 → 6.2 px, only then did the ground truth stand out)
                 diff = hor[idx(r_off)] - r_el[None, :]
                 if NX.size:                                        # near points share cc and roll with the far ridge
                     n_off = np.degrees(np.arctan((NX - cx) / f))
-                    diff = np.concatenate([diff, nh[idx(n_off)] - np.degrees(np.arctan((hrow - NY) / f))[None, :]], axis=1)
+                    diff = np.concatenate([diff, nh[idx(n_off)] - np.degrees(np.arctan((hrow - NY) * np.cos(np.radians(n_off)) / f))[None, :]], axis=1)
                     r_off = np.concatenate([r_off, n_off])
                 if roll_max > 0 and (r_off != r_off.mean()).any():
                     oc = r_off - r_off.mean()
@@ -1082,7 +1085,7 @@ def _cmd_fit(args) -> None:
                     pen = np.zeros(naz)
                 if NCX.size:                                       # near-clear columns: the near layer must stay below the given row
                     c_off = np.degrees(np.arctan((NCX - cx) / f))
-                    c_el = np.degrees(np.arctan((hrow - NCR) / f))
+                    c_el = np.degrees(np.arctan((hrow - NCR) * np.cos(np.radians(c_off)) / f))
                     ncpen = np.mean(np.clip(nh[idx(c_off)] - cc[:, None] - rr[:, None] * c_off[None, :] - c_el[None, :], 0, None), axis=1)
                 else:
                     ncpen = np.zeros(naz)

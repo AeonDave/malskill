@@ -48,7 +48,8 @@ def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: f
     az = (heading + np.degrees(np.arctan((xs - W / 2) / f))) % 360
     ang, dist = terrain.cast(FakeDEM(), (LAT0, LON0), 1.6, az, 30000, near=150, n=600)
     tilt = math.tan(math.radians(roll)) * (xs - W / 2)
-    row = lambda a: HROW - f * np.tan(np.radians(a))
+    rel = np.arctan((xs - W / 2) / f)                                  # horizontal offset of each column from the optical axis
+    row = lambda a: HROW - f * np.tan(np.radians(a)) / np.cos(rel)   # true pinhole: the vertical scale shrinks off-axis
     far = row(ang.max(axis=1)) + tilt
     near_ang = ang[:, dist <= 9000].max(axis=1)
     near = row(near_ang) + tilt
@@ -59,7 +60,7 @@ def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: f
         stand = near_ang > 0.3                                       # columns where the near range stands up
         ridge["near"] = [[int(x), int(round(y))] for x, y, s in zip(xs, near, stand) if s]
         clear = xs[~stand & (xs > W / 2)]
-        ridge["near_clear"] = [[int(clear.min()), int(clear.max()), float(row(0.25))]]
+        ridge["near_clear"] = [[int(clear.min()), int(clear.max()), float(HROW - f * np.tan(np.radians(0.25)))]]   # one row for the range: on-axis bound
     path.write_text(json.dumps(ridge), encoding="utf-8")
 
 

@@ -352,6 +352,29 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(photo_session.checks_for_scene({"indoor": 0.9, "mountains": 0.9}), [])
         self.assertEqual(photo_session.checks_for_scene(None), [])
 
+    def test_pinning_artifact_waives_a_scene_check(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        (folder / "shop_rank.json").write_text("[]", encoding="utf-8")                            # a sign named the shop; match.py pinned it
+        self.assertEqual(photo_session.pinning_artifacts(folder), ["shop_rank.json"])
+        out = self.command("finish", folder, "--country", "Italy", "--city", "x", "--latitude", "46.2", "--longitude", "10.9",
+                           "--confidence", "medium", "--heading", "unknown", "--taken", "unknown")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["checks"][0]["waived_by"], ["shop_rank.json"])
+        self.assertFalse(res["checks"][0]["done"])
+        folder2 = Path(self.start()["folder"])
+        (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder2 / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder2 / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        (folder2 / "refsheet_alps.jpg").write_bytes(b"\xff\xd8\xff\xd9")                     # a reference sheet pins nothing
+        r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder2), "--country", "Italy", "--city", "x", "--latitude", "46.2",
+                            "--longitude", "10.9", "--confidence", "low", "--heading", "unknown", "--taken", "unknown"],
+                           cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("Required check 'skyline'", r.stderr)
+
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])
         pending = self.command("start", "--root", self.root / "archives")
