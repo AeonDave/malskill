@@ -43,6 +43,8 @@ Always start in Quick and say so; go Deep only when the user asks for it, or whe
 
 Each rule exists because skipping it produced a wrong answer. Rules marked ★ are enforced by `board.py`.
 
+The operator outranks every rule and gate below. A stop ("give me what you have"), a redirect ("skip the skyline, it is X", "try Y first"), a budget or a format wish is followed at once, without argument, and recorded as the reason (`--accept-unverified` / `--skip-check <name>:"operator asked …"`). The gates bind the agent, never the operator; they exist so that an unattended run cannot close on nothing.
+
 1. **Gut first, written down.** A ranked shortlist with percentages goes into `report.md` before any tool runs, country names in English (the live view and the lookups resolve them).
 2. **Never fabricate verification.** "Matched on street view", "measured", "±20 m" must correspond to commands run and files produced in this session; otherwise write "unverified estimate".
 3. **The image wins.** EXIF, filenames, captions, IP labels and puzzle hints are hypotheses; when they conflict with the scene, believe the scene and say why.

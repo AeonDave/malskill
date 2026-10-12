@@ -315,6 +315,12 @@ class PhotoArchiveTests(unittest.TestCase):
                            "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "the user stopped the analysis")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertEqual(res["accepted_unverified"], "the user stopped the analysis")
+        folder3 = Path(self.start()["folder"])
+        (folder3 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        out = self.command("finish", folder3, "--country", "Italy", "--city", "unknown", "--latitude", "42.9", "--longitude", "11.9",
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked for the answer now")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["accepted_unverified"], "operator asked for the answer now")      # the operator outranks the gate
 
     def test_scene_checks_gate_finish(self):
         folder = Path(self.start()["folder"])

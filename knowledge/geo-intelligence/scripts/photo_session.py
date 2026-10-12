@@ -53,7 +53,7 @@ TRUTH_END = "<!-- /geogussr-truth -->"
 THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
 UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
-USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|stopp|interrupt|abort|cancel", re.I)   # the only reason to skip a check early
+USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|operator|operatore|stopp|interrupt|abort|cancel", re.I)   # the only early reason: the operator said so
 SCENE_THRESHOLD = 0.6
 # required checks by scene (recon's prior tags the scene): each must leave one of these files before finish closes
 CHECKS = {
