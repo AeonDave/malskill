@@ -491,6 +491,10 @@ class NewToolTests(unittest.TestCase):
             Image.new("RGB", (500, 360), "gray").save(td / "b.jpg")
             spec = {"left": {"image": "a.jpg"}, "right": {"image": "b.jpg"}, "height": 300,
                     "pairs": [{"color": "#ff5bbf", "label": "window", "a": [100, 80], "b": [120, 100]}]}
+            with self.assertRaises(ValueError) as cm:                 # no pairs = no match proof: refused, never a silent side-by-side
+                evidence.build_match(dict(spec, pairs=[]), td, td / "none.jpg")
+            self.assertIn("at least one pair", str(cm.exception))
+            self.assertFalse((td / "none.jpg").exists())
             evidence.build_match(spec, td, td / "m.jpg")
             with Image.open(td / "m.jpg") as m:
                 self.assertEqual(m.size[1], 300 + 34)

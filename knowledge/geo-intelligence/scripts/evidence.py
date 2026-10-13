@@ -138,6 +138,10 @@ def build_match(spec: dict, base: Path, out: Path) -> None:
     spec = {"left": {"image": p, "caption": c}, "right": {...},
             "pairs": [{"color": "#ff5bbf", "label": "balcony", "a": [x,y], "b": [x,y]}, ...], "width": 1600}
     a is a pixel in the left image, b a pixel in the right image (original pixels, before scaling)."""
+    if not spec.get("pairs"):                              # a match image proves matched features; without pairs it is not a match proof
+        raise ValueError("--match needs at least one pair in the spec (a feature seen in both images); for a plain side-by-side "
+                         "comparison with no matched features use the evidence spec without --match")
+
     def load(side):
         im = Image.open(_path(base, side["image"])).convert("RGB")
         return im, im.size
@@ -188,7 +192,10 @@ def main() -> None:
                     help="two images + colour-coded matching lines (photo vs reference) instead of the satellite evidence image")
     args = ap.parse_args(_neg_coords(sys.argv[1:]))
     spec = json.loads(args.spec.read_text(encoding="utf-8"))
-    (build_match if args.match else build)(spec, args.spec.parent, args.out)
+    try:
+        (build_match if args.match else build)(spec, args.spec.parent, args.out)
+    except ValueError as exc:
+        sys.exit(f"evidence.py: {exc}")
     print(args.out)
 
 

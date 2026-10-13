@@ -172,7 +172,7 @@ Before calling it (`references/verify.md`): never reject a road or area lead on 
 uv run ${CLAUDE_SKILL_DIR}/scripts/board.py check                       # exclusions have files? unused clues? skipped levels? Verdict: certain or uncertain
 uv run ${CLAUDE_SKILL_DIR}/scripts/board.py report --merge result.json  # main answer = top-ranked; alternatives, exclusions, unresolved clues
 uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py spec.json --out evidence.jpg          # satellite + camera wedge + comparison panels
-uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py match.json --out match.jpg --match    # colour-coded feature lines photo ↔ reference
+uv run ${CLAUDE_SKILL_DIR}/scripts/evidence.py match.json --out match.jpg --match    # colour-coded feature lines photo ↔ reference (≥1 pair; no pairs → the plain spec, it is not a match)
 ```
 
 ### 9. Answer and archive
