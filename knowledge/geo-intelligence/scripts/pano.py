@@ -206,14 +206,39 @@ def list_bing(bb, spacing, limit) -> list[dict]:
 
 # (low, high) zoom per service: the scales differ (Yandex and Já count down from the largest size, the others up)
 ZOOMS = {"yandex": (3, 1), "naver": (0, 2), "kakao": (0, 2), "mapy": (0, 2), "ja": (1, 0)}
+LOOKUP_CAP = 4000           # grid points per point-lookup listing
+LOOKUPS_PER_S = 1.5         # planning rate for the first estimate (3 threads); the progress lines print the measured one
+PROGRESS_S = 30             # seconds between progress lines
 
 
-def _point_lookup(service: str, bb, spacing, limit) -> list[dict]:
-    """Providers that only answer 'nearest panorama to a point': sample a grid and keep distinct panoramas."""
+def _dur(s: float) -> str:
+    return f"{s:.0f} s" if s < 90 else f"{s / 60:.0f} min" if s < 5400 else f"{s / 3600:.1f} h"
+
+
+def _cap_refusal(service: str, bb, spacing: float, n: int) -> str:
+    """Why a listing is refused, and what fits under LOOKUP_CAP: the finest spacing for this area, the widest area at this spacing."""
+    fit = max(1, math.floor(spacing * math.sqrt(n / LOOKUP_CAP)))
+    while len(grid(bb, fit)) > LOOKUP_CAP:
+        fit += 1
+    mid = ((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2)
+    r = int(spacing * math.sqrt(LOOKUP_CAP) / 2 // 10 * 10)
+    while r > 10 and len(grid(bbox_around(*mid, r), spacing)) > LOOKUP_CAP:
+        r -= 10
+    return (f"{service}: {n} lookups at {spacing:g} m spacing would take ~{_dur(n / LOOKUPS_PER_S)}; the cap is {LOOKUP_CAP} "
+            f"(~{_dur(LOOKUP_CAP / LOOKUPS_PER_S)}). Fits: --spacing {fit} for this area, or --near <lat,lon> --radius {r} "
+            f"at {spacing:g} m")
+
+
+def _point_lookup(service: str, bb, spacing, limit, sink=None) -> list[dict]:
+    """Providers that only answer 'nearest panorama to a point': sample a grid and keep distinct panoramas. sink (_Partial)
+    gets each lookup's new rows as they arrive, so a killed run keeps them."""
     mod = P._sl(service)
     pts = grid(bb, spacing)
-    if len(pts) > 4000:
-        raise SystemExit(f"{len(pts)} lookups at {spacing:g} m spacing; raise --spacing or shrink the area")
+    if len(pts) > LOOKUP_CAP:
+        raise SystemExit(_cap_refusal(service, bb, spacing, len(pts)))
+    print(f"{service}: {len(pts)} lookups at {spacing:g} m spacing, ~{_dur(len(pts) / LOOKUPS_PER_S)} at ~{LOOKUPS_PER_S:g} lookups/s"
+          + (f"; rows go to {sink.path} as they arrive (a killed run keeps them there, part of the area only; the manifest is "
+             "written when the listing ends)" if sink else ""), file=sys.stderr, flush=True)
 
     errors = [0]
 
@@ -233,10 +258,12 @@ def _point_lookup(service: str, bb, spacing, limit) -> list[dict]:
             errors[0] += 1
             return []
     rows = {}
+    t0 = last = time.monotonic()
     with ThreadPoolExecutor(3) as ex:          # point lookups are throttled: Já.is blocks bursts with HTTP 403
-        for panos in ex.map(one, pts):
+        for done, panos in enumerate(ex.map(one, pts), 1):
+            new = []
             for p in panos:
-                if not in_bbox(p.lat, p.lon, bb):
+                if not in_bbox(p.lat, p.lon, bb) or str(p.id) in rows:
                     continue
                 h = math.degrees(p.heading or 0)
                 if service == "yandex":           # Yandex: 0 = south, 90 = west
@@ -249,6 +276,15 @@ def _point_lookup(service: str, bb, spacing, limit) -> list[dict]:
                                    "date": _date(getattr(p, "date", None)),
                                    "low": {"kind": "streetlevel", "service": service, "pano": str(p.id), "zoom": zlow, "center": round(center % 360, 2)},
                                    "high": {"kind": "streetlevel", "service": service, "pano": str(p.id), "zoom": zhigh, "center": round(center % 360, 2)}}
+                new.append(rows[str(p.id)])
+            if sink and new:
+                sink(new)
+            now = time.monotonic()
+            if now - last >= PROGRESS_S and done < len(pts):
+                rate = done / max(now - t0, 1e-3)
+                print(f"{service}: {done}/{len(pts)} lookups, {len(rows)} panoramas, {rate:.1f} lookups/s, "
+                      f"~{_dur((len(pts) - done) / rate)} left", file=sys.stderr, flush=True)
+                last = now
     if errors[0] >= 12:
         print(f"{service}: stopped after repeated errors (rate limit or block?) — got {len(rows)} panoramas; "
               "retry later with a larger --spacing", file=sys.stderr)
@@ -366,7 +402,7 @@ def list_mapillary(bb, spacing, limit) -> list[dict]:
 
 LISTERS = {"google": list_google, "apple": list_apple, "bing": list_bing, "kartaview": list_kartaview,
            "panoramax": list_panoramax, "mapillary": list_mapillary,
-           **{s: (lambda s_: (lambda bb, sp, lim: _point_lookup(s_, bb, sp, lim)))(s) for s in ("yandex", "naver", "kakao", "mapy", "ja")}}
+           **{s: (lambda s_: (lambda bb, sp, lim, sink=None: _point_lookup(s_, bb, sp, lim, sink)))(s) for s in ZOOMS}}
 
 
 def thin(rows: list[dict], spacing: float) -> list[dict]:
@@ -462,22 +498,55 @@ def _area(a):
     raise SystemExit("give --bbox s,w,n,e or --near lat,lon --radius m")
 
 
+def _periods(rows: list[dict]) -> str:
+    """Capture months present, for a --date that matched nothing."""
+    return ", ".join(sorted({str(r["date"])[:7] for r in rows if r.get("date")}))
+
+
+class _Partial:
+    """Sink for a point-lookup listing: the rows that pass keep go to <out>.partial.jsonl as they arrive, so a killed run keeps
+    them there; --out is written only when the listing ends. The sidecar is truncated at the first such row, so a run refused
+    or killed before any leaves an older one alone."""
+
+    def __init__(self, out: str, keep):
+        self.path, self.keep, self.mode = f"{out}.partial.jsonl", keep, "w"
+
+    def __call__(self, rows: list[dict]) -> None:
+        rows = [r for r in rows if self.keep(r)]
+        if rows:
+            with open(self.path, self.mode, encoding="utf-8") as f:
+                f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+            self.mode = "a"
+
+
 def cmd_list(a) -> None:
     bb = _area(a)
     t0 = time.time()
+    near = tuple(float(v) for v in a.near.split(",")) if a.near else None
+
+    def in_area(r) -> bool:
+        return near is None or dist_m(near, (r["lat"], r["lon"])) <= a.radius
+
+    def dated(r) -> bool:
+        return not a.date or str(r.get("date", "")).startswith(a.date)
+    sink = _Partial(a.out, lambda r: in_area(r) and dated(r)) if a.provider in ZOOMS else None
     # the lister stops at --limit only when nothing after it drops rows; otherwise it lists the whole area and the limit caps the result
-    rows = LISTERS[a.provider](bb, a.spacing, 0 if (a.near or a.date or a.thin) else a.limit)
-    if a.near:                        # nearest first, as sheet selects: thinning and the limit keep the panoramas at the point
-        la, lo = (float(v) for v in a.near.split(","))
-        rows = sorted((r for r in rows if dist_m((la, lo), (r["lat"], r["lon"])) <= a.radius),
-                      key=lambda r: dist_m((la, lo), (r["lat"], r["lon"])))
+    rows = LISTERS[a.provider](bb, a.spacing, 0 if (a.near or a.date or a.thin) else a.limit, **({"sink": sink} if sink else {}))
+    if near:                          # nearest first, as sheet selects: thinning and the limit keep the panoramas at the point
+        rows = sorted(filter(in_area, rows), key=lambda r: dist_m(near, (r["lat"], r["lon"])))
     n0 = len(rows)
     if a.date:                        # before thinning: first-come thinning could drop a whole capture period
-        rows = [r for r in rows if str(r.get("date", "")).startswith(a.date)]
+        kept = list(filter(dated, rows))
+        if rows and not kept:
+            print(f"--date {a.date} kept 0 of {n0} panoramas ({sum(not r.get('date') for r in rows)} undated; periods here: "
+                  f"{_periods(rows) or 'none'}): rerun with one of these periods, or without --date", file=sys.stderr)
+        rows = kept
     rows = thin(rows, a.thin)
     if a.limit > 0:
         rows = rows[: a.limit]
-    P.write_manifest(a.out, rows)
+    P.write_manifest(a.out, rows)     # in place: a reader holding --out open (Windows) never blocks it
+    if sink:
+        Path(sink.path).unlink(missing_ok=True)
     ds = sorted(r["date"] for r in rows if r.get("date"))
     print(f"{a.provider}: {n0} panoramas in the area ({time.time() - t0:.0f}s), kept {len(rows)}"
           + (f", dates {ds[0]} … {ds[-1]}" if ds else "") + f" -> {a.out}")
@@ -512,8 +581,8 @@ def cmd_sheet(a) -> None:
     if a.date:
         sel = [r for r in rows if str(r.get("date") or "").startswith(a.date)]
         if rows and not sel:
-            have = ", ".join(sorted({str(r["date"])[:7] for r in rows if r.get("date")})) or "undated"
-            raise SystemExit(f"no {a.date} capture in the selection (available: {have}); widen --radius or pick another period")
+            raise SystemExit(f"no {a.date} capture in the selection (available: {_periods(rows) or 'undated'}); widen --radius or "
+                             "pick another period")
         rows = sel
     rows = rows[: a.limit]
     if not rows:

@@ -85,14 +85,17 @@ get (a 2013 local archive beats 2024 coverage) plus Wayback; for a recent phone 
 
 `pano.py coverage` answers "who covers this?"; `pano.py list --provider X --near lat,lon --radius m --out
 town.jsonl` writes the manifest a sweep needs. Point-lookup providers (Yandex, Naver, Kakao, Mapy, Já) are
-sampled on a grid (`--spacing`), throttled; Já.is in particular blocks bursts.
+sampled on a grid (`--spacing`), throttled; Já.is in particular blocks bursts. `list` prints their lookup count and
+an estimate first, then progress with an ETA; rows reach `<out>.partial.jsonl` as they arrive, and `--out` is written
+only when the listing ends. A killed run keeps its rows in that sidecar: they cover only part of the area, so a sweep
+of them is a sample, not the town (rerun the listing, or list a smaller area).
 
 `pano.py sheet --date 2026|2026-03` keeps one capture period, before `--limit`; when none lies near the point it exits
-naming the periods there (`list --date` likewise filters before `--thin`). A sheet run whose every cell failed
-(`pano.py sheet`, `gsv.py sheet`, `baidu_pano.py sheet|sample`) writes no image and no index and exits non-zero: it is no
-street check (`gsv.py targets --sheet` keeps its index as `match.py`'s candidate list and only notes the missing sheet).
-Rerun, run `doctor.py --network`, or, with no street-level imagery, use `evidence.py` on the `tiles.py` map. Grey cells in
-a partial sheet (`k/n cells failed`) are not views.
+naming the periods there (`list --date` likewise filters before `--thin`, and warns with the periods when it keeps none).
+A sheet run whose every cell failed (`pano.py sheet`, `gsv.py sheet`, `baidu_pano.py sheet|sample`) writes no image and
+no index and exits non-zero: it is no street check (`gsv.py targets --sheet` keeps its index as `match.py`'s candidate
+list and only notes the missing sheet). Rerun, run `doctor.py --network`, or, with no street-level imagery, use
+`evidence.py` on the `tiles.py` map. Grey cells in a partial sheet (`k/n cells failed`) are not views.
 
 ## 3. Any other source: write a manifest
 
@@ -127,7 +130,7 @@ How to get there from a viewer website (most panorama sites are built the same w
 
 ```bash
 uv run scripts/pano.py list --provider <provider> --near <town lat,lon> --radius 6000 --out town.jsonl   # or your own manifest
-uv run scripts/sweep.py index --manifest town.jsonl          # ~1 min download + ~3 min per 1,000 panoramas; cached
+uv run scripts/sweep.py index --manifest town.jsonl          # prints its measured rate; point-lookup providers can be ~10x slower; cached
 uv run scripts/sweep.py rank --index town --query original/<photo> --out-dir sweep           # several towns: --index a b c
 uv run scripts/sweep.py view --index town --id <provider:id> --query original/<photo> --out sweep/view.jpg
 ```

@@ -57,13 +57,19 @@ TRUTH_END = "<!-- /geogussr-truth -->"
 THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
 UNVERIFIED_CLOCK_MIN = 25  # before this elapsed time, an unverified close needs an explicit operator limit
-USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|operator|operatore|stopp|interrupt|abort|cancel", re.I)   # the only early reason: the operator said so
-# a verdict on the image itself (finish --generated, not-generated) takes the operator's words only in the documented form at the
-# start: "users on the forum agree" or "an interrupted render" inside a basis is not the operator speaking
-OPERATOR_WORDS = re.compile(r"\s*(operator|user)\s+(asked|said|says|confirmed)\s*:", re.I)
+# The operator's words, the one form an early exit (--skip-check, --accept-unverified before the clock) and a verdict on the image
+# (finish --generated, not-generated) take: an operator word (an article may precede it), asked/said/confirmed (or the same in the
+# operator's language) and a colon, at the start of the reason. Anywhere else ("the user would want…", "users on the forum agree")
+# the agent is speaking.
+OPERATOR_WORDS = re.compile(r"\s*(?:(?:the|l['’]|el|la|le|der|die)\s*)?"
+                            r"(?:operator|operatore|operador|op[ée]rateur|user|utente|usuario|utilisateur|benutzer|nutzer)\s+"
+                            r"(?:(?:has|ha|a|hat)\s+)?"
+                            r"(?:asked|said|says|confirmed|requested|chiesto|detto|confermato|pidi[oó]|pedido|dijo|dicho|confirm[oó]|confirmado"
+                            r"|demand[ée]|dit|confirm[ée]|gesagt|sagte|gebeten|bat|best[äa]tigt)\s*:", re.I)
+OPERATOR_FORM = ("put \"operator asked: …\" in the reason as its first words (said or confirmed too, or in the operator's language: "
+                 "\"utente ha chiesto: …\", \"usuario dijo: …\")")
 # the operator may limit the work (including explicit Quick); an agent-invented time budget is not an early exit
-EARLY_EXIT = (f"before {UNVERIFIED_CLOCK_MIN} min only when the operator stopped or redirected the analysis: "
-              "put \"operator asked: …\" in the reason; after it, any stated reason")
+EARLY_EXIT = f"before {UNVERIFIED_CLOCK_MIN} min only when the operator stopped or redirected the analysis: {OPERATOR_FORM}; after it, any stated reason"
 SCENE_THRESHOLD = 0.6
 # required checks by scene (recon's prior tags the scene): each is done by a file it leaves, known by name here or, for a
 # JSON with no telling name, by content (check_hits)
@@ -264,6 +270,46 @@ def pinning_artifacts(folder: Path, answer: tuple[float, float] | None = None) -
                                                      for r in _top_rows(data))):
                 pins.append(rel)
     return pins
+
+
+def _fit_supports(data, answer: tuple[float, float]) -> bool:
+    """A terrain.py fit output whose leading cluster puts the camera at the answer: the pin within one grid step (params.grid_m,
+    else NEAR_M) of that cluster's near-tie stretch (tie.bbox), or of its best camera when nothing ties."""
+    if not isinstance(data, dict) or "cams" not in data:
+        return False
+    lead = next((c for c in data.get("clusters") or [] if isinstance(c, dict) and isinstance(c.get("best"), dict)), None)
+    if lead is None:
+        return False
+    tie = lead.get("tie") if isinstance(lead.get("tie"), dict) else {}
+    cam = _latlon(lead["best"].get("cam"))
+    try:
+        s, w, n, e = (float(v) for v in (tie.get("bbox") or (cam + cam if cam else None)))
+    except (TypeError, ValueError):
+        return False
+    params = data.get("params") if isinstance(data.get("params"), dict) else {}
+    lat, lon = answer
+    return haversine_m(answer, (min(max(lat, s), n), min(max(lon, w), e))) <= (_num(params.get("grid_m")) or NEAR_M)
+
+
+def _sweep_supports(data, answer: tuple[float, float]) -> bool:
+    """A sweep.py ranking whose first 10 rows hold a near, fair one (_near_fair on lat/lon, sim_full as the global score)."""
+    rows = data[:10] if isinstance(data, list) else []
+    return any(isinstance(r, dict) and "sim_full" in r and _near_fair(*answer, (r.get("lat"), r.get("lon")), None, r["sim_full"]) is not None
+               for r in rows)
+
+
+def supporting_artifacts(folder: Path, answer: tuple[float, float]) -> list[str]:
+    """Session files that support the answer's location: the pins at the answer (pinning_artifacts; a pose.py solve only with its
+    camera within NEAR_M), a sweep.py ranking with a near, fair top row (_sweep_supports) and a fit output whose near-tie stretch
+    holds the pin (_fit_supports). A check that ran and placed nothing at the answer is executed, not support."""
+    pins, out = set(pinning_artifacts(folder, answer)), []
+    for rel in _artifact_paths(folder):
+        data = _read_json(folder / rel) if rel.lower().endswith(".json") else None
+        cam = _latlon(data.get("camera_ll")) if isinstance(data, dict) else None
+        if (rel in pins and (cam is None or haversine_m(answer, cam) <= NEAR_M)) or _sweep_supports(data, answer) \
+                or _fit_supports(data, answer):
+            out.append(rel)
+    return out
 
 
 def _rank_shortfall(folder: Path, lat: float, lon: float, check: str) -> str:
@@ -708,6 +754,9 @@ def parse_taken(text: str) -> dict:
     return {"text": s, "from": frm.isoformat(), "to": to.isoformat(), "time": time_part}
 
 
+STORED_KEYS = ("country", "region", "city_or_nearest_locality", "latitude", "longitude", "radius_m", "confidence", "heading", "taken")   # echoed by finish
+
+
 def finish(args: argparse.Namespace) -> dict:
     if args.generated is None:
         if (args.latitude is None) != (args.longitude is None):
@@ -808,20 +857,21 @@ def finish(args: argparse.Namespace) -> dict:
                 f"check recognises. To close without it: --skip-check {c['name']}:\"<reason>\" ({EARLY_EXIT})."
                 + (f"\n{shortfall}" if shortfall else ""))
         c.pop("waived_by", None)                                   # an explicit skip closes it, recorded with its reason
-        if elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(why):
+        if elapsed_min < UNVERIFIED_CLOCK_MIN and not OPERATOR_WORDS.match(why):
             raise ValueError(
                 f"--skip-check {c['name']} before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: "
-                f"put \"operator asked: …\" in the reason; '{why[:60]}' is not that. Next: run {c['command']}; from minute "
+                f"{OPERATOR_FORM}; '{why[:60]}' is not that. Next: run {c['command']}; from minute "
                 f"{UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         c["skipped"] = why
         print(f"Warning: required check '{c['name']}' skipped ({why}): the answer must say the {c['name']} check was not done.", file=sys.stderr)
+    supporting = len(supporting_artifacts(folder, (lat, lon)))
+    reason = (args.accept_unverified or "").strip()
     accepted_unverified = None
     if artifacts == 0:
-        reason = (args.accept_unverified or "").strip()
-        if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(reason):
+        if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not OPERATOR_WORDS.match(reason):
             raise ValueError(
-                f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: put "
-                f"\"operator asked: …\" in the reason. '{reason[:60]}' is not that: elapsed Quick time alone is never a reason to close unverified. "
+                f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: "
+                f"{OPERATOR_FORM}. '{reason[:60]}' is not that: elapsed Quick time alone is never a reason to close unverified. "
                 f"Next: go Deep with your plan's next line or the scene's required check (SKILL.md step 1, step 6) and finish when it "
                 f"leaves a file; from minute {UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:
@@ -833,6 +883,15 @@ def finish(args: argparse.Namespace) -> dict:
                 f"or go Deep. Close without one: --accept-unverified \"<reason>\" ({EARLY_EXIT}).")
         accepted_unverified = reason or f"clock: {elapsed_min:.0f} min without a verification artifact"
         print(f"Warning: no verification artifact ({accepted_unverified}): the answer is an unverified estimate and must say so.", file=sys.stderr)
+    elif reason:                                                   # the agent's own verdict on its checks: never dropped, never refused
+        accepted_unverified = reason
+        print(f"Note: --accept-unverified recorded ({reason}) beside {artifacts} verification files: the answer is an unverified "
+              f"estimate and must say so.", file=sys.stderr)
+    elif supporting == 0:
+        print("Warning: no check supports this location: the answer is an unverified estimate. Next: record the match that places it, "
+              "evidence.py match.json --out match.jpg --match against the sheet cell or sweep view that shows the place (or terrain.py fit "
+              f"--at {lat:.5f},{lon:.5f} --ridge <ridge.json> for a skyline); otherwise say so in the answer, or --accept-unverified "
+              "\"<reason>\".", file=sys.stderr)
     result = {
         "outcome": "place",
         "country": country,
@@ -846,6 +905,7 @@ def finish(args: argparse.Namespace) -> dict:
         "heading": heading,
         "confidence": confidence,
         "verification_artifacts": artifacts,
+        "supporting_artifacts": supporting,
         "accepted_unverified": accepted_unverified,
         "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped", "waived_by")} for c in checks],
         "taken": taken,
@@ -855,12 +915,15 @@ def finish(args: argparse.Namespace) -> dict:
     lines = (
         f"Result: {lat:.6f}, {lon:.6f} (WGS84{'' if coordinate_source == 'given' else ', ' + coordinate_source})"
         + (f"; radius {radius:g} m" if radius is not None else "") + (f"; heading {heading:g}°" if heading is not None else "")
-        + f"; confidence {confidence}; verification artifacts {artifacts}  \n"
+        + f"; confidence {confidence}; verification artifacts {artifacts} ({supporting} supporting the location)  \n"
         + (f"Taken: {taken['text']}" + (f" {taken['time']}" if taken.get("time") else "") + f" ({taken['confidence']}"
            + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else f"Taken: not given{' (report: ' + when_line + ')' if when_line else ''}  \n")
         + (f"Heading: unknown; the best ranked view nearby looks at {hint['heading']:.0f}° ({hint['source']}, suggested, not asserted)  \n" if hint else "")
     )
-    return _close(folder, metadata, report, timestamp, [slug(value) for value in (country, region, city) if value], result, lines)
+    closed = _close(folder, metadata, report, timestamp, [slug(value) for value in (country, region, city) if value], result, lines)
+    print("Stored result: " + ", ".join(f"{k}={json.dumps(taken['text'] if k == 'taken' and taken else result[k], ensure_ascii=False)}"
+                                        for k in STORED_KEYS), file=sys.stderr)
+    return closed
 
 
 def _declared_generation_gate(folder: Path, metadata: dict, answer: tuple[float, float]) -> None:
@@ -1266,7 +1329,7 @@ def not_generated(args: argparse.Namespace) -> dict:
     """The operator's "it is real, continue", kept in session.json (outside recon/, so a recon rerun never erases it)."""
     reason = args.reason.strip()
     if not OPERATOR_WORDS.match(reason):
-        raise ValueError(f"not-generated records the operator's word only: put \"operator asked: …\" in the reason ('{reason[:60]}' is not that). "
+        raise ValueError(f"not-generated records the operator's word only: {OPERATOR_FORM} ('{reason[:60]}' is not that). "
                          "Next: without the operator's word keep geolocating; a detector score never stops the analysis, and a declared "
                          "generation yields to a pinned place (evidence or match image, pose.py solution) or closes with finish --generated.")
     folder = args.folder.expanduser().resolve(strict=True)
@@ -1327,7 +1390,7 @@ def main() -> int:
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
     complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help=f"Close although a scene-required check (skyline, street) has no file; repeatable, recorded in the result. Allowed {EARLY_EXIT}.")
-    complete.add_argument("--accept-unverified", metavar="REASON", help=f"Close with no verification artifact; the reason is recorded. Allowed {EARLY_EXIT}.")
+    complete.add_argument("--accept-unverified", metavar="REASON", help=f"The answer is an unverified estimate; the reason is recorded (result.accepted_unverified). With no verification artifact it is the only close, allowed {EARLY_EXIT}.")
     complete.add_argument("--generated", metavar="BASIS", help="Close as a generated image with no real place, without any place flag. BASIS is evidence, never a detector score: "
                           "the DigitalSourceType term meta declares (not while a file pins a real place), a saved session file that shows it (the AI-gallery page, "
                           "the sheet confirming the duplicate), "

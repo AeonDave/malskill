@@ -123,7 +123,7 @@ class StateTests(unittest.TestCase):
             return Path(json.loads(r.stdout)["folder"])
         (self.folder / "report.md").write_text("# Report\n\n## Gut call (before tools)\n1. Slovakia 80% — sign\n\n## Answer\nPoprad\n\n"
                                                "## When\nNot determinable.\n", encoding="utf-8")
-        flags = ["--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture"]
+        flags = ["--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: test fixture"]
         poprad = session("finish", self.folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
                          "--confidence", "medium", *flags)
         session("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia")
@@ -135,6 +135,21 @@ class StateTests(unittest.TestCase):
         self.assertAlmostEqual(s["truth"]["error_km"], 1289.5, delta=1.0)                     # the page's distance is Paris's, not Poprad's
         self.assertFalse(s["truth"]["country_hit"])
         self.assertEqual((s["truth"]["latitude"], s["truth"]["longitude"]), (49.1675, 20.0675))
+
+    def test_answer_card_says_unverified_estimate_when_no_check_supports_the_place(self):
+        (self.folder / "report.md").write_text("# Report\n\n## Gut call (before tools)\n1. Greece 80% — sign\n\n## Answer\nKoilada\n\n"
+                                               "## When\nNot determinable.\n", encoding="utf-8")
+        (self.folder / "far_rank.json").write_text(json.dumps([{"rank": 1, "id": "p1", "inliers": 40, "score_global": 0.6, "wgs": [40.5, 21.9]}]),
+                                                   encoding="utf-8")                          # a check that ran, 16 km from the answer
+        r = subprocess.run([sys.executable, str(SCRIPTS / "photo_session.py"), "finish", str(self.folder), "--country", "Greece", "--city", "Koilada",
+                            "--latitude", "40.358", "--longitude", "21.928", "--confidence", "low", "--heading", "unknown", "--taken", "unknown"],
+                           cwd=self.tmp, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        result = viewer.build_state(Path(json.loads(r.stdout)["folder"]))["result"]
+        self.assertEqual((result["verification_artifacts"], result["supporting_artifacts"]), (1, 0))
+        page = (SCRIPTS.parent / "assets" / "viewer" / "app.js").read_text(encoding="utf-8")
+        rule = 'if (r.supporting_artifacts === 0 || r.accepted_unverified) bits.push("unverified estimate");'
+        self.assertTrue(rule in page, "the answer card no longer labels an unsupported answer")
 
     def test_truth_kept_through_an_unrescored_refinish_shows_the_current_answers_score(self):
         # re-finished after its truth by a version that did not rescore: the stored metrics scored the replaced answer (Poprad, 0 km)

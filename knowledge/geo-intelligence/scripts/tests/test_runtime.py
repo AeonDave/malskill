@@ -1256,7 +1256,7 @@ class PanoSheetAndKakaoTests(unittest.TestCase):
         new, old = self.rows(("new", "2026-03", 0), ("old", "2008-10", 5))
         for listed, period, kept in (([new, old], "2008", "old"), ([old, new], "2026", "new")):
             out = self.dir / f"m{period}.jsonl"
-            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit: list(listed)}):
+            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit, **_: list(listed)}):
                 self.pano_main("list", "--provider", "kakao", "--bbox", "33.49,126.49,33.51,126.51", "--thin", "20", "--date", period,
                                "--out", str(out))
             self.assertEqual([r["id"] for r in pano.P.read_manifest(out)], [kept])
@@ -1280,7 +1280,7 @@ class PanoSheetAndKakaoTests(unittest.TestCase):
                            ("centre", "2026-03", 0))
         for extra, kept in (((), ["centre", "edge1"]), (("--thin", "100"), ["centre", "edge1"])):
             out = self.dir / "near.jsonl"
-            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit: list(listed)}):
+            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit, **_: list(listed)}):
                 self.pano_main("list", "--provider", "kakao", "--near", "33.5,126.5", "--radius", "400", "--spacing", "60", "--limit", "2",
                                *extra, "--out", str(out))
             self.assertEqual([r["id"] for r in pano.P.read_manifest(out)], kept, extra)
@@ -1441,6 +1441,173 @@ class PanoSheetAndKakaoTests(unittest.TestCase):
                 self.assertFalse(out.exists())
                 self.assertFalse(out.with_suffix(".index.json").exists())
                 self.assertEqual(list(cache.glob("*")), [])                   # a failed view is never cached
+
+
+class LongToolProgressTests(unittest.TestCase):
+    """Long tools printed nothing: a Kakao listing ran minutes without a line and a killed one lost every row, sweep indexing
+    spoke every 256 panoramas (~10 min at 2.4 s each), a killed Overpass find left no line, match.py rank cut the candidates
+    without saying how to narrow them."""
+
+    BBOX = "33.50,126.50,33.503,126.503"         # 9 grid points at 100 m
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        osm._blocked_until.clear()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def kakao(kill_at=None):
+        """One panorama at every asked point; asking kill_at raises KeyboardInterrupt (the run is killed there)."""
+        def find_panoramas(lat, lon, **k):
+            if kill_at and (lat, lon) == kill_at:
+                raise KeyboardInterrupt
+            return [SimpleNamespace(id=f"{lat:.6f},{lon:.6f}", lat=lat, lon=lon, heading=0.0, date=None)]
+        return SimpleNamespace(find_panoramas=find_panoramas)
+
+    def test_point_lookup_announces_its_size_then_rate_and_eta(self):
+        import pano
+        bb = tuple(float(v) for v in self.BBOX.split(","))
+        n = len(pano.grid(bb, 100))
+        with patch.object(pano.P, "_sl", lambda s: self.kakao()), patch.object(pano.time, "sleep"), patch.object(pano, "PROGRESS_S", 0), \
+                patch("sys.stderr", new=io.StringIO()) as err:
+            rows = pano._point_lookup("kakao", bb, 100, 0)
+        lines = err.getvalue().splitlines()
+        self.assertEqual(len(rows), n)
+        self.assertRegex(lines[0], rf"^kakao: {n} lookups at 100 m spacing, ~\d+ s at ~[\d.]+ lookups/s")
+        self.assertTrue(any(re.search(rf"^kakao: \d+/{n} lookups, \d+ panoramas, [\d.]+ lookups/s, ~\d+ s left", ln) for ln in lines[1:]),
+                        lines)
+
+    def test_killed_listing_keeps_the_rows_found_and_a_finished_one_writes_them_all(self):
+        import pano
+        pts = pano.grid(tuple(float(v) for v in self.BBOX.split(",")), 100)
+        out, side = self.dir / "m.jsonl", self.dir / "m.jsonl.partial.jsonl"
+        old = PanoSheetAndKakaoTests.rows(("old", "2020-01-01", 0))
+        pano.P.write_manifest(out, old)                                        # a complete earlier listing
+        argv = ("list", "--provider", "kakao", "--bbox", self.BBOX, "--spacing", "100", "--out", str(out))
+        with patch.object(pano.P, "_sl", lambda s: self.kakao(kill_at=pts[3])), patch.object(pano.time, "sleep"), \
+                self.assertRaises(KeyboardInterrupt):
+            PanoSheetAndKakaoTests.pano_main(*argv)
+        self.assertEqual(pano.P.read_manifest(out), old)                       # never a partial area under the manifest's name
+        self.assertEqual([r["id"] for r in pano.P.read_manifest(side)], [f"{la:.6f},{lo:.6f}" for la, lo in pts[:3]])
+        with patch.object(pano.P, "_sl", lambda s: self.kakao()), patch.object(pano.time, "sleep"), open(out, encoding="utf-8"):
+            _, err = PanoSheetAndKakaoTests.pano_main(*argv, "--limit", "5")  # a reader holding --out open never blocks the write
+        self.assertIn(f"rows go to {side} as they arrive", err.splitlines()[0])
+        self.assertEqual(len(pano.P.read_manifest(out)), 5)                    # the complete run replaces the earlier manifest
+        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), ["m.jsonl"])
+
+    def test_lookup_cap_names_the_time_and_what_fits(self):
+        import pano
+        bb = pano.bbox_around(33.5, 126.53, 3000)
+        with patch.object(pano.P, "_sl", lambda s: self.kakao()), self.assertRaises(SystemExit) as cm:
+            pano._point_lookup("kakao", bb, 40, 0)
+        msg = str(cm.exception)
+        self.assertIn(f"{len(pano.grid(bb, 40))} lookups at 40 m spacing", msg)
+        self.assertRegex(msg, r"~\d+(\.\d)? (min|h)")
+        spacing = float(re.search(r"--spacing (\d+)", msg).group(1))
+        self.assertLessEqual(len(pano.grid(bb, spacing)), pano.LOOKUP_CAP)
+        self.assertGreater(len(pano.grid(bb, spacing - 5)), pano.LOOKUP_CAP)  # about the finest that fits, not just any coarse one
+        radius = float(re.search(r"--radius (\d+)", msg).group(1))
+        self.assertLessEqual(len(pano.grid(pano.bbox_around(33.5, 126.53, radius), 40)), pano.LOOKUP_CAP)
+
+    def test_list_date_that_keeps_nothing_names_undated_rows_and_periods(self):
+        import pano
+        listed = PanoSheetAndKakaoTests.rows(("a", "2008-10-29", 0), ("b", "2026-03-05", 10), ("c", "", 20))
+        with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit, **_: list(listed)}):
+            _, err = PanoSheetAndKakaoTests.pano_main("list", "--provider", "kakao", "--bbox", "33.49,126.49,33.51,126.51", "--date", "2018",
+                                                      "--out", str(self.dir / "d.jsonl"))
+        self.assertIn("--date 2018 kept 0 of 3 panoramas (1 undated; periods here: 2008-10, 2026-03)", err)
+
+    def test_sweep_index_reports_its_rate_early_and_during_a_batch(self):
+        import numpy as np
+        import sweep
+        rows = [{"provider": "x", "id": str(i), "lat": 33.5, "lon": 126.5, "heading": 0.0, "low": {"kind": "photo"}} for i in range(40)]
+        view = SimpleNamespace(bearings=lambda n: [0.0, 180.0], render=lambda *a: Image.new("RGB", (8, 8)))
+        megaloc = types.ModuleType("geolib.megaloc")          # no torch here: the embedder is faked
+        megaloc.Embedder = lambda: SimpleNamespace(embed=lambda ims: np.zeros((len(ims), 8448), np.float32))
+        for every, name in ((30, "a"), (0, "b")):
+            args = SimpleNamespace(manifest=["town.jsonl"], name=name, views=2, hfov=65, pitch=3, workers=2, parallel=2)
+            with patch.object(sweep, "ROOT", self.dir), patch.object(sweep.P, "read_manifest", return_value=rows), \
+                    patch.object(sweep.P, "load", return_value=view), patch.dict(sys.modules, {"geolib.megaloc": megaloc}), \
+                    patch.object(sweep, "PROGRESS_S", every), patch("sys.stdout", new=io.StringIO()) as out:
+                sweep.cmd_index(args)
+            lines = out.getvalue().splitlines()
+            first = r"^  16/40 panoramas, 32 views, \d+s, [\d.]+ s/panorama, ~[\d.]+ min left"
+            if every:
+                self.assertRegex(lines[1], first)                               # the first line comes after 16 panoramas
+            else:
+                self.assertTrue(any(re.match(first, ln) for ln in lines), lines)
+            mid = [ln for ln in lines if re.match(r"^  (1[7-9]|[23]\d)/40 panoramas", ln)]
+            self.assertTrue(mid if every == 0 else not mid, lines)              # time-based lines inside a batch
+            self.assertTrue(lines[-1].startswith("done: 40 panoramas, 80 views"), lines)
+
+    def overpass(self, post, ql="[out:json][timeout:60];node(1);out;"):
+        """osm.run against fake mirrors; its stderr lines land in self.lines even when the run is killed."""
+        err = io.StringIO()
+        try:
+            with patch.object(osm, "_post", side_effect=post), patch.object(osm.time, "sleep"), \
+                    patch.dict(os.environ, {"GEO_OVERPASS_URL": ""}), patch("sys.stderr", new=err):
+                osm.run(ql, None, self.dir, timeout=60)
+        finally:
+            self.lines = err.getvalue().splitlines()
+
+    def test_every_overpass_attempt_leaves_a_line(self):
+        hosts = [ep.split("/")[2] for ep in osm.ENDPOINTS]
+        self.overpass(lambda ep, q, proxy, timeout: (None, "HTTP 504: server too busy") if ep == osm.ENDPOINTS[0]
+                      else ({"elements": [LINE]}, ""))
+        self.assertRegex(self.lines[0], rf"^Overpass {re.escape(hosts[0])}: asking \(gives up after 90 s, 0 s elapsed\)")
+        self.assertRegex(self.lines[1], rf"^Overpass {re.escape(hosts[1])}: asking \(gives up after 90 s, \d+ s elapsed\)")
+
+        def killed(ep, q, proxy, timeout):
+            raise KeyboardInterrupt
+        with self.assertRaises(KeyboardInterrupt):
+            self.overpass(killed, "[out:json][timeout:60];node(2);out;")
+        self.assertIn(hosts[0], self.lines[-1])                                # the mirror in flight when the run was killed
+
+    def match_args(self, **kw):
+        base = dict(cache=str(self.dir), images=None, items=None, spread_headings=None, panos=None, max_candidates=400, toward=None,
+                    within=None, render="gsv", proxy=None, headings=None, spread=None, offset=0, pitch=10, fov=80)
+        return SimpleNamespace(**{**base, **kw})
+
+    def test_match_cap_is_announced_before_rendering_and_scoring(self):
+        import match
+        items = self.dir / "t.index.json"
+        items.write_text(json.dumps([{"id": f"p{i}", "heading": 0.0, "wgs": [33.5 + i * 1e-4, 126.5]} for i in range(5)]), encoding="utf-8")
+        for within, ids, order in (("33.5004,126.5,1000", ["p4", "p3"], "nearest to the --within centre first"),
+                                   (None, ["p0", "p1"], "the first 2 in file order")):
+            seen = {}
+            err = io.StringIO()
+
+            def render(its, engine, proxy, cache):
+                seen.update(notice=err.getvalue(), ids=[it["id"] for it in its])
+                return [Image.new("RGB", (8, 8)) for _ in its]
+            with patch.object(match, "_render_items", side_effect=render), patch("sys.stderr", new=err):
+                match._load_candidates(self.match_args(items=str(items), max_candidates=2, within=within))
+            self.assertEqual(seen["ids"], ids)
+            for part in ("5 candidates, above --max-candidates 2: scoring 2", order, "3 not scored", "--within lat,lon,m",
+                         "--spread-headings", "split the set"):
+                self.assertIn(part, seen["notice"])
+        with patch.object(match, "_render_items", side_effect=AssertionError("rendered outside --within")), \
+                self.assertRaises(SystemExit) as cm:
+            match._load_candidates(self.match_args(items=str(items), within="40.0,10.0,100"))
+        self.assertIn("no candidates left", str(cm.exception))                    # --within filters --items too
+        bare = self.dir / "baidu.index.json"                                       # baidu_pano.py sheet --ids: no positions
+        bare.write_text(json.dumps([{"id": "0900", "heading": 90.0, "pitch": 0, "fov": 60}]), encoding="utf-8")
+        with patch.object(match, "_render_items", side_effect=AssertionError("rendered without positions")), \
+                self.assertRaises(SystemExit) as cm:
+            match._load_candidates(self.match_args(items=str(bare), within="31.23,121.47,5000", render="baidu"))
+        self.assertIn(f"{bare} has no positions", str(cm.exception))
+        self.assertIn("drop --within", str(cm.exception))
+        self.assertNotIn("widen", str(cm.exception))                              # widening can never help
+
+    def test_match_without_a_source_names_the_three_with_examples(self):
+        import match
+        with self.assertRaises(SystemExit) as cm:
+            match._load_candidates(self.match_args(within="33.5,126.5,300"))
+        for example in ("--images cands/", "--items targets.index.json --render gsv", "--panos panos.json --headings 0,90,180,270"):
+            self.assertIn(example, str(cm.exception))
 
 
 if __name__ == "__main__":

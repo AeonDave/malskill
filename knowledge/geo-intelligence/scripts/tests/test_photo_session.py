@@ -48,7 +48,7 @@ class PhotoArchiveTests(unittest.TestCase):
         if "--taken" not in extra:
             extra += ["--taken", "unknown"]
         if "--accept-unverified" not in extra:
-            extra += ["--accept-unverified", "user stopped: test fixture, no checks"]
+            extra += ["--accept-unverified", "operator asked: test fixture, no checks"]
         return self.command(
             "finish", folder, "--country", "Slovakia", "--region", "Prešov",
             "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
@@ -162,7 +162,7 @@ class PhotoArchiveTests(unittest.TestCase):
         report = report.replace('<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->',
                                 "not determinable: no metadata, no dated imagery checked")
         (folder / "report.md").write_text(report, encoding="utf-8")
-        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped (test)")
+        out = self.command("finish", folder, "--country", "Namibia", "--city", "unknown", "--confidence", "medium", "--radius-m", "500", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop (test)")
         meta = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))
         r = meta["result"]
         self.assertTrue(-29 < r["latitude"] < -16 and 11 < r["longitude"] < 26, r)       # inside Namibia
@@ -174,15 +174,15 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue((Path(out["folder"]) / "viewer.html").is_file())        # offline snapshot beside the photos
         folder2 = Path(self.start()["folder"])
         (folder2 / "report.md").write_text(report, encoding="utf-8")
-        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped (test)", success=False)
+        err = self.command("finish", folder2, "--country", "Atlantis", "--city", "x", "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop (test)", success=False)
         self.assertIn("Unknown country", err)
-        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped (test)", success=False)
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--latitude", "-22", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop (test)", success=False)
         self.assertIn("both", err)
         r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder2), "--country", "Namibia", "--city", "x", "--confidence", "low", "--taken", "unknown"],
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 2)                                                    # argparse: --heading is required
         self.assertIn("--heading", r.stderr)                                                 # the camera direction must be stated, even as unknown
-        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--heading", "east", "--taken", "unknown", "--accept-unverified", "user stopped (test)", success=False)
+        err = self.command("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--heading", "east", "--taken", "unknown", "--accept-unverified", "operator asked: stop (test)", success=False)
         self.assertIn("degrees", err)
 
     def test_viewer_port_falls_back_when_taken(self):
@@ -303,7 +303,7 @@ class PhotoArchiveTests(unittest.TestCase):
         (folder / "report.md").write_text("Best estimate.\n\n## When\nNot determinable; the 2026-03-05 reference panorama does not date the photo.\n",
                                           encoding="utf-8")
         r = self.run_cli("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
-                         "--confidence", "medium", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture")
+                         "--confidence", "medium", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: test fixture")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dates or bounds this photo", r.stderr)                                 # encode a year only when it dates the photo
         self.assertIn("2026", r.stderr)
@@ -332,9 +332,9 @@ class PhotoArchiveTests(unittest.TestCase):
         folder2 = Path(self.start()["folder"])
         (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
         out = self.command("finish", folder2, "--country", "Austria", "--city", "x", "--latitude", "47.55", "--longitude", "10.79",
-                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped the run")
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop the run")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
-        self.assertEqual(res["accepted_unverified"], "user stopped the run")
+        self.assertEqual(res["accepted_unverified"], "operator asked: stop the run")
 
     def test_quick_budget_is_not_a_reason_to_close_unverified(self):
         folder = Path(self.start()["folder"])
@@ -348,15 +348,15 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertIn('put "operator asked: …" in the reason', r.stderr)
         self.assertTrue(folder.is_dir())
         out = self.command("finish", folder, "--country", "Italy", "--city", "unknown", "--latitude", "42.9", "--longitude", "11.9",
-                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "the user stopped the analysis")
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop the analysis")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
-        self.assertEqual(res["accepted_unverified"], "the user stopped the analysis")
+        self.assertEqual(res["accepted_unverified"], "operator asked: stop the analysis")
         folder3 = Path(self.start()["folder"])
         (folder3 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
         out = self.command("finish", folder3, "--country", "Italy", "--city", "unknown", "--latitude", "42.9", "--longitude", "11.9",
-                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked for the answer now")
+                           "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: the answer now")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
-        self.assertEqual(res["accepted_unverified"], "operator asked for the answer now")      # the operator outranks the gate
+        self.assertEqual(res["accepted_unverified"], "operator asked: the answer now")      # the operator outranks the gate
 
     def test_scene_checks_gate_finish(self):
         folder = Path(self.start()["folder"])
@@ -389,10 +389,10 @@ class PhotoArchiveTests(unittest.TestCase):
         (folder2 / "recon" / "prior").mkdir(parents=True, exist_ok=True)
         (folder2 / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9, "urban": 0.7, "road": 0.8}}), encoding="utf-8")
         self.assertEqual([c["name"] for c in photo_session.required_checks(folder2)], ["skyline", "street"])
-        out = self.command("finish", folder2, *base, "--skip-check", "skyline:user stopped the analysis", "--skip-check", "street:user stopped the analysis",
-                           "--accept-unverified", "user stopped the analysis")
+        out = self.command("finish", folder2, *base, "--skip-check", "skyline:operator asked: stop the analysis", "--skip-check", "street:operator asked: stop the analysis",
+                           "--accept-unverified", "operator asked: stop the analysis")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
-        self.assertEqual([c["skipped"] for c in res["checks"]], ["user stopped the analysis"] * 2)
+        self.assertEqual([c["skipped"] for c in res["checks"]], ["operator asked: stop the analysis"] * 2)
         self.assertEqual(photo_session.checks_for_scene({"indoor": 0.9, "mountains": 0.9}), [])
         self.assertEqual(photo_session.checks_for_scene(None), [])
 
@@ -408,6 +408,148 @@ class PhotoArchiveTests(unittest.TestCase):
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertEqual(res["checks"][0]["skipped"], "operator asked: skip the skyline, it is Lago X")
         self.assertIsNone(res["checks"][0]["waived_by"])
+
+    def test_early_exit_takes_the_operator_words_at_the_start(self):
+        words = photo_session.OPERATOR_WORDS.match
+        for said in ("operator asked: stop", "User said: give me the answer", " operator confirmed: Quick only", "utente ha chiesto: fermati",
+                     "operatore ha detto: basta così", "usuario dijo: para", "utilisateur a demandé : arrête", "Benutzer hat gesagt: Schluss",
+                     "The operator asked: give me what you have", "L'utente ha chiesto: fermati", "L’utente ha chiesto: fermati",
+                     "l'operatore ha detto: basta", "el usuario dijo: para", "operador pidió: para", "l'utilisateur a demandé : arrête",
+                     "opérateur a demandé : arrête", "der Benutzer hat gesagt: Schluss", "Nutzer hat gesagt: Schluss",
+                     "operator requested: Quick only"):
+            self.assertTrue(words(said), said)
+        for agent in ("the user would want a quick answer", "operator's 40-minute hard limit", "operator asked for the answer now",
+                      "user stopped the run", "users said: stop", "budget gone; operator asked: stop", "the users said: stop",
+                      "l'utente vorrebbe: una risposta rapida"):
+            self.assertFalse(words(agent), agent)
+        base = ["--country", "Italy", "--city", "x", "--latitude", "46.2", "--longitude", "10.9", "--confidence", "low", "--heading", "unknown",
+                "--taken", "unknown"]
+        form = 'put "operator asked: …" in the reason as its first words'
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        r = self.run_cli("finish", folder, *base, "--accept-unverified", "the user would want a quick answer")
+        self.assertEqual(r.returncode, 1)                                                     # the agent's paraphrase is not the operator
+        self.assertIn(form, r.stderr)                                                         # the exact form that closes it
+        self.assertIn('"utente ha chiesto: …"', r.stderr)
+        out = self.command("finish", folder, *base, "--accept-unverified", "operator asked: stop")
+        self.assertEqual(json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]["accepted_unverified"],
+                         "operator asked: stop")
+        folder2 = Path(self.start()["folder"])
+        (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder2 / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder2 / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        r = self.run_cli("finish", folder2, *base, "--skip-check", "skyline:the user would want a quick answer",
+                         "--accept-unverified", "utente ha chiesto: fermati qui")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(form, r.stderr)
+        out = self.command("finish", folder2, *base, "--skip-check", "skyline:utente ha chiesto: fermati qui",
+                           "--accept-unverified", "utente ha chiesto: fermati qui")             # the operator's own language closes too
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["checks"][0]["skipped"], res["accepted_unverified"]), ("utente ha chiesto: fermati qui",) * 2)
+        folder3 = Path(self.start()["folder"])
+        (folder3 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        out = self.command("finish", folder3, *base, "--accept-unverified", "L'operatore ha chiesto: fermati qui")   # with its article
+        self.assertEqual(json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]["accepted_unverified"],
+                         "L'operatore ha chiesto: fermati qui")
+
+    def test_accept_unverified_is_recorded_beside_check_files(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "shore_rank.json").write_text("[]", encoding="utf-8")                         # a check ran and matched nothing
+        r = self.run_cli("finish", folder, "--country", "Austria", "--city", "Reutte", "--latitude", "47.55", "--longitude", "10.79",
+                         "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "the sheets matched nothing")
+        self.assertEqual(r.returncode, 0, r.stderr)                                           # never refused while a check file exists
+        self.assertIn("--accept-unverified recorded (the sheets matched nothing)", r.stderr)
+        res = json.loads((Path(json.loads(r.stdout)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["verification_artifacts"], 1)
+        self.assertEqual(res["accepted_unverified"], "the sheets matched nothing")
+
+    def test_supporting_artifacts_count_apart_from_executed_checks(self):
+        near, far, jpg = [46.2005, 10.9005], [46.218, 10.9], b"\xff\xd8\xff\xd9"            # ~68 m and ~2 km from 46.2, 10.9
+
+        def fit(bbox=None, cam=(46.2, 10.9)):
+            best = {"cam": list(cam), "total": 0.7}
+            tie = {"n": 5, "span_m": 400.0, "bearing": 90.0, "delta": 0.03, **({"bbox": bbox} if bbox else {"n": 1, "span_m": 0.0})}
+            other = {"cam": [47.0, 11.0], "total": 0.9}
+            return {"params": {"grid_m": 100}, "cams": [best, other],
+                    "clusters": [{"hit": 0, "rank": 1, "best": best, "tie": tie},
+                                 {"hit": 1, "rank": 2, "best": other, "tie": {"n": 3, "bbox": [46.99, 10.99, 47.01, 11.01]}}]}
+
+        def row(wgs, inliers, score):
+            return {"rank": 1, "id": "p1", "heading": None, "inliers": inliers, "score_global": score, "wgs": wgs}
+
+        def support(files, at=(46.2, 10.9)):
+            return photo_session.supporting_artifacts(self.scene_folder({}, files), at)
+        self.assertEqual(support({"fit.json": fit(bbox=[46.199, 10.895, 46.201, 10.905])}), ["fit.json"])   # the pin inside the tie stretch
+        self.assertEqual(support({"fit.json": fit(bbox=[46.199, 10.901, 46.201, 10.91])}), ["fit.json"])    # 77 m off it: within one grid step
+        self.assertEqual(support({"fit.json": fit(bbox=[46.199, 10.908, 46.201, 10.92])}), [])              # 620 m off it
+        self.assertEqual(support({"fit.json": fit(cam=(46.2005, 10.9))}), ["fit.json"])                     # one tied position: the best camera
+        self.assertEqual(support({"fit.json": fit(cam=(46.21, 10.9))}), [])
+        self.assertEqual(support({"fit.json": fit(bbox=[46.199, 10.895, 46.201, 10.905])}, at=(47.0, 11.0)), [])   # a lower cluster's stretch
+        ran = {"far_rank.json": [row(far, 40, 0.6)], "around.jpg": jpg, "around.index.json": [{"id": "abc", "heading": 90.0}],
+               "refsheet_alps.jpg": jpg, "ridge.json": {"ridge": [[0, 10]]}}
+        self.assertEqual(support(ran), [])                                                    # checks that ran, none placing the answer
+        self.assertEqual(support({"a_rank.json": [row(near, 12, 0.2)]}), ["a_rank.json"])
+        self.assertEqual(sorted(support({"evidence.jpg": jpg, "pose.json": {"camera_ll": [46.2003, 10.9004]}})), ["evidence.jpg", "pose.json"])
+        far_pose = {"pose.json": {"camera_ll": [46.65, 11.35]}}                             # a solve for a candidate 61 km away
+        self.assertEqual(support(far_pose), [])
+        self.assertEqual(photo_session.pinning_artifacts(self.scene_folder({}, far_pose), (46.2, 10.9)), ["pose.json"])   # the waiver: by content
+
+        def swept(wgs, sim, k=1):
+            return {"rank": k, "area_rank": k, "key": f"kakao:p{k}", "provider": "kakao", "id": f"p{k}", "lat": wgs[0], "lon": wgs[1],
+                    "score": 2.1, "area_score": 2.4, "sim_full": sim, "best_bearing": 90.0}
+        self.assertEqual(support({"sweep/ranked.json": [swept(near, 0.62)]}), ["sweep/ranked.json"])   # sweep.py rank: lat/lon, sim_full
+        self.assertEqual(support({"sweep/ranked.json": [swept(near, 0.12)]}), [])                     # near, but weak
+        self.assertEqual(support({"sweep/ranked.json": [swept(far, 0.62)]}), [])                      # strong, but 2 km away
+        self.assertEqual(support({"sweep/ranked.json": [swept(far, 0.3, k) for k in range(1, 11)] + [swept(near, 0.62, 11)]}), [])  # top 10
+        base = ["--country", "Italy", "--city", "x", "--latitude", "46.2", "--longitude", "10.9", "--confidence", "low", "--heading", "unknown",
+                "--taken", "unknown"]
+        line = ("Warning: no check supports this location: the answer is an unverified estimate. Next: record the match that places it, "
+                "evidence.py match.json --out match.jpg --match against the sheet cell or sweep view that shows the place (or terrain.py fit "
+                "--at 46.20000,10.90000 --ridge <ridge.json> for a skyline); otherwise say so in the answer, or --accept-unverified \"<reason>\".")
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"road": 0.9}}), encoding="utf-8")
+        for rel, body in ran.items():
+            (folder / rel).write_bytes(body if isinstance(body, bytes) else json.dumps(body).encode("utf-8"))
+        r = self.run_cli("finish", folder, *base)
+        self.assertEqual(r.returncode, 0, r.stderr)                                           # no refusal: the line says what the answer is
+        self.assertIn(line, r.stderr)
+        res = json.loads((Path(json.loads(r.stdout)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertTrue(res["checks"][0]["done"])                                             # the street check ran
+        self.assertGreaterEqual(res["verification_artifacts"], 3)
+        self.assertEqual(res["supporting_artifacts"], 0)
+        self.assertIsNone(res["accepted_unverified"])
+        folder2 = Path(self.start()["folder"])
+        (folder2 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder2 / "near_rank.json").write_text(json.dumps([row(near, 12, 0.2)]), encoding="utf-8")
+        r = self.run_cli("finish", folder2, *base)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn(line, r.stderr)
+        res = json.loads((Path(json.loads(r.stdout)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["verification_artifacts"], res["supporting_artifacts"]), (1, 1))
+        folder3 = Path(self.start()["folder"])
+        (folder3 / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder3 / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder3 / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"urban": 0.9, "road": 0.9}}), encoding="utf-8")
+        (folder3 / "sweep").mkdir()
+        (folder3 / "sweep" / "ranked.json").write_text(json.dumps([swept(near, 0.62), swept(far, 0.4, 2)]), encoding="utf-8")
+        r = self.run_cli("finish", folder3, *base[:8], "--confidence", "high", *base[10:])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("no check supports", r.stderr)                                       # the sweep's rank 1 at the answer supports it
+        res = json.loads((Path(json.loads(r.stdout)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["confidence"], res["supporting_artifacts"]), ("high", 1))
+
+    def test_finish_prints_the_stored_result_keys(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        r = self.run_cli("finish", folder, "--country", "South Korea", "--region", "Jeju", "--city", "Jeju City", "--latitude", "33.5131",
+                         "--longitude", "126.5263", "--confidence", "low", "--radius-m", "4000", "--heading", "215", "--taken", "2019..",
+                         "--accept-unverified", "operator asked: test fixture")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Stored result: country="South Korea", region="Jeju", city_or_nearest_locality="Jeju City", latitude=33.5131, '
+                      'longitude=126.5263, radius_m=4000.0, confidence="low", heading=215.0, taken="2019.."\n', r.stderr)
 
     def test_pinning_artifact_waives_a_scene_check(self):
         folder = Path(self.start()["folder"])
@@ -652,7 +794,7 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual((first["error_km"], first["game_score_estimate"], first["country_hit"]), (0.0, 5000, True))
         paris = Path(self.command("finish", poprad, "--country", "France", "--city", "Paris", "--latitude", "48.8566", "--longitude", "2.3522",
                                   "--confidence", "high", "--heading", "unknown", "--taken", "unknown",
-                                  "--accept-unverified", "user stopped: test fixture, no checks")["folder"])
+                                  "--accept-unverified", "operator asked: test fixture, no checks")["folder"])
         meta = json.loads((paris / "session.json").read_text(encoding="utf-8"))
         km = photo_session.haversine_km(48.8566, 2.3522, 49.1675, 20.0675)
         t = meta["truth"]
@@ -719,7 +861,7 @@ class PhotoArchiveTests(unittest.TestCase):
         poprad = Path(self.finish(folder)["folder"])
         self.command("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia")
         paris = ("--country", "France", "--city", "Paris", "--latitude", "48.8566", "--longitude", "2.3522", "--confidence", "high",
-                 "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture, no checks")
+                 "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: test fixture, no checks")
         state = json.loads((poprad / "session.json").read_text(encoding="utf-8"))
         for broken in ({k: v for k, v in state["truth"].items() if k != "latitude"}, {**state["truth"], "latitude": "north"}):
             with self.subTest(truth=broken.get("latitude")):
@@ -771,7 +913,7 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue(started["timezone"])
         folder = Path(started["folder"])
         (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
-        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped (test)",
+        final = self.command("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "operator asked: stop (test)",
                              "--confidence", "low", env=env)
         report = Path(final["report"]).read_text(encoding="utf-8")
         self.assertNotIn("(None)", report)

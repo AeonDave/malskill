@@ -70,6 +70,7 @@ ENDPOINTS = [
 # overpass-api.de rejects curl's default User-Agent with HTTP 406; public instances ask clients to identify themselves
 UA = "geo-intelligence/1.0 (+https://github.com/AeonDave/malskill)"
 BACKOFF_S = 30                      # after HTTP 429/406 a mirror is not asked again for this long
+SLACK_S = 30                        # curl waits this long past the query's server-side timeout
 _blocked_until: dict[str, float] = {}
 
 
@@ -84,7 +85,7 @@ AREA_SET = re.compile(r"(\((?:area\[[^;]*\];)+\))->\.(\w+);")
 
 def _post(ep: str, ql: str, proxy: str | None, timeout: int) -> tuple[dict | None, str]:
     """(reply, "") or (None, "HTTP 504: <what the server said>")."""
-    cmd = ["curl", "-q", "-s", "-m", str(timeout + 30), "-A", UA, "-w", "\n%{http_code}", "--data-urlencode", f"data={ql}", ep]
+    cmd = ["curl", "-q", "-s", "-m", str(timeout + SLACK_S), "-A", UA, "-w", "\n%{http_code}", "--data-urlencode", f"data={ql}", ep]
     cmd += curl_args(proxy)
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     body, _, code = (r.stdout or "").rpartition("\n")
@@ -118,6 +119,7 @@ def run(ql: str, proxy: str | None, cache: Path, timeout: int = 180, rounds: int
         return json.loads(key.read_text(encoding="utf-8"))
     errs: dict[str, str] = {}
     empty_from = None
+    t0 = time.monotonic()
     for rnd in range(rounds):
         for ep in endpoints():
             if ep == empty_from:
@@ -128,6 +130,9 @@ def run(ql: str, proxy: str | None, cache: Path, timeout: int = 180, rounds: int
                     continue            # first pass: ask the other mirrors instead of waiting
                 print(f"Overpass mirror {ep.split('/')[2]} rate-limited, waiting {wait:.0f} s", file=sys.stderr)
                 time.sleep(wait)
+            # before the attempt, so a long or killed query still shows which mirror it was waiting on
+            print(f"Overpass {ep.split('/')[2]}: asking (gives up after {timeout + SLACK_S} s, {time.monotonic() - t0:.0f} s elapsed)",
+                  file=sys.stderr, flush=True)
             data, err = _post(ep, ql, proxy, timeout)
             if data is None:
                 errs[ep] = err

@@ -773,6 +773,7 @@
     $("answer-place").textContent = [r.city_or_nearest_locality, r.region, r.country].filter(Boolean).join(", ");
     $("answer-coords").textContent = fmtCoord(r.latitude, r.longitude);
     const bits = [`Confidence ${r.confidence || "unrated"}`];
+    if (r.supporting_artifacts === 0 || r.accepted_unverified) bits.push("unverified estimate");
     if (r.radius_m) bits.push(`radius ${fmtRadius(r.radius_m / 1000)}`);
     if (r.heading != null) bits.push(`heading ${Math.round(r.heading)}°`);
     if (r.heading == null && r.heading_hint) bits.push(`heading unknown, best match looks at ${Math.round(r.heading_hint.heading)}° (suggested)`);

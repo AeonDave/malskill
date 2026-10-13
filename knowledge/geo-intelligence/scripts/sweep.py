@@ -5,7 +5,7 @@
 # ///
 """City-scale street-level search: render every panorama of one or more manifests in several directions, embed the
 views with MegaLoc (a visual place-recognition model), then rank them all against the photo. Sample nothing: a
-whole town is usually a few thousand panoramas and a few minutes; sampling 15 % of one is how the right
+whole town is usually a few thousand panoramas (index prints its measured rate); sampling 15 % of one is how the right
 junction was missed in a real case, while the full sweep put it first of 9,203 (references/streetlevel.md).
 
   index  download the small ("low") imagery, render --views directions per panorama, embed, cache in
@@ -46,6 +46,7 @@ from geolib import pano as P  # noqa: E402
 from geolib.paths import cache_root  # noqa: E402
 
 ROOT = cache_root() / "sweep"
+FIRST_BATCH, PROGRESS_S = 16, 30     # index: panoramas before the first rate line; seconds between lines inside a batch
 
 
 def _font(size: int, text: str = ""):
@@ -106,11 +107,20 @@ def cmd_index(a) -> None:
         return
     emb = _megaloc.Embedder()
     w, h = cfg["size"]
-    t0 = time.time()
+    t0 = last = time.time()
     chunk_feats, n_since_save = [], 0
     failed = 0
-    for start in range(0, len(todo), 256):
-        batch = todo[start:start + 256]
+
+    def report(n: int) -> None:
+        nonlocal last
+        last = time.time()
+        el = last - t0
+        print(f"  {n}/{len(todo)} panoramas, {len(views)} views, {el:.0f}s, {el / n:.1f} s/panorama"
+              + (f", ~{el / n * (len(todo) - n) / 60:.1f} min left" if n < len(todo) else "") + (f", {failed} failed" if failed else ""),
+              flush=True)
+    start, size = 0, FIRST_BATCH                         # a short first batch: the measured rate shows early
+    while start < len(todo):
+        batch = todo[start:start + size]
         urls = []
         for r in batch:                                  # prefetch every URL-based low-level image in one parallel batch
             spec = r.get("low") or r.get("high") or {}
@@ -128,30 +138,29 @@ def cmd_index(a) -> None:
                 return r, [(b, v.render(b, cfg["pitch"], cfg["hfov"], w, h)) for b in bs]
             except Exception as e:  # noqa: BLE001
                 return r, str(e)
-        with ThreadPoolExecutor(a.workers) as ex:
-            out = list(ex.map(render, batch))
         ims, meta = [], []
-        for r, res in out:
-            if isinstance(res, str):
-                failed += 1
-                continue
-            entries[P.key(r)] = r
-            for b, im in res:
-                ims.append(im)
-                meta.append([P.key(r), b])
+        with ThreadPoolExecutor(a.workers) as ex:
+            for k, (r, res) in enumerate(ex.map(render, batch), start + 1):
+                if isinstance(res, str):
+                    failed += 1
+                else:
+                    entries[P.key(r)] = r
+                    for b, im in res:
+                        ims.append(im)
+                        meta.append([P.key(r), b])
+                if time.time() - last >= PROGRESS_S and k < start + len(batch):
+                    report(k)                            # rendered so far; this batch's views count once embedded
         if ims:
             chunk_feats.append(emb.embed(ims).astype(np.float16))
             views.extend(meta)
             n_since_save += len(ims)
-        if n_since_save >= 4000 or start + 256 >= len(todo):
+        start += len(batch)
+        size = 256
+        if n_since_save >= 4000 or start >= len(todo):
             feats = np.concatenate([feats] + chunk_feats) if chunk_feats else feats
             chunk_feats, n_since_save = [], 0
             _save_index(d, cfg, entries, views, feats)
-        el = time.time() - t0
-        doneN = min(start + 256, len(todo))
-        print(f"  {doneN}/{len(todo)} panoramas, {len(views)} views, {el:.0f}s"
-              + (f", ~{el / doneN * (len(todo) - doneN) / 60:.1f} min left" if doneN < len(todo) else "") + (f", {failed} failed" if failed else ""),
-              flush=True)
+        report(start)
     print(f"done: {len(entries)} panoramas, {len(views)} views in {d}" + (f" ({failed} could not be loaded)" if failed else ""))
 
 

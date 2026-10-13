@@ -15,8 +15,8 @@ Uses:
 
 Candidate source, pick one of three:
   --images <dir or glob>                          existing images, file name is the id
-  --items <.index.json> --render baidu|gsv      index written by baidu_pano.py sheet/sample or gsv.py sheet, rendered item by item
-  --panos panos.json --toward lat,lon | --headings 0,60,…   output of baidu_pano.py scan, rendered by heading (can add --within, --spread)
+  --items <.index.json> --render baidu|gsv      index written by baidu_pano.py sheet/sample or gsv.py sheet/targets, rendered item by item (--within needs their wgs: not in baidu_pano.py sheet)
+  --panos panos.json --toward lat,lon | --headings 0,60,…   output of gsv.py area or baidu_pano.py scan, rendered by heading (can add --within, --spread)
 
 Scoring:
   global descriptor: MegaLoc (default; a visual place-recognition model built for "same place, different day/year/camera"),
@@ -182,12 +182,19 @@ def _image_files(spec: str) -> list[Path]:
     return sorted(p.glob("*.jp*g")) + sorted(p.glob("*.png")) if p.is_dir() else [Path(x) for x in sorted(glob.glob(spec))]
 
 
+def _within(args):
+    """--within lat,lon,m as ((lat, lon), m), or None."""
+    if not args.within:
+        return None
+    wl, wo, wr = (float(v) for v in args.within.split(","))
+    return (wl, wo), wr
+
+
 def _items_from_panos(args) -> list[dict]:
     import baidu_pano as bp
     panos = json.loads(Path(args.panos).read_text(encoding="utf-8"))
-    if args.within:
-        wl, wo, wr = (float(v) for v in args.within.split(","))
-        panos = {k: v for k, v in panos.items() if geo.distance((wl, wo), tuple(v["wgs"])) <= wr}
+    if within := _within(args):
+        panos = {k: v for k, v in panos.items() if geo.distance(within[0], tuple(v["wgs"])) <= within[1]}
     if args.spread:
         panos = bp.thin(panos, args.spread)
     target = tuple(float(v) for v in args.toward.split(",")) if args.toward else None
@@ -230,24 +237,38 @@ def _load_candidates(args) -> tuple[list[dict], list[Image.Image]]:
             sys.exit(f"--images has no images: {args.images}")
         items = [{"id": f.stem, "file": str(f)} for f in files]
         return items, [Image.open(f) for f in files]
+    within = _within(args)
     if args.items:
         items = json.loads(Path(args.items).read_text(encoding="utf-8"))
+        if within:
+            if not any(it.get("wgs") for it in items):
+                sys.exit(f"{args.items} has no positions (baidu_pano.py sheet writes none): drop --within, or take candidates "
+                         "that carry them: baidu_pano.py sample or gsv.py targets (--items), baidu_pano.py scan (--panos)")
+            items = [it for it in items if it.get("wgs") and geo.distance(within[0], tuple(it["wgs"])) <= within[1]]
         if args.spread_headings:
             ds = [float(x) for x in args.spread_headings.split(",")]
             items = [dict(it, heading=(it["heading"] + d) % 360) for it in items for d in ds]
     elif args.panos:
         items = _items_from_panos(args)
     else:
-        sys.exit("candidate source: pick one of --images / --items / --panos")
-    if len(items) > args.max_candidates:
-        if args.toward and all(it.get("wgs") for it in items):
-            tgt = tuple(float(v) for v in args.toward.split(","))
-            items.sort(key=lambda it: geo.distance(tuple(it["wgs"]), tgt))
-            how = "nearest to the --toward target first"
+        sys.exit("no candidate source; give one of:\n"
+                 "  --images cands/                                  existing images, the file name is the id\n"
+                 "  --items targets.index.json --render gsv          an index from gsv.py targets/sheet or baidu_pano.py sheet/sample\n"
+                 "  --panos panos.json --headings 0,90,180,270       gsv.py area or baidu_pano.py scan output (or --toward lat,lon)\n"
+                 "--within lat,lon,m narrows --items and --panos")
+    cap = args.max_candidates
+    if len(items) > cap:
+        centre = (tuple(float(v) for v in args.toward.split(",")), "the --toward target") if args.toward else \
+            (within[0], "the --within centre") if within else None
+        if centre and all(it.get("wgs") for it in items):
+            items.sort(key=lambda it: geo.distance(tuple(it["wgs"]), centre[0]))
+            how = f"nearest to {centre[1]} first"
         else:
-            how = "in list order"
-        print(f"{len(items)} candidates, more than --max-candidates {args.max_candidates}; taking {args.max_candidates} {how} (narrow first with --within/--spread)", file=sys.stderr)
-        items = items[: args.max_candidates]
+            how = f"the first {cap} in file order"
+        print(f"{len(items)} candidates, above --max-candidates {cap}: scoring {cap}, {how}; {len(items) - cap} not scored. "
+              "Narrow first: --within lat,lon,m, fewer --headings / --spread-headings, or split the set and rank each part "
+              "(a higher --max-candidates costs memory)", file=sys.stderr, flush=True)
+        items = items[:cap]
     if not items:
         sys.exit("no candidates left: widen --within/--spread, or check the index file")
     first = str(items[0].get("id", ""))                # Google ids (official or user upload) render with gsv, the rest with Baidu
@@ -405,7 +426,7 @@ def main() -> None:
     r.add_argument("--toward", help="lat,lon")
     r.add_argument("--headings")
     r.add_argument("--offset", type=float, default=0)
-    r.add_argument("--within", help="lat,lon,radius in meters")
+    r.add_argument("--within", help="lat,lon,radius in meters: keep the --items / --panos candidates inside")
     r.add_argument("--spread", type=float, help="thinning spacing in meters")
     r.add_argument("--pitch", type=float, default=10)
     r.add_argument("--fov", type=float, default=80)

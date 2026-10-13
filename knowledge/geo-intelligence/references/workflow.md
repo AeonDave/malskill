@@ -168,14 +168,25 @@ When rank files exist but none qualifies, the refusal names the strongest view (
 score, its saved image) and the exits: open that view and answer there only if it shows the same fixed structures
 as the photo; otherwise run the check, or skip it. `--skip-check <name>:"<reason>"` and
 `--accept-unverified "<reason>"` close anyway and are recorded (`result.checks`, `result.accepted_unverified`);
-before 25 minutes only when the operator stopped or redirected the analysis (the reason then says
-`operator asked: …`), afterwards for any stated reason.
+before 25 minutes only when the operator stopped or redirected the analysis (the reason then starts with
+`operator asked:`, an article allowed; said, confirmed or requested, or the operator's language such as
+`l'utente ha chiesto:`, also count), afterwards for any stated reason. While verification files exist,
+`--accept-unverified` is never refused: its reason is recorded (the agent judged the answer unverified) and `finish`
+prints that it was.
 
 Use the real values (those are only syntax). Without `--latitude/--longitude` the pin is the country centre with a
 ≥100 km radius and confidence low (`result.coordinate_source` says so); `result.verification_artifacts` counts the
 rank, sheet, evidence, terrain, pose and mark files, plus fit outputs, street rankings and panorama sheet indexes
 recognised by content; recon's first pass (its outputs beside any `recon.json`, or under `recon/` mid-run) and
-detect.py sheets never count; `finish` warns when it is zero. Add `--radius-m <m>` and
+detect.py sheets never count; `finish` warns when it is zero. `result.supporting_artifacts` counts the files that
+support the answer's location: the pins above, tested at the answer (a `pose.py` solve only with its camera within
+150 m), a `sweep.py` ranking whose first 10 rows hold one within 150 m with `sim_full` ≥0.25, and a fit output whose
+leading cluster's tie stretch (`tie.bbox`, else its best camera) lies within one grid step of the pin. A check that
+ran and matched nothing is verification, not support: when verification files exist but none supports, `finish`
+closes and warns "no check supports this location", naming the next action (an `evidence.py --match` image against
+the sheet cell or sweep view that shows the place, or `terrain.py fit --at <answer>` for a skyline; otherwise say so,
+or `--accept-unverified "<reason>"`); the viewer's answer card reads "unverified estimate" at zero support or whenever
+`accepted_unverified` is set. `finish` echoes what it stored in one `Stored result:` line (the city is `city_or_nearest_locality`). Add `--radius-m <m>` and
 `--heading <deg>` when the answer has them, and `--taken <YYYY | YYYY-MM | YYYY-MM-DD[THH:MM] | A..B>` with
 `--taken-confidence` and `--taken-basis` (use `unknown` when the capture date is undetermined; omitting `--taken` is refused); `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and
