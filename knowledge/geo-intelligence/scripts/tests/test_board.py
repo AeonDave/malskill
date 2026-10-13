@@ -392,15 +392,26 @@ class ExclusionAndReportTests(unittest.TestCase):
         self.run_board("evidence", "--clue", "K2", "--for", "Echuca:5", "--why", "match", "--file", "frame.json")
         v = verdict(self.run_board("check"))
         self.assertTrue(v.startswith("Verdict: certain at district level: Echuca"), v)
-        self.assertIn("Quick is enough", v)
+        self.assertIn("nothing below district level on the board", v)              # certain, but coarse: one finer check if the data allow
+        self.assertIn("if the data allow", v)
+        self.assertNotIn("Quick is enough", v)
         self.run_board("clue", "shadow bearing", "--kind", "sun", "--status", "computed", "--file", "frame.json")
         self.run_board("evidence", "--clue", "K3", "--against", "Echuca:0.5", "--why", "sun", "--file", "frame.json")
         v = verdict(self.run_board("check"))
         self.assertIn("evidence against it (K3)", v)
+        self.run_board("add", "Hare Street", "--level", "road", "--parent", "Echuca", "--bbox", "-35.81,144.74,-35.80,144.75")
+        self.run_board("evidence", "--clue", "K1", "--for", "Hare Street:5", "--why", "sign on it", "--file", "frame.json")
+        self.run_board("evidence", "--clue", "K2", "--for", "Hare Street:5", "--why", "match", "--file", "frame.json")
+        (self.root / "evidence.jpg").write_bytes(bytes.fromhex("ffd8ffd9"))        # road level needs the evidence image
+        v = verdict(self.run_board("check"))                                       # the frontier is now the road: certain and fine
+        self.assertTrue(v.startswith("Verdict: certain at road level: Hare Street"), v)
+        self.assertIn("Quick is enough", v)
         self.run_board("clue", "bus destination", "--kind", "text", "--status", "read", "--file", "frame.json")
         self.run_board("evidence", "--clue", "K4", "--for", "Moama:20", "--why", "read", "--file", "frame.json")
-        v = verdict(self.run_board("check"))
-        self.assertIn("rivals not separated: Moama", v)
+        self.run_board("clue", "taxi livery", "--kind", "vehicle", "--status", "observed", "--file", "frame.json")
+        self.run_board("evidence", "--clue", "K5", "--for", "Moama:3", "--why", "livery", "--file", "frame.json")
+        v = verdict(self.run_board("check"))             # Moama (60) now out-scores Echuca (50): no longer dormant, the frontier is the district again
+        self.assertIn("rivals not separated: Echuca", v)
         self.assertIn("go Deep", v)
 
     def test_ingest_skips_self_assessed_uninformative_output(self):

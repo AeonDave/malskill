@@ -1064,8 +1064,11 @@ def cmd_check(args, p: Path) -> None:
     for name in [n for n, c in b["candidates"].items() if c.get("status") != "excluded"]:
         if b["falsify"].get(name):
             print(f"  ok   {name} falsification condition: {'; '.join(b['falsify'][name])}")
-    certain, head, why = _verdict(b, args.prior_by)
-    if certain:
+    certain, head, why, coarse = _verdict(b, args.prior_by)
+    if certain and coarse:
+        print(f"Verdict: certain at {head}; {coarse} → one step 6 check that can place it finer, if the data allow (no street-level "
+              f"coverage, no skyline, no text: finish at this level and say why); a level the user named and not reached → Deep")
+    elif certain:
         print(f"Verdict: certain at {head} → Quick is enough: finish, unless the user named a finer level or your step 9 confidence "
               f"for it is low (then go Deep)")
     else:
@@ -1077,14 +1080,19 @@ def cmd_check(args, p: Path) -> None:
         sys.exit(1)
 
 
-def _verdict(b: dict, prior_by: str) -> tuple[bool, str, list[str]]:
-    """Is the result certain at the board's frontier level? (certain, "level: leader share", reasons it is not). Uncertain when the
-    leader has no read or computed evidence, rests on one clue, has read or computed evidence against it, or a rival keeps ≥15 %
-    (the threshold of the alternatives warning). The step 9 confidence and a level the user named are the agent's to add."""
+COARSE_LEVELS = LEVELS[: LEVELS.index("area")]   # country … district: certain here, the answer can still go finer when the data allow
+
+
+def _verdict(b: dict, prior_by: str) -> tuple[bool, str, list[str], str]:
+    """Is the result certain at the board's frontier level? (certain, "level: leader share", reasons it is not, coarse note).
+    Uncertain when the leader has no read or computed evidence, rests on one clue, has read or computed evidence against it, or a
+    rival keeps ≥15 % (the threshold of the alternatives warning). The coarse note says when the level is coarse and no open
+    candidate lies below it: the verdict measures separation, not whether a finer level was reachable. The step 9 confidence and
+    a level the user named are the agent's to add."""
     lv = _frontier(b)
     rows = [r for r in _scores(b, lv, prior_by) if not r["excluded"]] if lv else []
     if not rows:
-        return False, "no level", ["no open candidate on the board"]
+        return False, "no level", ["no open candidate on the board"], ""
     top, why = rows[0], []
     if top["n_verified"] == 0:
         why.append("no read or computed evidence for the leader")
@@ -1097,7 +1105,10 @@ def _verdict(b: dict, prior_by: str) -> tuple[bool, str, list[str]]:
     rivals = [f"{r['name']} {r['share']:.0%}" for r in rows[1:] if r["share"] >= 0.15]
     if rivals:
         why.append("rivals not separated: " + ", ".join(rivals))
-    return not why, f"{LEVEL_LABEL[lv]} level: {top['name']} {top['share']:.0%}", why
+    finer = LEVELS[LEVELS.index(lv) + 1:]
+    below = any(c["level"] in finer and c.get("status") != "excluded" for c in b["candidates"].values())
+    coarse = f"nothing below {LEVEL_LABEL[lv]} level on the board" if lv in COARSE_LEVELS and not below else ""
+    return not why, f"{LEVEL_LABEL[lv]} level: {top['name']} {top['share']:.0%}", why, coarse
 
 
 def _ancestor_gap(b: dict, name: str, prior_by: str) -> str | None:

@@ -38,7 +38,7 @@ Several photos of one scene: one board; tag each clue `--file original/<photo>`;
 
 Always start in Quick and say so. Deep follows from the Quick result, never from a target level: when the Quick checks are done, or the Quick clock ends, run `board.py check`; its `Verdict:` line says whether the result is certain. Never a question such as "shall I?" (the user can stop you at any time). The first case that fits applies:
 1. The user asked for Deep, or named a level the result has not reached → Deep.
-2. Certain (the verdict says so, and your step 9 confidence at the level you answer is medium or better) → `finish`: Quick was enough. With no file from a check in the session yet, run one decisive check first (step 6 table by scene type).
+2. Certain (the verdict says so, and your step 9 confidence at the level you answer is medium or better) → `finish`: Quick was enough. When the verdict adds that nothing lies below that level on the board, run one step 6 check that can place it finer, within what the data allow (no street-level coverage, no skyline, no readable text: `finish` at the level reached and say why); with no file from a check in the session yet, run one decisive check first (step 6 table by scene type).
 3. Uncertain (the verdict names why: no read or computed evidence for the leader, a single clue, evidence against it, rivals not separated; or your confidence is low, or decisive checks contradict each other) → one more Quick block only when a decisive test is already named; otherwise write the Quick answer in `report.md`, `viewer.py say "going Deep: <check>"` and run that check in the same session. Say why you escalated.
 4. Deep ends by the conclude rule in "Budget and stopping"; `finish` runs once, at that end.
 
