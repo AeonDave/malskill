@@ -36,7 +36,8 @@
       this.truth = null;                                    // {lat, lon, name}
       this.manual = null;                                   // centre chosen by dragging, until Follow
       this.layers = { matches: true, coverage: false, marks: true };
-      this.data = { cameras: [], lines: [], points: [], images: [], matches: [], coverage: [] };
+      this.data = { cameras: [], lines: [], points: [], images: [], areas: [], levels: [], matches: [], coverage: [] };
+      this.level = null;                                    // the level chip shown (null: every level)
       this.selected = null;                                 // {kind, item}
       this.hits = [];                                       // screen positions of clickable markers, rebuilt each frame
       this.lastScreen = null;
@@ -177,6 +178,8 @@
         });
       }
       if (this.layers.marks) {
+        const labels = [];
+        for (const a of d.areas) this.drawArea(g, toScreen, kmToPx, a, labels);   // under the other marks
         g.font = "600 12px " + getComputedStyle(document.body).fontFamily;
         for (const l of d.lines) {
           const a = toScreen(l.from[0], l.from[1]), b = toScreen(l.to[0], l.to[1]);
@@ -216,6 +219,53 @@
         if (p.visible) { g.beginPath(); g.arc(p.x, p.y, 11, 0, Math.PI * 2); g.strokeStyle = COLORS.ink; g.lineWidth = 1.5; g.stroke(); this.lastScreen = p; }
         else this.lastScreen = null;
       }
+    }
+
+    // a `mark area` file: rings with a faint fill and lines (corridors, shores), dashed below ground. While a level chip is on,
+    // features of other levels hide and those without a level (the footprint) stay; a name shows once its feature is readable
+    // and its box overlaps no name already drawn in this frame (labels: the frame's boxes, reset by drawLayers)
+    drawArea(g, toScreen, kmToPx, a, labels) {
+      const font = "600 11px " + getComputedStyle(document.body).fontFamily;
+      const text = (lat, lon, s) => {
+        const p = toScreen(lat, lon);
+        if (!p.visible) return;
+        const t = s.length > 28 ? s.slice(0, 27) + "…" : s;
+        g.font = font;
+        const w = g.measureText(t).width + 8, box = { x0: p.x - w / 2, x1: p.x + w / 2, y0: p.y - 9, y1: p.y + 7 };
+        if (labels.some((o) => box.x0 < o.x1 && o.x0 < box.x1 && box.y0 < o.y1 && o.y0 < box.y1)) return;
+        labels.push(box);
+        g.textAlign = "center"; g.lineWidth = 4; g.strokeStyle = COLORS.halo; g.fillStyle = COLORS.ink;
+        g.strokeText(t, p.x, p.y); g.fillText(t, p.x, p.y); g.textAlign = "start";
+      };
+      let named = false;
+      for (const f of a.features || []) {
+        const lv = f.levels || [], rings = f.rings || [], lines = f.lines || [];
+        if (this.level != null && lv.length && !lv.includes(this.level)) continue;
+        g.beginPath();
+        let seen = false;
+        for (const r of rings) seen = this.trace(g, toScreen, r, true) || seen;
+        if (seen && rings.length) { g.fillStyle = "rgba(230,236,245,0.08)"; g.fill("evenodd"); }
+        for (const l of lines) seen = this.trace(g, toScreen, l, false) || seen;
+        if (!seen) continue;
+        g.setLineDash(f.dashed ? [5, 4] : []);
+        g.strokeStyle = "rgba(230,236,245,0.8)"; g.lineWidth = 1.2; g.stroke(); g.setLineDash([]);
+        const name = f.tags && f.tags.name;
+        named = named || !!name;
+        if (name && kmToPx(f.r_km || 0) >= 24) text(f.lat, f.lon, name);
+      }
+      if (!named && a.label && a.lat != null && kmToPx(a.r_km || 0) >= 24) text(a.lat, a.lon, a.label);
+    }
+
+    // one ring or line of [lon, lat] into the current path; back-side globe points sit on the limb, so a ring closes along the horizon
+    trace(g, toScreen, coords, closed) {
+      let first = true, seen = false;
+      for (const [lon, lat] of coords) {
+        const p = toScreen(lat, lon);
+        seen = seen || p.visible;
+        if (first) { g.moveTo(p.x, p.y); first = false; } else g.lineTo(p.x, p.y);
+      }
+      if (closed) g.closePath();
+      return seen;
     }
 
     get controlled() { return !!this.manual || this.zoomOffset !== 0; }
@@ -333,23 +383,13 @@
 
     drawCountries(g, R, cx, cy) {
       const zoomed = this.view.z > 1.5;
+      const proj = (lat, lon) => this.project(lat, lon, R, cx, cy);
       for (const f of this.countries) {
         const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
         const hl = this.highlight.get(f.properties.iso2);
         g.beginPath();
         let any = false;
-        for (const poly of polys) {
-          for (const ring of poly) {
-            let first = true, seen = false;
-            for (const [lon, lat] of ring) {
-              const p = this.project(lat, lon, R, cx, cy);
-              seen = seen || p.visible;
-              if (first) { g.moveTo(p.x, p.y); first = false; } else g.lineTo(p.x, p.y);
-            }
-            g.closePath();
-            any = any || seen;
-          }
-        }
+        for (const poly of polys) for (const ring of poly) any = this.trace(g, proj, ring, true) || any;
         if (!any) continue;
         g.fillStyle = hl ? `rgba(240,180,69,${(0.18 + 0.45 * hl).toFixed(3)})` : COLORS.land;
         g.fill();
@@ -576,7 +616,34 @@
     $("layer-coverage").title = (L.coverage || []).length
       ? "Every panorama position found for the search (gsv.py area, pano.py list). On: dots, or one ring with the count when they are too close to tell apart; the view flies to them. Follow returns."
       : "No panorama list in the session yet (gsv.py area or pano.py list writes one).";
-    $("layer-marks").textContent = `Marks ${(L.cameras || []).length + (L.lines || []).length + (L.points || []).length + (L.images || []).length}`;
+    $("layer-marks").textContent = `Marks ${(L.cameras || []).length + (L.lines || []).length + (L.points || []).length + (L.images || []).length + (L.areas || []).length}`;
+  }
+
+  // level chips beside the layer toggles, once an area feature carries a level: all, then each level, sorted numerically
+  let lastLevels = "";
+  function renderLevels(s) {
+    const lv = (s.layers && s.layers.levels) || [];
+    if (stage.level != null && !lv.includes(stage.level)) stage.level = null;   // that level left the marks
+    const key = lv.join("|") + "#" + stage.level;
+    if (key === lastLevels) return;
+    lastLevels = key;
+    $("levels").hidden = !lv.length;
+    $("levels").innerHTML = [null, ...lv].map((v) =>
+      `<button type="button" data-level="${v == null ? "" : esc(v)}" class="${v === stage.level ? "on" : ""}" title="${v == null ? "Every level" : `Level ${esc(v)} and the outlines without a level`}">${v == null ? "all" : esc(v)}</button>`).join("");
+  }
+
+  const generated = (s) => s.status === "completed" && !!s.result && s.result.outcome === "generated";
+
+  // the truth line when a generated image is involved: a generated answer against any truth, or a place answer against a
+  // generated truth; "" otherwise (the place-to-place line is written where it is shown)
+  function generatedTruth(s, lead) {
+    const t = s.truth;
+    if (!t) return "";
+    if (generated(s)) {
+      if (t.outcome === "generated") return `${lead}: generated image (confirmed).`;
+      return t.latitude != null ? `${lead}: ${truthName(t)}, ${fmtCoord(t.latitude, t.longitude)} (false stop: the photo shows a real place).` : "";
+    }
+    return t.outcome === "generated" ? `${lead}: generated image, no real place (missed generation).` : "";
   }
 
   function showCard(sel) {
@@ -632,6 +699,15 @@
   function renderScope(s) {
     const f = s.focus;
     const note = $("scope-note");
+    if (generated(s)) {                                   // finished with no place: before the no-focus branch, which means "no candidate yet"
+      $("scope-level").textContent = "Answer";
+      $("scope-name").textContent = "Generated image: no real place";
+      $("scope-coords").textContent = "";
+      note.textContent = `Basis: ${(s.result.generated || {}).basis || "not recorded"}.`;
+      const tr = $("scope-truth"), line = generatedTruth(s, "Truth");
+      tr.hidden = !line; tr.textContent = line;
+      return;
+    }
     if (!f) {
       $("scope-level").textContent = "Whole world";
       $("scope-name").textContent = "No candidate yet";
@@ -646,8 +722,11 @@
       const tk = s.result && s.result.taken, wt = s.result && s.result.when_text;
       note.textContent = (f.radius_known ? `Radius ${fmtRadius(f.radius_km)}` : "No radius given") + (f.heading != null ? `, camera heading ${Math.round(f.heading)}°` : "")
         + (tk ? `. Taken ${tk.text}${tk.time ? " " + tk.time : ""} (${tk.confidence})` : (wt ? `. When: ${wt.length > 110 ? wt.slice(0, 110) + "…" : wt}` : ". When: not given")) + ".";
-      const tr = $("scope-truth");
-      if (s.truth && s.truth.latitude != null) {
+      const tr = $("scope-truth"), missed = generatedTruth(s, "Truth");
+      if (missed) {
+        tr.hidden = false;
+        tr.textContent = missed;
+      } else if (s.truth && s.truth.latitude != null) {
         tr.hidden = false;
         tr.textContent = `Truth: ${truthName(s.truth)}, ${fmtCoord(s.truth.latitude, s.truth.longitude)}` + (s.truth.error_km != null ? `, ${fmtRadius(s.truth.error_km)} from the answer` : "") + ".";
       } else tr.hidden = true;
@@ -669,6 +748,22 @@
   function renderAnswer(s) {
     const box = $("answer");
     const r = s.result;
+    const gen = generated(s);
+    $("answer-badge").hidden = !gen;                      // red only on a finished generated outcome
+    if (gen) {
+      const g = r.generated || {};
+      box.hidden = false;
+      $("answer-place").textContent = "Generated image: no real place";
+      $("answer-coords").textContent = "";
+      $("answer-when").innerHTML = `<b>Basis:</b> ${esc(g.basis || "not recorded")}`;
+      $("answer-detail").textContent = (g.score != null ? `Detector ${Number(g.score).toFixed(2)}${g.model ? " (" + g.model + ")" : ""}: a ranking, not the basis`
+        : g.skipped ? `Detector skipped (${g.skipped})` : "Detector not run")
+        + (g.override ? `; the operator had said real (${g.override.reason})` : "") + ".";
+      const tr = $("answer-truth"), line = generatedTruth(s, "Truth recorded");
+      tr.hidden = !line; tr.textContent = line;
+      $("answer-evidence").hidden = true;
+      return;
+    }
     if (s.status !== "completed" || !r || r.latitude == null) { box.hidden = true; return; }
     box.hidden = false;
     $("answer-place").textContent = [r.city_or_nearest_locality, r.region, r.country].filter(Boolean).join(", ");
@@ -686,8 +781,11 @@
     } else {
       w.innerHTML = `<b>Taken:</b> <span class="muted">not given</span>`;
     }
-    const tr = $("answer-truth");
-    if (s.truth && s.truth.latitude != null) {
+    const tr = $("answer-truth"), missed = generatedTruth(s, "Truth recorded");
+    if (missed) {
+      tr.hidden = false;
+      tr.textContent = missed;
+    } else if (s.truth && s.truth.latitude != null) {
       tr.hidden = false;
       const hits = [s.truth.country_hit === true ? "country right" : s.truth.country_hit === false ? "country wrong" : null,
                     s.truth.region_hit === true ? "region right" : s.truth.region_hit === false ? "region wrong" : null].filter(Boolean).join(", ");
@@ -798,9 +896,10 @@
     });
     // when the answer is in, only the answer stays on the map
     stage.markers = s.status === "completed" ? [] : markers;
-    stage.data = Object.assign({ cameras: [], lines: [], points: [], images: [], matches: [], coverage: [] }, s.layers || {});
+    stage.data = Object.assign({ cameras: [], lines: [], points: [], images: [], areas: [], levels: [], matches: [], coverage: [] }, s.layers || {});
     stage.data.coverage = (stage.data.coverage || []).map((c) => Array.isArray(c) ? { lat: c[0], lon: c[1] } : c);   // snapshots made before the cards
     layerCounts(s);
+    renderLevels(s);
     const focus = s.focus ? { ...s.focus } : null;
     if (s.truth && s.truth.latitude != null) {
       stage.truth = { lat: s.truth.latitude, lon: s.truth.longitude, name: truthName(s.truth) };
@@ -826,13 +925,20 @@
     renderStages(s);
     renderScope(s);
     $("now").textContent = s.warning ? `Attention: ${s.warning}` : (s.now || "Waiting for the first command.");
-    const ck = s.checks || [];
+    const ck = generated(s) ? [] : (s.checks || []);      // a generated image has no place left to check
     $("checks").hidden = !ck.length;
     if (ck.length) {
       // the same four states as `photo_session.py checks`: a waived or skipped check no longer blocks finish
       const state = (c) => c.done ? "✓" : c.skipped ? `skipped: ${c.skipped}` : (c.waived_by || []).length ? `waived by ${c.waived_by[0]}` : "missing";
       $("checks").innerHTML = "Required checks: " + ck.map((c) => `<span class="${state(c) === "missing" ? "check-missing" : "check-done"}" title="${esc(c.why || "")}">${esc(c.name)} ${esc(state(c))}</span>`).join(" · ");
     }
+    // the detector before the finish: model status, never a verdict; the operator's "it is real" replaces it
+    const ad = s.aidet, ov = s.generated_override;
+    const flag = s.status === "completed" ? "" : ov ? "Operator: real, continue"
+      : ad && ad.flagged ? `Detector ${Number(ad.p_ai).toFixed(2)} generated-like: a ranking, not a verdict` : "";
+    $("aidet").hidden = !flag;
+    $("aidet").textContent = flag;
+    $("aidet").title = ov ? ov.reason || "" : ad && ad.model ? `${ad.model}, threshold ${ad.threshold}` : "";
     renderAnswer(s);
     renderCandidates(s);
     renderActivity(s);
@@ -883,10 +989,17 @@
       // switching a layer on takes the view to its points (Follow returns to the analysis)
       const pts = name === "coverage" ? stage.data.coverage
         : name === "matches" ? stage.data.matches.map((m) => [m.lat, m.lon])
-        : [...stage.data.cameras, ...stage.data.points, ...stage.data.images].filter((m) => m.lat != null).map((m) => [m.lat, m.lon]);
+        : [...stage.data.cameras, ...stage.data.points, ...stage.data.images, ...stage.data.areas.flatMap((a) => a.features || [])]
+          .filter((m) => m.lat != null).map((m) => [m.lat, m.lon]);
       if (pts.length) { const e = Stage.extent(pts); stage.flyTo(e.lat, e.lon, Math.max(e.radius_km * 1.4, 0.3)); }
     });
   }
+  $("levels").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    stage.level = b.dataset.level === "" ? null : Number(b.dataset.level);
+    if (state) renderLevels(state);
+  });
   setInterval(placeCard, 50);
   $("zoom-in").addEventListener("click", () => stage.nudgeZoom(1));
   $("zoom-out").addEventListener("click", () => stage.nudgeZoom(-1));

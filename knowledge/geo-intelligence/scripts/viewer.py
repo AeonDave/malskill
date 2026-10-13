@@ -18,7 +18,10 @@ what the analysis is doing right now.
   viewer.py mark line --from lat,lon (--to lat,lon | --bearing B --km N) [--label T]   a sight line or alignment
   viewer.py mark point --lat L --lon L --label T [--image FILE]             a named place (anchor, peak, building)
   viewer.py mark image FILE --lat L --lon L [--heading H] [--label T]       a found photo or panorama at its position
-  viewer.py mark list | clear [--kind camera|line|point|image]
+  viewer.py mark area FILE.geojson [--label T] [--level L]                  outlines and lines of any GeoJSON (osm.py geom: footprints,
+                                                                            indoor rooms and corridors, shores, routes), first 500 features;
+                                                                            --level for features that carry none (-1: underground)
+  viewer.py mark list | clear [--kind camera|line|point|image|area]
 
 SESSION defaults to the current directory (or a parent) holding session.json; the folder keeps being served after
 photo_session.py finish renames it. The server stops on Close, on `stop`, on Ctrl+C, and by itself after
@@ -33,9 +36,15 @@ The page re-reads the folder every 2 s and shows:
   candidates  every board level with shares, verified-evidence counts and exclusions
   activity    `say` lines, board.py log entries and every new file, newest first
   truth       after photo_session.py truth: the real spot in teal, a dashed line to the answer, the error in km
+  generated   a finish --generated answer: "Generated image: no real place" with its basis and a red badge, no globe target;
+              before the finish, recon/aidet/aidet.json at or above its threshold adds one muted line to Now (a ranking,
+              not a verdict), replaced by "Operator: real, continue" once photo_session.py not-generated recorded the operator
   map layers  marks (viewer_marks.json, from `mark`), the top rows of every *_rank.json written by match.py
               (position, heading, score, the saved view as a thumbnail), the panoramas of every *.index.json as
-              faint coverage dots; click a marker for its card, buttons toggle the layers
+              faint coverage dots; click a marker for its card, buttons toggle the layers. Area marks draw rings (faint fill)
+              and lines, dashed below ground (level or layer < 0), names once a feature is large enough to read; when a
+              feature carries a level, chips (all, then each level) show one floor plus the features without a level.
+              Display only: no coordinate, radius or confidence changes
   analysis    images whose name says what they are (ridge, fit, overlay, evidence, match, sheet, pose, _rank)
   skyline     terrain.py fit --sheet's <sheet>_skyline.jpg/.json: the top three synthetic skylines over the photo, ranked, summit names
   coverage    every panorama of the session's lists (gsv.py area, pano.py list/index) as selectable dots: id, provider, date, road, a link to open it
@@ -91,6 +100,8 @@ STAGES = ["Gut call", "Recon", "Candidates", "Pinpoint", "Verify", "Done"]
 PINPOINT_MARK = re.compile(r"(_rank\.|^rank[._]|_views/|^match|^gsv|^sweep|^terrain|^sun|^pose|^sat_scan|^pano|^refsheet|^osm|^tiles?[_/]|^evidence|\.index\.json$)", re.I)
 MAX_ACTIVITY = 150
 MAX_ARTIFACTS = 400
+MAX_AREA_FEATURES = 500                                    # per `mark area` file: the page redraws every feature each frame
+AREA_TAGS = ("name", "level", "layer", "indoor", "building", "highway", "ref")   # the OSM tags an area feature keeps
 
 
 # ---------------------------------------------------------------- session folder
@@ -300,6 +311,116 @@ def destination(lat: float, lon: float, bearing_deg: float, km: float) -> tuple[
     return round(lat2, 6), round((lon2 + 540) % 360 - 180, 6)
 
 
+def _numbers(value) -> list[int | float]:
+    """An OSM level or layer value as numbers: '-1' → [-1], '0;1' → [0, 1]; parts that are no number ('B1') are skipped."""
+    out = []
+    for part in str(value).split(";") if value is not None else ():
+        try:
+            v = float(part)
+        except ValueError:
+            continue
+        if math.isfinite(v):
+            out.append(int(v) if v.is_integer() else v)
+    return out
+
+
+def _paths(geom) -> tuple[list, list]:
+    """A GeoJSON geometry as (rings, lines) of [lon, lat] rounded to 1e-6°. A closed LineString is a ring: osm.py writes a closed
+    way without a building or area tag (a mall, a platform) as a line. Points and unreadable geometry give ([], [])."""
+    if not isinstance(geom, dict):
+        return [], []
+    kind, coords = geom.get("type"), geom.get("coordinates")
+    rings, lines = [], []
+    try:
+        if kind == "Polygon":
+            parts, closed = coords, True
+        elif kind == "MultiPolygon":
+            parts, closed = [ring for poly in coords for ring in poly], True
+        elif kind in ("LineString", "MultiLineString"):
+            parts, closed = ([coords] if kind == "LineString" else coords), False
+        else:
+            return [], []
+        for part in parts:
+            pts = [[round(float(p[0]), 6), round(float(p[1]), 6)] for p in part]
+            if closed or (len(pts) >= 4 and pts[0] == pts[-1]):
+                if len(pts) >= 3:
+                    rings.append(pts)
+            elif len(pts) >= 2:
+                lines.append(pts)
+    except (TypeError, ValueError, IndexError):
+        return [], []
+    return rings, lines
+
+
+def _anchor(rings: list, lines: list) -> tuple[float, float, float]:
+    """(lat, lon, radius_km) of a feature: the area centroid of its first ring (its vertex mean when the ring has no area), else
+    the middle vertex of its first line; the radius reaches the farthest vertex."""
+    if rings:
+        ring = rings[0]
+        x0, y0 = ring[0]                             # relative to the first vertex: no cancellation for a room 1e-5° wide
+        a = cx = cy = 0.0
+        for (xa, ya), (xb, yb) in zip(ring, ring[1:] + ring[:1]):
+            xa, ya, xb, yb = xa - x0, ya - y0, xb - x0, yb - y0
+            k = xa * yb - xb * ya
+            a, cx, cy = a + k, cx + (xa + xb) * k, cy + (ya + yb) * k
+        if abs(a) > 1e-14:
+            lon, lat = x0 + cx / (3 * a), y0 + cy / (3 * a)
+        else:
+            lon, lat = sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)
+    else:
+        lon, lat = lines[0][len(lines[0]) // 2]
+    k = math.cos(math.radians(lat))
+    r_km = max(math.hypot((p[0] - lon) * k, p[1] - lat) for path in rings + lines for p in path) * 111.32
+    return round(lat, 6), round(lon, 6), round(r_km, 4)
+
+
+def area_mark(path: Path, label: str | None, level: float | None) -> tuple[dict, str]:
+    """`mark area`: the rings and lines of a GeoJSON file's first MAX_AREA_FEATURES line or area features, each with its AREA_TAGS,
+    its levels and an underground flag (level or layer below 0); --level fills features without a level. Returns the mark and
+    the line that reports what was kept, dropped over the cap, and skipped (points, no geometry)."""
+    data = _read_json(path)
+    kind = data.get("type") if isinstance(data, dict) else None
+    if kind == "FeatureCollection" and isinstance(data.get("features"), list):
+        raw = data["features"]
+    elif kind == "Feature":
+        raw = [data]
+    elif isinstance(data, dict) and "coordinates" in data:
+        raw = [{"geometry": data}]
+    else:
+        raise SystemExit(f"{path} is not GeoJSON (a FeatureCollection, a Feature or a geometry): mark area reads osm.py geom output")
+    feats, skipped = [], {}
+    for f in raw:
+        f = f if isinstance(f, dict) else {}
+        rings, lines = _paths(f.get("geometry"))
+        if not rings and not lines:
+            geom = f.get("geometry")
+            name = str(geom.get("type")) if isinstance(geom, dict) else "no geometry"
+            skipped[name] = skipped.get(name, 0) + 1
+            continue
+        props = f.get("properties") if isinstance(f.get("properties"), dict) else {}
+        tags = {k: str(props[k])[:120] for k in AREA_TAGS if props.get(k) not in (None, "")}
+        if level is not None and "level" not in tags:
+            tags["level"] = f"{level:g}"
+        levels = _numbers(tags.get("level"))
+        lat, lon, r_km = _anchor(rings, lines)
+        feats.append({"id": str(f.get("id") or ""), "tags": tags, "levels": levels, "dashed": any(v < 0 for v in levels + _numbers(tags.get("layer"))),
+                      "rings": rings, "lines": lines, "lat": lat, "lon": lon, "r_km": r_km})
+    skip_note = f"skipped {sum(skipped.values())} ({', '.join(sorted(skipped))}): not lines or areas" if skipped else ""
+    if not feats:
+        raise SystemExit(f"{path} holds no line or area to draw ({skip_note or 'no features'}); mark point draws a single place")
+    kept, dropped = feats[:MAX_AREA_FEATURES], len(feats) - min(len(feats), MAX_AREA_FEATURES)
+    lat, lon = sum(f["lat"] for f in kept) / len(kept), sum(f["lon"] for f in kept) / len(kept)
+    k = math.cos(math.radians(lat))
+    r_km = max(math.hypot((f["lon"] - lon) * k, f["lat"] - lat) * 111.32 + f["r_km"] for f in kept)
+    levels = sorted({v for f in kept for v in f["levels"]})
+    mark = {"kind": "area", "source": path.name, "label": label or "", "features": kept, "lat": round(lat, 6), "lon": round(lon, 6),
+            "r_km": round(r_km, 4), "dropped": dropped, "skipped": sum(skipped.values())}
+    log = "; ".join(x for x in (
+        f"area {label or path.name}: {len(kept)} features" + (f", levels {', '.join(f'{v:g}' for v in levels)}" if levels else ", no levels"),
+        f"dropped {dropped} over the {MAX_AREA_FEATURES} cap: narrow the query or split the file" if dropped else "", skip_note) if x)
+    return mark, log
+
+
 def ingest_ranks(folder: Path) -> list[dict]:
     """Top rows of the newest match.py rank files: position, heading, score, saved view."""
     files = sorted((p for p in folder.rglob("*.json") if not p.name.endswith(".index.json") and p.name not in SKIP_FILES
@@ -386,8 +507,10 @@ def map_layers(folder: Path) -> dict:
     for m in marks:
         if m.get("file"):                                 # image marks, and point marks with --image: the card shows the file
             m["url"] = "/files/" + m["file"] if (folder / m["file"]).is_file() else None
+    areas = [m for m in marks if m["kind"] == "area" and isinstance(m.get("features"), list)]
     return {"cameras": [m for m in marks if m["kind"] == "camera"], "lines": [m for m in marks if m["kind"] == "line"],
             "points": [m for m in marks if m["kind"] == "point"], "images": [m for m in marks if m["kind"] == "image"],
+            "areas": areas, "levels": sorted({v for a in areas for f in a["features"] if isinstance(f, dict) for v in f.get("levels") or []}),
             "matches": ingest_ranks(folder), "coverage": ingest_coverage(folder)}
 
 
@@ -472,7 +595,8 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
         gone = {"folder": str(folder), "name": folder.name, "title": folder.name, "photos": [], "status": "pending", "stage": "Gut call",
                 "stages": STAGES, "focus": None, "candidates": [], "candidates_source": "board", "coherence": [], "clues": [], "evidence": [],
                 "now": "", "warning": f"the session folder is gone: {folder}", "activity": [], "artifacts": [], "report_md": "", "recon_md": "",
-                "tiles": tiles, "layers": {"cameras": [], "lines": [], "points": [], "images": [], "matches": [], "coverage": []}, "analysis_images": []}
+                "tiles": tiles, "layers": {"cameras": [], "lines": [], "points": [], "images": [], "areas": [], "levels": [], "matches": [], "coverage": []},
+                "analysis_images": []}
         gone["version"] = hashlib.sha1(json.dumps(gone, sort_keys=True).encode("utf-8")).hexdigest()[:16]
         return gone
     session = _read_json(folder / "session.json") or {}
@@ -487,7 +611,8 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
             session = {**session, "result": result}
         except Exception:  # noqa: BLE001  (best effort: the page must never fail on an old session)
             pass
-    if session.get("status") == "completed" and result.get("latitude") is None:
+    generated = session.get("status") == "completed" and _ps.outcome(result) == "generated"   # finish --generated: done, with no place
+    if session.get("status") == "completed" and result.get("latitude") is None and not generated:
         # closed by hand (status edited, no answer): photo_session.py finish never does this; keep the page in analysis mode
         session = {**session, "status": "pending"}
         warning = "session.json says completed but holds no answer: close the session with photo_session.py finish (coordinates and a radius), never by editing the file"
@@ -519,7 +644,8 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
         "completed_at": session.get("completed_at"), "result": session.get("result"), "truth": session.get("truth"),
         "photo_url": photos[0]["url"] if photos else None,
         "stage": stage_of(session, b, artifacts, folder), "stages": STAGES,
-        "focus": focus_of(session, b, rows) if source == "board" else gut_focus(session, rows),
+        "focus": None if generated else focus_of(session, b, rows) if source == "board" else gut_focus(session, rows),
+        "aidet": _ps.detector(folder), "generated_override": session.get("generated_override"),
         "candidates": rows, "candidates_source": source, "coherence": coherence_notes(b, rows) if source == "board" else [],
         "clues": [{"id": k, **v} for k, v in (b or {}).get("clues", {}).items()],
         "evidence": (b or {}).get("evidence", []),
@@ -862,7 +988,8 @@ def cmd_mark(args) -> int:
     marks = read_marks(session)
     if args.what == "list":
         for i, m in enumerate(marks):
-            print(i, json.dumps(m, ensure_ascii=False))
+            brief = {**m, "features": len(m["features"])} if isinstance(m.get("features"), list) else m   # an area: its count, not its rings
+            print(i, json.dumps(brief, ensure_ascii=False))
         return 0
     if args.what == "clear":
         keep = [m for m in marks if args.kind and m["kind"] != args.kind]
@@ -870,11 +997,19 @@ def cmd_mark(args) -> int:
         print(f"{len(marks) - len(keep)} marks removed")
         return 0
     stamp = datetime.now().astimezone().isoformat(timespec="seconds")
-    needed = {"camera": ("lat", "lon", "heading"), "point": ("lat", "lon", "label"), "image": ("file", "lat", "lon"), "line": ("from_",)}
+    needed = {"camera": ("lat", "lon", "heading"), "point": ("lat", "lon", "label"), "image": ("file", "lat", "lon"), "line": ("from_",),
+              "area": ("file",)}
     missing = [f"--{n.rstrip('_')}" for n in needed.get(args.what, ()) if getattr(args, n, None) in (None, "")]
     if missing:
         raise SystemExit(f"mark {args.what} needs {', '.join(missing)} (see viewer.py --help)")
-    if args.what == "camera":
+    log = None
+    if args.what == "area":
+        f = Path(args.file).expanduser()
+        if not f.is_file():
+            raise SystemExit(f"{args.file} is not a file")
+        mark, log = area_mark(f, args.label, args.level)
+        mark["t"] = stamp
+    elif args.what == "camera":
         mark = {"kind": "camera", "lat": args.lat, "lon": args.lon, "heading": args.heading % 360, "fov": args.fov,
                 "label": args.label or "camera", "radius_m": args.radius_m, "t": stamp}
     elif args.what == "point":
@@ -900,7 +1035,7 @@ def cmd_mark(args) -> int:
         mark = {"kind": "line", "from": a, "to": b, "bearing": args.bearing, "label": args.label or "", "t": stamp}
     marks.append(mark)
     write_marks(session, marks)
-    print(json.dumps(mark, ensure_ascii=False))
+    print(log or json.dumps(mark, ensure_ascii=False))
     return 0
 
 
@@ -935,9 +1070,9 @@ def main(argv: list[str] | None = None) -> int:
     y.add_argument("text", nargs="+")
     y.add_argument("--session", help="session folder (default: cwd or a parent)")
     y.set_defaults(fn=cmd_say)
-    m = sub.add_parser("mark", help="put a camera, line, point or image on the map")
-    m.add_argument("what", choices=("camera", "line", "point", "image", "list", "clear"))
-    m.add_argument("file", nargs="?", help="image: a file inside the session folder")
+    m = sub.add_parser("mark", help="put a camera, line, point, image or area outline on the map")
+    m.add_argument("what", choices=("camera", "line", "point", "image", "area", "list", "clear"))
+    m.add_argument("file", nargs="?", help="image: a file inside the session folder; area: a GeoJSON file (osm.py geom output)")
     m.add_argument("--session", help="session folder (default: cwd or a parent)")
     m.add_argument("--lat", type=float)
     m.add_argument("--lon", type=float)
@@ -950,7 +1085,8 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--km", type=float, help="line: length when given as a bearing")
     m.add_argument("--label")
     m.add_argument("--image", help="point: a file inside the session folder to show on its card")
-    m.add_argument("--kind", choices=("camera", "line", "point", "image"), help="clear: only this kind")
+    m.add_argument("--level", type=float, help="area: the level of features that carry none (-1: one floor below ground, drawn dashed)")
+    m.add_argument("--kind", choices=("camera", "line", "point", "image", "area"), help="clear: only this kind")
     m.set_defaults(fn=cmd_mark)
     e = sub.add_parser("export", help="write the self-contained viewer.html snapshot beside the photos")
     e.add_argument("session", nargs="?")

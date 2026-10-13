@@ -68,6 +68,7 @@ MODEL_CACHES = {
     "CLIP ViT-L/14 (prior.py GeoCLIP backbone)": "models--openai--clip-vit-large-patch14",
     "OWLv2 (detect.py)": "models--google--owlv2-base-patch16-ensemble",
     "MegaLoc (sweep.py, match.py)": "models--gberton--MegaLoc",
+    "AI-image detector (aidet.py)": "models--Thermostatic--community-forensics-frontier-detector-2026-08",
 }
 
 
@@ -278,7 +279,7 @@ def model_checks() -> list[dict]:
     uv = os.environ.get("UV") or shutil.which("uv") or "uv"
     rows = []
     for name, script in (("prior.py models", "prior.py"), ("detect.py model", "detect.py"), ("calib.py model", "calib.py"),
-                         ("sweep.py MegaLoc", "sweep.py")):
+                         ("sweep.py MegaLoc", "sweep.py"), ("aidet.py model", "aidet.py")):
         try:
             r = subprocess.run([uv, "run", "-q", str(here / script), "--selftest"], capture_output=True, text=True,
                                encoding="utf-8", errors="replace", timeout=3600)

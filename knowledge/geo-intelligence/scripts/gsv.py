@@ -8,8 +8,10 @@ render views by compass heading, build comparison sheets. Mainland China: use ba
 
 No API key. Discovery uses Google Maps coverage tiles + the photometa call (via the maintained `streetlevel`
 package); views are rendered locally from the downloaded equirectangular panorama (cached in --cache).
-Official car/trekker coverage only: user-uploaded photospheres are skipped. A coverage lookup that fails (network, 429,
-changed reply) is reported as a failure, never as "no panorama"; failed tiles aren't cached, so a rerun retries them.
+Discovery skips user photospheres; `render <id>` works on a user or business 360 id copied from a Google Maps URL (!1s<id>);
+a single upload often sits at the venue pin, publish_api tour nodes carry their own positions; neither is a verified capture
+point until matched. A coverage lookup that fails (network, 429, changed reply) is reported as a failure, never as
+"no panorama"; failed tiles aren't cached, so a rerun retries them.
 
 Examples:
   gsv.py near 35.6595,139.7005 --radius 50              # nearest panorama: id, coordinates, capture date, history, address, street names, nearby ids
@@ -108,18 +110,25 @@ def pick_date(res: dict, date: str) -> dict | None:
     return None
 
 
+def view(pid: str, heading: float, pitch: float, fov: float, w: int, h: int, proxy: str | None, cache: Path,
+         zoom: int = 3) -> Image.Image:
+    """heading: compass bearing; positive pitch = looking up; fov: horizontal field of view in degrees.
+    Raises when the streetlevel package is missing or the panorama cannot be fetched."""
+    model_proxy_env(proxy)
+    eq, pano_heading = SL.equirect(pid, cache, zoom)
+    return SL.perspective(eq, pano_heading, heading % 360, pitch, fov, w, h)
+
+
 def render(pid: str, heading: float, pitch: float, fov: float, w: int, h: int, proxy: str | None, cache: Path,
            zoom: int = 3) -> Image.Image:
-    """heading: compass bearing; positive pitch = looking up; fov: horizontal field of view in degrees."""
-    model_proxy_env(proxy)
+    """view(), or a grey 'render failed' cell when it raises: one bad panorama must not sink a sheet or a ranking run."""
     try:
-        eq, pano_heading = SL.equirect(pid, cache, zoom)
+        return view(pid, heading, pitch, fov, w, h, proxy, cache, zoom)
     except Exception as e:  # noqa: BLE001
         print(f"gsv render failed for {pid}: {type(e).__name__}: {str(e)[:160]}", file=sys.stderr)
         im = Image.new("RGB", (w, h), "gray")
         ImageDraw.Draw(im).text((10, 10), f"render failed: {str(e)[:60]}", fill="white")
         return im
-    return SL.perspective(eq, pano_heading, heading % 360, pitch, fov, w, h)
 
 
 def sheet(items: list[dict], out: Path, proxy: str | None, cache: Path, cols: int = 3, tw: int = 480, th: int = 360) -> None:
@@ -268,7 +277,15 @@ def main() -> None:
                           "message": "no official Google Street View panorama within the radius (increase --radius, check coverage, "
                                      "or run doctor.py --network)"}, ensure_ascii=False, indent=1))
     elif args.cmd == "render":
-        render(args.id, args.heading, args.pitch, args.fov, args.width, args.height, args.proxy, args.cache, args.zoom).save(args.out)
+        try:
+            im = view(args.id, args.heading, args.pitch, args.fov, args.width, args.height, args.proxy, args.cache, args.zoom)
+        except ImportError as e:
+            sys.exit(f"gsv render {args.id}: {e}; nothing written. Run it as `uv run gsv.py render …` (installs streetlevel) "
+                     "or check the environment with doctor.py")
+        except Exception as e:  # noqa: BLE001
+            sys.exit(f"gsv render {args.id} failed ({type(e).__name__}: {str(e)[:160]}); nothing written. Check the id (the part "
+                     "after !1s in a Google Maps URL, up to the next !), retry, or run doctor.py --network to check service access")
+        im.save(args.out)
         print(args.out)
     else:
         panos: dict[str, dict] = {}

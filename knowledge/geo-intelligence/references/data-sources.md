@@ -22,32 +22,33 @@ Entry points live in `scripts/`. Private modules live in `scripts/geolib/`: `net
 |---|--- |
 | `doctor.py` | Environment checks, browser launch, optional endpoint probes; English fixes and JSON output |
 | `sources_check.py` | Live known-answer probes of every external endpoint; run it when a tool returns nothing or before a long scan |
-| `meta.py` | Deep metadata: GPS (EXIF/XMP/video/DJI), capture time, camera heading, UTC offset → countries on that date, filename/platform hints, embedded previews, provenance/AI flags. `meta.py <photo> [more photos] --json` prints one line per file plus optics (focal_35mm, 4:3 FOV) and GCJ-02 for points in China. Without exiftool it falls back to Pillow + XMP/ISO 6709 byte scans and prints a one-line notice; embedded previews, video and DJI metadata need exiftool |
+| `meta.py` | Deep metadata: GPS (EXIF/XMP/video/DJI), capture time, camera heading, UTC offset → countries on that date, filename/platform hints, embedded previews, provenance/AI flags ("File declares generated content" vs "AI-edited real photo"; `digest.provenance.generated` in the JSON). `meta.py <photo> [more photos] --json` prints one line per file plus optics (focal_35mm, 4:3 FOV) and GCJ-02 for points in China. Without exiftool it falls back to Pillow + XMP/ISO 6709 byte scans (the IPTC source type also from PNG text and C2PA manifests; a brotli-compressed or remote manifest needs exiftool or c2patool) and prints a one-line notice; embedded previews, video and DJI metadata need exiftool |
 | `imgprep.py` | zoom (enlarge to read text) / edges (four edges, four corners) / variants (image-search variants) / grid (split into tiles) / `reveal` (eight brightness/contrast stretches of a dark or flat crop, to read a plate or sign lost in shadow) / `piers` (brightness profile along a given row to find pixel columns of evenly spaced structures; outputs a check image) |
 | `revimg.py` | Baidu image search + Yandex reverse image search; `--query` Chinese keyword search (Bing China, Baidu/Sogou Images) |
-| `geo.py` | Coordinate conversion, bearing and distance, camera geometry (`range --hfov a:b` distance range), `line` alignment line, `intersect` sight-line intersection, `frame` computes the frame and occlusion before excluding, `spacing` pixel columns of evenly spaced structures × known polyline → solve for camera position (optionally scored jointly with the skyline), `bearings` camera position → bearing, angular width and distance of each outline in a GeoJSON (use with `sun.py compass`: compute the bearing first, then identify the structure) |
+| `geo.py` | Coordinate conversion, bearing and distance, camera geometry (`range --hfov a:b` distance range), `line` alignment line, `intersect` sight-line intersection, `frame` computes the frame and occlusion before excluding, `spacing` pixel columns of evenly spaced structures × known polyline → solve for camera position (optionally scored jointly with the skyline), `bearings` camera position → bearing, angular width and distance of each outline in a GeoJSON, and `far`, the farthest vertex (the radius round the pin that covers the whole feature) (use with `sun.py compass`: compute the bearing first, then identify the structure) |
 | `poi.py` | Place names, residential compound names, housing development names, shop names → candidate coordinates (360 Maps + OSM Nominatim + Baidu suggestions; lists every same-name point nationwide); `nearby <lat,lon> --category <cat>` (44 OSM POI categories), `reverse` (coordinates → address), `distance` / `directions` (OSRM), `timezone` |
 | `sun.py` | Sun position, shadow-length ratio, `locate` location band, `when` time, `street` street orientation, `facing` heading from lit faces, `compass` bearings from the sun in frame, `dish` satellite dish, `weather` past cloud/sun/rain/snow for a point (rank the days of a range); `terrain.py shade` terrain/building shadows at a time, point checks, time sweep |
 | `osm.py` | Overpass: find / addr (house numbers; several must co-occur within N m) / near (co-occurrence) / crossings (line-to-point) / route (route corridor) / intersect (crossings of two kinds of lines; bends are only labeled, `--rank-near` ranks) / coverage (feature counts per admin area) / along (points along a line) / buildings (large footprints) / street-scan (street-view geometry template) / geom (export geometry) / raw |
 | `tiles.py` | Satellite/map tile mosaic (Google satellite / hybrid / map, Esri imagery / street, Bing aerial, Esri Wayback releases since 2014, EOX Sentinel-2 by year, NASA GIBS by day), `mark` plots points + overlays GeoJSON lines + field-of-view wedge, `sheet` numbered thumbnails of candidate points (town-fabric comparisons), `wayback` every archived look of a point |
 | `baidu_pano.py` | Baidu panoramas: near / info / scan / render / sheet (`--headings` to look around from one point, `--road` `--spread`) / sample (street view sampling of candidate cities) |
-| `gsv.py` | Google Street View (outside China): near / render / sheet / area / targets (panoramas around each target point, rendered facing it, for `match.py rank --items`), no key, official coverage only |
+| `gsv.py` | Google Street View (outside China): near / render / sheet / area / targets (panoramas around each target point, rendered facing it, for `match.py rank --items`), no key; discovery finds official coverage only, `render <id>` also takes a user or business 360 id |
 | `pano.py` | Street-level imagery from every scriptable provider in one manifest format (Google, Apple Look Around, Bing Streetside, Yandex, Naver, Kakao, Mapy, Já.is, KartaView, Panoramax, Mapillary with a token) plus manifests you write for sources you find: coverage / list / render / sheet; see `streetlevel.md` |
 | `sweep.py` | Index every panorama of one or more towns (MegaLoc descriptors, cached) and rank them for a photo; clusters of top hits; `view` reproduces the photo's view |
 | `pose.py` | Solve camera position from multiple points: lat/lon, height, heading, pitch, roll, field of view + error radius + per-point check; `check` scores discrete candidate camera positions; `project` projects map points back onto the photo |
 | `terrain.py` | Elevation: view (synthesized mountain view; `--overlay` overlays the skyline on the photo, `--roll`) / profile (skyline) / elev / `ridge` reads ridgeline pixel points from the photo / `scan` filters a whole region along infrastructure lines for "flat nearby + mountain present" points and clusters them / `fit` batch skyline scoring of candidate camera positions (optional infrastructure-distance constraint; outputs overlays of the top N) |
 | `evidence.py` | Evidence image: satellite image + camera-position wedge + comparison panels; `--match`: photo and reference side by side with colour-coded matching lines |
 | `opendata.py` | City open-data portals (Socrata catalogue; any CSV/GeoJSON export or local file): find a dataset, list its fields, filter it, export candidate points |
-| `intake.py` | Metadata, edge crops, variants, OCR and Baidu/Yandex reverse image search on the original and variants in one command (recon.py runs it; `--no-rev` skips the reverse search); outputs intake.md (tiered vote count, possible place names) |
+| `intake.py` | Metadata, edge crops, variants, OCR and Baidu/Yandex reverse image search on the original and variants in one command (recon.py runs it; `--no-rev` skips the reverse search); outputs intake.md (tiered vote count, possible place names, results on an AI-image gallery host from `assets/data/ai_hosts.json`: open and compare, a host alone only down-weights) |
 | `ocr.py` | Reads text in the photo (Apple Vision, falls back to RapidOCR): full image + zoomed + tiles, merged; text read only after zooming is marked in `pass` |
 | `clues.py` | Lookup tables: license plate prefixes (China), regional plate codes with their eras (`plate-code`: IT ES FR DE AT CH GR TR GB MA), landline area codes, country calling codes, driving side, overseas territories, admin hierarchy; tables are in `assets/data/`, `update` re-fetches them |
 | `board.py` | Candidate board: candidates, clues, evidence likelihood ratios, exclusions (require a computed file), ranking, scan cost, next step, pre-conclusion check, generates result.json fields |
 | `gazetteer.py` | Admin-division gazetteer: lists all subdivisions (with bbox), built-up area extents, scan pages |
 | `sat_scan.py` | CLIP zero-shot scoring and ranking of satellite grid cells/candidate points (sports fields, factory buildings, silos, dams…), top-N thumbnails + heatmap |
 | `match.py` | Ranks the photo against candidate ground-level images: MegaLoc (default) / DINOv2 / CLIP global similarity + SIFT inlier re-ranking (same-era imagery only); candidates can be rendered on the fly from panorama ids |
-| `recon.py` | The local first pass in one command: meta + intake (Yandex/Baidu reverse search included unless `--no-rev`) + textgeo + detect + calib + prior → recon.md |
+| `recon.py` | The local first pass in one command: meta + intake (Yandex/Baidu reverse search included unless `--no-rev`) + textgeo + detect + calib + prior + aidet → recon.md |
 | `textgeo.py` | Text → scripts, distinctive letters, language (lingua), phones (libphonenumber), domains, postal formats, currency, regional words, brands (name-suggestion-index), place names (GeoNames) |
 | `geodata.py` | Country facts (`assets/data/countries.json`), GeoNames places: search, reverse geocode, population-weighted sampling, the biggest towns of a region or radius (`towns`), national gazetteers |
+| `aidet.py` | AI-generated-image score of the original (pinned ONNX model, CPU): model status, never a verdict (`models.md`) |
 | `prior.py` | StreetCLIP + GeoCLIP world prior on several crops, region ranking, consistent point guess, self-assessment |
 | `detect.py` | OWLv2 open-vocabulary detection → numbered crops of signs, plates, poles, bollards, markings, vehicles |
 | `calib.py` | GeoCalib: FOV, focal, pitch, roll, horizon line with uncertainties |
@@ -120,7 +121,7 @@ The endpoints are all at `https://mapsv0.bdimg.com/`, need no key, and must be a
 
 | Source | Use | Known issues |
 |---|---|---|
-| Google Street View | Street view outside China, with historical dates; `gsv.py`, `refsheet.py` | Almost none in China. The old `GeoPhotoService.SingleImageSearch` endpoint answers "decommissioned" and the `streetviewpixels` thumbnail endpoint returns 403 to anonymous callers (checked 2026-10); discovery now uses Maps coverage tiles (`photometa/ac/v1`, zoom 17) and `photometa/v1` metadata via the `streetlevel` package, and views are rendered locally from the equirectangular panorama. User-uploaded photospheres are skipped |
+| Google Street View | Street view outside China, with historical dates; `gsv.py`, `refsheet.py` | Almost none in China. The old `GeoPhotoService.SingleImageSearch` endpoint answers "decommissioned" and the `streetviewpixels` thumbnail endpoint returns 403 to anonymous callers (checked 2026-10); discovery now uses Maps coverage tiles (`photometa/ac/v1`, zoom 17) and `photometa/v1` metadata via the `streetlevel` package, and views are rendered locally from the equirectangular panorama. Discovery skips user photospheres; `gsv.py render <id>` works on a user or business 360 id copied from a Google Maps URL (`!1s<id>`, up to the next `!`); a single upload often sits at the venue pin and publish_api tour nodes carry their own positions, so neither is a verified capture point until matched. A failed render exits non-zero and writes nothing |
 | Apple Look Around, Yandex, Naver, Kakao, Bing Streetside, Mapy.cz, Já.is | Other street-level providers (better than Google in Korea, parts of Russia/Turkey/Czechia/Iceland, many US/European cities for Apple) | `pano.py --provider …` (`streetlevel.md` §2) |
 | Mapillary, KartaView | Crowdsourced street view, rural roads outside China | Almost none in China |
 | Tencent Street View | Backup in China | No script |
@@ -183,6 +184,7 @@ Google in or out. Camera generations and coverage quirks:
 | AWS Terrain Tiles (Terrarium) | Global elevation, about 30 m | `terrain.py`; details smaller than a hundred meters are unreliable |
 | ESA WorldCover (viewer.esa-worldcover.org/worldcover) | 10 m global land cover (tree cover, grassland, cropland, built-up, bare, water, wetland, mangrove): test a biome or land-use clue over a candidate region, find the cropland/forest edge seen in the photo | Browser viewer; 11 classes; fixed years (2020, 2021) |
 | Google Dynamic World (dynamicworld.app) | 10 m land cover from Sentinel-2 scenes, 9 classes, dated per scene: cropland vs built-up vs water around the photo's date | Browser viewer; per-pixel probabilities, cloud gaps; not a survey |
+| Indoor plans | Shops, units, rooms, corridors and levels inside a known venue | OSM `indoor`, `level`, `ref` and `shop` tags where mapped (`osm.py geom --bbox <venue>`); many venues have only an outline. Vendor indoor maps (Google Maps web level picker, national map apps) are view-only by eye, no API |
 | City open data | Street trees (species, trunk diameter at breast height, location), etc. | Many foreign cities, few Chinese ones; `opendata.py` |
 
 ### Overpass endpoints
@@ -198,6 +200,9 @@ Free global instances:
 Paid or keyed instances exist (Geofabrik, FairwayMapper, Overspan, NextGIS, Mapsource), as do regional ones
 (overpass.osm.ch for Switzerland; overpass.atownsend.org.uk for Britain and Ireland, IPv6-only). When a query
 returns nothing or times out on every mirror, run `sources_check.py` before concluding the data is absent.
+`osm.py` caches an empty reply (no elements, or a first count of 0) only after a second mirror confirms it; otherwise it
+returns it uncached with the warning "not confirmed by a second mirror, so not cached": rerun once at most; still empty →
+record "not found in OSM (unconfirmed)" and move on.
 
 ## Offline reference data
 
@@ -210,7 +215,7 @@ Downloaded once into the shared cache (`workflow.md`, Paths and settings).
 | OpenStreetMap name-suggestion-index (`nsi.min.json` via jsDelivr) | ~19k brands (the `brands/` part of the index; operators and transit networks are not indexed) and the countries/regions where they operate | BSD-3 / data ODbL-compatible |
 | libphonenumber (`phonenumbers`) | phone number → country, region/city for many landlines, carrier | Apache-2.0 |
 | lingua | offline language identification for short text | Apache-2.0 |
-| Hugging Face / GitHub model weights | StreetCLIP, CLIP ViT-L/14 (GeoCLIP), OWLv2, GeoCalib, DINOv2, MegaLoc, CLIP B/32 | see `models.md` |
+| Hugging Face / GitHub model weights | StreetCLIP, CLIP ViT-L/14 (GeoCLIP), OWLv2, GeoCalib, DINOv2, MegaLoc, CLIP B/32, the AI-image detector | see `models.md` |
 
 ## Time and weather
 

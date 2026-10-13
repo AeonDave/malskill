@@ -1,0 +1,25 @@
+{
+ "_meta": {
+  "source": "Hand-compiled: AI-image galleries and prompt pages that publish generated images with their prompt or model",
+  "fetched": "2026-10-13",
+  "count": 14,
+  "licence": "MIT (with this repository)",
+  "note": "intake.py suffix-matches these hosts against the reverse-search result links (links[].url, similar[].from). A host alone only down-weights: open the page and compare. Stock sites (Adobe Stock, Freepik, Shutterstock) sell real photos too and are never tagged by host."
+ },
+ "hosts": [
+  "civitai.com",
+  "midjourney.com",
+  "openart.ai",
+  "prompthero.com",
+  "tensor.art",
+  "seaart.ai",
+  "nightcafe.studio",
+  "pixai.art",
+  "krea.ai",
+  "leonardo.ai",
+  "liblib.art",
+  "tusiart.com",
+  "tusi.cn",
+  "jimeng.jianying.com"
+ ]
+}

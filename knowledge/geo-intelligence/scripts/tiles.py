@@ -27,6 +27,7 @@ Examples:
 from __future__ import annotations
 
 import argparse
+from geolib.cli import font, neg_coords as _neg_coords
 from geolib.net import curl_args, fetch_bytes, PROXY_HELP
 import hashlib
 import json
@@ -369,7 +370,8 @@ def mark(image: Path, points: dict, out: Path, label: bool, geojsons: list[Path]
         x, y = m.to_px(lat, lon)
         d.ellipse([x - 5, y - 5, x + 5, y + 5], fill=color, outline="black")
         if label:
-            d.text((x + 7, y - 6), str(name)[:12], fill=color)
+            lab = str(name)[:12]
+            d.text((x + 7, y - 6), lab, fill=color, font=font(14, lab))      # Pillow's default font draws CJK, Hangul, Thai… as boxes
     img.save(out, quality=90)
 
 
@@ -407,15 +409,12 @@ def sheet(points: dict, zoom: int, size: int, cols: int, out: Path, source: str,
             dr.line([cx + c - 12, cy + c, cx + c + 12, cy + c], fill="red", width=2)
             dr.line([cx + c, cy + c - 12, cx + c, cy + c + 12], fill="red", width=2)
             dr.rectangle([cx, cy, cx + size, cy + 20], fill="black")
-            dr.text((cx + 4, cy + 3), f"#{pi + k + 1} {str(name)[:28]}", fill="yellow")
+            lab = f"#{pi + k + 1} {str(name)[:28]}"
+            dr.text((cx + 4, cy + 3), lab, fill="yellow", font=font(14, lab))
         o = out if pi == 0 else out.with_name(f"{out.stem}_{pi // per + 1}{out.suffix}")
         S.save(o, quality=88)
         pages.append(o)
     return pages
-
-
-
-from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
 
 
 def main() -> None:

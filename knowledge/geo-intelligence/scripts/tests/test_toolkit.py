@@ -38,7 +38,7 @@ class PathsAndDataTests(unittest.TestCase):
 
     def test_every_table_loads_with_meta(self):
         files = sorted(paths.DATA_DIR.glob("*.json"))
-        self.assertEqual({f.stem for f in files}, {"calling_codes", "countries", "country_names", "driving_side", "plate_codes",
+        self.assertEqual({f.stem for f in files}, {"ai_hosts", "calling_codes", "countries", "country_names", "driving_side", "plate_codes",
                                                    "streetview_coverage", "territories", "text_signals"})
         for f in files:
             with self.subTest(table=f.name):
@@ -458,6 +458,57 @@ class GeometrySunBenchTests(unittest.TestCase):
             self.assertEqual(cm.exception.code, 2)
             self.assertEqual(len(err.getvalue().strip().splitlines()), 1, err.getvalue())
             self.assertIn("malformed --", err.getvalue())
+
+    def test_bearings_far_is_the_footprint_radius_from_the_pin(self):
+        import geo
+        pin = (33.5132, 126.5247)
+        # a 160 m x 100 m venue outline round the pin: a closed way (LineString) and a relation's outer ring (MultiLineString)
+        ring = [geo.dest(geo.dest(pin, 0, dy), 90, dx) for dx, dy in ((-60, -40), (100, -40), (100, 60), (-60, 60), (-60, -40))]
+        line = [[lon, lat] for lat, lon in ring]
+        gj = {"type": "FeatureCollection", "features": [
+            {"type": "Feature", "properties": {"name": "Way"}, "geometry": {"type": "LineString", "coordinates": line}},
+            {"type": "Feature", "properties": {"name": "Relation"}, "geometry": {"type": "MultiLineString", "coordinates": [line[:3], line[2:]]}}]}
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / "venue.geojson"
+            path.write_text(json.dumps(gj), encoding="utf-8")
+            out, _ = self._main(geo, ["geo.py", "bearings", "--at", f"{pin[0]},{pin[1]}", "--geojson", str(path)])
+        lines = out.splitlines()
+        self.assertEqual(lines[1].split(), ["brg", "span", "dist", "far", "h/lvl", "name/kind"])
+        rows = {cols[-1]: cols for cols in (ln.split() for ln in lines[2:] if ln.strip())}
+        self.assertEqual(sorted(rows), ["Relation", "Way"], out)
+        for cols in rows.values():
+            self.assertEqual((int(cols[2]), int(cols[3])), (72, 117), out)    # nearest vertex (-60, -40), farthest (100, 60)
+
+    def test_mark_and_sheet_labels_draw_non_latin_glyphs(self):
+        import tiles
+        from geolib.cli import font
+        from PIL import Image, ImageDraw
+
+        def drawn(text):
+            im = Image.new("L", (80, 24))
+            ImageDraw.Draw(im).text((2, 2), text, fill=255, font=font(14, text))
+            return im.tobytes()
+        ll = [33.5132, 126.5247]
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t) / "m.png"
+            Image.new("RGB", (512, 512)).save(base)
+            x, y = tiles.geo.ll2px(17, *ll)
+            base.with_suffix(".json").write_text(json.dumps({"zoom": 17, "origin_tile": [int(x // 256) - 1, int(y // 256) - 1]}), encoding="utf-8")
+            for a, b in (("제주", "서울"), ("東京", "大阪"), ("ไทย", "ลาว")):
+                with self.subTest(a):
+                    if drawn(a) == drawn(b):
+                        self.skipTest(f"no font with {a!r} glyphs on this machine")
+                    ims = []
+                    for lab in (a, b):
+                        tiles.mark(base, {lab: ll}, Path(t) / "out.png", True)
+                        ims.append(Image.open(Path(t) / "out.png").tobytes())
+                    self.assertTrue(ims[0] != ims[1], f"{a} and {b} drew the same boxes")
+                    pages = []
+                    with patch.object(tiles, "cell_image", lambda *a, **k: Image.new("RGB", (128, 128))):
+                        for i, lab in enumerate((a, b)):
+                            tiles.sheet({lab: ll}, 17, 128, 1, Path(t) / f"s{i}.png", "google", None, Path(t))
+                            pages.append(Image.open(Path(t) / f"s{i}.png").tobytes())
+                    self.assertTrue(pages[0] != pages[1], f"{a} and {b} drew the same boxes on the sheet")
 
     def test_peaks_report_plateau_centre(self):
         import imgprep

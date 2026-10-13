@@ -43,8 +43,9 @@ Run it for each candidate town (or the gut-call point) before saying "no street 
    look for: carte.ma (2013–2015 panoramas of Moroccan cities). Every country has its own; find them.
 3. **The browser, for what scripts cannot reach** (pre-approved; use the owner's Chrome when available):
    - Google Maps: drag the Street View pegman — blue dots/lines are coverage, small blue circles are
-     **user photo spheres** (often the only Google imagery in uncovered countries; not reachable by
-     script any more). Also the place's **photos** tab for shops, schools, mosques, hotels nearby.
+     **user photo spheres** (often the only Google imagery in uncovered countries; not found by
+     script discovery; once you have the id from the Maps URL (`!1s<id>`), `gsv.py render <id> --heading H --out v.jpg`
+     renders it). Also the place's **photos** tab for shops, schools, mosques, hotels nearby.
    - Mapillary (`mapillary.com/app/?lat=…&lng=…&z=16`) and KartaView web maps; Apple Maps Look Around.
    - YouTube: `walking tour <town> 4K`, `<town> driving`, `<town> 360` — frame-grab and compare.
 4. **Maps and satellite reasoning** (works everywhere, even with no ground imagery):

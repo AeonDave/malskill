@@ -13,6 +13,7 @@ Runs in parallel and writes everything under --out-dir (default recon/):
   detect/    numbered crops of signs, plates, poles, bollards, markings, vehicles…          (detect.py)
   calib.*    field of view, pitch/roll, horizon line                                       (calib.py)
   prior/     learned world prior (StreetCLIP + GeoCLIP), self-assessed                       (prior.py)
+  aidet/     AI-generated-image score of the original: model status, never a verdict      (aidet.py)
   recon.md   one page summarising all of it — read this, then open the crops it lists
 
   recon.py original/photo.jpg                      # full pass (first run downloads models, later runs ~1 min)
@@ -36,17 +37,34 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 UV = os.environ.get("UV") or "uv"
+ML_STEPS = ("detect", "calib", "prior", "aidet")
+AIDET_TIMEOUT = 20          # seconds; the first run downloads 44 MB, so without `doctor.py --models` it reports a skip
 SCENE_UNTAGGED = ("- Scene: not tagged ({}) → finish requires no skyline/street check; pick the decisive check from SKILL.md "
                   "step 6 by what the photo shows (finish still needs one verification artifact).")
 
 
+def _stop_tree(p: subprocess.Popen) -> None:
+    """Stop a timed-out step with its child: `uv run` leaves the script running when uv alone is killed on Windows, and
+    the script holds the output pipes, so the read would wait for it to end."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+    else:
+        p.terminate()                                          # SIGTERM: uv forwards it to the script it runs
+    try:
+        p.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        p.kill()
+
+
 def run(name: str, cmd: list[str], log: dict, timeout: int = 1800) -> int:
     t0 = time.time()
+    p = subprocess.Popen(cmd, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         env={**os.environ, "PYTHONUTF8": "1", "TOKENIZERS_PARALLELISM": "false"})
     try:
-        r = subprocess.run(cmd, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=timeout,
-                           env={**os.environ, "PYTHONUTF8": "1", "TOKENIZERS_PARALLELISM": "false"})
-        rc, err, out = r.returncode, r.stderr, r.stdout
+        out, err = p.communicate(timeout=timeout)
+        rc = p.returncode
     except subprocess.TimeoutExpired:
+        _stop_tree(p)
         rc, err, out = 124, f"timed out after {timeout}s", ""
     log[name] = {"rc": rc, "seconds": round(time.time() - t0, 1),
                  "error": "" if rc == 0 else (err or out).strip()[-600:], "stdout_tail": out.strip()[-400:]}
@@ -60,6 +78,36 @@ def jload(p: Path) -> dict:
         return {}
 
 
+def aidet_state(out: Path, log: dict) -> dict:
+    """aidet.json of this run, or {"skipped": reason} when the lane timed out, failed or did not run (main removes an earlier
+    run's record first and writes this skip in its place)."""
+    step = log.get("aidet") or {}
+    if step.get("rc"):
+        reason = (step.get("error") or "failed").strip().splitlines()[-1][:200]
+        if step["rc"] == 124:
+            reason += "; `doctor.py --models` prefetches the weights"
+        return {"skipped": reason}
+    return jload(out / "aidet" / "aidet.json") or {"skipped": "not run"}
+
+
+def generated_check(meta: dict, ij: dict, aj: dict) -> str:
+    """The generated-image sentence folded into Next 0 ('' when nothing points there). Only a declaration or a confirmed
+    AI-gallery page can close as generated; a score alone keeps the search going."""
+    g = (meta.get("provenance") or {}).get("generated") or {}
+    hits = ij.get("ai_gallery_hits") or []
+    p = aj.get("p_ai")
+    if g.get("declared"):
+        return (f" Generated-image check: the file declares generated content ({g['term']}) → `photo_session.py finish \"<session folder>\" "
+                f"--generated \"{g['term']}\"`, unless a pinning artifact places it or the operator says it is real; once "
+                "`photo_session.py not-generated` has recorded that, this command no longer applies: continue to the place.")
+    if hits:
+        return (f" Generated-image check: an AI-gallery page returned this image ({hits[0]['url']}) → open the page, confirm the "
+                "duplicate on fixed features and save it as a session file; only then `finish --generated <that file>`.")
+    if p is not None and p >= aj.get("threshold", 0.65):
+        return f" Generated-image check: possible generated image, unconfirmed (model {p:.2f}): continue and say so in the report."
+    return ""
+
+
 def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
     L = [f"# Recon: {photo.name}", "",
          f"First pass in {total:.0f}s (" + ", ".join(f"{k} {v['seconds']}s" + ("" if v["rc"] == 0 else " FAILED") for k, v in log.items()) + ").",
@@ -67,6 +115,7 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
          + "Make (or revisit) your gut call, then use the evidence below to confirm, contradict or sharpen it.", ""]
     # metadata
     meta = jload(out / "meta" / "meta.json").get("digest", {})
+    aj = aidet_state(out, log)
     L += ["## Metadata", ""]
     if meta:
         g, t = meta.get("gps") or {}, meta.get("time") or {}
@@ -95,6 +144,12 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
             L.append("- No GPS, no time, no telling filename (normal for forwarded/screenshot images).")
     else:
         L.append(f"- meta.py did not run: {log.get('meta', {}).get('error', '')[:200]}")
+    if "p_ai" in aj:
+        line = f"AI-image score {aj['p_ai']:.2f} (model rank, not proof; threshold {aj['threshold']})"
+        L.append(f"- **{line}** → Next 0" if aj["p_ai"] >= aj["threshold"] else
+                 f"- {line}: not flagged; a low score never clears (re-saved images and newer generators score low).")
+    else:
+        L.append(f"- AI-image check: skipped ({aj['skipped']})")
     # text
     L += ["", "## Text", ""]
     oj = jload(out / "intake" / "ocr.json")
@@ -212,7 +267,7 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
     L.append("- Edge and corner crops: `intake/edges/` (look at every one); OCR boxes: `intake/ocr.png`.")
     L += ["", "## Next", "",
           "0. The required checks named under Prior (scene) are not optional: a mountain or lake needs the skyline route, a street the panorama "
-          "route, whatever else you find. Start them early; long ones run in the background with a budget.",
+          "route, whatever else you find. Start them early; long ones run in the background with a budget." + generated_check(meta, ij, aj),
           "1. Compare this page with your gut call. Where they disagree, find out why (a misread, an unusual scene, a wrong gut).",
           "2. board.json exists since `photo_session.py start` and already holds the text and prior signals (ingested here): "
           "record your own observations as clues (`board.py clue`), then evidence for the candidates they touch.",
@@ -226,14 +281,16 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("photo", type=Path)
     ap.add_argument("--out-dir", type=Path, default=Path("recon"))
-    ap.add_argument("--no-ml", action="store_true", help="skip detect, calib and prior")
-    ap.add_argument("--skip", default="", help="comma list of steps to skip: meta,intake,textgeo,detect,calib,prior")
+    ap.add_argument("--no-ml", action="store_true", help="skip detect, calib, prior and aidet")
+    ap.add_argument("--skip", default="", help="comma list of steps to skip: meta,intake,textgeo,detect,calib,prior,aidet")
     ap.add_argument("--no-rev", action="store_true", help="skip the Yandex/Baidu reverse image search")
     args = ap.parse_args()
     photo = args.photo.resolve()
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    skip = {s.strip() for s in args.skip.split(",") if s.strip()} | ({"detect", "calib", "prior"} if args.no_ml else set())
+    skip = {s.strip() for s in args.skip.split(",") if s.strip()} | (set(ML_STEPS) if args.no_ml else set())
+    record = out / "aidet" / "aidet.json"
+    record.unlink(missing_ok=True)          # an earlier run's score (another frame, another photo) never passes for this one
     log: dict = {}
     t0 = time.time()
     S = lambda n: str(HERE / n)  # noqa: E731
@@ -256,10 +313,19 @@ def main() -> None:
         if "prior" not in skip:
             run("prior", [UV, "run", "-q", S("prior.py"), str(photo), "--out-dir", str(out / "prior")], log)
 
-    with ThreadPoolExecutor(2) as ex:
-        a, b = ex.submit(light), ex.submit(heavy)
-        a.result()
-        b.result()
+    def aidet():                # own lane: the heavy lane is the critical path, a 20 s cap here never delays it
+        if "aidet" not in skip:
+            run("aidet", [UV, "run", "-q", S("aidet.py"), str(photo), "--out-dir", str(out / "aidet")], log, timeout=AIDET_TIMEOUT)
+
+    with ThreadPoolExecutor(3) as ex:
+        for f in [ex.submit(light), ex.submit(heavy), ex.submit(aidet)]:
+            f.result()
+    state = ({"skipped": "not run (--no-ml)" if args.no_ml else "not run (--skip aidet)"} if "aidet" in skip else aidet_state(out, log))
+    if "p_ai" not in state:                 # one current record for recon.md, the viewer and finish
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(json.dumps({"tool": "aidet.py", "skipped": state["skipped"]}, indent=1), encoding="utf-8")
+        if "aidet" not in skip:
+            print(f"aidet: skipped ({state['skipped']})")
     md = summary(photo, out, log, time.time() - t0, not args.no_rev)
     (out / "recon.md").write_text(md, encoding="utf-8")
     (out / "recon.json").write_text(json.dumps({"photo": str(photo), "steps": log}, indent=1, ensure_ascii=False), encoding="utf-8")

@@ -31,6 +31,7 @@ import json
 import math
 import os
 import subprocess
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -293,15 +294,54 @@ def _sl(service: str):
     from . import streetlevel as SL
     SL.streetview()                     # installs the pyexiv2 stub before any streetlevel submodule imports it
     import importlib
-    return importlib.import_module(f"streetlevel.{service}")
+    mod = importlib.import_module(f"streetlevel.{service}")
+    if service == "naver":
+        _naver_unknown_types()
+    return mod
+
+
+def _naver_unknown_types() -> None:
+    """streetlevel builds PanoramaType from the dtl_type of every Naver reply (nearby, around, timeline) and raises ValueError
+    on a value it lacks (14, on recaptures across Korea): the whole lookup failed, so list and coverage showed no Naver
+    panorama there. Unknown values map to CAR: neither streetlevel nor this skill branches on the type (equirect or cubemap
+    comes from proj_type), and the type-14 panoramas seen so far are car captures (overlay_type car)."""
+    from streetlevel.naver.panorama import PanoramaType
+    if "_missing_" not in vars(PanoramaType):       # once; a release that handles unknown values keeps its own
+        PanoramaType._missing_ = classmethod(lambda cls, value: cls.CAR)
+
+
+_FILE_LOCKS: dict[str, threading.Lock] = {}
+_FILE_LOCKS_GUARD = threading.Lock()
+
+
+def file_lock(path: Path) -> threading.Lock:
+    """One lock per cached file: the bearings of one panorama rendered on parallel threads download it once."""
+    with _FILE_LOCKS_GUARD:
+        return _FILE_LOCKS.setdefault(str(path), threading.Lock())
+
+
+def write_atomic(path: Path, write) -> None:
+    """write(tmp) into <name>.<pid>.<tid>.part, then os.replace it over path: no reader, in this process or another, opens
+    half a file. Another process may publish the same file first; Windows then refuses the replace while a reader holds
+    that copy open, and the copy is kept."""
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.part")
+    try:
+        write(tmp)
+        os.replace(tmp, path)
+    except OSError:
+        if not path.exists():
+            raise
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _cached_equirect(tag: str, make) -> np.ndarray:
     p = CACHE / "sl" / f"{hashlib.sha1(tag.encode()).hexdigest()}.jpg"
-    if not p.exists():
-        p.parent.mkdir(parents=True, exist_ok=True)
-        im = make().convert("RGB")
-        im.save(p, quality=90)
+    with file_lock(p):
+        if not p.exists():
+            p.parent.mkdir(parents=True, exist_ok=True)
+            im = make().convert("RGB")
+            write_atomic(p, lambda tmp: im.save(tmp, "JPEG", quality=90))
     return np.asarray(Image.open(p).convert("RGB"), dtype=np.float32)
 
 
@@ -368,7 +408,7 @@ def _apple_equirect(entry: dict, spec: dict) -> tuple[np.ndarray, float]:
             eq.paste(sc, (x, y))
             if x + sc.width > full_w:
                 eq.paste(sc, (x - full_w, y))
-        meta_p.write_text(json.dumps({"heading_rad": pano.heading}, ensure_ascii=False), encoding="utf-8")
+        write_atomic(meta_p, lambda tmp: tmp.write_text(json.dumps({"heading_rad": pano.heading}, ensure_ascii=False), encoding="utf-8"))
         return eq
 
     eq = _cached_equirect(tag, make)

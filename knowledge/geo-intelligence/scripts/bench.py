@@ -13,7 +13,9 @@
   bench.py prior bench/sv40 --out preds_prior.json
         run prior.py on every image and keep the best GeoCLIP cluster as the guess (a model-only baseline).
   bench.py sessions [--root photos/]
-        same metrics over finished archive sessions that have a recorded truth (photo_session.py truth).
+        same metrics over finished archive sessions that have a recorded truth (photo_session.py truth); sessions where the
+        answer or the truth is a generated image have no distance and count only in the generated block
+        {called, confirmed, false_stops, missed}.
   bench.py match --panos panos.json --radius 150 --n 8 [--seed 1] [--method clip] [--dry-run]
         street-view re-identification: per site the oldest historical capture is rendered as the query and match.py rank
         (--within radius) ranks today's panoramas; prints the truth rank per case and the share at #1 / in the top 6.
@@ -166,17 +168,17 @@ def cmd_prior(args) -> None:
 
 
 def cmd_sessions(args) -> None:
-    if args.root is None:
-        from photo_session import DEFAULT_ROOT
-        args.root = DEFAULT_ROOT
-    root = Path(args.root)
-    pairs = []
+    from photo_session import DEFAULT_ROOT, generated_summary
+    root = Path(args.root if args.root is not None else DEFAULT_ROOT)
+    pairs, scored = [], []
     for f in sorted(root.glob("*/session.json")):
         m = json.loads(f.read_text(encoding="utf-8-sig"))      # photo_session.py reads session files with utf-8-sig
         t, r = m.get("truth"), m.get("result")
         if t and r:
-            pairs.append({"id": f.parent.name, "error_km": t["error_km"], "country_true": t.get("country"), "country_pred": r.get("country")})
-    print(json.dumps(metrics(pairs), indent=1, ensure_ascii=False))
+            scored.append((r, t))
+            if t.get("error_km") is not None:                  # a generated answer or truth has no distance
+                pairs.append({"id": f.parent.name, "error_km": t["error_km"], "country_true": t.get("country"), "country_pred": r.get("country")})
+    print(json.dumps({**metrics(pairs), "generated": generated_summary(scored)}, indent=1, ensure_ascii=False))
 
 
 def _eligible_sites(panos: dict, radius: float, rng: random.Random) -> list[tuple[str, float, float, int]]:

@@ -8,7 +8,8 @@
 Outputs (all in --out-dir):
   exif.json (meta.py --json digest)  edges/  variants/  ocr.json ocr.png  rev/<name>_<engine>.png + .json  intake.md  intake.json
 intake.md is for humans (and the LLM): metadata, OCR text, Baidu similar images (count, source sites, numbered contact sheet rev/<name>_baidu_similar.jpg),
-tiered vote count of image-search tags, suspected residential compound / housing development / hotel names, list of outputs, items skipped and failed.
+tiered vote count of image-search tags, suspected residential compound / housing development / hotel names, results on an AI-image gallery
+(assets/data/ai_hosts.json, intake.json ai_gallery_hits), list of outputs, items skipped and failed.
 Always open the image-search screenshots and the similar-image contact sheets; "searched, nothing found" and "not searched" are written separately in the report.
 
   intake.py photo.jpg --out-dir intake/ [--box x0,y0,x1,y1 ...] [--engines baidu,yandex] [--exclude word1,word2]
@@ -32,8 +33,12 @@ import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import urlparse
+
+from geolib.paths import DATA_DIR
 
 HERE = Path(__file__).parent
+AI_HOSTS = tuple(json.loads((DATA_DIR / "ai_hosts.json").read_text(encoding="utf-8"))["hosts"])
 # uv run writes its own path into the UV env var: call child scripts with it, so uv is found even when it isn't on PATH (e.g. just installed, terminal not reopened)
 UV = os.environ.get("UV") or "uv"
 CITY_SUFFIX = ("省", "市", "区", "县", "州", "盟", "旗", "国", "府", "道", "自治区", "特别行政区", "City", "Province", "County", "Prefecture")
@@ -84,9 +89,20 @@ def _classify(tag: str) -> str:
     return "other"
 
 
-def _collect_rev(rev_dir: Path) -> tuple[list[dict], dict]:
-    """Read revimg's .json files: guess/links for each image and engine, and do the tiered vote count."""
-    entries = []
+def _ai_host(url: str, site: str) -> str | None:
+    """The AI-gallery host a result link sits on (suffix match on the URL's host, else on the site label), or None. A scraped
+    string with an unbalanced '[' or ']' makes urlsplit raise ValueError: no host, never a crash that loses the whole search."""
+    try:
+        host = (urlparse(url).hostname or urlparse("//" + site.strip()).hostname or "").lower()
+    except ValueError:
+        return None
+    return next((h for h in AI_HOSTS if host == h or host.endswith("." + h)), None)
+
+
+def _collect_rev(rev_dir: Path) -> tuple[list[dict], dict, list[dict]]:
+    """Read revimg's .json files: guess/links for each image and engine, the tiered vote count, and the results that sit
+    on an AI-image gallery (every link and similar-image source, not only the ones shown)."""
+    entries, hits, seen = [], [], set()
     for jf in sorted(rev_dir.glob("*.json")):
         try:
             d = json.loads(jf.read_text(encoding="utf-8"))
@@ -96,6 +112,12 @@ def _collect_rev(rev_dir: Path) -> tuple[list[dict], dict]:
         if not m:
             continue
         simi = d.get("similar") or []
+        for url, site in [(x.get("url") or "", x.get("site") or "") for x in d.get("links") or []] + \
+                         [(x.get("from") or "", x.get("site") or "") for x in simi]:
+            host = _ai_host(url, site)
+            if host and url not in seen:
+                seen.add(url)
+                hits.append({"site": host, "url": url})
         entries.append({"variant": m.group(1), "engine": m.group(2), "guess": d.get("guess") or [], "links": (d.get("links") or [])[:8],
                         "error": d.get("error"), "refused": bool(d.get("refused")), "shot": str(jf.with_suffix(".png").name),
                         "json": jf.name, "similar_n": len(simi), "similar_sites": Counter(x.get("site") or "?" for x in simi).most_common(),
@@ -119,7 +141,7 @@ def _collect_rev(rev_dir: Path) -> tuple[list[dict], dict]:
                     votes["city"].setdefault(key, set()).add(e["engine"])
                 elif k == "place":
                     votes["place"].setdefault(tag, set()).add(f"{e['engine']}/{e['variant']}")
-    return entries, {k: {t: sorted(v) for t, v in d.items()} for k, d in votes.items()}
+    return entries, {k: {t: sorted(v) for t, v in d.items()} for k, d in votes.items()}, hits
 
 
 def main() -> None:
@@ -190,7 +212,7 @@ def main() -> None:
 
     # Batch 2: reverse image search, two engines in parallel, each searches the original + up to max-variants variants
     rev_dir = out / "rev"
-    entries, votes = [], {"city": {}, "place": {}}
+    entries, votes, hits = [], {"city": {}, "place": {}}, []
     if not args.no_rev:
         rev_dir.mkdir(exist_ok=True)
         var_files = sorted((out / "variants").glob("*.jpg")) + sorted((out / "variants").glob("*.png"))
@@ -209,7 +231,7 @@ def main() -> None:
             futs = {eng: ex.submit(timed, f"rev-{eng}", (lambda e=eng: (lambda: rev(e)))()) for eng in [e for e in args.engines.split(",") if e]}
             for eng, f in futs.items():
                 f.result()
-        entries, votes = _collect_rev(rev_dir)
+        entries, votes, hits = _collect_rev(rev_dir)
 
     ocr_items = []
     if (out / "ocr.json").exists():
@@ -248,6 +270,9 @@ def main() -> None:
         for eng in args.engines.split(","):
             st = status.get(f"rev-{eng}", "not run")
             L.append(f"- {eng}: {st}")
+        if hits:
+            L.append("- **AI-gallery host: open and compare (a host alone only down-weights)**: "
+                     + "; ".join(f"{h['site']} {h['url'][:100]}" for h in hits[:8]))
         refused = [e for e in entries if e["error"] or e["refused"]]
         if refused:
             L.append("- Items the engine refused or failed (not the same as nothing found): " + ", ".join(f"{e['variant']}/{e['engine']}: {e['error'] or 'refused'}" for e in refused))
@@ -305,7 +330,7 @@ def main() -> None:
     for k, v in status.items():
         L.append(f"- {k}: {v}")
     (out / "intake.md").write_text("\n".join(x for x in L if x is not None), encoding="utf-8")
-    (out / "intake.json").write_text(json.dumps({"photo": str(photo), "exif": exif_json, "ocr": ocr_items, "rev": entries, "votes": votes,
+    (out / "intake.json").write_text(json.dumps({"photo": str(photo), "exif": exif_json, "ocr": ocr_items, "rev": entries, "votes": votes, "ai_gallery_hits": hits,
                                                  "status": status, "timings": timings}, ensure_ascii=False, indent=1), encoding="utf-8")
     print("\n".join(L[:6]))
     print(f"-> {out / 'intake.md'} (read this)")

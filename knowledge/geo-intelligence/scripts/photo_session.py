@@ -9,11 +9,14 @@
             originals are copied with their checksums, the first one is the reference `original`;
             --beside puts the session folder next to the photo instead of under the archive root
             --viewer also opens the live page (viewer.py serve) in the default browser; board.json is created too
-  finish    append the chosen country/region/city to the folder name, record the result
-  truth     record the real location later (from the photo's owner, a puzzle answer, a game reveal)
-            and score the session: error in km, approximate world-map game score, country/region hit
+  finish    append the chosen country/region/city to the folder name, record the result; --generated BASIS closes a
+            generated image with no real place (<timestamp>__generated-image), on evidence only, never on a detector score
+  not-generated  record the operator's "it is real, continue" (session.json generated_override): a place finish is then
+            never refused for a declared generation
+  truth     record the real location later (from the photo's owner, a puzzle answer, a game reveal), or --generated,
+            and score the session: error in km, approximate world-map game score, country/region hit, outcome hit
   scoreboard  accuracy over every scored session: median error, hit rates at 1/25/200/750/2500 km,
-            and whether "high/medium/low" confidence actually meant what it claimed
+            whether "high/medium/low" confidence actually meant what it claimed, and generated calls against the truth
   list      sessions with their status, so an interrupted one can be resumed
 """
 
@@ -54,6 +57,9 @@ THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
 UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
 USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|operator|operatore|stopp|interrupt|abort|cancel", re.I)   # the only early reason: the operator said so
+# a verdict on the image itself (finish --generated, not-generated) takes the operator's words only in the documented form at the
+# start: "users on the forum agree" or "an interrupted render" inside a basis is not the operator speaking
+OPERATOR_WORDS = re.compile(r"\s*(operator|user)\s+(asked|said|says|confirmed)\s*:", re.I)
 # the early exit as every refusal and help text words it: an operator stop or redirect counts, the Quick budget never does
 EARLY_EXIT = (f"before {UNVERIFIED_CLOCK_MIN} min only when the operator stopped or redirected the analysis: "
               "put \"operator asked: …\" in the reason; after it, any stated reason")
@@ -68,7 +74,7 @@ CHECKS = {
                           "aerial photo or no street-level coverage: evidence.py on the tiles.py map with the camera and heading, --out evidence.jpg)"},
 }
 # recon.py's own outputs inside its --out-dir: the first pass, never a check
-RECON_PARTS = ("intake/", "prior/", "detect/", "meta/", "calib", "textgeo.", "recon.")
+RECON_PARTS = ("intake/", "prior/", "detect/", "meta/", "aidet/", "calib", "textgeo.", "recon.")
 RECON_FIRST_PASS = tuple("recon/" + p for p in RECON_PARTS)   # the default recon/ while a run has not written recon.json yet
 # images that pin the place by their own geometry, known by name: evidence.py's map with the camera, its --match side by side.
 # pose.py output pins by content (_pose_output), a rank file only relative to an answer (_near_fair); spec JSON never pins.
@@ -469,6 +475,83 @@ def count_verification_artifacts(folder: Path) -> int:
     return sum(1 for rel in paths if rel in by_content or VERIFICATION_MARK.search(rel.rsplit("/", 1)[-1]) or VERIFICATION_MARK.search(rel))
 
 
+SESSION_RECORDS = {"session.json", "report.md", "board.json", "activity.log", "viewer_marks.json", "viewer.html"}   # bookkeeping, never evidence
+GENERATED_LABEL = "generated image (no place)"                     # a generated outcome in list and the scoreboard
+
+
+def outcome(record: dict | None) -> str:
+    """'generated' or 'place' for a finished result or a truth record; a record without `outcome` is a place."""
+    return "generated" if isinstance(record, dict) and record.get("outcome") == "generated" else "place"
+
+
+def declared_generation(folder: Path) -> dict | None:
+    """meta.py's provenance verdict (recon/meta/meta.json, provenance.generated) when the file declares generated content, else
+    None. A composite* term (a real photo with AI edits) declares nothing."""
+    data = _read_json(folder / "recon" / "meta" / "meta.json")
+    digest = data.get("digest", data) if isinstance(data, dict) else None
+    prov = digest.get("provenance") if isinstance(digest, dict) else None
+    gen = prov.get("generated") if isinstance(prov, dict) else None
+    return gen if isinstance(gen, dict) and gen.get("declared") is True else None
+
+
+def detector(folder: Path) -> dict | None:
+    """recon/aidet/aidet.json as model status: {p_ai, threshold, model, flagged} when the detector ran, {skipped} when it did not,
+    None when absent or unreadable. Shown and recorded, never a gate: models rank, evidence decides."""
+    data = _read_json(folder / "recon" / "aidet" / "aidet.json")
+    if not isinstance(data, dict):
+        return None
+    if data.get("skipped"):
+        return {"skipped": str(data["skipped"])}
+    try:
+        p_ai, threshold = float(data["p_ai"]), float(data["threshold"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return {"p_ai": p_ai, "threshold": threshold, "model": data.get("model"), "flagged": p_ai >= threshold}
+
+
+def _names(text: str, name: str) -> bool:
+    """text names `name` as a whole token, case-insensitive: never inside a longer word, file name or term."""
+    return re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-]|\.\w)", text, re.I) is not None
+
+
+def _score_record(path: Path) -> bool:
+    """An aidet.py record (a score or its skip), known by content wherever --out-dir put it."""
+    data = _read_json(path) if path.suffix.lower() == ".json" else None
+    return isinstance(data, dict) and data.get("tool") == "aidet.py"
+
+
+def generated_basis(basis: str, folder: Path) -> str | None:
+    """What BASIS rests on as evidence of generation, strongest first: 'operator' (OPERATOR_WORDS at the start), 'file' (a session
+    file the agent saved, the AI-gallery page or the sheet confirming the duplicate, named by path or file name) or 'declared'
+    (the term meta declares); None for anything else. recon's first pass, the originals, the session's records and aidet.py
+    records are no such file: a detector score is never evidence."""
+    basis = basis.strip()
+    if not basis:
+        return None
+    if OPERATOR_WORDS.match(basis):
+        return "operator"
+    text = basis.replace("\\", "/")
+    named = [rel for rel in _artifact_paths(folder) if rel not in SESSION_RECORDS and (_names(text, rel) or _names(text, rel.rsplit("/", 1)[-1]))]
+    if any(not _score_record(folder / rel) for rel in named):
+        return "file"
+    declared = declared_generation(folder)
+    return "declared" if declared and declared.get("term") and _names(basis, str(declared["term"])) else None
+
+
+def generated_summary(pairs: list[tuple[dict, dict]]) -> dict:
+    """Generated calls against the truth over (result, truth) pairs: called, confirmed, false stops (called, the truth is a real
+    place) and missed generations (a place answered, the truth is generated)."""
+    out = {"called": 0, "confirmed": 0, "false_stops": 0, "missed": 0}
+    for result, real in pairs:
+        said, truth_is = outcome(result), outcome(real)
+        if said == "generated":
+            out["called"] += 1
+            out["confirmed" if truth_is == "generated" else "false_stops"] += 1
+        elif truth_is == "generated":
+            out["missed"] += 1
+    return out
+
+
 def _country_row(name: str) -> tuple[str, dict] | None:
     """(table key, row) of assets/data/countries.json for a country name, GeoNames name, ISO2 or ISO3 (case-insensitive); None when unknown."""
     table = json.loads((SKILL_DIR / "assets" / "data" / "countries.json").read_text(encoding="utf-8-sig"))
@@ -625,10 +708,11 @@ def parse_taken(text: str) -> dict:
 
 
 def finish(args: argparse.Namespace) -> dict:
-    if (args.latitude is None) != (args.longitude is None):
-        raise ValueError("Give both --latitude and --longitude, or neither (then the country centre is used, confidence low).")
-    if not args.country.strip() or not args.city.strip():
-        raise ValueError("Country and city/nearest locality must be nonempty.")
+    if args.generated is None:
+        if (args.latitude is None) != (args.longitude is None):
+            raise ValueError("Give both --latitude and --longitude, or neither (then the country centre is used, confidence low).")
+        if not args.country.strip() or not args.city.strip():
+            raise ValueError("Country and city/nearest locality must be nonempty.")
     folder = args.folder.expanduser().resolve(strict=True)
     metadata = json.loads((folder / "session.json").read_text(encoding="utf-8-sig"))
     report = (folder / "report.md").read_text(encoding="utf-8")
@@ -641,6 +725,8 @@ def finish(args: argparse.Namespace) -> dict:
     timestamp = metadata["timestamp"]
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-\d{6}[+-]\d{4}", timestamp):
         raise ValueError("Invalid timestamp in session.json.")
+    if args.generated is not None:
+        return _close(folder, metadata, report, timestamp, ["generated-image"], *_generated_result(args.generated, folder, metadata))
     radius = args.radius_m
     heading_arg = str(args.heading).strip() if args.heading is not None else ""
     if heading_arg.lower() in ("", "unknown", "none", "-"):
@@ -666,6 +752,7 @@ def finish(args: argparse.Namespace) -> dict:
         print(f"Warning: no coordinates given; pinned the centre of {country} ({lat:.4f}, {lon:.4f}) with a {radius / 1000:.0f} km radius, "
               f"confidence low. A road-snapped point inside the settled area would have been better.", file=sys.stderr)
     _check_coords(lat, lon)
+    _declared_generation_gate(folder, metadata, (lat, lon))
     artifacts = count_verification_artifacts(folder)
     taken = None
     taken_arg = (args.taken or "").strip()
@@ -740,7 +827,96 @@ def finish(args: argparse.Namespace) -> dict:
                 f"look-alike countries → refsheet.py), or go Deep. Close without one: --accept-unverified \"<reason>\" ({EARLY_EXIT}).")
         accepted_unverified = reason or f"clock: {elapsed_min:.0f} min without a verification artifact"
         print(f"Warning: no verification artifact ({accepted_unverified}): the answer is an unverified estimate and must say so.", file=sys.stderr)
-    names = [slug(value) for value in (country, region, city) if value]
+    result = {
+        "outcome": "place",
+        "country": country,
+        "region": region or None,
+        "city_or_nearest_locality": city,
+        "latitude": lat,
+        "longitude": lon,
+        "coordinate_system": "WGS84",
+        "coordinate_source": coordinate_source,
+        "radius_m": radius,
+        "heading": heading,
+        "confidence": confidence,
+        "verification_artifacts": artifacts,
+        "accepted_unverified": accepted_unverified,
+        "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped", "waived_by")} for c in checks],
+        "taken": taken,
+        "when_text": when_line,
+        "heading_hint": hint,
+    }
+    lines = (
+        f"Result: {lat:.6f}, {lon:.6f} (WGS84{'' if coordinate_source == 'given' else ', ' + coordinate_source})"
+        + (f"; radius {radius:g} m" if radius is not None else "") + (f"; heading {heading:g}°" if heading is not None else "")
+        + f"; confidence {confidence}; verification artifacts {artifacts}  \n"
+        + (f"Taken: {taken['text']}" + (f" {taken['time']}" if taken.get("time") else "") + f" ({taken['confidence']}"
+           + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else f"Taken: not given{' (report: ' + when_line + ')' if when_line else ''}  \n")
+        + (f"Heading: unknown; the best ranked view nearby looks at {hint['heading']:.0f}° ({hint['source']}, suggested, not asserted)  \n" if hint else "")
+    )
+    return _close(folder, metadata, report, timestamp, [slug(value) for value in (country, region, city) if value], result, lines)
+
+
+def _declared_generation_gate(folder: Path, metadata: dict, answer: tuple[float, float]) -> None:
+    """A place answer for a file that declares generated content: refused only while nothing pins a real place and the operator
+    has not said it is real (not-generated); with either, a note. A detector score never enters here."""
+    declared = declared_generation(folder)
+    if not declared:
+        return
+    term = declared.get("term") or "generated content"
+    what = f"recon/meta declares generated content ({term})"
+    override = metadata.get("generated_override")
+    if isinstance(override, dict) and override.get("reason"):
+        print(f"Note: {what}; the operator said it is real ({override['reason']}): say both in the answer.", file=sys.stderr)
+        return
+    pins = pinning_artifacts(folder, answer)
+    if pins:
+        print(f"Note: {what}, but the place is pinned by {', '.join(pins[:3])}: a real place found outranks a declaration; say both in "
+              f"the answer.", file=sys.stderr)
+        return
+    raise ValueError(
+        f"{what} and nothing in the session pins a real place. Exits: the operator says it is real → photo_session.py not-generated "
+        f"\"{folder}\" \"operator asked: it is real\", then finish again; the declaration stands → photo_session.py finish \"{folder}\" "
+        f"--generated \"{term}\"; or pin the place (an evidence.py or match image, a pose.py solution, or a near fair ranked view at this "
+        f"answer): a real place found outranks a declaration.")
+
+
+def _generated_result(basis: str, folder: Path, metadata: dict) -> tuple[dict, str]:
+    """finish --generated: the result and its footer line. BASIS must be evidence (generated_basis); the detector's score is
+    recorded beside it, never decides it. The operator's earlier "it is real" outranks the declared term alone: then only new
+    operator words or a saved file close as generated."""
+    basis = basis.strip()
+    kind = generated_basis(basis, folder)
+    if not kind:
+        declared = declared_generation(folder)
+        raise ValueError(
+            "--generated needs evidence of generation, never a score: the term meta declares ("
+            + (f"here: {declared['term']}" if declared and declared.get("term") else "none declared in recon/meta/meta.md")
+            + "), a session file you saved that shows it (the AI-gallery page with its prompt, model or 'Generated with AI' label, or "
+            "the contact sheet confirming the duplicate by fixed features; name its path), or the operator's words (\"operator asked: …\"). "
+            f"'{basis[:80]}' is none of these. Next: keep geolocating (a detector score ranks, it never decides), or save that evidence "
+            "and name the file.")
+    override = metadata.get("generated_override")
+    if kind == "declared" and isinstance(override, dict) and override.get("reason"):
+        raise ValueError(
+            f"The operator said it is real ({override['reason']}): that outranks the declared term. Exits: the operator now says it is "
+            f"generated → photo_session.py finish \"{folder}\" --generated \"operator asked: …\"; a saved file that shows the generation "
+            "(the AI-gallery page with its prompt or model, the sheet confirming the duplicate) → --generated naming that file; otherwise "
+            "finish with the place (--country, --city, --latitude/--longitude…), which the declaration no longer refuses.")
+    score = detector(folder) or {}
+    result = {"outcome": "generated", "latitude": None, "longitude": None,
+              "generated": {"basis": basis, "score": score.get("p_ai"), "model": score.get("model"), "skipped": score.get("skipped"),
+                            "override": override}}
+    line = (f"Result: generated image, no real place; basis: {basis}  \n"
+            + (f"Detector: {score['p_ai']:.2f} ({score.get('model') or 'model'}), a ranking, not the basis  \n" if score.get("p_ai") is not None
+               else f"Detector: skipped ({score['skipped']})  \n" if score.get("skipped") else "Detector: not run  \n")
+            + (f"Operator had said real: {override.get('reason')}  \n" if isinstance(override, dict) else ""))
+    return result, line
+
+
+def _close(folder: Path, metadata: dict, report: str, timestamp: str, names: list[str], result: dict, lines: str) -> dict:
+    """Rename <timestamp> to <timestamp>__<names>, record the result, append the report footer (lines: the result's own) and
+    write the offline page."""
     destination = folder.parent / (timestamp + "__" + "__".join(names))
     if destination != folder and destination.exists():
         raise ValueError("The final archive already exists; no existing session was changed.")
@@ -749,40 +925,13 @@ def finish(args: argparse.Namespace) -> dict:
         if cwd == folder or folder in cwd.parents:
             os.chdir(folder.parent)               # Windows refuses to rename a folder that is this process's cwd
         _rename(folder, destination)
-    metadata.update({
-        "status": "completed",
-        "completed_at": now().isoformat(timespec="microseconds"),
-        "folder": str(destination),
-        "result": {
-            "country": country,
-            "region": region or None,
-            "city_or_nearest_locality": city,
-            "latitude": lat,
-            "longitude": lon,
-            "coordinate_system": "WGS84",
-            "coordinate_source": coordinate_source,
-            "radius_m": radius,
-            "heading": heading,
-            "confidence": confidence,
-            "verification_artifacts": artifacts,
-            "accepted_unverified": accepted_unverified,
-            "checks": [{k: c.get(k) for k in ("name", "why", "done", "files", "skipped", "waived_by")} for c in checks],
-            "taken": taken,
-            "when_text": when_line,
-            "heading_hint": hint,
-        },
-    })
+    metadata.update({"status": "completed", "completed_at": now().isoformat(timespec="microseconds"), "folder": str(destination), "result": result})
     body = report.split(FOOTER, 1)[0].rstrip().replace(str(folder), str(destination))
     footer = (
         f"\n\n{FOOTER}\n\n"
         f"Analysis started: {metadata['started_at']} ({TZ_NAME})  \n"
         f"Analysis completed: {metadata['completed_at']}  \n"
-        f"Result: {lat:.6f}, {lon:.6f} (WGS84{'' if coordinate_source == 'given' else ', ' + coordinate_source})"
-        + (f"; radius {radius:g} m" if radius is not None else "") + (f"; heading {heading:g}°" if heading is not None else "")
-        + f"; confidence {confidence}; verification artifacts {artifacts}  \n"
-        + (f"Taken: {taken['text']}" + (f" {taken['time']}" if taken.get("time") else "") + f" ({taken['confidence']}"
-           + (f"; {taken['basis']}" if taken.get("basis") else "") + ")  \n" if taken else f"Taken: not given{' (report: ' + when_line + ')' if when_line else ''}  \n")
-        + (f"Heading: unknown; the best ranked view nearby looks at {hint['heading']:.0f}° ({hint['source']}, suggested, not asserted)  \n" if hint else "")
+        + lines
         + f"Archive: [{destination.name}](<{destination}>)\n"
     )
     (destination / "report.md").write_text(body + footer, encoding="utf-8")
@@ -856,23 +1005,30 @@ def _check_coords(lat: float, lon: float) -> None:
 
 
 def truth(args: argparse.Namespace) -> dict:
-    _check_coords(args.latitude, args.longitude)
+    real = "generated" if args.generated else "place"
+    if real == "place":
+        _check_coords(args.latitude, args.longitude)
     folder = args.folder.expanduser().resolve(strict=True)
     metadata = json.loads((folder / "session.json").read_text(encoding="utf-8-sig"))
     result = metadata.get("result")
     if not result:
         raise ValueError("Finish the session first (photo_session.py finish), then record the truth.")
-    distance = haversine_km(result["latitude"], result["longitude"], args.latitude, args.longitude)
+    said = outcome(result)
+    # a distance exists only between two places: a generated answer or a generated truth has none
+    distance = haversine_km(result["latitude"], result["longitude"], args.latitude, args.longitude) if said == real == "place" else None
     report_path = folder / "report.md"
     report = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
     gut = gut_call(report)
     gut_p = next((p for c, p in gut if _same_country(c, args.country)), None) if args.country and gut else None
     record = {
+        "outcome": real,
         "latitude": args.latitude, "longitude": args.longitude,
         "country": args.country or None, "region": args.region or None, "city": args.city or None,
         "source": args.source or None, "recorded_at": now().isoformat(timespec="microseconds"),
-        "error_km": round(distance, 3),
-        "game_score_estimate": int(round(5000 * math.exp(-distance / SCORE_SCALE_KM))),
+        "error_km": round(distance, 3) if distance is not None else None,
+        "game_score_estimate": int(round(5000 * math.exp(-distance / SCORE_SCALE_KM))) if distance is not None else None,
+        "outcome_hit": said == real,
+        "false_stop": said == "generated" and real == "place",      # the run stopped on a real photo; the reverse is a missed generation
         "country_hit": _same_country(result.get("country"), args.country),
         "region_hit": _same(result.get("region"), args.region),
         # gut call (written before tools) vs truth: None when the report has no gut rows or no truth country was given
@@ -900,18 +1056,22 @@ def truth(args: argparse.Namespace) -> dict:
         before, rest = report.split(TRUTH_START, 1)
         report = before.rstrip() + rest.split(TRUTH_END, 1)[-1]
     hit = lambda v: "unknown" if v is None else ("yes" if v else "no")  # noqa: E731
-    block = (
-        f"\n\n{TRUTH_START}\n\n## Ground truth\n\n"
-        f"Actual location: {args.latitude:.6f}, {args.longitude:.6f}"
-        + (f" ({', '.join(x for x in (args.city, args.region, args.country) if x)})" if (args.city or args.region or args.country) else "")
-        + (f"; source: {args.source}" if args.source else "") + "  \n"
-        f"Error: {distance:.2f} km; approximate world-map game score {record['game_score_estimate']}; "
-        f"country hit: {hit(record['country_hit'])}; region hit: {hit(record['region_hit'])}; "
-        + (f"taken: {record['taken']} → {'inside the answered range' if record.get('taken_hit') else ('no range answered' if record.get('taken_hit') is None else str(record.get('taken_error_days')) + ' days off')}; " if record.get("taken") else "")
-        +         f"gut call: {hit(record['gut_country_hit'])}"
-        + (f" ({record['gut_p_truth']:g}% on the true country)" if record["gut_p_truth"] is not None else "")
-        + f"; stated confidence: {result.get('confidence')}.\n\n{TRUTH_END}\n"
-    )
+    parts = [f"Error: {distance:.2f} km; approximate world-map game score {record['game_score_estimate']}"] if distance is not None else []
+    if "generated" in (said, real):
+        parts.append("outcome: " + ("generated image confirmed" if said == real else "false stop: answered a generated image, the photo shows a real place"
+                                    if said == "generated" else "missed generation: answered a place, the image is generated"))
+    if real == "place":
+        parts.append(f"country hit: {hit(record['country_hit'])}; region hit: {hit(record['region_hit'])}")
+    if record.get("taken"):
+        parts.append(f"taken: {record['taken']} → {'inside the answered range' if record.get('taken_hit') else ('no range answered' if record.get('taken_hit') is None else str(record.get('taken_error_days')) + ' days off')}")
+    if real == "place":
+        parts.append(f"gut call: {hit(record['gut_country_hit'])}" + (f" ({record['gut_p_truth']:g}% on the true country)" if record["gut_p_truth"] is not None else ""))
+    if said == "place":
+        parts.append(f"stated confidence: {result.get('confidence')}")
+    where = ("Actual: generated image, no real place" if real == "generated" else f"Actual location: {args.latitude:.6f}, {args.longitude:.6f}"
+             + (f" ({', '.join(x for x in (args.city, args.region, args.country) if x)})" if (args.city or args.region or args.country) else ""))
+    block = (f"\n\n{TRUTH_START}\n\n## Ground truth\n\n" + where + (f"; source: {args.source}" if args.source else "") + "  \n"
+             + "; ".join(parts) + f".\n\n{TRUTH_END}\n")
     if FOOTER in report:
         body, footer = report.split(FOOTER, 1)
         report = body.rstrip() + block + "\n" + FOOTER + footer
@@ -950,28 +1110,31 @@ def _median(values: list[float]) -> float | None:
 
 def scoreboard(args: argparse.Namespace) -> dict:
     root = args.root.expanduser().resolve()
-    rows = []
+    rows, pairs = [], []
     for folder, m in _sessions(root):
         t, r = m.get("truth"), m.get("result")
         if t and r:
+            pairs.append((r, t))
             rows.append({"folder": folder.name, "started_at": m.get("started_at"), "chosen": r.get("city_or_nearest_locality"),
-                         "country": r.get("country"), "confidence": r.get("confidence"), "error_km": t["error_km"],
-                         "score": t.get("game_score_estimate"), "country_hit": t.get("country_hit"), "taken_hit": t.get("taken_hit"),
-                         "gut_country_hit": t.get("gut_country_hit"), "gut_p_truth": t.get("gut_p_truth")})
-    errors = [x["error_km"] for x in rows]
+                         "country": r.get("country"), "outcome": outcome(r), "truth_outcome": outcome(t), "confidence": r.get("confidence"),
+                         "error_km": t.get("error_km"), "score": t.get("game_score_estimate"), "country_hit": t.get("country_hit"),
+                         "taken_hit": t.get("taken_hit"), "gut_country_hit": t.get("gut_country_hit"), "gut_p_truth": t.get("gut_p_truth")})
+    measured = [x for x in rows if x["error_km"] is not None]          # a generated answer or truth has no distance
+    errors = [x["error_km"] for x in measured]
     summary = {"root": str(root), "scored_sessions": len(rows),
                "median_error_km": _median(errors),
-               "mean_game_score": round(sum(x["score"] or 0 for x in rows) / len(rows)) if rows else None,
+               "mean_game_score": round(sum(x["score"] or 0 for x in measured) / len(measured)) if measured else None,
                "within_km": {str(k): round(sum(e <= k for e in errors) / len(errors), 3) if errors else None for k in THRESHOLDS_KM},
                "country_hit_rate": (round(sum(1 for x in rows if x["country_hit"]) / len([x for x in rows if x["country_hit"] is not None]), 3)
                                     if any(x["country_hit"] is not None for x in rows) else None),
                "taken_hit_rate": (round(sum(1 for x in rows if x.get("taken_hit")) / len([x for x in rows if x.get("taken_hit") is not None]), 3)
                                   if any(x.get("taken_hit") is not None for x in rows) else None),
                "gut_country_hit_rate": (round(sum(1 for x in rows if x["gut_country_hit"]) / len([x for x in rows if x["gut_country_hit"] is not None]), 3)
-                                        if any(x["gut_country_hit"] is not None for x in rows) else None)}
+                                        if any(x["gut_country_hit"] is not None for x in rows) else None),
+               "generated": generated_summary(pairs)}
     calib = {}
     for tier in ("high", "medium", "low"):
-        e = [x["error_km"] for x in rows if x["confidence"] == tier]
+        e = [x["error_km"] for x in measured if x["confidence"] == tier]
         calib[tier] = {"n": len(e), "median_error_km": _median(e),
                        "within_25km": round(sum(v <= 25 for v in e) / len(e), 3) if e else None,
                        "within_200km": round(sum(v <= 200 for v in e) / len(e), 3) if e else None}
@@ -982,15 +1145,21 @@ def scoreboard(args: argparse.Namespace) -> dict:
                  f"{summary['median_error_km'] if summary['median_error_km'] is not None else '–'} km. "
                  f"Mean approximate game score: {summary['mean_game_score'] if summary['mean_game_score'] is not None else '–'}.", "",
                  "| Within | " + " | ".join(f"{k} km" for k in THRESHOLDS_KM) + " |", "|---|" + "---|" * len(THRESHOLDS_KM),
-                 "| share | " + " | ".join(_pct(summary["within_km"][str(k)]) for k in THRESHOLDS_KM) + " |",
-                 "", "## Calibration", "", "| Stated confidence | n | median error km | within 25 km | within 200 km |", "|---|---|---|---|---|"]
+                 "| share | " + " | ".join(_pct(summary["within_km"][str(k)]) for k in THRESHOLDS_KM) + " |"]
+        g = summary["generated"]
+        if g["called"] or g["missed"]:
+            lines += ["", f"Generated image calls: {g['called']} (confirmed {g['confirmed']}, false stops {g['false_stops']}); "
+                          f"missed generations: {g['missed']}. Distance figures leave these sessions out."]
+        lines += ["", "## Calibration", "", "| Stated confidence | n | median error km | within 25 km | within 200 km |", "|---|---|---|---|---|"]
         for tier, c in calib.items():
             med = "–" if c["median_error_km"] is None else f"{c['median_error_km']:.1f}"
             lines.append(f"| {tier} | {c['n']} | {med} | {_pct(c['within_25km'])} | {_pct(c['within_200km'])} |")
         lines += ["", "## Sessions", "", "| Session | Chosen | Confidence | Error km | Score | Gut % on truth |", "|---|---|---|---|---|---|"]
         for x in sorted(rows, key=lambda x: x["started_at"] or ""):
             gut = "–" if x["gut_p_truth"] is None else f"{x['gut_p_truth']:g}"
-            lines.append(f"| {x['folder']} | {x['chosen']}, {x['country']} | {x['confidence']} | {x['error_km']:.1f} | {x['score']} | {gut} |")
+            chosen = GENERATED_LABEL if x["outcome"] == "generated" else f"{x['chosen']}, {x['country']}"
+            error = "–" if x["error_km"] is None else f"{x['error_km']:.1f}"
+            lines.append(f"| {x['folder']} | {chosen} | {x['confidence'] or '–'} | {error} | {x['score'] if x['score'] is not None else '–'} | {gut} |")
         (root / "scoreboard.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
         save_json(root / "scoreboard.json", summary)
         summary["written"] = str(root / "scoreboard.md")
@@ -1005,9 +1174,51 @@ def list_sessions(args: argparse.Namespace) -> dict:
             continue
         r, t = m.get("result") or {}, m.get("truth") or {}
         rows.append({"folder": str(folder), "status": m.get("status"), "started_at": m.get("started_at"),
-                     "result": f"{r.get('city_or_nearest_locality')}, {r.get('country')} ({r.get('confidence')})" if r else None,
+                     "result": (GENERATED_LABEL if outcome(r) == "generated" else f"{r.get('city_or_nearest_locality')}, {r.get('country')} ({r.get('confidence')})")
+                     if r else None,
                      "error_km": t.get("error_km")})
     return {"root": str(root), "count": len(rows), "sessions": rows}
+
+
+def not_generated(args: argparse.Namespace) -> dict:
+    """The operator's "it is real, continue", kept in session.json (outside recon/, so a recon rerun never erases it)."""
+    reason = args.reason.strip()
+    if not OPERATOR_WORDS.match(reason):
+        raise ValueError(f"not-generated records the operator's word only: put \"operator asked: …\" in the reason ('{reason[:60]}' is not that). "
+                         "Next: without the operator's word keep geolocating; a detector score never stops the analysis, and a declared "
+                         "generation yields to a pinned place (evidence or match image, pose.py solution) or closes with finish --generated.")
+    folder = args.folder.expanduser().resolve(strict=True)
+    metadata = json.loads((folder / "session.json").read_text(encoding="utf-8-sig"))
+    metadata["generated_override"] = {"reason": reason, "at": now().isoformat(timespec="seconds")}
+    save_json(folder / "session.json", metadata)
+    return {**describe(folder, metadata), "generated_override": metadata["generated_override"]}
+
+
+FINISH_PLACE = ("country", "region", "city", "latitude", "longitude", "confidence", "radius_m", "heading", "taken", "taken_confidence", "taken_basis")
+
+
+def _given(args: argparse.Namespace, names: tuple[str, ...]) -> list[str]:
+    return [f"--{n.replace('_', '-')}" for n in names if getattr(args, n) not in (None, "")]
+
+
+def _finish_usage(args: argparse.Namespace) -> str | None:
+    """finish's flag rules argparse cannot state: the place flags are required without --generated and never mix with it."""
+    if args.generated is not None:
+        mixed = _given(args, FINISH_PLACE + ("skip_check", "accept_unverified"))
+        return f"--generated closes with no real place: drop {', '.join(mixed)}; to answer a place, drop --generated instead" if mixed else None
+    missing = [f"--{n}" for n in ("country", "city", "confidence", "heading", "taken") if getattr(args, n) is None]
+    return ("the following arguments are required: " + ", ".join(missing) + " (or --generated BASIS for a generated image with no real place)"
+            if missing else None)
+
+
+def _truth_usage(args: argparse.Namespace) -> str | None:
+    """truth takes a place (--latitude and --longitude) or --generated, never both."""
+    if args.generated:
+        mixed = _given(args, ("latitude", "longitude", "country", "region", "city", "taken"))
+        return f"--generated is the truth for an image with no real place: drop {', '.join(mixed)}; for a place truth, drop --generated instead" if mixed else None
+    missing = [f"--{n}" for n in ("latitude", "longitude") if getattr(args, n) is None]
+    return ("the following arguments are required: " + ", ".join(missing) + " (or --generated when the image shows no real place)"
+            if missing else None)
 
 
 def main() -> int:
@@ -1020,30 +1231,38 @@ def main() -> int:
     create.add_argument("--viewer", action="store_true", help="Also start viewer.py serve for this session and open it in the browser.")
     create.add_argument("--viewer-port", type=int, default=0, help="Port for --viewer on 127.0.0.1 (default: a random free one; the URL is printed and stored in session.json).")
     create.set_defaults(handler=start)
-    complete = subparsers.add_parser("finish", help="Append the location to a session with a saved report.")
+    complete = subparsers.add_parser("finish", help="Append the location to a session with a saved report, or close a generated image (--generated).")
     complete.add_argument("folder", type=Path)
-    complete.add_argument("--country", required=True)
+    complete.add_argument("--country", help="Required unless --generated.")
     complete.add_argument("--region", default="")
-    complete.add_argument("--city", required=True, help="City or nearest named locality.")
+    complete.add_argument("--city", help="City or nearest named locality; required unless --generated.")
     complete.add_argument("--latitude", type=float, help="WGS84; omit both coordinates only when nothing below country level is supported (then: country centre, wide radius, confidence low).")
     complete.add_argument("--longitude", type=float)
-    complete.add_argument("--confidence", required=True, choices=("high", "medium", "low"))
+    complete.add_argument("--confidence", choices=("high", "medium", "low"), help="Required unless --generated.")
     complete.add_argument("--radius-m", type=float, help="Error radius of the answer in metres (what the stated precision rests on).")
-    complete.add_argument("--heading", required=True, help="Camera heading in degrees (0 = north, 90 = east), or the word unknown: say which.")
-    complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
+    complete.add_argument("--heading", help="Camera heading in degrees (0 = north, 90 = east), or the word unknown: say which; required unless --generated.")
+    complete.add_argument("--taken", help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which; required unless --generated.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
     complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help=f"Close although a scene-required check (skyline, street) has no file; repeatable, recorded in the result. Allowed {EARLY_EXIT}.")
     complete.add_argument("--accept-unverified", metavar="REASON", help=f"Close with no verification artifact; the reason is recorded. Allowed {EARLY_EXIT}.")
+    complete.add_argument("--generated", metavar="BASIS", help="Close as a generated image with no real place, without any place flag. BASIS is evidence, never a detector score: "
+                          "the DigitalSourceType term meta declares, a saved session file that shows it (the AI-gallery page, the sheet confirming the duplicate), "
+                          "or the operator's words starting the basis (\"operator asked: …\").")
     complete.set_defaults(handler=finish)
+    not_gen = subparsers.add_parser("not-generated", help="Record the operator's \"it is real, continue\" (session.json generated_override): a declared generation then never refuses a place finish.")
+    not_gen.add_argument("folder", type=Path)
+    not_gen.add_argument("reason", help="The operator's words, starting \"operator asked:\", e.g. \"operator asked: it is real, continue\".")
+    not_gen.set_defaults(handler=not_generated)
     chk = subparsers.add_parser("checks", help="Print the status line, then the scene's required checks (from recon's scene tags): done, waived by a pinning file, or missing with the command that does it.")
     chk.add_argument("folder", type=Path)
     chk.set_defaults(handler=cmd_checks)
 
-    scored = subparsers.add_parser("truth", help="Record the real location of a finished session and score it.")
+    scored = subparsers.add_parser("truth", help="Record the real location of a finished session (or --generated) and score it.")
     scored.add_argument("folder", type=Path)
-    scored.add_argument("--latitude", required=True, type=float)
-    scored.add_argument("--longitude", required=True, type=float)
+    scored.add_argument("--latitude", type=float, help="Required unless --generated.")
+    scored.add_argument("--longitude", type=float, help="Required unless --generated.")
+    scored.add_argument("--generated", action="store_true", help="The image is generated and shows no real place (no coordinates).")
     scored.add_argument("--country", default="")
     scored.add_argument("--region", default="")
     scored.add_argument("--city", default="")
@@ -1059,6 +1278,10 @@ def main() -> int:
     listing.add_argument("--status", choices=("pending", "completed"))
     listing.set_defaults(handler=list_sessions)
     args = parser.parse_args()
+    usage = {"finish": (complete, _finish_usage), "truth": (scored, _truth_usage)}.get(args.command)
+    problem = usage[1](args) if usage else None
+    if problem:
+        usage[0].error(problem)                   # exit 2 with the usage line, as argparse's own required-argument check
     try:
         output = args.handler(args)
     except (OSError, ValueError, KeyError) as exc:

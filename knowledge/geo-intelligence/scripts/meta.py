@@ -11,7 +11,8 @@ Finds what plain EXIF readers miss:
   and every country whose time zones had that offset on that date (DST-aware); videos: QuickTime CreationDate
   (carries its offset) before CreateDate, which is flagged as container time of unknown zone
   camera/maker-note location hints (camera "home/destination city" time-zone settings, IPTC/XMP city and country)
-  editing and provenance (software, edit history, C2PA / content credentials, AI-generated source type)
+  editing and provenance (software, edit history, C2PA / content credentials); the IPTC source type split into
+  "file declares generated content" and "AI-edited real photo" (provenance.generated in the JSON)
   embedded thumbnails/previews that differ from the main image (the uncropped original may be inside)
   filename patterns (WhatsApp, WeChat, KakaoTalk, LINE, Telegram, Viber, stock-photo IDs, screenshots
   and the OS language of the screenshot name) and JPEG recompression hints
@@ -20,9 +21,9 @@ Finds what plain EXIF readers miss:
   meta.py photo.jpg                        → print the summary
   meta.py a.jpg b.heic --json              → one compact JSON digest per file (GPS + GCJ-02, time, optics)
 
-Without exiftool a pure-Python fallback reads EXIF, GPS, XMP (incl. DJI XMP fields) and video ISO 6709 location and
-flags an APP11 C2PA/JUMBF manifest (its content needs exiftool or c2patool);
-the output then carries a one-line notice of what needs exiftool (large previews, maker notes, QuickTime atoms).
+Without exiftool a pure-Python fallback reads EXIF, GPS, XMP (incl. DJI XMP fields), video ISO 6709 location and the
+source type in XMP, PNG text and C2PA manifests (JPEG APP11, PNG caBX); a brotli-compressed or remote manifest needs
+exiftool or c2patool. The output then carries a one-line notice of what needs exiftool (large previews, maker notes, QuickTime atoms).
 Optics: focal_35mm and the 4:3 field of view feed geo.py range / terrain.py; GCJ-02 is added for points in China.
 Social apps (WeChat, WhatsApp, QQ) strip metadata on forwarding; screenshots carry none. Empty output means nothing.
 
@@ -109,6 +110,18 @@ _EXIFTOOL_NAMES = {"DateTime": "ModifyDate", "DateTimeDigitized": "CreateDate", 
                    "MakerNote": None, "UserComment": None, "PrintImageMatching": None, "ComponentsConfiguration": None}
 # generator names seen in Software / CreatorTool / HistorySoftwareAgent of AI-made images
 AI_GENERATOR = re.compile(r"midjourney|\bdall[\s·•.\-]?e\b|stable[\s-]?diffusion|\bfirefly\b|\bgoogle\s+imagen\b|\bimagen\s*[0-9]|\bflux\b|\bleonardo\b|\bideogram\b", re.I)
+# IPTC digital source types (cv.iptc.org/newscodes/digitalsourcetype), longest first: inside a C2PA manifest the URI is a
+# CBOR string whose next header byte is often a letter, so a bare [A-Za-z]+ would swallow it; unknown terms keep the bare word.
+SOURCE_TYPES = ("compositeWithTrainedAlgorithmicMedia", "algorithmicallyEnhanced", "trainedAlgorithmicMedia", "computationalCapture",
+                "compositeSynthetic", "compositeCapture", "algorithmicMedia", "virtualRecording", "dataDrivenMedia", "digitalCapture",
+                "digitalCreation", "minorHumanEdits", "screenCapture", "softwareImage", "negativeFilm", "positiveFilm", "humanEdits",
+                "digitalArt", "print")
+SOURCE_TERM = re.compile(rb"digitalsourcetype/(" + b"|".join(s.encode() for s in SOURCE_TYPES) + rb"|[A-Za-z]+)", re.I)
+GENERATED_TYPES = {"trainedAlgorithmicMedia", "algorithmicMedia"}
+SOURCE_UNREAD = ("C2PA present, source type unread (brotli-compressed, remote or none recorded: "
+                 "exiftool or c2patool shows the manifest)")
+PROV_TAG = re.compile(r"(DigitalSourceType|C2PA|JUMBF|Manifest|Claim|Credential|History|DocumentAncestors|OriginalDocumentID|"
+                      r"Software|CreatorTool|ProcessingSoftware|(?i:provenance))")
 FALLBACK_NOTICE = ("exiftool not found: Pillow fallback read EXIF, GPS, XMP and video ISO 6709 location only; "
                    "large embedded previews, maker notes, QuickTime atoms and full DJI metadata need exiftool")
 _XMP_ATTR = re.compile(rb'([A-Za-z][\w.-]*):([A-Za-z][\w.-]*)="([^"]{0,500})"')
@@ -120,6 +133,8 @@ CONTAINER_CLOCK = "container time, zone unknown (UTC per the QuickTime spec, loc
 
 def _plain(v):
     """JSON-friendly EXIF value: rationals -> float, tuples -> lists, short ASCII bytes decoded, blobs dropped."""
+    if v is None:                             # an absent tag, never the string "None"
+        return None
     if isinstance(v, bytes):
         s = v.rstrip(b"\x00")
         return s.decode("ascii", "replace") if len(s) <= 64 and all(32 <= b < 127 for b in s) else None
@@ -179,12 +194,18 @@ def _scan_bytes(path: Path, limit: int = 8 << 20) -> bytes:
         return head + fh.read(limit)
 
 
+def _terms(*blobs: bytes) -> list[str]:
+    return list(dict.fromkeys(t.decode("ascii") for b in blobs for t in SOURCE_TERM.findall(b)))
+
+
 def _xmp_tags(blob: bytes) -> dict:
-    """Simple XMP properties as exiftool-style 'XMP-<prefix>:<Name>' keys (GPS converted to signed degrees)."""
+    """Simple XMP properties as exiftool-style 'XMP-<prefix>:<Name>' keys (GPS converted to signed degrees); the source type
+    is read from the packet text, so the element, attribute and rdf:resource forms all count."""
     out: dict = {}
-    for m in re.finditer(rb"<x:xmpmeta.*?</x:xmpmeta>", blob, re.S):
+    packets = [m.group(0) for m in re.finditer(rb"<x:xmpmeta.*?</x:xmpmeta>", blob, re.S)]
+    for packet in packets:
         for rx in (_XMP_ATTR, _XMP_ELEM):
-            for pre, name, val in rx.findall(m.group(0)):
+            for pre, name, val in rx.findall(packet):
                 pre_s, name_s = pre.decode("ascii", "replace"), name.decode("ascii", "replace")
                 if pre_s in ("xmlns", "x", "rdf", "xml", "stEvt", "stRef"):
                     continue
@@ -198,6 +219,9 @@ def _xmp_tags(blob: bytes) -> dict:
                 elif pre_s == "drone-dji" or name_s in ("GPSAltitude", "GPSImgDirection", "GPSDestBearing", "GPSSpeed", "GPSHPositioningError"):
                     v = _rational(v)
                 out.setdefault(f"XMP-{pre_s}:{name_s}", v)
+    terms = _terms(*packets)
+    if terms:
+        out["XMP-Iptc4xmpExt:DigitalSourceType"] = "; ".join(terms)
     return out
 
 
@@ -226,13 +250,32 @@ def _app1_thumbnail(path: Path) -> bytes | None:
     return None
 
 
-def _jumbf_notice(head: bytes) -> str | None:
-    """APP11 JUMBF segments (ISO 19566-5, 'JP' box signature) carry C2PA content credentials; only their presence is read here."""
-    segs = [seg for marker, seg in _jpeg_segments(head) if marker == 0xEB and seg.startswith(b"JP")]
-    if not segs:
-        return None
-    label = ", label c2pa" if any(b"c2pa" in seg for seg in segs) else ""
-    return f"C2PA/JUMBF manifest present ({len(segs)} APP11 segment(s){label}; needs exiftool or c2patool to read)"
+def _jumbf(blob: bytes) -> dict:
+    """C2PA content credentials (JUMBF, ISO 19566-5) without exiftool: presence, IPTC source types, an opened ingredient.
+    JPEG spreads the store over APP11 segments (CI 'JP', box instance, packet sequence, then the box, whose header every
+    continuation segment repeats): rejoined per box instance, so a URI cut at a segment boundary reads whole. PNG (caBX),
+    ISO BMFF and WebP keep it in one piece. A brotli-compressed ('brob') or remote manifest yields no term."""
+    if blob.startswith(b"\xff\xd8"):
+        boxes: dict[int, list[tuple[int, bytes]]] = {}
+        for marker, seg in _jpeg_segments(blob):
+            if marker == 0xEB and seg.startswith(b"JP") and len(seg) > 16:
+                boxes.setdefault(int.from_bytes(seg[2:4], "big"), []).append((int.from_bytes(seg[4:8], "big"), seg[8:]))
+        n = sum(len(v) for v in boxes.values())
+        store = b"".join(body if i == 0 else body[16 if body[:4] == b"\x00\x00\x00\x01" else 8:]   # LBox 1: 8-byte XLBox follows
+                         for en in sorted(boxes) for i, (_, body) in enumerate(sorted(boxes[en])))
+        where = f"{n} APP11 segment(s)"
+    else:
+        m = re.search(rb"jumb.{4}jumd", blob, re.S)      # superbox, then its description box: no chance match in pixel data
+        n, store, where = (1, blob[m.start():], "JUMBF box") if m else (0, b"", "")
+    if not n:
+        return {}
+    out = {"JUMBF:Manifest": f"C2PA/JUMBF manifest present ({where}{', label c2pa' if b'c2pa' in store else ''})"}
+    terms = _terms(store)
+    if terms:
+        out["JUMBF:DigitalSourceType"] = "; ".join(terms)
+    if b"c2pa.opened" in store:
+        out["JUMBF:Actions"] = "c2pa.opened"
+    return out
 
 
 def pillow_fallback(path: Path) -> dict:
@@ -249,9 +292,7 @@ def pillow_fallback(path: Path) -> dict:
     except OSError as e:
         return {"error": str(e)}
     out.update(_xmp_tags(blob))               # first, so EXIF keys added later win in find() lookups
-    jumbf = _jumbf_notice(blob)
-    if jumbf:
-        out["JUMBF:Manifest"] = jumbf
+    out.update(_jumbf(blob))
     if path.suffix.lower() in _VIDEO_EXT:
         m = _ISO6709.search(blob)
         if m:
@@ -260,10 +301,17 @@ def pillow_fallback(path: Path) -> dict:
         with Image.open(path) as im:           # sub-IFDs are parsed while the file is still open
             ex = im.getexif()
             exif_ifd, gps_ifd = dict(ex.get_ifd(0x8769)), dict(ex.get_ifd(0x8825))
+            try:                               # PNG text chunks, compressed ones decompressed, those after the image data too
+                text = dict(im.text) if im.format == "PNG" else {}
+            except OSError:                    # truncated file: the text is lost, the EXIF read above still counts
+                text = {}
     except Exception as e:  # noqa: BLE001 - videos and unknown formats land here
         if not out:
             out["error"] = str(e)
         return out
+    png_terms = _terms(*(v.encode("utf-8", "ignore") for v in text.values() if isinstance(v, str)))
+    if png_terms:
+        out["PNG:DigitalSourceType"] = "; ".join(png_terms)
     try:
         for group, items in (("IFD0", ex.items()), ("ExifIFD", exif_ifd.items())):
             for k, v in items:
@@ -304,6 +352,40 @@ def find(d: dict, *names: str):
         if k is not None and d[k] not in ("", None):
             return d[k], k
     return None, None
+
+
+def source_type(raw: dict) -> tuple[dict, str | None]:
+    """provenance.generated, the contract photo_session.py finish and the viewer read, plus its warning line.
+    declared: trainedAlgorithmicMedia/algorithmicMedia is the only source type and no ingredient was opened. composite:
+    an AI composite term (compositeCapture merges real captures and is not one): an AI-edited real photo, never generated.
+    Generation named beside other sources or on an opened ingredient is neither: the ingredient may be real or generated."""
+    exiftool_raw = "ExifTool:ExifToolVersion" in raw
+    found: dict[str, str] = {}
+    for k, v in raw.items():
+        group, _, tag = k.rpartition(":")
+        if "digitalsourcetype" not in tag.lower():
+            continue
+        src = "exiftool" if exiftool_raw else group if group in ("JUMBF", "PNG") else "XMP"
+        for x in v if isinstance(v, list) else str(v).split(";"):
+            term = str(x).strip().rstrip("/").rsplit("/", 1)[-1]
+            if term.isalpha():
+                found.setdefault(term, src)
+    terms = list(found)
+    opened = any("c2pa.opened" in str(v) for v in raw.values())
+    comp = [s for s in terms if s.startswith("composite") and s != "compositeCapture"]
+    gen = [s for s in terms if s in GENERATED_TYPES]
+    declared = bool(gen) and len(gen) == len(terms) and not opened
+    term = (comp or gen or terms or [None])[0]
+    if declared:
+        note = f"File declares generated content ({term})"
+    elif comp:
+        note = f"AI-edited real photo ({term}): edited regions are not evidence"
+    elif gen:
+        note = (f"Generated content named beside other sources ({', '.join(terms)}{' + c2pa.opened ingredient' if opened else ''}): "
+                "not a declaration; possible generated image, unconfirmed")
+    else:
+        note = None
+    return {"declared": declared, "term": term, "composite": bool(comp), "source": found.get(term)}, note
 
 
 def all_matching(d: dict, rx: re.Pattern) -> dict:
@@ -639,18 +721,21 @@ def digest(path: Path, raw: dict) -> dict:
     prov = {}
     for k, v in raw.items():
         tag = k.split(":", 1)[-1]
-        if re.search(r"(DigitalSourceType|C2PA|JUMBF|Manifest|Claim|Credential|History|DocumentAncestors|OriginalDocumentID|"
-                     r"Software|CreatorTool|ProcessingSoftware)", tag) and not isinstance(v, (dict, list)):
+        if isinstance(v, list) and "DigitalSourceType" in tag:
+            v = "; ".join(map(str, v))                          # exiftool: one value per C2PA action
+        if PROV_TAG.search(tag) and not isinstance(v, (dict, list)):
             prov[k] = str(v)[:200]
-    warnings = []
-    if any("trainedAlgorithmicMedia" in v or "compositeWithTrainedAlgorithmicMedia" in v for v in prov.values()):
-        warnings.append("File declares AI-generated or AI-composited content (IPTC DigitalSourceType)")
+    generated, note = source_type(raw)
+    warnings = [note] if note else []
+    if generated["term"] is None and (any(k.split(":", 1)[0] in ("JUMBF", "C2PA") for k in raw) or find(raw, "Provenance")[0]):
+        prov["C2PA"] = SOURCE_UNREAD                           # a manifest without a readable source type is not a verdict
     generators = sorted({m.group(0) for k, v in prov.items() if re.search(r"Software|CreatorTool", k.split(":", 1)[-1])
                          for m in [AI_GENERATOR.search(v)] if m})
     if generators:
         warnings.append(f"software field names a generative model ({', '.join(generators)})")
     if warnings:
         prov["WARNING"] = "; ".join(warnings)
+    prov["generated"] = generated
     d["provenance"] = prov
     d["has_exif"] = any(k.startswith(("ExifIFD:", "IFD0:", "GPS:")) for k in raw)
     return d
@@ -714,11 +799,12 @@ def to_md(d: dict, previews: list[dict]) -> str:
                  + (f", subsampling {im['subsampling']}" if im.get("subsampling") else ""))
         for h in im.get("platform_hints", []):
             L.append(f"  - {h}")
-    if d.get("provenance"):
-        p = d["provenance"]
-        if p.get("WARNING"):
-            L.append(f"- **WARNING**: {p['WARNING']}")
-        L.append(f"- Provenance/editing tags: {json.dumps({k: v for k, v in p.items() if k != 'WARNING'}, ensure_ascii=False)[:600]}")
+    p = d.get("provenance") or {}
+    if p.get("WARNING"):
+        L.append(f"- **WARNING**: {p['WARNING']}")
+    tags = {k: v for k, v in p.items() if k not in ("WARNING", "generated")}
+    if tags:
+        L.append(f"- Provenance/editing tags: {json.dumps(tags, ensure_ascii=False)[:600]}")
     if previews:
         for pv in previews:
             L.append(f"- Embedded {pv['tag']} {pv.get('size')} → `{pv['file']}`" + (f" — {pv['note']}" if pv.get("note") else ""))

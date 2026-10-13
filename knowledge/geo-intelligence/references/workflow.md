@@ -56,7 +56,9 @@ page re-reads the folder every 2 s and shows, for the user watching:
 
 - the globe: countries on the board are highlighted by share; the top-ranked open candidate at the finest level is
   the focus and the globe turns and zooms to it, handing over to imagery tiles (Esri World Imagery; `--tiles osm` for
-  OpenStreetMap) when the extent is small; after `finish`, the answer with its radius and camera heading;
+  OpenStreetMap) when the extent is small; after `finish`, the answer with its radius and camera heading; after
+  `finish --generated`, "Generated image: no real place" with its basis, a red "generated" badge on Answer, and no
+  globe target;
   after `truth`, the real spot in teal with a dashed line to the answer and the error in km; the wheel, the + and −
   buttons and dragging move the map by hand, "Follow" hands it back to the analysis; every text is selectable;
   "Close viewer" stops the server without touching the analysis;
@@ -66,10 +68,16 @@ page re-reads the folder every 2 s and shows, for the user watching:
   its points, one ring with the count when they are too close to tell apart; Follow returns to the analysis; a dot's
   card shows id, provider, date, road and a link that opens the panorama), and your marks: `viewer.py mark camera` (point +
   view cone), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
-  at its position); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/
+  at its position), `mark area <file.geojson>` (any GeoJSON: Polygon, MultiPolygon, closed or open LineString,
+  MultiLineString; the first 500 features, the rest dropped and reported; points skipped and reported; rings with a
+  faint fill, lines plain, dashed when level or layer < 0; a name once the feature is large enough to read and does not
+  overlap another; `--level L` gives features without a level tag that level; level chips, `all` then each level sorted,
+  beside the layer buttons show one level plus the features without a level; display only); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/
   evidence/match/sheet/pose get their own gallery in the panel; `terrain.py fit --sheet` adds a Skyline card (the
   top three synthetic skylines stacked over the photo with score, heading and focal, summit names with `--peaks`);
-- the panel: "Now" (the last `viewer.py say` line), candidates per level with shares, verified counts and exclusions,
+- the panel: "Now" (the last `viewer.py say` line; under it, before `finish`, one muted line when
+  `recon/aidet/aidet.json` p_ai ≥ its threshold: "Detector 0.91 generated-like: a ranking, not a verdict", replaced by
+  "Operator: real, continue" once `photo_session.py not-generated` recorded the operator's word), candidates per level with shares, verified counts and exclusions,
   the activity feed (`say` lines, `board.py` log, every new file with thumbnails that open full size), `report.md` and
   `recon/recon.md` rendered.
 
@@ -163,6 +171,18 @@ detect.py sheets never count; `finish` warns when it is zero. Add `--radius-m <m
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and
 result; `report.md` gets the final path and timestamps appended. Use the printed paths from then on.
 
+`finish "<folder>" --generated "<basis>"` closes a generated image with no real place: no place flag (with one, or
+with `--skip-check`/`--accept-unverified`, it exits 2), folder `<timestamp>__generated-image`, `result.outcome`
+`generated`, coordinates null, `result.generated` = {basis, score, model, skipped, override}. The basis is the term
+`recon/meta/meta.md` declares, a session file you saved that shows the generation (named by path), or the operator's
+words starting the basis (`operator asked: …`); a detector score, or an aidet.py record wherever it is saved, is
+refused. While meta declares generation (trainedAlgorithmicMedia or algorithmicMedia as the only source type), a place
+`finish` is refused unless a file pins the place (evidence or match image, `pose.py` output, near fair ranked view: it
+then prints a Note) or `photo_session.py not-generated "<folder>" "operator asked: it is real, continue"` recorded the
+operator's word (`generated_override` in `session.json`; the reason starts with `operator asked:`). Once recorded, the
+declared term alone no longer closes as generated: new operator words or a saved file do. The detector score never
+refuses anything.
+
 ## Answer format
 
 Lead with exactly:
@@ -195,6 +215,9 @@ When the true location becomes known (the user says so, a puzzle answer, a game 
 uv run scripts/photo_session.py truth "<final folder>" --latitude … --longitude … --country "…" --region "…" --source "owner"
 ```
 
+For an image that turns out to be generated: `uv run scripts/photo_session.py truth "<final folder>" --generated
+--source "…"` (no coordinates).
+
 Then add whatever decided or misled the case to the matching `world/<region>.md` file, in the entry format of
 [world/index.md](world/index.md). A misleading clue goes in as a counterexample to the entry that misled you.
 A decisive street-level source also goes into [streetlevel.md](streetlevel.md).
@@ -203,6 +226,13 @@ A decisive street-level source also goes into [streetlevel.md](streetlevel.md).
 
 `truth --taken YYYY-MM-DD[THH:MM]` scores the when line too: `taken_hit` (the true date inside the answered
 range), `taken_error_days` (distance outside it) and `scoreboard` `taken_hit_rate`.
+
+`truth --generated` (no coordinates) records a generated image. Each truth records `outcome` (place|generated),
+`outcome_hit` and `false_stop`: a generated answer against a place truth is a false stop, and a place answer against a
+generated truth is a missed generation. Sessions without a distance (either side generated) stay out of the median,
+the within-km shares, the mean game score and the calibration. `scoreboard` and `bench.py sessions` add
+`generated: {called, confirmed, false_stops, missed}`, and `scoreboard.md` prints it as one line. `list` and the
+scoreboard show such sessions as "generated image (no place)". A result or truth without `outcome` counts as a place.
 
 **Scoreboard over real sessions** (every session with a recorded truth):
 

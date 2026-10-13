@@ -98,20 +98,20 @@ def _post(ep: str, ql: str, proxy: str | None, timeout: int) -> tuple[dict | Non
     return (data, "") if isinstance(data, dict) else (None, f"HTTP {code}: {str(data)[:160]}")
 
 
-def _area_empty(data: dict, ql: str) -> bool:
-    """An --area query that came back empty (or with a zero area count). Mirrors disagree on these: one answered a whole-province
-    power-line query with a clean, empty result while others returned thousands, so an empty answer needs a second mirror."""
-    if not AREA_SET.search(ql):
-        return False
+def _empty(data: dict) -> bool:
+    """A reply with no elements, or whose first count is zero, whatever the scope (--area, --bbox, around:). Mirrors disagree
+    on these: one answered a whole-province --area query with a clean, empty result while others returned thousands, and a
+    stale mirror answered a mall's --bbox query with elements: [] while a current one had the way. An empty answer needs a
+    second mirror before it is cached."""
     els = data.get("elements") or []
-    if els and els[0].get("type") == "count":            # coverage / _area_count: the first count is the area count
+    if els and els[0].get("type") == "count":            # count replies: the first count decides (the area count in coverage / _area_count)
         return int((els[0].get("tags") or {}).get("total", 0)) == 0
     return not els
 
 
 def run(ql: str, proxy: str | None, cache: Path, timeout: int = 180, rounds: int = 3) -> dict:
     """Try each mirror in turn; when servers are busy (common for public Overpass), wait a while and retry the whole round. Results are cached per query.
-    Error replies are never cached; an empty --area result is cached only when a second mirror agrees."""
+    Error replies are never cached; an empty result is cached only when a second mirror agrees."""
     cache.mkdir(parents=True, exist_ok=True)
     key = cache / (hashlib.sha1(ql.encode()).hexdigest()[:16] + ".json")
     if key.exists():
@@ -138,7 +138,7 @@ def run(ql: str, proxy: str | None, cache: Path, timeout: int = 180, rounds: int
             if remark and not data.get("elements"):       # runtime error / timeout / out of memory with nothing returned
                 errs[ep] = f"remark: {remark[:160]}"
                 continue
-            if _area_empty(data, ql) and empty_from is None:
+            if _empty(data) and empty_from is None:
                 empty_from, first_empty = ep, data
                 continue
             if remark:
@@ -146,8 +146,9 @@ def run(ql: str, proxy: str | None, cache: Path, timeout: int = 180, rounds: int
             key.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             return data
         if empty_from is not None:
-            print(f"Only {empty_from} answered, with an empty --area result; not confirmed by a second mirror, so not cached. "
-                  f"Rerun later, or use --bbox, before treating it as \"none\".", file=sys.stderr)
+            print(f"Only {empty_from} answered, with an empty result; not confirmed by a second mirror, so not cached. "
+                  f"Rerun once at most{' (or use --bbox)' if AREA_SET.search(ql) else ''}; still empty → record \"not found in OSM "
+                  f"(unconfirmed)\" and move on.", file=sys.stderr)
             return first_empty
         last = "; ".join(f"{ep.split('/')[2]} {e}" for ep, e in errs.items())
         if rnd < rounds - 1:

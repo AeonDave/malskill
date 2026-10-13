@@ -235,6 +235,7 @@ class MetaTests(unittest.TestCase):
             plain = Path(d) / "plain.jpg"
             Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
             self.assertNotIn("WARNING", meta.digest(plain, meta.pillow_fallback(plain))["provenance"])
+            self.assertNotIn("error", meta.pillow_fallback(gen))       # no GPS block is not a read error
             self.assertIsNone(meta.AI_GENERATOR.search("Randall E"))        # 'dall e' needs its own word start
             # APP11 JUMBF segment (ISO 19566-5: 'JP' signature, box instance, packet sequence, then a 'jumb' superbox labelled c2pa) after SOI
             jumd = b"\x00" * 16 + b"\x03" + b"c2pa\x00"
@@ -250,7 +251,120 @@ class MetaTests(unittest.TestCase):
             prov = meta.digest(c2pa, raw)["provenance"]
             self.assertIn("JUMBF:Manifest", prov)
             self.assertNotIn("WARNING", prov)                             # a manifest is provenance, not an AI verdict
-            self.assertIsNone(meta._jumbf_notice(data))
+            self.assertIn("C2PA present, source type unread", prov["C2PA"])
+            self.assertEqual(prov["generated"], {"declared": False, "term": None, "composite": False, "source": None})
+            self.assertEqual(meta._jumbf(data), {})
+
+    IPTC = "http://cv.iptc.org/newscodes/digitalsourcetype/"
+
+    @classmethod
+    def xmp(cls, body: str) -> str:
+        return ('<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+                '<rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/">' + body
+                + "</rdf:Description></rdf:RDF></x:xmpmeta>")
+
+    @staticmethod
+    def with_segments(src: Path, dst: Path, segments: bytes) -> Path:
+        data = src.read_bytes()
+        dst.write_bytes(data[:2] + segments + data[2:])
+        return dst
+
+    @staticmethod
+    def app11(store: bytes, split: int | None = None) -> bytes:
+        """One JUMBF superbox in APP11 segments; with split, a second segment repeats the 8-byte box header and continues the box."""
+        box = (8 + len(store)).to_bytes(4, "big") + b"jumb" + store
+        parts = [box] if split is None else [box[:split], box[:8] + box[split:]]
+        out = b""
+        for z, part in enumerate(parts, 1):
+            payload = b"JP" + b"\x00\x01" + z.to_bytes(4, "big") + part
+            out += b"\xff\xeb" + (len(payload) + 2).to_bytes(2, "big") + payload
+        return out
+
+    def test_source_type_in_xmp_png_and_exiftool_lists(self):
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+            for body, term in ((f"<Iptc4xmpExt:DigitalSourceType>{self.IPTC}trainedAlgorithmicMedia</Iptc4xmpExt:DigitalSourceType>",
+                                "trainedAlgorithmicMedia"),
+                               (f'<Iptc4xmpExt:DigitalSourceType rdf:resource="{self.IPTC}algorithmicMedia"/>', "algorithmicMedia")):
+                app1 = b"http://ns.adobe.com/xap/1.0/\x00" + self.xmp(body).encode()
+                f = self.with_segments(plain, Path(d) / f"{term}.jpg", b"\xff\xe1" + (len(app1) + 2).to_bytes(2, "big") + app1)
+                dg = meta.digest(f, meta.pillow_fallback(f))
+                self.assertEqual(dg["provenance"]["generated"], {"declared": True, "term": term, "composite": False, "source": "XMP"})
+                self.assertIn(f"File declares generated content ({term})", dg["provenance"]["WARNING"])
+                self.assertIn("File declares generated content", meta.to_md(dg, []))
+            from PIL.PngImagePlugin import PngInfo
+            info = PngInfo()                                          # compressed iTXt: invisible to a byte scan, read through Pillow
+            info.add_itxt("XML:com.adobe.xmp", self.xmp(f'<Iptc4xmpExt:DigitalSourceType rdf:resource="{self.IPTC}trainedAlgorithmicMedia"/>'),
+                          zip=True)
+            png = Path(d) / "gen.png"
+            Image.new("RGB", (64, 48), (90, 90, 90)).save(png, pnginfo=info)
+            self.assertNotIn(b"digitalsourcetype", png.read_bytes())
+            gen = meta.digest(png, meta.pillow_fallback(png))["provenance"]["generated"]
+            self.assertEqual(gen, {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False, "source": "PNG"})
+            # exiftool reports one value per C2PA action as a list: a capture plus an AI composite is an AI-edited real photo
+            raw = {"ExifTool:ExifToolVersion": 13.1, "JUMBF:ActionsAction": ["c2pa.opened", "c2pa.edited"],
+                   "JUMBF:ActionsDigitalSourceType": [self.IPTC + "digitalCapture", self.IPTC + "compositeWithTrainedAlgorithmicMedia"]}
+            prov = meta.digest(plain, raw)["provenance"]
+            self.assertEqual(prov["generated"], {"declared": False, "term": "compositeWithTrainedAlgorithmicMedia", "composite": True,
+                                                 "source": "exiftool"})
+            self.assertIn("AI-edited real photo (compositeWithTrainedAlgorithmicMedia): edited regions are not evidence", prov["WARNING"])
+            self.assertNotIn("declares generated", prov["WARNING"])
+            self.assertIn("compositeWithTrainedAlgorithmicMedia", prov["JUMBF:ActionsDigitalSourceType"])
+            # compositeCapture merges real captures (HDR, panorama): neither generated nor AI-edited
+            hdr = meta.digest(plain, {"XMP-Iptc4xmpExt:DigitalSourceType": self.IPTC + "compositeCapture"})["provenance"]
+            self.assertEqual((hdr["generated"]["declared"], hdr["generated"]["composite"]), (False, False))
+            self.assertNotIn("WARNING", hdr)
+
+    def test_c2pa_source_type_from_app11_segments_and_png_chunks(self):
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+
+            def store(*items: bytes) -> bytes:                       # jumd 'c2pa' description box, then CBOR-like action text
+                jumd = b"\x00" * 16 + b"\x03" + b"c2pa\x00"
+                return (8 + len(jumd)).to_bytes(4, "big") + b"jumd" + jumd + b"".join(items)
+
+            def src(term: str) -> bytes:                              # CBOR text header before the URI, a letter-valued header after it
+                uri = (self.IPTC + term).encode()
+                return b"qdigitalSourceTypex" + bytes([len(uri)]) + uri + b"msoftwareAgent"
+
+            created = store(b"faction" + b"lc2pa.created", src("trainedAlgorithmicMedia"))
+            box = (8 + len(created)).to_bytes(4, "big") + b"jumb" + created
+            cut = box.index(b"digitalsourcetype/") + 9                   # the URI straddles the segment boundary
+            f = self.with_segments(plain, Path(d) / "split.jpg", self.app11(created, split=cut))
+            self.assertIsNone(meta.SOURCE_TERM.search(f.read_bytes()))   # no plain-byte match: only the rejoined store reads it
+            raw = meta.pillow_fallback(f)
+            self.assertEqual(raw["JUMBF:DigitalSourceType"], "trainedAlgorithmicMedia")
+            self.assertIn("2 APP11 segment(s), label c2pa", raw["JUMBF:Manifest"])
+            dg = meta.digest(f, raw)
+            self.assertEqual(dg["provenance"]["generated"], {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False,
+                                                             "source": "JUMBF"})
+            self.assertNotIn("C2PA", dg["provenance"])
+            # an AI composite on an opened ingredient: the composite term wins, generation is not declared
+            edited = store(b"lc2pa.opened", src("trainedAlgorithmicMedia"), src("compositeWithTrainedAlgorithmicMedia"))
+            f = self.with_segments(plain, Path(d) / "edited.jpg", self.app11(edited))
+            prov = meta.digest(f, meta.pillow_fallback(f))["provenance"]
+            self.assertEqual(prov["generated"], {"declared": False, "term": "compositeWithTrainedAlgorithmicMedia", "composite": True,
+                                                 "source": "JUMBF"})
+            self.assertIn("AI-edited real photo", prov["WARNING"])
+            # generation inside a file made from an opened ingredient: not a declaration, and not called real either
+            opened = store(b"lc2pa.opened", src("trainedAlgorithmicMedia"))
+            f = self.with_segments(plain, Path(d) / "opened.jpg", self.app11(opened))
+            prov = meta.digest(f, meta.pillow_fallback(f))["provenance"]
+            self.assertEqual((prov["generated"]["declared"], prov["generated"]["composite"], prov["generated"]["term"]),
+                             (False, False, "trainedAlgorithmicMedia"))
+            self.assertIn("possible generated image, unconfirmed", prov["WARNING"])
+            self.assertNotIn("real photo", prov["WARNING"])
+            # PNG keeps the store whole in a caBX chunk
+            import zlib
+            png = Path(d) / "chat.png"
+            Image.new("RGB", (64, 48), (90, 90, 90)).save(png)
+            chunk = len(box).to_bytes(4, "big") + b"caBX" + box + zlib.crc32(b"caBX" + box).to_bytes(4, "big")
+            data = png.read_bytes()
+            png.write_bytes(data[:-12] + chunk + data[-12:])           # before IEND
+            gen = meta.digest(png, meta.pillow_fallback(png))["provenance"]["generated"]
+            self.assertEqual(gen, {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False, "source": "JUMBF"})
 
     def test_video_time_prefers_creation_date_and_hedges_container_time(self):
         with tempfile.TemporaryDirectory() as d:
@@ -603,6 +717,227 @@ class ReconSummaryTests(unittest.TestCase):
                 self.assertEqual("Vision cannot read Greek" in md, not rapid, backend)
             (out / "intake" / "ocr.json").write_text(json.dumps({"backend": "rapidocr", "items": []}), encoding="utf-8")
             self.assertIn(textgeo.RAPIDOCR_EMPTY, self.summary(out))
+
+    @staticmethod
+    def put(out: Path, rel: str, data: dict) -> None:
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_text(json.dumps(data), encoding="utf-8")
+
+    @staticmethod
+    def next0(md: str) -> str:
+        items = [ln for ln in md.splitlines() if ln.startswith("0. ")]
+        assert len(items) == 1, items                                  # one item 0, whatever fires
+        return items[0]
+
+    def test_ai_image_score_bands_and_skips(self):
+        import recon
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            self.assertIn("- AI-image check: skipped (not run)", self.summary(out))
+            timed = recon.summary(Path("photo.jpg"), out, {"aidet": {"rc": 124, "seconds": 20.0, "error": "timed out after 20s"}}, 1.0, False)
+            self.assertIn("- AI-image check: skipped (timed out after 20s", timed)
+            self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "skipped": "model unavailable: offline"})
+            self.assertIn("- AI-image check: skipped (model unavailable: offline)", self.summary(out))
+            self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "p_ai": 0.04, "threshold": 0.65})
+            md = self.summary(out)
+            self.assertIn("- AI-image score 0.04 (model rank, not proof; threshold 0.65): not flagged; a low score never clears", md)
+            self.assertNotIn("Generated-image check", md)
+            self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "p_ai": 0.97, "threshold": 0.65})
+            md = self.summary(out)
+            self.assertIn("- **AI-image score 0.97 (model rank, not proof; threshold 0.65)**", md)
+            self.assertIn("possible generated image, unconfirmed (model 0.97): continue and say so", self.next0(md))
+            self.assertNotIn("STOP", md)
+
+    def test_generated_check_folds_into_next_item_0(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "p_ai": 0.97, "threshold": 0.65})
+            self.put(out, "intake/intake.json", {"ai_gallery_hits": [{"site": "civitai.com", "url": "https://civitai.com/images/1"}]})
+            item = self.next0(self.summary(out))                       # a gallery page outranks the score
+            self.assertIn("https://civitai.com/images/1", item)
+            self.assertIn("open the page, confirm the duplicate", item)
+            self.assertNotIn("possible generated image", item)
+            gen = {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False, "source": "XMP"}
+            self.put(out, "meta/meta.json", {"digest": {"provenance": {"WARNING": "File declares generated content (trainedAlgorithmicMedia)",
+                                                                       "generated": gen}}})
+            md = self.summary(out)                                     # the declaration outranks both
+            self.assertIn("- **File declares generated content (trainedAlgorithmicMedia)**", md)
+            self.assertIn('`photo_session.py finish "<session folder>" --generated "trainedAlgorithmicMedia"`', self.next0(md))   # runnable as printed
+            self.assertIn("operator", self.next0(md))
+            self.assertIn("not-generated", self.next0(md))                     # the operator's "it is real" ends this exit
+            self.assertNotIn("STOP", md)
+            self.put(out, "meta/meta.json", {"digest": {"provenance": {"generated": {**gen, "declared": False, "composite": True}}}})
+            self.put(out, "intake/intake.json", {})
+            self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "p_ai": 0.2, "threshold": 0.65})
+            self.assertNotIn("Generated-image check", self.summary(out))  # an AI-edited real photo is a real photo
+
+    def test_aidet_lane_runs_beside_the_others_with_its_own_timeout(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        import recon
+        with tempfile.TemporaryDirectory() as d:
+            photo = Path(d) / "photo.jpg"
+            Image.new("RGB", (64, 48)).save(photo)
+            for argv, expect in ((["--no-ml"], False), (["--skip", "aidet"], False), ([], True)):
+                calls = []
+
+                def run(name, cmd, log, timeout=1800):
+                    calls.append((name, cmd, timeout))
+                    rc = 124 if name == "aidet" else 0
+                    log[name] = {"rc": rc, "seconds": 0.1, "error": f"timed out after {timeout}s" if rc else "", "stdout_tail": ""}
+                    return rc
+
+                buf = io.StringIO()
+                with patch.object(recon, "run", run), patch.object(sys, "argv", ["recon.py", str(photo), "--out-dir", str(Path(d) / "recon"), *argv]), \
+                        contextlib.redirect_stdout(buf):
+                    recon.main()
+                lane = [c for c in calls if c[0] == "aidet"]
+                self.assertEqual(bool(lane), expect, argv)
+                if lane:
+                    name, cmd, timeout = lane[0]
+                    self.assertEqual(timeout, recon.AIDET_TIMEOUT)
+                    self.assertTrue(cmd[3].endswith("aidet.py"))
+                    self.assertEqual(Path(cmd[cmd.index("--out-dir") + 1]), Path(d) / "recon" / "aidet")
+                    self.assertIn(f"aidet: skipped (timed out after {recon.AIDET_TIMEOUT}s", buf.getvalue())
+            self.assertIn("aidet", recon.main.__globals__["ML_STEPS"])
+
+    def test_a_stale_score_never_passes_for_this_run(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        import recon
+        with tempfile.TemporaryDirectory() as d:
+            photo = Path(d) / "frame_031.jpg"
+            Image.new("RGB", (64, 48)).save(photo)
+            out = Path(d) / "recon"
+            for argv, rc, reason in ((["--no-ml"], None, "not run (--no-ml)"), (["--skip", "aidet"], None, "not run (--skip aidet)"),
+                                     ([], 124, f"timed out after {recon.AIDET_TIMEOUT}s"), ([], 0, "not run")):
+                self.put(out, "aidet/aidet.json", {"tool": "aidet.py", "p_ai": 0.97, "threshold": 0.65})   # an earlier run, another frame
+
+                def run(name, cmd, log, timeout=1800):
+                    code = rc if name == "aidet" else 0
+                    log[name] = {"rc": code, "seconds": 0.1, "error": f"timed out after {timeout}s" if code else "", "stdout_tail": ""}
+                    return code
+
+                with patch.object(recon, "run", run), patch.object(sys, "argv", ["recon.py", str(photo), "--out-dir", str(out), *argv]),                         contextlib.redirect_stdout(io.StringIO()):
+                    recon.main()
+                md = (out / "recon.md").read_text(encoding="utf-8")
+                self.assertIn(f"- AI-image check: skipped ({reason}", md, argv)
+                self.assertNotIn("0.97", md, argv)
+                rec = json.loads((out / "aidet" / "aidet.json").read_text(encoding="utf-8"))   # one current record for the viewer and finish
+                self.assertEqual(rec["tool"], "aidet.py")
+                self.assertTrue(rec["skipped"].startswith(reason), (argv, rec))
+                self.assertNotIn("p_ai", rec)
+
+    def test_run_stops_the_whole_tree_on_timeout(self):
+        import time
+        import recon
+        log: dict = {}
+        child = "import subprocess, sys; subprocess.run([sys.executable, '-c', 'import time; time.sleep(30)'])"
+        t0 = time.time()
+        rc = recon.run("slow", [sys.executable, "-c", child], log, timeout=1)
+        self.assertEqual(rc, 124)
+        self.assertLess(time.time() - t0, 20)                          # a grandchild holding the pipes no longer blocks the read
+        self.assertEqual(log["slow"]["error"], "timed out after 1s")
+
+
+class AidetTests(unittest.TestCase):
+    def test_score_record_with_a_stubbed_model(self):
+        import aidet
+        seen = []
+
+        def logit(x):
+            seen.append(x)
+            return 3.0
+
+        with tempfile.TemporaryDirectory() as d:
+            photo = Path(d) / "wide.png"
+            Image.new("RGB", (880, 440), (255, 0, 0)).save(photo)
+            rec = aidet.analyse(photo, logit)
+            self.assertEqual(set(rec), {"tool", "model", "revision", "file", "licence", "p_ai", "raw_logit", "threshold", "interpolation",
+                                        "seconds"})
+            self.assertEqual((rec["tool"], rec["model"], rec["licence"], rec["threshold"], rec["interpolation"]),
+                             ("aidet.py", aidet.REPO, "MIT", 0.65, "bilinear"))
+            self.assertRegex(rec["revision"], r"^[0-9a-f]{40}$")
+            self.assertEqual(rec["file"], "community_forensics_frontier_fp16.onnx")
+            self.assertEqual(rec["raw_logit"], 3.0)
+            self.assertAlmostEqual(rec["p_ai"], 1 / (1 + math.exp(-(3.0 - 0.7403357915937764))), places=4)
+            x = seen[0]                                                # short edge 440, centre crop 384, ImageNet normalisation
+            self.assertEqual((x.shape, x.dtype), ((1, 3, 384, 384), np.float32))
+            self.assertAlmostEqual(float(x[0, 0, 0, 0]), (1 - 0.485) / 0.229, places=4)
+            self.assertAlmostEqual(float(x[0, 2, 383, 383]), (0 - 0.406) / 0.225, places=4)
+
+    def test_failures_are_skips_written_with_exit_0(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        import aidet
+
+        def offline():
+            raise OSError("offline")
+
+        with tempfile.TemporaryDirectory() as d:
+            bad = Path(d) / "bad.jpg"
+            bad.write_bytes(b"not an image")
+            rec = aidet.analyse(bad, lambda x: 0.0)
+            self.assertEqual(set(rec), {"tool", "skipped"})
+            self.assertIn("image unreadable", rec["skipped"])
+            photo = Path(d) / "p.jpg"
+            Image.new("RGB", (500, 400)).save(photo)
+            with patch.object(aidet, "onnx_logit", offline), patch.object(sys, "argv", ["aidet.py", str(photo), "--out-dir", str(Path(d) / "a")]), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                aidet.main()                                           # returns: no SystemExit, so the exit code is 0
+            rec = json.loads((Path(d) / "a" / "aidet.json").read_text(encoding="utf-8"))
+            self.assertEqual(rec["tool"], "aidet.py")
+            self.assertIn("model unavailable", rec["skipped"])
+            self.assertIn("doctor.py --models", rec["skipped"])
+
+
+class IntakeGalleryTests(unittest.TestCase):
+    def test_ai_gallery_hosts_are_flagged_by_suffix(self):
+        from unittest.mock import patch
+        import intake
+        with tempfile.TemporaryDirectory() as d:
+            photo = Path(d) / "photo.jpg"
+            Image.new("RGB", (100, 100), "white").save(photo)
+            out = Path(d) / "out"
+            docs = {"yandex": {"links": [{"title": "a", "url": "https://civitai.com/images/123", "site": "civitai.com"},
+                                         {"title": "b", "url": "https://stock.adobe.com/images/1", "site": "stock.adobe.com"},
+                                         {"title": "c", "url": "https://notcivitai.com/a", "site": "notcivitai.com"},
+                                         {"title": "d", "url": "https://jimeng.jianying.com/ai-tool/work/7", "site": "jimeng.jianying.com"}]},
+                    "baidu": {"similar": [{"thumb": "t", "from": "https://www.tensor.art/images/9", "site": "tensor.art"},
+                                          {"thumb": "t", "from": "https://www.freepik.com/photo/2", "site": "freepik.com"}]}}
+
+            def run(cmd, **kwargs):
+                if any(str(c).endswith("revimg.py") for c in cmd):
+                    engine = cmd[cmd.index("--engines") + 1]
+                    rev = Path(cmd[cmd.index("--out-dir") + 1])
+                    (rev / f"photo_{engine}.json").write_text(json.dumps(docs[engine]), encoding="utf-8")
+                return 0, "", ""
+
+            with patch.object(intake, "_run", run), patch.object(sys, "argv", ["intake.py", str(photo), "--out-dir", str(out), "--no-ocr"]), \
+                    patch("sys.stdout", new=__import__("io").StringIO()):
+                intake.main()
+            hits = json.loads((out / "intake.json").read_text(encoding="utf-8"))["ai_gallery_hits"]
+            self.assertEqual(sorted(h["url"] for h in hits), ["https://civitai.com/images/123", "https://jimeng.jianying.com/ai-tool/work/7",
+                                                              "https://www.tensor.art/images/9"])
+            self.assertEqual({h["site"] for h in hits}, {"civitai.com", "jimeng.jianying.com", "tensor.art"})
+            md = (out / "intake.md").read_text(encoding="utf-8")
+            self.assertIn("AI-gallery host: open and compare (a host alone only down-weights)", md)
+            self.assertNotIn("stock.adobe.com", md.split("AI-gallery host")[1].splitlines()[0])
+
+    def test_unparsable_links_are_skipped_not_fatal(self):
+        import intake
+        with tempfile.TemporaryDirectory() as d:
+            rev = Path(d)
+            (rev / "photo_yandex.json").write_text(json.dumps({"links": [
+                {"url": "https://[civitai.com/images/1", "site": "civitai.com"},          # an unbalanced '[' raises ValueError in urlsplit
+                {"url": "", "site": "tensor.art › [images]"},
+                {"url": "https://civitai.com/images/2", "site": "civitai.com"}]}), encoding="utf-8")
+            entries, _, hits = intake._collect_rev(rev)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(hits, [{"site": "civitai.com", "url": "https://civitai.com/images/2"}])   # a link that does not parse is no hit
 
 
 class CluesOcrTests(unittest.TestCase):

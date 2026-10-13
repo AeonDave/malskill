@@ -1,11 +1,12 @@
 # Lookup data
 
-Local tables read by `clues.py`, `regions.py`, `geodata.py`, `textgeo.py`, `gazetteer.py` and `board.py`; lookups never go online. Each JSON `_meta` records source, fetch date, licence and count. `refresh.py <table>` (or `clues.py update <table>`) refetches the Wikipedia/GitHub tables and keeps driving-side rows marked `curated`; `geodata.py build-countries` rebuilds `countries.json`.
+Local tables read by `clues.py`, `regions.py`, `geodata.py`, `textgeo.py`, `gazetteer.py`, `board.py` and `intake.py`; lookups never go online. Each JSON `_meta` records source, fetch date, licence and count. `refresh.py <table>` (or `clues.py update <table>`) refetches the Wikipedia/GitHub tables and keeps driving-side rows marked `curated`; `geodata.py build-countries` rebuilds `countries.json`.
 
 ## Global tables
 
 | File | Content | Source | Fetched | Entries | Licence |
 |---|---|---|---|---|---|
+| `ai_hosts.json` | AI-image galleries and prompt pages; `intake.py` suffix-matches reverse-search result hosts and prints "AI-gallery host: open and compare" (a host alone only down-weights; stock sites are never tagged by host) | Hand-compiled | 2026-10-13 | 14 | MIT (with this repository) |
 | `calling_codes.json` | International calling codes for countries and regions | [en.wikipedia.org/wiki/List_of_telephone_country_codes](https://en.wikipedia.org/wiki/List_of_telephone_country_codes) | 2026-09-14 | 281 | Derived from Wikipedia, CC BY-SA 4.0 |
 | `countries.json` | 249 countries/territories: ISO codes, names, capital, continent, TLD, currency, phone prefix, postal format/regex, languages, neighbours, driving side, population-weighted centre and extent | [GeoNames countryInfo.txt](https://download.geonames.org/export/dump/countryInfo.txt) + `driving_side.json` + GeoNames cities500 | 2026-10-08 | 249 | CC BY 4.0 (GeoNames) |
 | `country_names.json` | Chinese-English country and region names with aliases (short, traditional, former names) | Hand-compiled | 2026-09-14 | 300 | MIT (with this repository) |

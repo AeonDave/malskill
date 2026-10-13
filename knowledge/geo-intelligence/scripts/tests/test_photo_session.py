@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -730,6 +731,167 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertTrue(folder.exists())
         self.assertEqual(json.loads((folder / "session.json").read_text(encoding="utf-8"))["status"], "pending")
         self.assertTrue(self.finish(folder)["folder"].endswith("__slovakia__presov__poprad"))
+
+    DECLARED = {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False, "source": "XMP-iptcExt:DigitalSourceType"}
+
+    def generated_session(self, declared=None, p_ai=None):
+        """A started session with a filled report and, optionally, meta's provenance verdict and the detector's score."""
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        if declared is not None:
+            (folder / "recon" / "meta").mkdir(parents=True, exist_ok=True)
+            (folder / "recon" / "meta" / "meta.json").write_text(json.dumps({"digest": {"provenance": {"generated": declared}}, "raw": {}}), encoding="utf-8")
+        if p_ai is not None:
+            (folder / "recon" / "aidet").mkdir(parents=True, exist_ok=True)
+            (folder / "recon" / "aidet" / "aidet.json").write_text(json.dumps({"tool": "aidet.py", "p_ai": p_ai, "threshold": 0.65, "model": "detector@0123abcd"}),
+                                                                 encoding="utf-8")
+        return folder
+
+    def run_cli(self, *args):
+        return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)], cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    def test_finish_generated_closes_without_a_place(self):
+        folder = self.generated_session(self.DECLARED, p_ai=0.91)
+        basis = "IPTC DigitalSourceType trainedAlgorithmicMedia (recon/meta/meta.md)"
+        renamed = Path(self.command("finish", folder, "--generated", basis)["folder"])
+        self.assertEqual(renamed.name, folder.name + "__generated-image")
+        res = json.loads((renamed / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["outcome"], res["latitude"], res["longitude"]), ("generated", None, None))
+        self.assertEqual(res["generated"], {"basis": basis, "score": 0.91, "model": "detector@0123abcd", "skipped": None, "override": None})
+        self.assertIn("Result: generated image, no real place", (renamed / "report.md").read_text(encoding="utf-8"))
+        self.assertTrue((renamed / "viewer.html").is_file())
+        listed = {s["folder"]: s["result"] for s in self.command("list", "--root", self.root / "archives")["sessions"]}
+        self.assertEqual(listed[str(renamed)], "generated image (no place)")
+        folder2 = self.generated_session(self.DECLARED)
+        for extra in (["--country", "Slovakia"], ["--heading", "unknown"], ["--confidence", "high"], ["--accept-unverified", "user stopped"],
+                      ["--skip-check", "skyline:user stopped"]):
+            r = self.run_cli("finish", folder2, "--generated", "trainedAlgorithmicMedia", *extra)
+            self.assertEqual(r.returncode, 2, extra)                                          # a usage error, like a missing flag
+            self.assertIn(f"drop {extra[0]}", r.stderr)
+        r = self.run_cli("finish", folder2, "--country", "Namibia", "--city", "x", "--confidence", "low", "--taken", "unknown")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("the following arguments are required: --heading", r.stderr)             # unchanged without --generated
+        self.assertIn("--generated BASIS", r.stderr)                                           # and the other exit is named
+        self.assertTrue(folder2.is_dir())
+
+    def test_generated_basis_is_evidence_never_a_score(self):
+        folder = self.generated_session({"declared": False, "term": None, "composite": True, "source": "XMP"}, p_ai=0.99)
+        (folder / "recon" / "intake").mkdir(parents=True)
+        (folder / "recon" / "intake" / "gallery.html").write_text("x", encoding="utf-8")         # recon's first pass, not a page the agent saved
+        (folder / "verify").mkdir()
+        (folder / "verify" / "ai gallery page.html").write_text("prompt: …", encoding="utf-8")
+        (folder / "aidet").mkdir()                                                           # aidet.py run by hand outside recon/: still a score
+        (folder / "aidet" / "aidet.json").write_text(json.dumps({"tool": "aidet.py", "p_ai": 0.99, "threshold": 0.65}), encoding="utf-8")
+        ok = photo_session.generated_basis
+        for basis in ("detector 0.99, generated-like", "compositeWithTrainedAlgorithmicMedia", "trainedAlgorithmicMedia", "recon/intake/gallery.html",
+                      "recon/aidet/aidet.json", "aidet/aidet.json p_ai 0.99", "aidet.json", "missing_page.html", "verify/ai gallery page.htmlx",
+                      "report.md", "", "aidet p_ai 0.99, flagged; users on the forum agree", "looks like an interrupted render",
+                      "detector 0.99, no operator input", "model flagged it, the user did not answer", "the detector says: operator asked: generated"):
+            self.assertFalse(ok(basis, folder), basis)
+        for basis, kind in (("saved page: verify/ai gallery page.html.", "file"), ("ai gallery page.html shows the prompt and the model", "file"),
+                            ("operator asked: it is generated", "operator"), ("User said: it is generated", "operator")):
+            self.assertEqual(ok(basis, folder), kind, basis)
+        declared = self.generated_session(self.DECLARED)
+        self.assertEqual(ok("IPTC trainedalgorithmicmedia, the only source type", declared), "declared")   # the declared term, any case
+        self.assertFalse(ok("compositeWithTrainedAlgorithmicMedia", declared))                # another term that contains it
+        r = self.run_cli("finish", folder, "--generated", "detector 0.99, generated-like")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("never a score", r.stderr)
+        self.assertIn('"operator asked: …"', r.stderr)
+        self.assertTrue(folder.is_dir())
+
+    def test_a_detector_score_alone_never_refuses(self):
+        res = json.loads((Path(self.finish(self.generated_session(p_ai=0.99))["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["outcome"], res["latitude"]), ("place", 49.1675))
+
+    def test_operator_real_outranks_the_declared_term(self):
+        folder = self.generated_session(self.DECLARED)
+        self.command("not-generated", folder, "operator asked: it is real, continue")
+        err = self.command("finish", folder, "--generated", "trainedAlgorithmicMedia", success=False)
+        self.assertIn("operator asked: it is real, continue", err)                             # what outranks the term, quoted
+        self.assertIn('--generated "operator asked: …"', err)                                  # every exit, with its command
+        self.assertIn("saved file", err)
+        self.assertIn("--country", err)
+        self.assertTrue(folder.is_dir())
+        renamed = Path(self.command("finish", folder, "--generated", "operator asked: it is generated after all")["folder"])
+        res = json.loads((renamed / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["generated"]["override"]["reason"], "operator asked: it is real, continue")
+
+    def test_finish_generated_records_a_skipped_detector(self):
+        folder = self.generated_session()
+        (folder / "recon" / "aidet").mkdir(parents=True)
+        (folder / "recon" / "aidet" / "aidet.json").write_text(json.dumps({"tool": "aidet.py", "skipped": "timed out after 20s"}), encoding="utf-8")
+        renamed = Path(self.command("finish", folder, "--generated", "operator asked: generated")["folder"])
+        res = json.loads((renamed / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual((res["generated"]["score"], res["generated"]["skipped"]), (None, "timed out after 20s"))
+        self.assertIn("Detector: skipped (timed out after 20s)", (renamed / "report.md").read_text(encoding="utf-8"))
+
+    def test_declared_generation_refuses_a_place_until_pinned_or_overridden(self):
+        folder = self.generated_session(self.DECLARED, p_ai=0.2)
+        err = self.finish(folder, success=False)
+        self.assertIn("trainedAlgorithmicMedia", err)
+        self.assertIn("not-generated", err)                                                   # every exit, with its command
+        self.assertIn('"operator asked: it is real"', err)
+        self.assertIn('--generated "trainedAlgorithmicMedia"', err)
+        self.assertIn("pose.py", err)
+        self.assertTrue(folder.is_dir())
+        for words in ("looks real to me", "users on the forum say it is real", "no operator input, looks real"):
+            err = self.command("not-generated", folder, words, success=False)
+            self.assertIn('"operator asked: …"', err, words)
+        self.assertNotIn("generated_override", json.loads((folder / "session.json").read_text(encoding="utf-8")))
+        out = self.command("not-generated", folder, "operator asked: it is real, continue")
+        self.assertEqual(out["generated_override"]["reason"], "operator asked: it is real, continue")
+        shutil.rmtree(folder / "recon")                                                      # a recon rerun rewrites recon/, never the override
+        (folder / "recon" / "meta").mkdir(parents=True)
+        (folder / "recon" / "meta" / "meta.json").write_text(json.dumps({"digest": {"provenance": {"generated": self.DECLARED}}}), encoding="utf-8")
+        meta = json.loads((Path(self.finish(folder)["folder"]) / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["result"]["outcome"], "place")
+        self.assertEqual(meta["generated_override"]["reason"], "operator asked: it is real, continue")
+        pinned = self.generated_session(self.DECLARED)
+        (pinned / "evidence_1.jpg").write_bytes(b"\xff\xd8\xff\xd9")                         # a real place found outranks a declaration
+        r = self.run_cli("finish", pinned, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
+                         "--confidence", "medium", "--heading", "unknown", "--taken", "unknown")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("the place is pinned by evidence_1.jpg", r.stderr)
+
+    def test_generated_outcomes_are_scored_against_the_truth(self):
+        archives = self.root / "archives"
+        called = self.command("finish", self.generated_session(), "--generated", "operator asked: the image is generated")["folder"]
+        rec = self.command("truth", called, "--latitude", "49.2", "--longitude", "20.1", "--country", "Slovakia")["truth"]
+        self.assertEqual((rec["outcome"], rec["error_km"], rec["outcome_hit"], rec["false_stop"]), ("place", None, False, True))
+        self.assertIn("false stop", (Path(called) / "report.md").read_text(encoding="utf-8"))
+        board = self.command("scoreboard", "--root", archives, "--write")                    # no distance to measure: no TypeError
+        self.assertEqual(board["generated"], {"called": 1, "confirmed": 0, "false_stops": 1, "missed": 0})
+        self.assertEqual((board["scored_sessions"], board["median_error_km"], board["mean_game_score"]), (1, None, None))
+        placed = self.finish(self.generated_session())["folder"]
+        rec = self.command("truth", placed, "--generated", "--source", "owner")["truth"]
+        self.assertEqual((rec["outcome"], rec["error_km"], rec["outcome_hit"], rec["false_stop"]), ("generated", None, False, False))
+        self.assertIn("missed generation", (Path(placed) / "report.md").read_text(encoding="utf-8"))
+        confirmed = self.command("finish", self.generated_session(), "--generated", "operator asked: generated")["folder"]
+        self.assertTrue(self.command("truth", confirmed, "--generated")["truth"]["outcome_hit"])
+        kept = self.finish(self.generated_session())["folder"]
+        self.command("truth", kept, "--latitude", "49.2", "--longitude", "20.1")
+        board = self.command("scoreboard", "--root", archives, "--write")
+        self.assertEqual(board["generated"], {"called": 2, "confirmed": 1, "false_stops": 1, "missed": 1})
+        self.assertEqual(board["scored_sessions"], 4)
+        self.assertAlmostEqual(board["median_error_km"], 4.53, delta=0.3)                    # the one place answer against a place truth
+        self.assertIn("generated image (no place)", (archives / "scoreboard.md").read_text(encoding="utf-8"))
+        for extra in (["--generated", "--latitude", "1", "--longitude", "2"], ["--latitude", "1"], []):
+            self.assertEqual(self.run_cli("truth", confirmed, *extra).returncode, 2, extra)
+        old = ({"latitude": 1.0, "longitude": 2.0}, {"latitude": 1.0, "longitude": 2.0, "error_km": 3.0})   # sessions from before outcomes
+        self.assertEqual(photo_session.generated_summary([old]), {"called": 0, "confirmed": 0, "false_stops": 0, "missed": 0})
+
+    @unittest.skipUnless(shutil.which("uv"), "bench.py runs through uv: its dependencies are not in this suite's environment")
+    def test_bench_sessions_skip_unmeasured_errors(self):
+        called = self.command("finish", self.generated_session(), "--generated", "operator asked: generated")["folder"]
+        self.command("truth", called, "--latitude", "49.2", "--longitude", "20.1")
+        self.command("truth", self.finish(self.generated_session())["folder"], "--latitude", "49.2", "--longitude", "20.1")
+        r = subprocess.run(["uv", "run", "-q", str(SCRIPT.parent / "bench.py"), "sessions", "--root", str(self.root / "archives")],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["n"], 1)
+        self.assertEqual(out["generated"], {"called": 1, "confirmed": 0, "false_stops": 1, "missed": 0})
 
     def test_unicode_place_names_fit_filesystem_limits(self):
         pending = self.start()

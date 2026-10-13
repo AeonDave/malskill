@@ -19,7 +19,8 @@ USER_UPLOAD_PREFIXES = ("CIHM", "CIAB", "CAoS", "AF1Q")
 
 
 def official(pid: str) -> bool:
-    """Official car/trekker panorama id (user uploads can't be rendered as perspective views)."""
+    """Official car/trekker panorama id. Discovery keeps only these: user uploads sit at the venue pin, not at their capture
+    point, and render only by an id copied from a Maps URL (`gsv.py render <id>`)."""
     return len(pid) == 22 and not pid.startswith(USER_UPLOAD_PREFIXES)
 
 
@@ -86,7 +87,7 @@ def tile_panos(x: int, y: int, proxy: str | None, cache: Path, max_age_s: float 
     for r in rows:
         try:
             pid, ll = r[0][0][1], r[0][2][0]
-            if official(pid):           # user uploads can't be rendered as perspective views
+            if official(pid):           # user uploads are not discovered (see official)
                 out.append((pid, float(ll[2]), float(ll[3])))
         except (IndexError, TypeError, ValueError):
             continue

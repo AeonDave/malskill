@@ -36,7 +36,8 @@
   <div class="layers" aria-label="Map layers">
     <button id="layer-matches" type="button" class="on" title="Street-level views ranked against the photo">Matches</button>
     <button id="layer-coverage" type="button" title="Every panorama position found for the search; on: show them and fly to them">Coverage</button>
-    <button id="layer-marks" type="button" class="on" title="Camera, sight lines, anchors and found images">Marks</button>
+    <button id="layer-marks" type="button" class="on" title="Camera, sight lines, anchors, found images and area outlines">Marks</button>
+    <span id="levels" class="levels" role="group" aria-label="Levels of the area outlines" hidden></span>
   </div>
   <div class="controls" aria-label="Map controls">
     <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
@@ -54,10 +55,11 @@
     <h2>Now</h2>
     <p id="now">Waiting for the first command.</p>
     <p id="checks" class="checks" hidden></p>
+    <p id="aidet" class="aidet" hidden></p>
   </section>
 
   <section id="answer" class="answer" hidden>
-    <h2>Answer</h2>
+    <h2>Answer <span id="answer-badge" class="badge-generated" hidden>generated</span></h2>
     <p id="answer-place" class="answer-place"></p>
     <p id="answer-coords" class="coords small"></p>
     <p id="answer-when" class="answer-when"></p>

@@ -352,6 +352,94 @@ class StateTests(unittest.TestCase):
         self.assertEqual((ck[0]["name"], ck[0]["done"], ck[0]["waived_by"]), ("street", False, ["pose.json"]))
         self.assertIn("street waived by pose.json", viewer._ps.status_line(self.folder))   # the page and `say` agree
 
+    def write_meta(self, **changes):
+        meta = json.loads((self.folder / "session.json").read_text(encoding="utf-8"))
+        meta.update(changes)
+        (self.folder / "session.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    def test_generated_outcome_is_done_and_detector_status_is_shown(self):
+        (self.folder / "recon" / "aidet").mkdir(parents=True)
+        aidet = self.folder / "recon" / "aidet" / "aidet.json"
+        aidet.write_text(json.dumps({"tool": "aidet.py", "p_ai": 0.91, "threshold": 0.65, "model": "m@0123abcd"}), encoding="utf-8")
+        s = viewer.build_state(self.folder)
+        self.assertEqual(s["aidet"], {"p_ai": 0.91, "threshold": 0.65, "model": "m@0123abcd", "flagged": True})   # the Now card's muted line
+        self.assertIsNone(s["generated_override"])
+        self.write_meta(generated_override={"reason": "operator asked: it is real", "at": "2026-01-02T03:20:00+01:00"})
+        self.assertEqual(viewer.build_state(self.folder)["generated_override"]["reason"], "operator asked: it is real")
+        aidet.write_text(json.dumps({"tool": "aidet.py", "skipped": "timeout after 20 s"}), encoding="utf-8")
+        self.assertEqual(viewer.build_state(self.folder)["aidet"], {"skipped": "timeout after 20 s"})
+        self.write_meta(status="completed", result={"outcome": "generated", "latitude": None, "longitude": None, "generated": {
+            "basis": "operator asked: generated", "score": 0.91, "model": "m@0123abcd", "override": None}})
+        s = viewer.build_state(self.folder)
+        self.assertEqual((s["status"], s["stage"], s["warning"]), ("completed", "Done", None))   # not demoted as a hand-closed session
+        self.assertIsNone(s["focus"])                                                         # no place to turn the globe to
+        html = viewer.export_html(self.folder).read_text(encoding="utf-8")
+        self.assertIn('"outcome": "generated"', html)
+        self.assertIn("Generated image: no real place", html)                                 # the page script carries the card's wording
+        self.assertIn("a ranking, not a verdict", html)
+        self.assertIn("Detector skipped (", html)                                             # a recorded skip, not "not run"
+
+    def test_area_marks_draw_outlines_corridors_and_levels(self):
+        feats = [
+            {"type": "Feature", "id": "way/1", "properties": {"name": "Central Underground Mall", "shop": "mall", "level": "-1", "layer": "-1"},
+             "geometry": {"type": "LineString", "coordinates": [[126.52, 33.51], [126.53, 33.51], [126.53, 33.52], [126.52, 33.51]]}},   # closed way written as a line
+            {"type": "Feature", "id": "way/2", "properties": {"highway": "corridor", "indoor": "corridor", "level": "0;1"},
+             "geometry": {"type": "LineString", "coordinates": [[126.521, 33.511], [126.525, 33.512]]}},
+            {"type": "Feature", "id": "way/3", "properties": {"building": "hospital", "name": "General Hospital", "addr:street": "x"},
+             "geometry": {"type": "Polygon", "coordinates": [[[126.5, 33.5], [126.51, 33.5], [126.51, 33.51], [126.5, 33.5]]]}},
+            {"type": "Feature", "id": "relation/4", "properties": {"indoor": "room", "level": "1", "ref": "101"},
+             "geometry": {"type": "MultiPolygon", "coordinates": [[[[126.522, 33.512], [126.523, 33.512], [126.523, 33.513], [126.522, 33.512]]]]}},
+            {"type": "Feature", "id": "relation/5", "properties": {"highway": "footway", "layer": "-1"},
+             "geometry": {"type": "MultiLineString", "coordinates": [[[126.4, 33.4], [126.41, 33.4]], [[126.41, 33.4], [126.41, 33.41]]]}},
+            {"type": "Feature", "id": "node/6", "properties": {"entrance": "yes"}, "geometry": {"type": "Point", "coordinates": [126.52, 33.51]}},
+        ]
+        path = self.tmp / "venue.geojson"                                                     # any osm.py geom output, inside the session or not
+        path.write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(viewer.main(["mark", "area", str(path), "--label", "venue", "--session", str(self.folder)]), 0)
+        self.assertIn("5 features", out.getvalue())
+        self.assertIn("skipped 1 (Point)", out.getvalue())
+        L = viewer.build_state(self.folder)["layers"]
+        self.assertEqual(L["levels"], [-1, 0, 1])                                             # one chip per level, sorted numerically
+        area = L["areas"][0]
+        self.assertEqual((area["label"], area["dropped"]), ("venue", 0))
+        f = {x["id"]: x for x in area["features"]}
+        mall = f["way/1"]
+        self.assertEqual((len(mall["rings"]), mall["lines"], mall["levels"], mall["dashed"]), (1, [], [-1], True))
+        self.assertAlmostEqual(mall["lat"], 33.51333, places=4)                               # the label sits at the ring centroid
+        self.assertAlmostEqual(mall["lon"], 126.52667, places=4)
+        self.assertEqual(mall["tags"]["name"], "Central Underground Mall")
+        corridor = f["way/2"]
+        self.assertEqual((corridor["rings"], len(corridor["lines"]), corridor["levels"], corridor["dashed"]), ([], 1, [0, 1], False))
+        self.assertEqual((corridor["tags"]["highway"], corridor["tags"]["indoor"]), ("corridor", "corridor"))
+        self.assertEqual((f["way/3"]["levels"], f["way/3"]["dashed"]), ([], False))           # the footprint: no level, shown on every chip
+        self.assertNotIn("addr:street", f["way/3"]["tags"])
+        self.assertEqual((f["relation/4"]["levels"], f["relation/4"]["tags"]["ref"]), ([1], "101"))
+        self.assertEqual((len(f["relation/5"]["lines"]), f["relation/5"]["levels"], f["relation/5"]["dashed"]), (2, [], True))   # layer -1: underground
+        many = self.tmp / "many.geojson"
+        many.write_text(json.dumps({"type": "FeatureCollection", "features": [feats[2]] * 520}), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            viewer.main(["mark", "area", str(many), "--level", "-2", "--session", str(self.folder)])
+        self.assertIn("dropped 20", out.getvalue())                                           # the cap is logged, never silent
+        capped = viewer.read_marks(self.folder)[-1]
+        self.assertEqual((len(capped["features"]), capped["dropped"]), (500, 20))
+        self.assertEqual((capped["features"][0]["levels"], capped["features"][0]["dashed"]), ([-2], True))   # --level for features without one
+        self.assertEqual(viewer.build_state(self.folder)["layers"]["levels"], [-2, -1, 0, 1])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            viewer.main(["mark", "list", "--session", str(self.folder)])
+        self.assertLess(len(out.getvalue()), 2000)                                            # list summarises an area, never dumps it
+        self.assertIn("Central Underground Mall", viewer.export_html(self.folder).read_text(encoding="utf-8"))   # the offline page draws it too
+        for bad in (self.tmp / "missing.geojson", self.tmp / "points.geojson"):
+            if bad.name == "points.geojson":
+                bad.write_text(json.dumps({"type": "FeatureCollection", "features": [feats[5]]}), encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                viewer.main(["mark", "area", str(bad), "--session", str(self.folder)])
+        self.assertEqual(viewer.main(["mark", "clear", "--kind", "area", "--session", str(self.folder)]), 0)
+        self.assertEqual(viewer.build_state(self.folder)["layers"]["areas"], [])
+
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]
         viewer.main(["say", "next step", "--session", str(self.folder)])

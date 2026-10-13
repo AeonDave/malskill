@@ -18,10 +18,13 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import types
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
+
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from geolib import net as _net
@@ -233,21 +236,31 @@ class OverpassMirrorTests(unittest.TestCase):
         self.assertEqual(len(cached), 1)
 
     def test_unconfirmed_empty_is_returned_but_not_cached(self):
-        data, calls, cached = self.run_with(lambda ep, q: ({"elements": []}, "") if ep == osm.ENDPOINTS[0] else (None, "503"))
+        err = io.StringIO()
+        with patch.object(sys, "stderr", err):
+            data, calls, cached = self.run_with(lambda ep, q: ({"elements": []}, "") if ep == osm.ENDPOINTS[0] else (None, "503"))
         self.assertEqual(data["elements"], [])
         self.assertEqual(cached, [])
         self.assertEqual(len(calls), len(osm.ENDPOINTS))           # one round, no retry sleeps
+        self.assertIn("Rerun once at most", err.getvalue())           # a terminal exit, not an open rerun loop
+        self.assertIn('"not found in OSM (unconfirmed)" and move on', err.getvalue())
 
     def test_zero_area_count_needs_a_second_mirror(self):
         ql = '[out:json][timeout:120];(area["name"="青海省"];)->.a;.a out count;'
         data, _, _ = self.run_with(lambda ep, q: (count(0) if ep == osm.ENDPOINTS[0] else count(1), ""), ql)
         self.assertEqual(data["elements"][0]["tags"]["total"], "1")
 
-    def test_bbox_empty_is_trusted(self):
-        ql = '[out:json][timeout:180];nwr["power"="line"](37.6,95.2,37.8,95.4);out geom tags;'
-        _, calls, cached = self.run_with(lambda ep, q: ({"elements": []}, ""), ql)
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(len(cached), 1)
+    def test_bbox_and_around_empties_need_a_second_mirror(self):
+        # a stale mirror answered a mall's --bbox query with elements: [] and the empty reply was cached for the whole run
+        for ql in ('[out:json][timeout:180];nwr["shop"="mall"](33.509,126.520,33.517,126.530);out geom tags;',
+                   '[out:json][timeout:60];nwr["amenity"="place_of_worship"](around:500,33.5132,126.5247);out center tags;'):
+            data, calls, cached = self.run_with(lambda ep, q: ({"elements": []} if ep == osm.ENDPOINTS[0] else {"elements": [LINE]}, ""), ql)
+            self.assertEqual(data["elements"], [LINE])
+            self.assertEqual(calls, osm.ENDPOINTS[:2])
+            self.assertEqual(len(cached), 1)
+            _, calls, cached = self.run_with(lambda ep, q: ({"elements": []}, ""), ql)
+            self.assertEqual(len(calls), 2)                                    # confirmed empty: cached
+            self.assertEqual(len(cached), 1)
 
     def test_failure_names_every_mirror(self):
         replies = {osm.ENDPOINTS[0]: (None, "HTTP 406: Not Acceptable"), osm.ENDPOINTS[1]: (None, "HTTP 500: Internal Server Error"),
@@ -471,6 +484,138 @@ class StreetViewNearTests(unittest.TestCase):
         self.assertEqual(res["id"], pid)
         self.assertEqual(res["date"], "2024-05")
         self.assertLess(res["distance_m"], 50)
+
+
+class GsvRenderTests(unittest.TestCase):
+    """A failed `gsv.py render` wrote a grey 'render failed' JPEG and exited 0, so it looked like a valid view."""
+
+    def test_failed_render_exits_nonzero_and_writes_nothing(self):
+        pid = "CIHM0ogKEICAgIDE89qY1QE"
+        for err in (RuntimeError(f"panorama {pid} not found"), ModuleNotFoundError("No module named 'streetlevel'")):
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "v.jpg"
+                argv = ["gsv.py", "render", pid, "--heading", "90", "--out", str(out), "--cache", d]
+                with patch.object(gsv.SL, "equirect", side_effect=err), patch.object(sys, "argv", argv), patch.dict(os.environ), \
+                        patch("sys.stdout", new=io.StringIO()), patch("sys.stderr", new=io.StringIO()), self.assertRaises(SystemExit) as cm:
+                    gsv.main()
+                self.assertIsInstance(cm.exception.code, str)                  # a message, so a non-zero exit
+                self.assertIn(pid, cm.exception.code)
+                self.assertFalse(out.exists())
+
+
+class NaverTypeTests(unittest.TestCase):
+    """Naver recaptures carry dtl_type 14, a PanoramaType streetlevel 0.12.12 does not know: every lookup that met one raised
+    ValueError, so `pano.py list` and `coverage` showed no Naver panorama where Naver has them."""
+
+    def test_unknown_type_in_the_timeline_keeps_the_panorama_listed(self):
+        import importlib
+        import pano as pano_cli
+        naver = _pano._sl("naver")
+        api = importlib.import_module("streetlevel.naver.api")
+        lat, lon = 33.5132, 126.5247
+        nearby = {"features": [{"geometry": {"coordinates": [lon, lat]}, "properties": {
+            "id": "NOW", "camera_angle": [0, 90, 0], "photodate": "2025-05-01 10:00:00", "description": "", "title": "",
+            "camera_altitude": 1200, "type": "3"}}]}
+        around = {"panoramas": {"street": [{"id": "NEXT", "latitude": lat, "longitude": lon + 1e-4, "altitude": 12, "dtl_type": "14"}]}}
+        timeline = {"timeline": {"panoramas": [["NOW", lon, lat, "3", "2025-05-01 10:00:00.0"],
+                                               ["OLD", lon, lat, "14", "2019-08-01 10:00:00.0"]]}}
+        with patch.object(api, "find_panorama", return_value=nearby), patch.object(api, "get_neighbors", return_value=around), \
+                patch.object(api, "get_historical", return_value=timeline), patch.object(pano_cli.time, "sleep"):
+            rows = pano_cli._point_lookup("naver", pano_cli.bbox_around(lat, lon, 30), 100, 10)
+            found = naver.find_panorama(lat, lon)
+        self.assertEqual([r["id"] for r in rows], ["NOW"])
+        self.assertEqual([(h.id, h.date.year, h.panorama_type.name) for h in found.historical], [("OLD", 2019, "CAR")])
+        self.assertEqual(found.neighbors.street[0].panorama_type.name, "CAR")
+
+
+class PanoCacheRaceTests(unittest.TestCase):
+    """`pano.py sheet` renders the bearings of one panorama on 6 threads: each downloaded it again and later threads read a
+    half-written JPEG ('image file is truncated'), leaving grey cells that could hide the matching view."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)
+        self.image = Image.linear_gradient("L").convert("RGB").resize((512, 256))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def staggered(fn, n=6, gap=0.03):
+        with ThreadPoolExecutor(n) as ex:
+            futs = []
+            for _ in range(n):
+                futs.append(ex.submit(fn))
+                time.sleep(gap)
+            return [f.result(timeout=20) for f in futs]
+
+    def fake_google(self, calls):
+        def find(pid):
+            calls.append(pid)
+            time.sleep(0.2)
+            return SimpleNamespace(id=pid, heading=0.5)
+        return SimpleNamespace(find_panorama_by_id=find, get_panorama=lambda p, zoom: self.image)
+
+    def test_one_download_per_panorama(self):
+        made = []
+
+        def make():
+            made.append(1)
+            time.sleep(0.2)
+            return self.image
+        with patch.object(_pano, "CACHE", self.cache):
+            arrays = self.staggered(lambda: _pano._cached_equirect("naver:P1:1:cube", make))
+        self.assertEqual(len(made), 1)
+        self.assertTrue(all(a.shape == (256, 512, 3) for a in arrays))
+        found = []
+        with patch.object(gsv.SL, "streetview", return_value=self.fake_google(found)):
+            views = self.staggered(lambda: gsv.SL.equirect("G1", self.cache / "google", 3))
+        self.assertEqual(found, ["G1"])
+        self.assertTrue(all(eq.shape == (256, 512, 3) and abs(h - math.degrees(0.5)) < 1e-9 for eq, h in views))
+        self.assertEqual([p.name for p in self.cache.rglob("*.part")], [])
+
+    def test_reader_never_opens_a_half_written_panorama(self):
+        orig = Image.Image.save
+
+        def slow_save(im, fp, format=None, **params):
+            buf = io.BytesIO()
+            orig(im, buf, format or "JPEG", **params)
+            data = buf.getvalue()
+            with open(fp, "wb") as fh:
+                fh.write(data[:len(data) // 2])
+                fh.flush()
+                time.sleep(0.3)
+                fh.write(data[len(data) // 2:])
+
+        def reader(folder, done, seen, errors):
+            while True:                     # another process: it reads whatever *.jpg exists, outside this process's locks
+                last = done.is_set()
+                for q in folder.rglob("*.jpg"):
+                    try:
+                        with Image.open(q) as im:
+                            im.load()
+                        seen.append(q.name)
+                    except OSError as e:
+                        errors.append(f"{q.name}: {e}")
+                if last:
+                    return
+                time.sleep(0.005)
+
+        for name, write in (("sl", lambda: _pano._cached_equirect("kakao:P2:1", lambda: self.image)),
+                            ("google", lambda: gsv.SL.equirect("G2", self.cache / "google", 3))):
+            (self.cache / name).mkdir(parents=True, exist_ok=True)
+            done, seen, errors = threading.Event(), [], []
+            t = threading.Thread(target=reader, args=(self.cache / name, done, seen, errors))
+            t.start()
+            try:
+                with patch.object(Image.Image, "save", slow_save), patch.object(_pano, "CACHE", self.cache), \
+                        patch.object(gsv.SL, "streetview", return_value=self.fake_google([])):
+                    write()
+            finally:
+                done.set()
+                t.join(10)
+            self.assertEqual(errors, [], name)
+            self.assertTrue(seen, name)
 
 
 class DeviceTests(unittest.TestCase):

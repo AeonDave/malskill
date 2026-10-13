@@ -921,6 +921,8 @@ def main() -> None:
                 coords = [(c[1], c[0]) for poly in g["coordinates"] for c in poly[0]]
             elif t == "LineString":
                 coords = [(c[1], c[0]) for c in g["coordinates"]]
+            elif t == "MultiLineString":                 # osm.py geom writes relations (multipolygon venues, lakes) this way
+                coords = [(c[1], c[0]) for ln in g["coordinates"] for c in ln]
             elif t == "Point":
                 coords = [(g["coordinates"][1], g["coordinates"][0])]
             else:
@@ -936,8 +938,9 @@ def main() -> None:
             props = f.get("properties") or {}
             tags = props.get("tags") or props
             name = tags.get("name") or f.get("id") or ""
+            # far_m: farthest vertex, the smallest radius round the pin that covers the whole footprint
             rows.append({"name": str(name), "bearing": round(center, 1), "span_deg": round(max(rel) - min(rel), 1),
-                         "dist_m": round(min(dists)), "height": tags.get("height") or tags.get("building:height") or "",
+                         "dist_m": round(min(dists)), "far_m": round(max(dists)), "height": tags.get("height") or tags.get("building:height") or "",
                          "levels": tags.get("building:levels") or "", "kind": tags.get("building") or tags.get("man_made") or tags.get("power") or "",
                          "center": [round(sum(c[0] for c in coords) / len(coords), 6), round(sum(c[1] for c in coords) / len(coords), 6)]})
         if args.target is not None:
@@ -947,10 +950,10 @@ def main() -> None:
         else:
             rows.sort(key=lambda r: r["bearing"])
         print(f"{len(rows)} features (within {args.max_dist:.0f} m)" + (f", target bearing {args.target}°, those within ±{args.tol}° marked *" if args.target is not None else ""))
-        print(f"{'':1} {'brg':>6} {'span':>5} {'dist':>6} {'h/lvl':>7}  name/kind")
+        print(f"{'':1} {'brg':>6} {'span':>5} {'dist':>6} {'far':>6} {'h/lvl':>7}  name/kind")
         for r in rows[:60]:
             star = "*" if args.target is not None and abs(r["d_bearing"]) <= args.tol else " "
-            print(f"{star} {r['bearing']:>6.1f} {r['span_deg']:>5.1f} {r['dist_m']:>6} {str(r['height'] or r['levels']):>7}  {r['name'][:28]} {r['kind']}")
+            print(f"{star} {r['bearing']:>6.1f} {r['span_deg']:>5.1f} {r['dist_m']:>6} {r['far_m']:>6} {str(r['height'] or r['levels']):>7}  {r['name'][:28]} {r['kind']}")
         if args.target is not None:
             hits = [r for r in rows if abs(r["d_bearing"]) <= args.tol]
             print(f"{len(hits)} match the bearing" + ("; when nothing matches, first suspect the heading and zoom, then suspect OSM hasn't mapped it" if not hits else ". Nearby buildings with a large angular width block those behind; only tall ones can show above"))

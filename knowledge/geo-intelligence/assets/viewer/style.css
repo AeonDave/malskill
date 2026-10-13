@@ -1,7 +1,7 @@
 /* Geo-intelligence live view.
    One bold element: the globe. Everything else is quiet type on deep navy.
    Palette: night #0B1526, panel #101C31, rule #1F2E49, ink #E6ECF5, muted #8B99B3,
-   sodium amber #F0B445 (the target), teal #49C2B4 (verified evidence). */
+   sodium amber #F0B445 (the target), teal #49C2B4 (verified evidence), red #E5534B (a generated image: no place). */
 
 :root {
   --night: #0B1526;
@@ -11,6 +11,7 @@
   --muted: #8B99B3;
   --amber: #F0B445;
   --teal: #49C2B4;
+  --red: #E5534B;
   --font: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   --panel-width: clamp(320px, 36vw, 520px);
 }
@@ -268,6 +269,8 @@ body:not(.running) .progress i { display: none; }
 
 .layers button.on { color: var(--ink); border-color: rgba(240, 180, 69, .6); }
 .layers button:hover { border-color: var(--amber); }
+.layers .levels { display: flex; gap: 2px; margin-left: 4px; }
+.layers .levels button { padding: 5px 8px; font-variant-numeric: tabular-nums; }
 
 .card {
   position: absolute;
@@ -301,6 +304,18 @@ body:not(.running) .progress i { display: none; }
 .checks { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
 .checks .check-done { color: #8fd18f; }
 .checks .check-missing { color: #ffb366; font-weight: 600; }
+.now p.aidet { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.badge-generated {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #fff;
+  background: var(--red);
+  vertical-align: 1px;
+}
 .skyline button.skyline-img { display: block; width: 100%; padding: 0; border: 1px solid rgba(255, 255, 255, 0.12); background: none; cursor: zoom-in; border-radius: 6px; overflow: hidden; }
 .skyline img { display: block; width: 100%; }
 .skyline-top { margin: 8px 0 0; padding-left: 22px; font-size: 13px; }
