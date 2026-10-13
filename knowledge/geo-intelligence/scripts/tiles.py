@@ -21,13 +21,14 @@ Examples:
   geodata.py towns PE --admin1 Cusco --json > towns.json
   tiles.py sheet --points towns.json --zoom 15 --size 640 --cols 3 --out fabric.jpg     # city fabric: candidate towns side by side, one scale
   tiles.py fetch 34.0331,-5.0003 --zoom 18 --source google-hybrid --out a.jpg        # satellite with street names (also google-map, esri-street)
-  tiles.py wayback 34.0331,-5.0003 --zoom 17 --out wb.jpg                       # every archived look of the place since 2014
+  tiles.py wayback 34.0331,-5.0003 --zoom 17 --out wb.jpg                       # every archived look since 2014, capture date at the point
   tiles.py sheet --points p.json --zoom 15 --source s2:2018 --out s2.jpg           # Sentinel-2 cloudless mosaic of one year (10 m)
 """
 from __future__ import annotations
 
 import argparse
-from geolib.net import curl_args, PROXY_HELP
+from geolib.net import curl_args, fetch_bytes, PROXY_HELP
+import hashlib
 import json
 import math
 import os
@@ -35,7 +36,9 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlencode
 
 from PIL import Image, ImageDraw
 
@@ -66,7 +69,7 @@ def _quadkey(x: int, y: int, z: int) -> str:
 
 
 def wayback_releases(proxy: str | None = None) -> list[dict]:
-    """Esri World Imagery Wayback releases, oldest first: [{id, date, url}] (config cached for a week)."""
+    """Esri World Imagery Wayback releases, oldest first: [{id, date, url, metadataLayerUrl}] (config cached for a week)."""
     import time as _t
     from geolib.paths import cache_root
     cache = cache_root() / "wayback.json"
@@ -77,7 +80,8 @@ def wayback_releases(proxy: str | None = None) -> list[dict]:
     out = []
     for rid, v in d.items():
         m = re.search(r"(\d{4}-\d{2}-\d{2})", v.get("itemTitle", ""))
-        out.append({"id": int(rid), "date": m.group(1) if m else "", "url": v["itemURL"]})
+        out.append({"id": int(rid), "date": m.group(1) if m else "", "url": v["itemURL"],
+                    "metadataLayerUrl": v.get("metadataLayerUrl", "")})
     return sorted(out, key=lambda r: r["date"])
 
 
@@ -90,6 +94,75 @@ def _wayback_pick(spec: str, proxy: str | None) -> dict:
             return hit[0]
     before = [r for r in rel if r["date"] <= spec + "-99"]
     return before[-1] if before else rel[0]
+
+
+def _identify(meta_url: str, lat: float, lon: float, proxy: str | None, cache: Path) -> list[dict]:
+    """Wayback metadata at the point, every resolution layer at once (the zoom is applied by _capture).
+    Cached per metadata service and point; a transport error or an error reply raises and is not cached."""
+    path = cache / f"wayback-meta_{hashlib.sha1(f'{meta_url}|{lat:.6f}|{lon:.6f}'.encode()).hexdigest()[:16]}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))["results"]
+    except (OSError, ValueError, KeyError):
+        pass                                                  # not cached yet, or a torn write: ask again
+    pad = 0.001                                               # mapExtent/imageDisplay are required; tolerance 0 = the point only
+    q = urlencode({"f": "json", "geometry": f"{lon},{lat}", "geometryType": "esriGeometryPoint", "sr": 4326, "layers": "all",
+                   "tolerance": 0, "mapExtent": f"{lon - pad},{lat - pad},{lon + pad},{lat + pad}",
+                   "imageDisplay": "100,100,96", "returnGeometry": "false"})
+    d = json.loads(fetch_bytes(f"{meta_url}/identify?{q}", proxy, timeout=20))
+    if not isinstance(d.get("results"), list):
+        raise RuntimeError(f"metadata service: {(d.get('error') or {}).get('message', 'no results in the reply')}")
+    cache.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    return d["results"]
+
+
+def _capture(results: list[dict], zoom: int) -> dict:
+    """Capture date of the imagery drawn at `zoom`: the layer whose MinMapLevel..MaxMapLevel spans the zoom, else the one with
+    the highest MaxMapLevel below it (its tiles are upsampled). SRC_DATE is YYYYMMDD; 'Null', empty or missing = unknown
+    (SRC_DATE2 repeats it in another format and is ignored)."""
+    spans, below = [], []
+    for r in results:
+        a = r.get("attributes") or {}
+        try:
+            lo, hi = int(a["MinMapLevel"]), int(a["MaxMapLevel"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if lo <= zoom <= hi:
+            spans.append(a)
+        elif hi < zoom:
+            below.append((hi, a))
+    a = spans[0] if spans else max(below, key=lambda x: x[0])[1] if below else {}
+    date = str(a.get("SRC_DATE") or "")
+    try:
+        captured = datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d") if re.fullmatch(r"\d{8}", date) else None
+    except ValueError:
+        captured = None
+    try:
+        res = float(a["SRC_RES"])
+    except (KeyError, TypeError, ValueError):
+        res = None
+    src = a.get("SRC_DESC")
+    return {"captured": captured, "capture_source": src if src not in (None, "", "Null") else None, "capture_res_m": res}
+
+
+def capture_at(release: dict, lat: float, lon: float, zoom: int, proxy: str | None, cache: Path) -> dict:
+    """_capture for one Wayback release at the point; a failed lookup comes back as capture_error, never raised."""
+    try:
+        if not release.get("metadataLayerUrl"):
+            raise RuntimeError("no metadata layer for this release in the Wayback config")
+        return _capture(_identify(release["metadataLayerUrl"], lat, lon, proxy, cache), zoom)
+    except Exception as e:  # noqa: BLE001 - one failed lookup must not abort the contact sheet
+        return {"captured": None, "capture_source": None, "capture_res_m": None, "capture_error": str(e)[:160]}
+
+
+def _capture_text(cap: dict, published: str) -> str:
+    """One line per Wayback version: the capture date at the point, else the publication date as an upper bound."""
+    res = cap.get("capture_res_m")
+    what = ", ".join(x for x in (cap.get("capture_source"), f"{res:g} m" if res else "") if x)
+    if cap.get("captured"):
+        return f"captured {cap['captured']} at the point (published {published})" + (f", {what}" if what else "")
+    why = what or (f"metadata: {cap['capture_error']}" if cap.get("capture_error") else "")
+    return f"capture unknown; published {published} = upper bound" + (f" ({why})" if why else "")
 
 
 def tile_url(source: str, x: int, y: int, z: int, proxy: str | None = None) -> str:
@@ -386,7 +459,8 @@ def main() -> None:
     pl.add_argument("--scale", type=float, default=1.0, help="scale of that image relative to the original mosaic (0.5 for half size)")
     pl.add_argument("--out", type=Path, help="write {p1: [lat, lon], ...}")
 
-    wb = sub.add_parser("wayback", help="historical satellite imagery at a point: every Esri Wayback release where it changed")
+    wb = sub.add_parser("wayback", help="historical satellite imagery at a point: every Esri Wayback release where it changed, "
+                                        "with its capture date at the point")
     wb.add_argument("center", help="lat,lon")
     wb.add_argument("--zoom", type=int, default=17)
     wb.add_argument("--size", type=int, default=384, help="pixels per thumbnail")
@@ -396,7 +470,6 @@ def main() -> None:
 
     args = ap.parse_args(_neg_coords(sys.argv[1:]))
     if args.cmd == "wayback":
-        import hashlib
         lat, lon = map(float, args.center.split(","))
         gx, gy = geo.ll2px(args.zoom, lat, lon)
         tx, ty = int(gx // 256), int(gy // 256)
@@ -409,26 +482,34 @@ def main() -> None:
             return r, (hashlib.sha1(p.read_bytes()).hexdigest() if ok else None)
         with ThreadPoolExecutor(12) as ex:
             probed = list(ex.map(probe, rel))
-        versions, last = [], None
-        for r, h in probed:
-            if h and h != last:
-                versions.append(r)
-                last = h
+            versions, last = [], None
+            for r, h in probed:
+                if h and h != last:
+                    versions.append(r)
+                    last = h
+            caps = list(ex.map(lambda r: capture_at(r, lat, lon, args.zoom, args.proxy, args.cache), versions))
+        notes = [_capture_text(c, r["date"]) for r, c in zip(versions, caps)]
         print(f"{len(rel)} Wayback releases {rel[0]['date']} … {rel[-1]['date']}; the imagery here changed {len(versions)} times:")
-        for r in versions:
-            print(f"  release {r['id']:>6}  published {r['date']}")
+        for r, note in zip(versions, notes):
+            print(f"  release {r['id']:>6}  {note}")
+        if any(c["captured"] for c in caps):
+            print("Capture dates are read at the point itself: a thumbnail can cross a mosaic seam, and the rest of it may have another date.")
         thumbs = []
-        for r in versions:                   # one thumbnail per version, same framing
+        for r, c in zip(versions, caps):     # one thumbnail per version, same framing; the label fits the 28-character cell title
             o = args.out.with_name(f"{args.out.stem}_{r['id']}.jpg")
-            thumbs.append(sheet({r["date"]: [lat, lon]}, args.zoom, args.size, 1, o, f"wayback:{r['id']}", args.proxy, args.cache)[0])
+            label = f"{c['captured'] or 'capture ?'} (pub {r['date']})"
+            thumbs.append(sheet({label: [lat, lon]}, args.zoom, args.size, 1, o, f"wayback:{r['id']}", args.proxy, args.cache)[0])
         cols = min(4, len(thumbs)) or 1
         S = Image.new("RGB", (cols * args.size, max(1, (len(thumbs) + cols - 1) // cols) * args.size), "black")
         for k, pg in enumerate(thumbs):
             S.paste(Image.open(pg), ((k % cols) * args.size, (k // cols) * args.size))
             pg.unlink()
         S.save(args.out, quality=88)
-        args.out.with_suffix(".json").write_text(json.dumps(versions, indent=1, ensure_ascii=False), encoding="utf-8")
-        print(f"-> {args.out} (dates are publication dates; the capture is earlier)")
+        rows = [{"id": r["id"], "published": r["date"], **c, "note": note, "url": r["url"]} for r, c, note in zip(versions, caps, notes)]
+        args.out.with_suffix(".json").write_text(json.dumps(rows, indent=1, ensure_ascii=False), encoding="utf-8")
+        unknown = sum(not c["captured"] for c in caps)
+        print(f"-> {args.out}" + (f" ({unknown} version(s) with capture unknown: there the date is the publication date; "
+                                  "the capture is earlier)" if unknown else ""))
         return
     if args.cmd == "px2ll":
         m = Mosaic(args.image)

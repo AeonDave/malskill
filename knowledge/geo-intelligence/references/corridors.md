@@ -136,7 +136,7 @@ uv run scripts/terrain.py scan --lines lines.geojson --out hits.json \
 - `--skip-tag` skips lines by tag (repeatable); `--cluster-km` is the clustering radius for hits. If the tile count exceeds `--max-tiles` it exits with an error; shrink `--bbox` or lower `--zoom` first.
 - `--cache` uses the same elevation cache as `terrain.py` (default `.geo-cache/dem`).
 - Output `hits.json`: `{params:{...}, n_samples, n_hits, n_clusters, hits:[{lat, lon, h0: ground elevation m, max_ang: highest horizon elevation angle °, az: its azimuth °, relief: max relative height difference in that azimuth m, flat_run_deg: length of the flat horizon right next to the mountain °, name/hs/elec/id: the line's OSM tags}...], clusters:[...]}`. Clusters are sorted by `max_ang` descending; a cluster's representative is its steepest point (same fields as `hits`, plus `n` = number of points in the cluster); `--clusters-out` writes a separate JSON with only the cluster list.
-3. The resulting clusters go into the batch skyline scoring in `geometry.md` 7.4 (`terrain.py fit --hits`). Without EXIF it searches 13–135mm by default; if the leading clusters all want the longest (or shortest) focal, widen `--f35-range` and rerun before reading the ranking.
+3. The resulting clusters go into the batch skyline scoring in `geometry.md` 7.4 (`terrain.py fit --hits`), which takes scan's `--min-peak` from hits.json (`params.min_peak_deg`); pass `--min-peak` to fit only to be stricter. Without EXIF it searches 13–135mm by default; if the leading clusters all want the longest (or shortest) focal, widen `--f35-range` and rerun before reading the ranking.
 
 - **When the mountain is right in front of you** (its foot a few hundred meters from the camera position), the defaults miss it: within the 1200 m `--near-radius` you are sure to climb onto its slope, and `--dist` starting at 1.5 km can't measure this mountain either. Shrink `--near-radius` to a few hundred meters (`--near-step` must be smaller than it, otherwise only the camera position itself is sampled and the flat-nearby check does nothing), and start `--dist` at 400 m. In hilly areas, loosening like this gives many candidates; when the skyline can't separate them, you need a second constraint.
 - **Lake shore, coast, riverbank** (the camera stands at the water's edge, mountains right behind the far shore): the lines are the
@@ -144,8 +144,8 @@ uv run scripts/terrain.py scan --lines lines.geojson --out hits.json \
   MultiLineString; `scan` reads them). Both plain-oriented filters reject the truth here and are loosened or dropped:
   `terrain.py scan --lines lakes.geojson --near-radius 400 --near-flat 80 --flat-run 0 --max-low 2 --min-peak <half the photo's
   highest ridge angle> --out scan.json` (on a 1 km alpine lake the defaults left 0 hits, these left 2 on the right shore). Then
-  `terrain.py fit --hits scan.json --ridge ridge.json --cam-flat 10000 --cam-level 6 --min-peak 10 --radius 700 --grid 120
-  --zoom 12 --sheet top.jpg`: `--cam-level` keeps only camera positions at the shore's elevation (the hit's `h0`); without it the
+  `terrain.py fit --hits scan.json --ridge ridge.json --cam-flat 10000 --cam-level 6 --radius 700 --grid 120 --zoom 12
+  --sheet top.jpg`: `--cam-level` keeps only camera positions at the shore's elevation (the hit's `h0`); without it the
   flat filter rejects every shore position, and with the flat filter merely off the grid climbs the slope and scores cameras
   100 m above the water. For `ridge`, sample the rock skyline only (`--x0/--x1` past the near tree line) and give `--hrow` by hand
   at the far waterline: a lake-level camera sees the horizon exactly there. Tree canopy on the ridge and DEM smoothing leave

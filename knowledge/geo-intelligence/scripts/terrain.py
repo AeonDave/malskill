@@ -52,11 +52,14 @@ For the fields of ridge.json and fit.json, see each subcommand's --help.
 from __future__ import annotations
 
 import argparse
+import contextlib
+from datetime import datetime
 from geolib.net import curl_args, PROXY_HELP
 import json
 import math
 import os
 import re
+import shlex
 import subprocess
 import sys
 import threading
@@ -75,6 +78,8 @@ R_EARTH = 6371008.8
 K_REFRACTION = 0.13
 F35_RANGE = (13.0, 135.0)          # fit's focal ladder when the photo has no EXIF focal length: 0.5x ultra-wide to ~5x telephoto
 F35_RATIO = 1.18                   # step between ladder rungs
+CHECKPOINT_S = 30.0                # fit rewrites --out at most this often while scoring, and always after the last cluster
+REPLACE_TRIES, REPLACE_WAIT_S = 10, 0.1   # Windows refuses os.replace while a reader (the live viewer's poll, `say`) holds the target
 
 
 FETCH_TRIES = 4
@@ -671,10 +676,11 @@ def _parse_pairs(s: str, name: str, n: int = 3, sep: str = ",", rng: str = ":") 
     return out
 
 
-def _load_centers(args) -> list[dict]:
+def _load_centers(args) -> tuple[list[dict], dict]:
+    """Candidate centres, and the params block of the scan output given as --hits ({} for --at or a bare cluster list)."""
     if args.at:
         lat, lon = map(float, args.at.split(","))
-        return [{"lat": lat, "lon": lon, "name": "", "src_idx": 0}]
+        return [{"lat": lat, "lon": lon, "name": "", "src_idx": 0}], {}
     j = json.loads(Path(args.hits).read_text(encoding="utf-8"))
     items = j["clusters"] if isinstance(j, dict) and "clusters" in j else j
     if not isinstance(items, list):
@@ -690,7 +696,8 @@ def _load_centers(args) -> list[dict]:
         if bad:
             sys.exit(f"--select indices {bad} out of range 0–{len(centers) - 1}")
         centers = [centers[i] for i in want]
-    return centers
+    scan_params = (j.get("params") or {}) if isinstance(j, dict) else {}
+    return centers, scan_params
 
 
 def _skyline_xy(hor: np.ndarray, az: np.ndarray, H: float, f: float, cc: float, cx: float, hrow: float, half_w: float,
@@ -861,6 +868,84 @@ def _fit_sheet(recs: list[dict], ridge: dict, photo: Path | None, out: Path, arg
           "cyan dots/lines = photo near points / near-clear rows, blue line = hrow, cyan line on hrow = flat-horizon columns)", file=sys.stderr)
 
 
+def _fit_photo(args, ridge: dict) -> Path | None:
+    """The photo fit draws on: --photo, else ridge.json's path, recorded as typed and possibly relative, so tried from the
+    current directory, then from ridge.json's directory. None when no candidate exists."""
+    if args.photo:
+        cands = [Path(args.photo)]
+    elif ridge.get("photo"):
+        cands = [Path(ridge["photo"]), Path(args.ridge).parent / ridge["photo"]]
+    else:
+        cands = []
+    return next((p for p in cands if p.exists()), None)
+
+
+def _part_of(path: Path) -> Path:
+    """This process's temporary file for path: two runs never share one."""
+    return path.with_name(f"{path.name}.{os.getpid()}.part")
+
+
+def _save_json(path: Path, payload: dict, keep_part: bool = False) -> None:
+    """Write _part_of(path), then os.replace it over path: a reader never sees half a file. On Windows os.replace fails while
+    another process holds path open, usually for milliseconds: retried REPLACE_TRIES times, REPLACE_WAIT_S apart. When it still
+    fails the .part is removed, or kept when it is complete and keep_part is set (the caller then names it)."""
+    part, written = _part_of(path), False
+    try:
+        part.write_text(json.dumps(payload, ensure_ascii=False, indent=0), encoding="utf-8")
+        written = True
+        for attempt in range(REPLACE_TRIES):
+            try:
+                os.replace(part, path)
+                return
+            except PermissionError:
+                if attempt == REPLACE_TRIES - 1:
+                    raise
+                time.sleep(REPLACE_WAIT_S)
+    except OSError:
+        if not (keep_part and written):
+            with contextlib.suppress(OSError):
+                part.unlink()
+        raise
+
+
+def _ps_quote(path: Path) -> str:
+    """A PowerShell single-quoted literal (an embedded quote is doubled), for a printed command."""
+    return "'" + str(path).replace("'", "''") + "'"
+
+
+def _select_list(left: list[int], out: str) -> str:
+    """How to continue the clusters left. A long list is named, never truncated: a pasted "…" would break --select.
+    A new --out keeps the clusters already ranked in out from being overwritten by the continuation's ranking."""
+    which = ",".join(map(str, left)) if len(left) <= 20 else f"<the {len(left)} unscored_clusters in {out}>"
+    return f"{which} with a new --out"
+
+
+def _fit_payload(st: dict, status: str) -> dict:
+    """fit.json from the scoring state so far. status: running (checkpoint while scoring), budget (stopped at --budget-min)
+    or done. The clusters not reached are unscored_clusters, the --select list that continues the run."""
+    recs, clusters, fscales, f35_0 = st["recs"], st["clusters"], st["fscales"], st["f35_0"]
+    recs.sort(key=lambda r: r["total"])
+    clusters.sort(key=lambda x: x["best"]["total"] if x["best"] else float("inf"))
+    for i, x in enumerate(clusters):
+        x["rank"] = i + 1
+    lead = ([x["best"] for x in clusters if x["best"]] if len(clusters) > 1 else recs)[:10]
+    focal_edge = None
+    if len(fscales) > 1 and lead:
+        lo_s, hi_s = min(fscales), max(fscales)
+        n_long = sum(r["fs"] == hi_s for r in lead)
+        n_short = sum(r["fs"] == lo_s for r in lead)
+        top1 = "long" if lead[0]["fs"] == hi_s else "short" if lead[0]["fs"] == lo_s else None
+        if top1 or max(n_long, n_short) * 2 >= len(lead):
+            focal_edge = {"top1": top1, "long": n_long, "short": n_short, "of": len(lead),
+                          "range_f35": [round(f35_0 * lo_s, 1), round(f35_0 * hi_s, 1)]}
+    unscored = [c["src_idx"] for c in st["centers"][st["n_done"]:]]
+    return {"params": st["params"], "n_clusters": len(clusters), "n_cams": len(recs), "n_skipped": st["skipped"],
+            "dem_failed_clusters": st["dem_failed"], "status": status, "pid": os.getpid(),
+            "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"), "partial": bool(unscored), "unscored_clusters": unscored,
+            "elapsed_min": round((time.monotonic() - st["t_start"]) / 60, 1), "focal_edge": focal_edge,
+            "clusters": clusters, "cams": recs[:st["keep"]]}
+
+
 def _cmd_fit(args) -> None:
     if bool(args.hits) == bool(args.at):
         sys.exit("give exactly one of --hits and --at")
@@ -925,9 +1010,12 @@ def _cmd_fit(args) -> None:
     AZ = np.arange(naz) * az_step
     HS = np.arange(naz)
 
-    centers = _load_centers(args)
+    centers, scan_params = _load_centers(args)
     if not centers:
         sys.exit("no candidate clusters")
+    scan_peak = scan_params.get("min_peak_deg")
+    # scan kept only hits whose skyline reaches its own --min-peak: a stricter fit default would drop the cameras it found
+    min_peak = args.min_peak if args.min_peak is not None else scan_peak if scan_peak is not None else 6.0
 
     PS = None                                                         # (n, 4) segments lat1, lon1, lat2, lon2 for the heading constraint
     if args.perp_line:
@@ -974,8 +1062,24 @@ def _cmd_fit(args) -> None:
                 for dx in np.arange(-args.radius, args.radius + 1e-6, args.grid) if dx * dx + dy * dy <= args.radius ** 2]
     if args.radius == 0:
         grid_pts = [(0.0, 0.0)]
+    params = {"hits": args.hits, "at": args.at, "select": args.select, "ridge": str(args.ridge),
+              "radius_m": args.radius, "grid_m": args.grid, "zoom": args.zoom, "focal_scales": fscales,
+              "az_step_deg": az_step, "near_m": args.near, "range_m": args.range, "nsamp": args.nsamp, "eye_m": args.eye,
+              "focal": focal_how, "focal_metric": "px" if px_metric else "deg", "f35_ladder": [round(f35_0 * x, 1) for x in fscales],
+              "near_dist_m": near_dists if two else None, "near_clear_w": args.near_clear_w,
+              "perp_line": args.perp_line, "perp_tol_deg": args.perp_tol if args.perp_line else None,
+              "cam_flat_m": args.cam_flat, "cam_flat_radius_m": args.cam_flat_radius, "cam_level_m": args.cam_level, "min_peak_deg": min_peak,
+              "cc_max_deg": args.cc_max, "roll_max_deg": args.roll_max, "flat_clear_deg": args.flat_clear, "flat_w": args.flat_w, "flat_step_px": args.flat_step,
+              "line": args.line, "line_dist": args.line_dist, "line_win": args.line_win if args.line else None,
+              "line_scale": args.line_scale if args.line else None, "line_order": args.line_order if args.line else None,
+              "line_w": args.line_w, "line_min_m": args.line_min, "line_sample_m": args.line_sample, "line_reach_m": args.line_reach,
+              "photo": {"f0_px": f0, "hrow": hrow, "cx": cx, "hfov_deg_at_fs1": round(2 * math.degrees(math.atan(cx / f0)), 1),
+                        "n_ridge": int(RX.size), "flat": flat}}
     t_start = time.monotonic()
-    unscored: list[int] = []                                           # clusters left when --budget-min ran out
+    st = {"params": params, "centers": centers, "recs": recs, "clusters": clusters_out, "skipped": skipped, "dem_failed": dem_failed,
+          "n_done": 0, "t_start": t_start, "fscales": fscales, "f35_0": f35_0, "keep": args.keep}
+    out_path = Path(args.out)
+    saved, ck_err, last_save = None, None, None    # clusters in the last checkpoint written, why the latest attempt failed, when
     for ci, c in enumerate(centers):
         lat, lon = float(c["lat"]), float(c["lon"])
         name = c.get("name", "")
@@ -983,13 +1087,14 @@ def _cmd_fit(args) -> None:
         if args.budget_min and elapsed_min > args.budget_min and ci > 0:
             unscored = [cc["src_idx"] for cc in centers[ci:]]
             print(f"budget of {args.budget_min:g} min reached after {ci}/{len(centers)} clusters: writing the partial ranking; "
-                  f"continue with --select {','.join(map(str, unscored[:60]))}{'…' if len(unscored) > 60 else ''} (or raise --budget-min)", file=sys.stderr)
+                  f"continue with --select {_select_list(unscored, args.out)} (or raise --budget-min)", file=sys.stderr)
             break
         try:
             dem = DEM((lat, lon), args.radius + args.range + 500, args.zoom, args.cache, args.proxy, args.allow_missing)
         except SystemExit as e:
             print(f"cluster {c['src_idx']} {name}: DEM failed ({e}), skipped", file=sys.stderr)
             dem_failed.append(c["src_idx"])
+            st["n_done"] = ci + 1
             continue
         kx = 111320 * math.cos(math.radians(lat))
         level_h = None
@@ -1032,7 +1137,7 @@ def _cmd_fit(args) -> None:
                 skipped["missing_dem"] += 1
                 continue
             hor = ang.max(axis=1)
-            if hor.max() < args.min_peak:
+            if hor.max() < min_peak:
                 skipped["no_peak"] += 1
                 continue
             h_ok = None
@@ -1156,49 +1261,45 @@ def _cmd_fit(args) -> None:
         tie = tie_extent([r for r in recs if r["hit"] == c["src_idx"]], best_c["total"], args.tie) if best_c else None
         clusters_out.append({"hit": c["src_idx"], "name": name, "hit_ll": [round(lat, 5), round(lon, 5)],
                              "n": c.get("n"), "max_ang": c.get("max_ang"), "n_cams": n_c, "best": best_c, "tie": tie})
+        st["n_done"] = ci + 1
+        now = time.monotonic()
+        if last_save is None or now - last_save >= CHECKPOINT_S or ci + 1 == len(centers):
+            try:
+                _save_json(out_path, _fit_payload(st, "running"))
+                saved, ck_err, last_save = ci + 1, None, now
+            except OSError as e:                                       # a reader holding the file (Windows), a full disk: keep scoring
+                ck_err = type(e).__name__
+        if saved is None:
+            note = f"not saved yet: {ck_err}; if killed: rerun this command"
+        else:
+            rem = [x["src_idx"] for x in centers[saved:]]
+            note = (f"checkpoint failed: {ck_err}; " if ck_err else "") + f"saved {saved}/{len(centers)}"
+            if rem:
+                note += f"; if killed: --select {_select_list(rem, args.out)}"
         per = (time.monotonic() - t_start) / (ci + 1)
         eta = f"  [{per:.1f} s/cluster, ~{per * (len(centers) - ci - 1) / 60:.0f} min left]" if len(centers) > 3 else ""
         print(f"cluster {ci + 1}/{len(centers)} hit{c['src_idx']} {name or '-'}: scored {n_c} camera positions"
-              + (f", best total {best_c['total']}  H {best_c['H']}  cam {best_c['cam']}" if best_c else ", no camera position passed the filters") + eta, file=sys.stderr)
+              + (f", best total {best_c['total']}  H {best_c['H']}  cam {best_c['cam']}" if best_c else ", no camera position passed the filters")
+              + eta + f" ({note})", file=sys.stderr)
 
-    recs.sort(key=lambda r: r["total"])
-    clusters_out.sort(key=lambda x: x["best"]["total"] if x["best"] else float("inf"))
-    for i, x in enumerate(clusters_out):
-        x["rank"] = i + 1
-    hfov = 2 * math.degrees(math.atan(cx / f0))
-    lead = [x["best"] for x in clusters_out if x["best"]] if len(clusters_out) > 1 else recs
-    lead = lead[:10]
-    focal_edge = None
-    if len(fscales) > 1 and lead:
-        lo_s, hi_s = min(fscales), max(fscales)
-        n_long = sum(r["fs"] == hi_s for r in lead)
-        n_short = sum(r["fs"] == lo_s for r in lead)
-        top1 = "long" if lead[0]["fs"] == hi_s else "short" if lead[0]["fs"] == lo_s else None
-        if top1 or max(n_long, n_short) * 2 >= len(lead):
-            focal_edge = {"top1": top1, "long": n_long, "short": n_short, "of": len(lead),
-                          "range_f35": [round(f35_0 * lo_s, 1), round(f35_0 * hi_s, 1)]}
-    out = {
-        "params": {"hits": args.hits, "at": args.at, "select": args.select, "ridge": str(args.ridge),
-                   "radius_m": args.radius, "grid_m": args.grid, "zoom": args.zoom, "focal_scales": fscales,
-                   "az_step_deg": az_step, "near_m": args.near, "range_m": args.range, "nsamp": args.nsamp, "eye_m": args.eye,
-                   "focal": focal_how, "focal_metric": "px" if px_metric else "deg", "f35_ladder": [round(f35_0 * x, 1) for x in fscales],
-                   "near_dist_m": near_dists if two else None, "near_clear_w": args.near_clear_w,
-                   "perp_line": args.perp_line, "perp_tol_deg": args.perp_tol if args.perp_line else None,
-                   "cam_flat_m": args.cam_flat, "cam_flat_radius_m": args.cam_flat_radius, "cam_level_m": args.cam_level, "min_peak_deg": args.min_peak,
-                   "cc_max_deg": args.cc_max, "roll_max_deg": args.roll_max, "flat_clear_deg": args.flat_clear, "flat_w": args.flat_w, "flat_step_px": args.flat_step,
-                   "line": args.line, "line_dist": args.line_dist, "line_win": args.line_win if args.line else None,
-                   "line_scale": args.line_scale if args.line else None, "line_order": args.line_order if args.line else None,
-                   "line_w": args.line_w, "line_min_m": args.line_min, "line_sample_m": args.line_sample, "line_reach_m": args.line_reach,
-                   "photo": {"f0_px": f0, "hrow": hrow, "cx": cx, "hfov_deg_at_fs1": round(hfov, 1), "n_ridge": int(RX.size), "flat": flat}},
-        "n_clusters": len(clusters_out), "n_cams": len(recs), "n_skipped": skipped, "dem_failed_clusters": dem_failed,
-        "partial": bool(unscored), "unscored_clusters": unscored, "elapsed_min": round((time.monotonic() - t_start) / 60, 1),
-        "focal_edge": focal_edge,
-        "clusters": clusters_out,
-        "cams": recs[:args.keep],
-    }
-    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=0), encoding="utf-8")
+    out = _fit_payload(st, "budget" if st["n_done"] < len(centers) else "done")
+    try:
+        _save_json(out_path, out, keep_part=True)
+    except OSError as e:                              # the scoring is done: a reader holding fit.json must not cost the ranking
+        part = _part_of(out_path)
+        if not part.exists():
+            raise
+        print(f"WARNING: {args.out} not replaced ({type(e).__name__}: another process holds it open); the full ranking is in {part}. "
+              f"Close the reader, then move it over: Move-Item -Force -LiteralPath {_ps_quote(part)} -Destination {_ps_quote(out_path)} "
+              f"(PowerShell) or mv -f {shlex.quote(str(part))} {shlex.quote(str(out_path))} (bash).", file=sys.stderr)
+    focal_edge = out["focal_edge"]
     print(f"clusters {len(clusters_out)}, camera positions {len(recs)}, skipped {skipped} → {args.out}"
-          + (f"  PARTIAL: {len(unscored)} clusters not scored (budget); the ranking below covers the scored ones only" if unscored else ""), file=sys.stderr)
+          + (f"  PARTIAL: {len(out['unscored_clusters'])} clusters not scored (budget); the ranking below covers the scored ones only"
+             if out["partial"] else ""), file=sys.stderr)
+    if args.min_peak is not None and scan_peak is not None and args.min_peak > scan_peak:
+        print(f"note: --min-peak {args.min_peak:g}° is stricter than scan's {scan_peak:g}° (params.min_peak_deg in {args.hits})"
+              + (f"; {skipped['no_peak']} camera positions were skipped as no_peak: rerun without --min-peak to score them at scan's value"
+                 if skipped["no_peak"] else ""), file=sys.stderr)
     if skipped["missing_dem"]:
         print(f"WARNING: {skipped['missing_dem']} camera positions not scored because their sight lines touch missing tiles", file=sys.stderr)
     for x in clusters_out[:min(args.top, 10)]:
@@ -1213,8 +1314,7 @@ def _cmd_fit(args) -> None:
     lead = clusters_out[0] if clusters_out else None
     if lead and lead.get("best"):
         t = lead.get("tie") or {}
-        W_, _ = ridge["image_size"]
-        hfov_best = 2 * math.degrees(math.atan((W_ / 2) / lead["best"]["f"]))
+        hfov_best = 2 * math.degrees(math.atan((W / 2) / lead["best"]["f"]))
         if t.get("n", 0) > 1 and t["span_m"] > args.grid:
             print(f"Position ambiguity: {t['n']} camera positions score within {t['delta']} of the best and span {t['span_m']:.0f} m along "
                   f"{t['bearing']:.0f}°. The skyline fixes a sight line, not a point: put the answer on the road, shore or building inside this "
@@ -1223,6 +1323,19 @@ def _cmd_fit(args) -> None:
             print("Single camera position (--radius 0): the score says how well this point fits, not how far along the sight line the camera "
                   "could move; test the alternatives (the road, the field edge) with the same command before closing.", file=sys.stderr)
         print(f"PeakFinder, same camera for the eyes: {peakfinder_url(lead['best']['cam'][0], lead['best']['cam'][1], lead['best']['H'], hfov_best, lead['best']['g'])}", file=sys.stderr)
+        b = lead["best"]
+        # fit keeps the camera level and puts the horizon on hrow; view centres the principal point and tilts the camera.
+        # Both put the horizon on the same row when pitch = cc + atan((hrow − image height / 2) / f): hrow below the middle = looking up
+        pitch = b["cc"] + math.degrees(math.atan((hrow - Hh / 2) / b["f"]))
+        photo = _fit_photo(args, ridge)
+        cmd = ["terrain.py", "view", "--at", f"{b['cam'][0]:.5f},{b['cam'][1]:.5f}", "--height", f"{args.eye:g}",
+               "--heading", f"{b['H']:g}", "--hfov", f"{hfov_best:.1f}", "--pitch", f"{pitch:.2f}", "--roll", f"{b['roll']:g}",
+               "--range", f"{args.range:g}", "--zoom", str(args.zoom), "--near", f"{args.near:g}",
+               "--photo", str(photo) if photo else "<photo>"]
+        cmd += ["--peaks", args.peaks] if args.peaks else []
+        cmd += ["--allow-missing"] if args.allow_missing else []
+        cmd += ["--overlay", "--out", str(Path(args.out).with_name("view_best.jpg"))]
+        print("Overlay check, this camera's skyline drawn on the photo: " + " ".join(shlex.quote(a) for a in cmd), file=sys.stderr)
     if focal_edge:
         lo_mm, hi_mm = focal_edge["range_f35"]
         side = focal_edge["top1"] or ("long" if focal_edge["long"] >= focal_edge["short"] else "short")
@@ -1241,14 +1354,9 @@ def _cmd_fit(args) -> None:
         if not top:
             print("no camera positions to draw, no overlay", file=sys.stderr)
         else:
-            photo = Path(args.photo) if args.photo else None
-            if photo is None and ridge.get("photo"):
-                # ridge.json records the path exactly as given on the command line, possibly relative: try the current directory first, then the directory of ridge.json
-                cands = [Path(ridge["photo"]), Path(args.ridge).parent / ridge["photo"]]
-                photo = next((p for p in cands if p.exists()), cands[0])
-            if photo is None or not photo.exists():
+            photo = _fit_photo(args, ridge)
+            if photo is None:
                 print("photo not found (--overlay not given, and the photo path in ridge.json can't be found either); drawing the overlay on a gray background", file=sys.stderr)
-                photo = None
             _fit_sheet(top, ridge, photo, Path(args.sheet), args, AZ, args.nsamp)
             stack = Path(args.sheet).with_name(Path(args.sheet).stem + "_skyline.jpg")       # the live page's Skyline card
             peaks = load_peaks(args.peaks) if args.peaks else None
@@ -1899,6 +2007,7 @@ Distant ranges: --range (default 15 km) must reach the far ridge; for ranges 20�
 
 The coarse-search defaults are the ones from the real case: 2 km / 250 m / z11 / 0.5°; for fine search switch to --radius 800 --grid 100 --zoom 13 --az-step 0.25.
 The skyline only gives one sight line (moving a few hundred meters forward or back along it doesn't change the outline); always look at the --sheet overlay for the top few, then pin the point with a second constraint.
+After the ranking, fit prints a ready `terrain.py view … --overlay` command for the lead camera (heading, hfov, pitch, roll from the fit): run it to see that skyline on the full photo.
 
 Two things not to treat as conclusions:
   1. The output H and f have a systematic bias, which comes from hrow in ridge.json. In the same coarse search, hand-set hrow 935 gave H 80.5 / f 1436,
@@ -1912,6 +2021,9 @@ Method in references/geometry.md 7.4, corridors.md 4.3.
 Output JSON (--out):
   {"params": {...all parameters used in this run, including f0/hrow/cx/hfov under photo...},
    "n_clusters", "n_cams": number of camera positions scored, "n_skipped": {"not_flat","off_level","no_peak","no_line","dup","missing_dem","no_perp_line"},
+   "status": "running" (checkpoint while scoring) | "budget" (stopped at --budget-min) | "done",
+   "pid", "updated_at": the process that wrote the file and when (status running whose pid no longer runs = a dead run),
+   "partial": true while clusters are left, "unscored_clusters": their --hits indices (continue them with --select and a new --out), "elapsed_min",
    "focal_edge": null | {"top1": "long"|"short"|null, "long", "short", "of": leading results counted, "range_f35": [lo, hi] mm},
    "dem_failed_clusters": hit indices whose elevation tiles failed to download (not scored),
    "clusters": [{"hit": the cluster's index in --hits, "name", "hit_ll": [lat,lon], "n", "max_ang", "n_cams", "rank",
@@ -1956,7 +2068,8 @@ cyan dots = photo near points.""")
     ft.add_argument("--cam-flat", type=float, default=8, help="height difference limit around the camera position m; above it, it isn't a flat-ground camera position (default 8; fine search has used 6)")
     ft.add_argument("--cam-flat-radius", type=float, default=300, help="radius m for judging whether the camera position is flat (default 300; fine search has used 200)")
     ft.add_argument("--cam-level", type=float, default=None, metavar="M", help="only camera positions whose ground elevation is within M m of the cluster point's (scan hit h0 or the --at point): lake shore, coast, riverbank; pair with --cam-flat 10000 (default off)")
-    ft.add_argument("--min-peak", type=float, default=6, help="minimum highest horizon elevation angle in degrees for a camera position to be scored (default 6)")
+    ft.add_argument("--min-peak", type=float, default=None,
+                    help="minimum highest horizon elevation angle in degrees for a camera position to be scored (default: scan's --min-peak from --hits, else 6)")
     ft.add_argument("--cc-max", type=float, default=0.7, help="limit of horizon offset cc ° (default 0.7, i.e. hrow may be off by a dozen or so pixels)")
     ft.add_argument("--roll-max", type=float, default=1.0,
                     help="roll angle limit ° (default 1.0, the usual range of handheld tilt; 0 = don't solve roll)")
@@ -1977,7 +2090,10 @@ cyan dots = photo near points.""")
     ft.add_argument("--line-reach", type=float, default=3000, help="only consider infrastructure points within this distance of the camera position m (default 3000)")
     ft.add_argument("--skip-tag", action="append", help="in --line, skip lines carrying this tag, key=value, repeatable (default electrified=no; none means skip none)")
     ft.add_argument("--budget-min", type=float, default=20, help="stop scoring new clusters after this many minutes and write the partial ranking (default 20; 0 = no limit); "
-                    "the clusters left are listed in fit.json (unscored_clusters) and in the --select command printed at the stop")
+                    "the clusters left are listed in fit.json (unscored_clusters) and in the --select command printed at the stop. "
+                    "While scoring, fit.json is rewritten at most every 30 s and after the last cluster (status running, with pid and updated_at); "
+                    "status running whose pid no longer runs is a dead run: continue its unscored_clusters with --select and a new --out. "
+                    "While that pid runs, do not start a second fit")
     ft.add_argument("--tie", type=float, default=0.03, help="position ambiguity: camera positions whose total lies within this of a cluster's best are reported as one stretch (span and bearing; default 0.03)")
     ft.add_argument("--top", type=int, default=20, help="how many top entries to print in the terminal and draw in --sheet (default 20)")
     ft.add_argument("--keep", type=int, default=5000, help="maximum number of entries written to the cams list (default 5000)")

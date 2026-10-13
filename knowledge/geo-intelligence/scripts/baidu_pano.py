@@ -293,10 +293,9 @@ def main() -> None:
             print(out)
         if len(pages) > 1:
             print(f"{len(pages)} pages: {args.out.name} plus {args.out.stem}_2 … _{len(pages)}, {args.limit} cells per page")
-        if len(pages) > 1 or args.spec is None:
-            idx = args.out.with_suffix(".index.json")
-            idx.write_text(json.dumps(items, indent=1, ensure_ascii=False), encoding="utf-8")
-            print(f"index -> {idx}")
+        idx = args.out.with_suffix(".index.json")          # always, a single --spec page too: the street check knows a sheet by it
+        idx.write_text(json.dumps(items, indent=1, ensure_ascii=False), encoding="utf-8")
+        print(f"index -> {idx}")
 
 
 if __name__ == "__main__":

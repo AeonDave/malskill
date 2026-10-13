@@ -8,7 +8,9 @@ what the analysis is doing right now.
 
   viewer.py serve [SESSION] [--port N] [--open] [--tiles esri|osm]      serve the session on 127.0.0.1 on a random free port (printed, and
                                                                         stored as viewer_url in session.json); --open starts the browser
-  viewer.py say "text" [--session SESSION]                              one line about the current step; shown first in the panel
+  viewer.py say "text" [--session SESSION]                              one line about the current step; shown first in the panel;
+                                                                        prints `said · ` and photo_session.status_line (minutes since
+                                                                        start, verification files, required checks)
   viewer.py state [SESSION]                                             print the JSON the page polls (debugging, tests)
   viewer.py export [SESSION] [--out viewer.html]                        one self-contained HTML snapshot next to the photos (offline, no server)
   viewer.py stop [SESSION | --port N] [--force]                         stop this session's viewer (another session's only with --force)
@@ -72,7 +74,7 @@ UI_DIR = SKILL_DIR / "assets" / "viewer"
 COUNTRIES_FILE = SKILL_DIR / "assets" / "data" / "countries.json"
 sys.path.insert(0, str(HERE))
 import board as _board  # noqa: E402  (share computation and level order stay in one place)
-import photo_session as _ps  # noqa: E402  (gut call parser, required checks, When text, heading hint, session.json writer)
+import photo_session as _ps  # noqa: E402  (gut call parser, required checks, status line, When text, heading hint, session.json writer)
 from geolib.geomath import dest as _dest  # noqa: E402
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -534,9 +536,10 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
 
 
 def _checks_of(folder: Path) -> list[dict]:
-    """The scene's required checks and their status (photo_session.required_checks), never fatal."""
+    """The scene's required checks as `checks` and `say` report them: done, waived, skipped or missing
+    (photo_session._checks_with_waiver), never fatal."""
     try:
-        return [{k: c.get(k) for k in ("name", "why", "done", "files")} for c in _ps.required_checks(folder)]
+        return [{k: c.get(k) for k in ("name", "why", "done", "files", "waived_by", "skipped")} for c in _ps._checks_with_waiver(folder)]
     except Exception:  # noqa: BLE001
         return []
 
@@ -802,6 +805,7 @@ def cmd_say(args) -> int:
     line = json.dumps({"t": datetime.now().astimezone().isoformat(timespec="seconds"), "text": text}, ensure_ascii=False)
     with (session / ACTIVITY_FILE).open("a", encoding="utf-8") as fh:
         fh.write(line + "\n")
+    print("said · " + _ps.status_line(session))     # recorded first: the line confirms the say and reads the session's state
     return 0
 
 
@@ -927,7 +931,7 @@ def main(argv: list[str] | None = None) -> int:
     k.add_argument("--port", type=int, help="port of the viewer to stop (default: viewer_url in session.json)")
     k.add_argument("--force", action="store_true", help="stop whatever viewer answers on that port, even another session's")
     k.set_defaults(fn=cmd_stop)
-    y = sub.add_parser("say", help="record what the analysis is doing now")
+    y = sub.add_parser("say", help="record what the analysis is doing now; prints the session's status line")
     y.add_argument("text", nargs="+")
     y.add_argument("--session", help="session folder (default: cwd or a parent)")
     y.set_defaults(fn=cmd_say)

@@ -8,7 +8,8 @@
 Finds what plain EXIF readers miss:
   GPS from EXIF, XMP, QuickTime/Android video atoms and DJI drone XMP (incl. gimbal/flight heading, altitude)
   capture time with its UTC offset — from OffsetTime*, or derived from GPS UTC time vs local time —
-  and every country whose time zones had that offset on that date (DST-aware)
+  and every country whose time zones had that offset on that date (DST-aware); videos: QuickTime CreationDate
+  (carries its offset) before CreateDate, which is flagged as container time of unknown zone
   camera/maker-note location hints (camera "home/destination city" time-zone settings, IPTC/XMP city and country)
   editing and provenance (software, edit history, C2PA / content credentials, AI-generated source type)
   embedded thumbnails/previews that differ from the main image (the uncropped original may be inside)
@@ -114,6 +115,7 @@ _XMP_ATTR = re.compile(rb'([A-Za-z][\w.-]*):([A-Za-z][\w.-]*)="([^"]{0,500})"')
 _XMP_ELEM = re.compile(rb"<([A-Za-z][\w.-]*):([A-Za-z][\w.-]*)>([^<]{1,500})</\1:\2>")
 _ISO6709 = re.compile(rb"([+-]\d{1,2}\.\d{2,})([+-]\d{1,3}\.\d{2,})([+-]\d+(?:\.\d+)?)?/")
 _VIDEO_EXT = {".mp4", ".mov", ".m4v", ".3gp", ".3g2", ".qt"}
+CONTAINER_CLOCK = "container time, zone unknown (UTC per the QuickTime spec, local on many action cams, dashcams and drones)"
 
 
 def _plain(v):
@@ -597,7 +599,13 @@ def digest(path: Path, raw: dict) -> dict:
         v, _ = find(raw, k)
         if v not in (None, ""):
             t[k] = str(v)
-    local = parse_dt(t.get("DateTimeOriginal") or t.get("CreateDate") or t.get("DateCreated") or t.get("CreationDate"))
+    # Videos: Keys CreationDate carries its UTC offset; the movie-header CreateDate has none and its zone depends on the camera.
+    quicktime = path.suffix.lower() in _VIDEO_EXT or "QuickTime:CreateDate" in raw
+    order = (("DateTimeOriginal", "CreationDate", "CreateDate", "DateCreated") if quicktime
+             else ("DateTimeOriginal", "CreateDate", "DateCreated", "CreationDate"))
+    used = next((k for k in order if t.get(k)), None)
+    container = quicktime and used == "CreateDate"
+    local = parse_dt(t[used]) if used else None
     offset = parse_offset(t.get("OffsetTimeOriginal") or t.get("OffsetTime"))
     how = "OffsetTime tag" if offset is not None else None
     if offset is None and local is not None and local.tzinfo is not None:
@@ -607,8 +615,12 @@ def digest(path: Path, raw: dict) -> dict:
         if utc is not None:
             delta = (local.replace(tzinfo=None) - utc.replace(tzinfo=None)).total_seconds() / 60
             rounded = int(round(delta / 15.0) * 15)
-            if abs(delta - rounded) <= 3 and abs(rounded) <= 14 * 60:
-                offset, how = rounded, "local capture time minus GPS UTC time"
+            # container time equal to GPS UTC is a UTC container or a UTC+0 clock: undecidable, so no offset
+            if abs(delta - rounded) <= 3 and abs(rounded) <= 14 * 60 and not (container and rounded == 0):
+                offset, how = rounded, ("container time minus GPS UTC time (the camera clock ran on local time)" if container
+                                        else "local capture time minus GPS UTC time")
+    if container and offset is None and local is not None:
+        t["clock"] = CONTAINER_CLOCK
     if offset is not None:
         cc_zones = countries_for_offset(offset, local)
         sign = "+" if offset >= 0 else "-"
@@ -665,7 +677,10 @@ def to_md(d: dict, previews: list[dict]) -> str:
         L.append("- No GPS.")
     t = d.get("time") or {}
     if t:
-        L.append(f"- **Time**: {', '.join(f'{k}={v}' for k, v in t.items() if k not in ('countries_with_this_offset_on_that_date', 'nominal_longitude_band'))}")
+        L.append(f"- **Time**: {', '.join(f'{k}={v}' for k, v in t.items() if k not in ('countries_with_this_offset_on_that_date', 'nominal_longitude_band', 'clock'))}")
+        if t.get("clock"):
+            L.append(f"  CreateDate is {t['clock']}: neither local time nor UTC is proven and the date may shift by one near midnight; "
+                     "fix the zone from the sun (sun.py), a clock in the scene or a GPS track.")
         if t.get("countries_with_this_offset_on_that_date"):
             ccs = t["countries_with_this_offset_on_that_date"]
             L.append(f"  UTC offset {t['utc_offset']} ({t['utc_offset_source']}) was used on that date in {len(ccs)} countries/territories: "

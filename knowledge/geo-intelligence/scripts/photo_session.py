@@ -54,36 +54,121 @@ THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
 UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
 USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|operator|operatore|stopp|interrupt|abort|cancel", re.I)   # the only early reason: the operator said so
+# the early exit as every refusal and help text words it: an operator stop or redirect counts, the Quick budget never does
+EARLY_EXIT = (f"before {UNVERIFIED_CLOCK_MIN} min only when the operator stopped or redirected the analysis: "
+              "put \"operator asked: …\" in the reason; after it, any stated reason")
 SCENE_THRESHOLD = 0.6
-# required checks by scene (recon's prior tags the scene): each must leave one of these files before finish closes
+# required checks by scene (recon's prior tags the scene): each is done by a file it leaves, known by name here or, for a
+# JSON with no telling name, by content (check_hits)
 CHECKS = {
-    "skyline": {"files": re.compile(r"(^|/)(ridge[^/]*\.json|fit[^/]*\.json|[^/]*_skyline\.json|[^/]*_overlay\.(png|jpg|jpeg))$", re.I),
+    "skyline": {"files": re.compile(r"(^|/)[^/]*(_skyline\.json|_overlay\.(png|jpe?g))$", re.I),
                 "command": "terrain.py ridge → fit (--at a candidate, or scan the region's lakes/rivers/roads first: SKILL step 6 mountain and lake/coast/valley rows)"},
-    "street": {"files": re.compile(r"(^|/)([^/]*_rank\.json|rank\.json|[^/]*sheet[^/]*\.(jpg|jpeg|png)|match[^/]*\.(jpg|jpeg|png)|evidence[^/]*\.(jpg|jpeg|png))$", re.I),
-               "command": "gsv.py sheet / pano.py → match.py rank, or evidence.py (SKILL step 6 street row)"},
+    "street": {"files": re.compile(r"(^|/)([^/]*_rank\.json|rank\.json|rank_[^/]*\.json|(match|evidence)[^/]*\.(png|jpe?g))$", re.I),
+               "command": "gsv.py sheet / pano.py → match.py rank, sweep.py rank → view, or evidence.py (SKILL step 6 street row; an "
+                          "aerial photo or no street-level coverage: evidence.py on the tiles.py map with the camera and heading, --out evidence.jpg)"},
 }
-RECON_FIRST_PASS = ("recon/intake/", "recon/prior/", "recon/detect/", "recon/meta/", "recon/calib", "recon/recon.")
-# files that pin the place by their own geometry; with one of them a scene check that was not run is waived, not refused
-PINNING_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_rank_.*\.json$|^evidence|^match|pose|intersect|sat_scan)", re.I)
+# recon.py's own outputs inside its --out-dir: the first pass, never a check
+RECON_PARTS = ("intake/", "prior/", "detect/", "meta/", "calib", "textgeo.", "recon.")
+RECON_FIRST_PASS = tuple("recon/" + p for p in RECON_PARTS)   # the default recon/ while a run has not written recon.json yet
+# images that pin the place by their own geometry, known by name: evidence.py's map with the camera, its --match side by side.
+# pose.py output pins by content (_pose_output), a rank file only relative to an answer (_near_fair); spec JSON never pins.
+# With a pin, a scene check that was not run is waived, not refused.
+PINNING_MARK = re.compile(r"^(evidence|match)[^/]*\.(jpe?g|png)$", re.I)
+NEAR_M, FAIR_INLIERS, FAIR_SCORE = 150, 10, 0.25   # a ranked view this near and this good pins the answer and lends its heading
+JSON_MAX_BYTES = 8_000_000                          # content checks skip bigger JSON; a 10k-panorama sweep ranking is ~4 MB
+
+
+def _session_files(folder: Path) -> list[str]:
+    """Relative POSIX paths of the session's files, sorted; caches (.geo-cache at any depth) and the originals are not walked."""
+    out = []
+    for root, dirs, files in os.walk(folder):
+        rel = Path(root).relative_to(folder).as_posix()
+        dirs[:] = [d for d in dirs if d != ".geo-cache" and not (rel == "." and d == "original")]
+        out += [f if rel == "." else f"{rel}/{f}" for f in files]
+    return sorted(out)
+
+
+def _read_json(path: Path):
+    """Parsed JSON, or None when unreadable, malformed (a tool may be writing it while the viewer polls) or over JSON_MAX_BYTES."""
+    try:
+        if path.stat().st_size > JSON_MAX_BYTES:
+            return None
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
+        return None
+
+
+def _recon_first_pass(folder: Path) -> tuple[str, ...]:
+    """Path prefixes of recon's first pass: its outputs beside every recon.json it wrote (--out-dir may be any folder, or the
+    session root), plus the default recon/ mid-run. Never a whole folder: a check saved beside recon's outputs still counts."""
+    prefixes = list(RECON_FIRST_PASS)
+    for rel in _session_files(folder):
+        if rel.rsplit("/", 1)[-1] != "recon.json":
+            continue
+        data = _read_json(folder / rel)
+        if isinstance(data, dict) and "steps" in data:
+            prefixes += [rel[: -len("recon.json")] + p for p in RECON_PARTS]
+    return tuple(prefixes)
 
 
 def _artifact_paths(folder: Path) -> list[str]:
-    """Relative POSIX paths of the files a check could have left: the cache, the originals and recon's first pass are not checks."""
-    out = []
-    for p in folder.rglob("*"):
-        rel = p.relative_to(folder).as_posix()
-        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or not p.is_file():
+    """Relative POSIX paths of the files a check could have left: recon's first pass and detect.py sheets (standalone runs
+    too) are not checks."""
+    first_pass = _recon_first_pass(folder)
+    return [rel for rel in _session_files(folder) if not rel.startswith(first_pass)
+            and not rel.rsplit("/", 1)[-1].lower().startswith(("detect_sheet", "detect_overview"))]
+
+
+def _first_row(data) -> dict:
+    return data[0] if isinstance(data, list) and data and isinstance(data[0], dict) else {}
+
+
+def _street_ranking(row: dict) -> bool:
+    """A street-level ranking row: match.py rank (rank, id, wgs) or sweep.py rank (rank, id, lat/lon). sat_scan.py rows
+    (rank, cell, lat/lon) carry no panorama id: a satellite scan is not the street check."""
+    return "rank" in row and "id" in row and (bool(row.get("wgs")) or (row.get("lat") is not None and row.get("lon") is not None))
+
+
+def _pano_index(row: dict) -> bool:
+    """A gsv.py / pano.py / baidu_pano.py sheet index row: a panorama id and the heading (bearing) it was rendered at.
+    refsheet.py's index (candidate → cells) is a look-alike sheet, not a street comparison."""
+    return "id" in row and ("heading" in row or "bearing" in row)
+
+
+def check_hits(folder: Path, paths: list[str]) -> dict[str, list[str]]:
+    """Files among paths that show each scene check ran: by name first (CHECKS), a JSON no name matched by content.
+    skyline: terrain.py fit output under any name, partial runs included (a dict with "cams"; scan output has "clusters"
+    too, so that key never counts). street: a street-level ranking, or X.index.json of panorama views beside its sheet X.jpg/png."""
+    images = {p.lower() for p in paths if p.lower().endswith((".jpg", ".jpeg", ".png"))}
+    hits: dict[str, list[str]] = {name: [] for name in CHECKS}
+    for rel in paths:
+        named = [name for name, spec in CHECKS.items() if spec["files"].search(rel)]
+        for name in named:
+            hits[name].append(rel)
+        if named or not rel.lower().endswith(".json"):          # *.geojson never ends in .json
             continue
-        out.append(rel)
-    return out
+        data = _read_json(folder / rel)
+        row = _first_row(data)
+        stem = rel[: -len(".index.json")].lower() if rel.lower().endswith(".index.json") else None
+        if isinstance(data, dict) and "cams" in data:
+            hits["skyline"].append(rel)
+        elif _street_ranking(row) or (stem and _pano_index(row) and any(stem + ext in images for ext in (".jpg", ".jpeg", ".png"))):
+            hits["street"].append(rel)
+    return hits
 
 
 def scene_tags(folder: Path) -> dict | None:
-    """recon's zero-shot scene tags (recon/prior/prior.json → scene), None when the prior did not run."""
+    """recon's zero-shot scene tags (recon/prior/prior.json → scene) as numbers; None when the prior did not run or the file holds
+    no tag table (a hand edit, another tool's JSON): a bad tag file never breaks say, checks or finish. Read without the content
+    checks' size cap, which is for check files, not recon's own small output."""
     try:
-        return json.loads((folder / "recon" / "prior" / "prior.json").read_text(encoding="utf-8-sig")).get("scene") or None
-    except (OSError, ValueError):
+        data = json.loads((folder / "recon" / "prior" / "prior.json").read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
         return None
+    scene = data.get("scene") if isinstance(data, dict) else None
+    if not isinstance(scene, dict) or not scene:
+        return None
+    return {str(k): _num(v) for k, v in scene.items()}
 
 
 def checks_for_scene(scene: dict | None) -> list[dict]:
@@ -100,41 +185,167 @@ def checks_for_scene(scene: dict | None) -> list[dict]:
 
 
 def required_checks(folder: Path) -> list[dict]:
-    """The scene's required checks with their status: done when one of the check's files exists in the session."""
+    """The scene's required checks with their status: done when the session holds a file of that check (check_hits)."""
     req = checks_for_scene(scene_tags(folder))
     if not req:
         return []
-    files = _artifact_paths(folder)
+    hits = check_hits(folder, _artifact_paths(folder))
     for c in req:
-        hits = [f for f in files if CHECKS[c["name"]]["files"].search(f)]
-        c["done"] = bool(hits)
-        c["files"] = hits[:6]
+        c["done"] = bool(hits[c["name"]])
+        c["files"] = hits[c["name"]][:6]
     return req
 
 
-def pinning_artifacts(folder: Path) -> list[str]:
-    """Session files whose geometry pins the place (match ranking, evidence/match image, pose, intersection, satellite scan)."""
-    out = []
-    for p in folder.rglob("*"):
-        if not p.is_file():
+def _num(value) -> float:
+    """An inlier count or score as a number; None, missing or malformed → 0."""
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _latlon(wgs) -> tuple[float, float] | None:
+    try:
+        return float(wgs[0]), float(wgs[1])
+    except (TypeError, ValueError, IndexError, KeyError):
+        return None
+
+
+def _near_fair(lat: float, lon: float, wgs, inliers, score) -> float | None:
+    """Metres from the answer to a ranked view within NEAR_M that is at least a fair match (≥FAIR_INLIERS inliers or global
+    score ≥FAIR_SCORE), else None: the one test behind the rank waiver and the heading hint."""
+    at = _latlon(wgs)
+    if at is None:
+        return None
+    d_m = haversine_m((lat, lon), at)
+    return d_m if d_m <= NEAR_M and (_num(inliers) >= FAIR_INLIERS or _num(score) >= FAIR_SCORE) else None
+
+
+def _top_rows(data) -> list[dict]:
+    """The top views of a match.py rank file, known by its rows (rank and wgs) under any name: the rows match.py saved a view
+    image for, else the first 10; [] for any other JSON."""
+    rows = [r for r in data if isinstance(r, dict) and "rank" in r] if isinstance(data, list) else []
+    return [r for r in ([r for r in rows if r.get("view")] or rows[:10]) if _latlon(r.get("wgs"))]
+
+
+def _rank_top_views(folder: Path) -> list[tuple[str, dict]]:
+    """(file, row) for the top views of every rank file among the session's check files: the one reader behind the waiver's
+    shortfall message and the heading hints, over the same walk and size cap as the waiver itself."""
+    return [(rel, r) for rel in _artifact_paths(folder) if rel.lower().endswith(".json") for r in _top_rows(_read_json(folder / rel))]
+
+
+def _pose_output(data) -> bool:
+    """pose.py output: solve's camera solution (camera_ll) or check's candidate table (robust_delta_chi2 per candidate);
+    its input spec (image_size, points, init) is neither."""
+    if not isinstance(data, dict) or not data:
+        return False
+    return _latlon(data.get("camera_ll")) is not None or all(isinstance(v, dict) and "robust_delta_chi2" in v for v in data.values())
+
+
+def pinning_artifacts(folder: Path, answer: tuple[float, float] | None = None) -> list[str]:
+    """Session files whose geometry pins the place: an evidence/match image (PINNING_MARK), a pose.py output (_pose_output), and,
+    given the answer, a rank file whose top views include a near, fair one (_near_fair). Without an answer a rank file pins nothing."""
+    pins = []
+    for rel in _artifact_paths(folder):
+        if "_views/" in rel:                     # match.py's saved views illustrate their rank file; alone they pin nothing
             continue
-        rel = p.relative_to(folder).as_posix()
-        if rel.startswith((".geo-cache/", "original/")) or rel.startswith(RECON_FIRST_PASS) or "_views/" in rel:
+        if PINNING_MARK.search(rel.rsplit("/", 1)[-1]):
+            pins.append(rel)
+        elif rel.lower().endswith(".json"):
+            data = _read_json(folder / rel)
+            if _pose_output(data) or (answer and any(_near_fair(*answer, r["wgs"], r.get("inliers"), r.get("score_global")) is not None
+                                                     for r in _top_rows(data))):
+                pins.append(rel)
+    return pins
+
+
+def _rank_shortfall(folder: Path, lat: float, lon: float, check: str) -> str:
+    """Why the session's rank files did not waive a check (the strongest top view: which, how far, how good) and the exits; empty
+    without rank files. Never the view's coordinates: a fair match far from the answer is a lead to look at, not an answer to paste."""
+    views = _rank_top_views(folder)
+    if not views:
+        return ""
+    rel, row = max(views, key=lambda v: (_num(v[1].get("inliers")), _num(v[1].get("score_global"))))
+    inliers, score = _num(row.get("inliers")), _num(row.get("score_global"))
+    head = (f"Rank files do not pin this answer: the strongest top view, {rel} #{row.get('rank')}, is "
+            f"{haversine_m((lat, lon), _latlon(row['wgs'])):.0f} m away with {inliers:g} inliers and score {score:.2f}")
+    skip = f"--skip-check {check}:\"<reason>\""
+    if inliers >= FAIR_INLIERS or score >= FAIR_SCORE:
+        view = f"open {(Path(rel).parent / str(row['view'])).as_posix()}" if row.get("view") else "open that view"
+        return (head + f" (a waiver needs ≤{NEAR_M} m). Next: {view} beside the photo; only if it shows the same fixed structures as "
+                f"the photo, answer there (its row's wgs in {rel}); otherwise run the check, or {skip}.")
+    return (head + f": too weak to pin the place (a waiver needs ≥{FAIR_INLIERS} inliers or score ≥{FAIR_SCORE} within {NEAR_M} m). "
+            f"Run the check, or {skip}.")
+
+
+def _checks_with_waiver(folder: Path, answer: tuple[float, float] | None = None) -> list[dict]:
+    """required_checks with finish's waiver, the one place it is decided: waived_by on each missing check while pinning_artifacts
+    pins the place. answer: the position rank files are tested against; None → the finished result's position (before finish
+    there is none, so a rank file pins nothing yet). A finished session also shows the skips finish recorded."""
+    checks = required_checks(folder)
+    if all(c["done"] for c in checks):
+        return checks
+    meta = _read_json(folder / "session.json")
+    result = meta.get("result") if isinstance(meta, dict) else None
+    result = result if isinstance(result, dict) else {}
+    if answer is None:
+        answer = _latlon((result.get("latitude"), result.get("longitude")))
+    pinned = pinning_artifacts(folder, answer)
+    recorded = result.get("checks") if isinstance(result.get("checks"), list) else []
+    skipped = {c.get("name"): c.get("skipped") for c in recorded if isinstance(c, dict)}
+    for c in checks:
+        if c["done"]:
             continue
-        if PINNING_MARK.search(p.name):
-            out.append(rel)
-    return out
+        if skipped.get(c["name"]):
+            c["skipped"] = skipped[c["name"]]
+        elif pinned:
+            c["waived_by"] = pinned[:4]
+    return checks
+
+
+def _check_state(c: dict) -> str:
+    """One required check in the status line; a missing one names its next command and the exit, so no step reads as a dead end."""
+    if c["done"]:
+        return f"{c['name']} done"
+    if c.get("skipped"):
+        return f"{c['name']} skipped: {c['skipped']}"
+    if c.get("waived_by"):
+        return f"{c['name']} waived by {c['waived_by'][0]}"
+    return f"{c['name']} missing: run {c['command'].split(' (', 1)[0]}, or --skip-check {c['name']}:\"<reason>\""
+
+
+def status_line(folder: Path) -> str:
+    """The session in one line of values, printed after every `viewer.py say` and atop `checks`: minutes since start (to the
+    finish once finished), the verification file count, each required check (_check_state). No gate: the gates stay in finish."""
+    meta = _read_json(folder / "session.json")
+    meta = meta if isinstance(meta, dict) else {}
+    parts = []
+    try:
+        start = datetime.fromisoformat(meta["started_at"])
+        end = datetime.fromisoformat(meta["completed_at"]) if meta.get("completed_at") else now()
+        parts.append(f"+{max(0, int((end - start).total_seconds() // 60))} min")   # floored: never shows finish's clock passed early
+    except (KeyError, TypeError, ValueError):                                          # no session.json, or a hand-edited time
+        pass
+    parts.append(f"verification files {count_verification_artifacts(folder)}")
+    checks = _checks_with_waiver(folder)
+    if checks:
+        parts.append(" | ".join(_check_state(c) for c in checks))
+    return " · ".join(parts)
 
 
 def cmd_checks(args: argparse.Namespace) -> dict:
     folder = Path(args.folder)
     scene = scene_tags(folder)
-    req = required_checks(folder)
+    req = _checks_with_waiver(folder)
+    print(status_line(folder))
     print("Scene: " + (", ".join(f"{k} {v:.0%}" for k, v in sorted(scene.items(), key=lambda kv: -kv[1])) if scene else "no tags (recon's prior did not run)"))
     if not req:
         print("Required checks: none from the scene (finish still needs one verification artifact).")
     for c in req:
-        print(f"  {c['name']:<8} {'DONE  ' if c['done'] else 'MISSING'} ({c['why']})" + (f": {', '.join(c['files'])}" if c["done"] else f" → {c['command']}"))
+        state, detail = (("DONE", f": {', '.join(c['files'])}") if c["done"] else ("SKIPPED", f": {c['skipped']}") if c.get("skipped")
+                         else ("WAIVED", f": by {', '.join(c['waived_by'])}") if c.get("waived_by")
+                         else ("MISSING", f" → {c['command']}, or --skip-check {c['name']}:\"<reason>\""))
+        print(f"  {c['name']:<8} {state:<7} ({c['why']}){detail}")
     return {"scene": scene, "checks": req}
 
 
@@ -251,9 +462,11 @@ VERIFICATION_MARK = re.compile(r"(^rank\.json$|_rank\.json$|^rank_.*\.json$|_ran
 
 
 def count_verification_artifacts(folder: Path) -> int:
-    """Files that only a check produces (rank, views, sheet, evidence, terrain, pose, marks): zero means the answer is
-    untested. recon's own output (detect sheets, reverse-search sheets) is the first pass, not a check."""
-    return sum(1 for rel in _artifact_paths(folder) if VERIFICATION_MARK.search(rel.rsplit("/", 1)[-1]) or VERIFICATION_MARK.search(rel))
+    """Files that only a check produces (rank, views, sheet, evidence, terrain, pose, marks by name; a fit output, a street-level
+    ranking or a panorama sheet index by content): zero means the answer is untested. recon's first pass is not a check."""
+    paths = _artifact_paths(folder)
+    by_content = {rel for files in check_hits(folder, paths).values() for rel in files}
+    return sum(1 for rel in paths if rel in by_content or VERIFICATION_MARK.search(rel.rsplit("/", 1)[-1]) or VERIFICATION_MARK.search(rel))
 
 
 def _country_row(name: str) -> tuple[str, dict] | None:
@@ -307,42 +520,27 @@ def snapshot(folder: Path) -> Path | None:
         return None
 
 
-def ranked_tops(folder: Path) -> list[dict]:
-    """Top row of every match.py rank file in the session (any name: known by its rows)."""
-    out = []
-    for f in sorted(folder.rglob("*.json")):
-        if f.name.endswith(".index.json") or f.name in ("session.json", "board.json", "result.json", "viewer_marks.json") or ".geo-cache" in f.parts:
-            continue
-        try:
-            if f.stat().st_size > 20_000_000:
-                continue
-            rows = json.loads(f.read_text(encoding="utf-8-sig"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(rows, list) and rows and isinstance(rows[0], dict) and "rank" in rows[0] and rows[0].get("wgs"):
-            top = rows[0]
-            out.append({"file": f.relative_to(folder).as_posix(), "heading": top.get("heading"), "wgs": top["wgs"],
-                        "inliers": top.get("inliers") or 0, "score": top.get("score_global") or 0.0})
-    return out
-
-
 def ranked_headings(folder: Path) -> list[str]:
-    """Headings of the top ranked views, as hints for --heading."""
-    return [f"{t['heading']:.0f}° ({t['file']})" for t in ranked_tops(folder) if t.get("heading") is not None]
+    """Heading of each rank file's first top view that has one, as hints for --heading."""
+    first: dict[str, dict] = {}
+    for rel, r in _rank_top_views(folder):
+        if r.get("heading") is not None:
+            first.setdefault(rel, r)
+    return [f"{_num(r['heading']):.0f}° ({rel})" for rel, r in first.items()]
 
 
 def heading_hint(folder: Path, lat: float, lon: float) -> dict | None:
-    """When no heading was given: the best ranked view within 150 m of the answer, if it is at least a fair match."""
+    """When no heading was given: among the top views the waiver reads (_rank_top_views), the best near, fair one with a heading."""
     best = None
-    for t in ranked_tops(folder):
-        if t.get("heading") is None:
+    for rel, r in _rank_top_views(folder):
+        d_m = _near_fair(lat, lon, r["wgs"], r.get("inliers"), r.get("score_global")) if r.get("heading") is not None else None
+        if d_m is None:
             continue
-        d_m = haversine_km(lat, lon, float(t["wgs"][0]), float(t["wgs"][1])) * 1000
-        fair = t["inliers"] >= 10 or t["score"] >= 0.25
-        if d_m <= 150 and fair and (best is None or (t["inliers"], t["score"]) > (best["inliers"], best["score"])):
-            best = {"heading": round(float(t["heading"]) % 360, 1), "source": t["file"], "inliers": t["inliers"],
-                    "score": round(float(t["score"]), 3), "distance_m": round(d_m)}
-    return best
+        key = (_num(r.get("inliers")), _num(r.get("score_global")))
+        if best is None or key > best[0]:
+            best = (key, {"heading": round(_num(r["heading"]) % 360, 1), "source": rel, "inliers": r.get("inliers") or 0,
+                          "score": round(key[1], 3), "distance_m": round(d_m)})
+    return best[1] if best else None
 
 
 def when_text(report: str) -> str | None:
@@ -502,25 +700,27 @@ def finish(args: argparse.Namespace) -> dict:
     for s in args.skip_check or []:
         name, _, why = s.partition(":")
         skips[name.strip()] = why.strip()
-    checks = required_checks(folder)
-    pinned = pinning_artifacts(folder)
+    checks = _checks_with_waiver(folder, (lat, lon))
     for c in checks:
         if c["done"]:
             continue
         why = skips.get(c["name"])
-        if not why and pinned:                                     # strong data is a shortcut: the place is pinned by another geometry
-            c["waived_by"] = pinned[:4]
-            print(f"Note: required check '{c['name']}' not run; waived because the place is pinned by {', '.join(pinned[:3])}. "
+        if not why and c.get("waived_by"):                         # strong data is a shortcut: the place is pinned by another geometry
+            print(f"Note: required check '{c['name']}' not run; waived because the place is pinned by {', '.join(c['waived_by'][:3])}. "
                   f"Say in the answer that the {c['name']} check was not done.", file=sys.stderr)
             continue
         if not why:
+            shortfall = _rank_shortfall(folder, lat, lon, c["name"])
             raise ValueError(
-                f"Required check '{c['name']}' not done ({c['why']}, recon's scene tags): run {c['command']}; it leaves a file this check "
-                f"recognises. To close without it: --skip-check {c['name']}:\"<reason>\" (before {UNVERIFIED_CLOCK_MIN} min only when the user stopped you).")
+                f"Required check '{c['name']}' not done ({c['why']}, recon's scene tags). Next: run {c['command']}; it leaves a file this "
+                f"check recognises. To close without it: --skip-check {c['name']}:\"<reason>\" ({EARLY_EXIT})."
+                + (f"\n{shortfall}" if shortfall else ""))
+        c.pop("waived_by", None)                                   # an explicit skip closes it, recorded with its reason
         if elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(why):
             raise ValueError(
-                f"--skip-check {c['name']} before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason); "
-                f"'{why[:60]}' is not that. Run {c['command']}.")
+                f"--skip-check {c['name']} before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: "
+                f"put \"operator asked: …\" in the reason; '{why[:60]}' is not that. Next: run {c['command']}; from minute "
+                f"{UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         c["skipped"] = why
         print(f"Warning: required check '{c['name']}' skipped ({why}): the answer must say the {c['name']} check was not done.", file=sys.stderr)
     accepted_unverified = None
@@ -528,16 +728,16 @@ def finish(args: argparse.Namespace) -> dict:
         reason = (args.accept_unverified or "").strip()
         if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(reason):
             raise ValueError(
-                f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the user stopped (say so in the reason). "
-                f"'{reason[:60]}' is not that: the Quick budget is never a reason to close unverified; go Deep with the decisive check "
-                f"(SKILL.md step 6 by scene type) and finish when it leaves a file.")
+                f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: put "
+                f"\"operator asked: …\" in the reason. '{reason[:60]}' is not that: the Quick budget is never a reason to close unverified. "
+                f"Next: go Deep with the decisive check (SKILL.md step 6 by scene type) and finish when it leaves a file; from minute "
+                f"{UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:
             raise ValueError(
-                f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Run the decisive check for the scene "
+                f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Next: run the decisive check for the scene "
                 f"(SKILL.md step 6: mountains, or a lake/coast with a skyline → osm.py geom + terrain.py scan/ridge/fit; a road, railway or "
                 f"power line → osm.py + terrain.py scan; a facility → osm.py find + sat_scan.py; a street → gsv.py sheet + match.py rank; "
-                f"look-alike countries → refsheet.py), or go Deep. Close without one only when the user stops you or the budget is gone: "
-                f"--accept-unverified \"<reason>\".")
+                f"look-alike countries → refsheet.py), or go Deep. Close without one: --accept-unverified \"<reason>\" ({EARLY_EXIT}).")
         accepted_unverified = reason or f"clock: {elapsed_min:.0f} min without a verification artifact"
         print(f"Warning: no verification artifact ({accepted_unverified}): the answer is an unverified estimate and must say so.", file=sys.stderr)
     names = [slug(value) for value in (country, region, city) if value]
@@ -833,10 +1033,10 @@ def main() -> int:
     complete.add_argument("--taken", required=True, help="When the photo was taken: YYYY, YYYY-MM, YYYY-MM-DD[THH:MM], a range A..B (e.g. 2019-06..2019-09), or the word unknown: say which.")
     complete.add_argument("--taken-confidence", choices=("high", "medium", "low"), help="Confidence of --taken (default low).")
     complete.add_argument("--taken-basis", help="What --taken rests on, one line (metadata, dated imagery bracket, sun, event…).")
-    complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help="Close although a scene-required check (skyline, street) has no file; repeatable. Before the 25-minute clock only when the user stopped the analysis (the reason must say so). Recorded in the result.")
-    complete.add_argument("--accept-unverified", metavar="REASON", help="Close with no verification artifact: before the 25-minute clock only when the user stopped the analysis (the reason must say so), afterwards for any stated reason; the reason is recorded.")
+    complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help=f"Close although a scene-required check (skyline, street) has no file; repeatable, recorded in the result. Allowed {EARLY_EXIT}.")
+    complete.add_argument("--accept-unverified", metavar="REASON", help=f"Close with no verification artifact; the reason is recorded. Allowed {EARLY_EXIT}.")
     complete.set_defaults(handler=finish)
-    chk = subparsers.add_parser("checks", help="List the scene's required checks (from recon's scene tags) and whether their files exist.")
+    chk = subparsers.add_parser("checks", help="Print the status line, then the scene's required checks (from recon's scene tags): done, waived by a pinning file, or missing with the command that does it.")
     chk.add_argument("folder", type=Path)
     chk.set_defaults(handler=cmd_checks)
 

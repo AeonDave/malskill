@@ -129,8 +129,69 @@ class TextSignalTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "ocr.json"
             p.write_text(json.dumps({"items": [{"text": "© 2026 Google", "conf": 1.0}, {"text": "Rua Augusta", "conf": 1.0}]}, ensure_ascii=False), encoding="utf-8")
-            lines = textgeo.load_lines(Namespace(ocr=str(p), text=None, file=None, min_conf=0.4))
+            lines, backend = textgeo.load_lines(Namespace(ocr=str(p), text=None, file=None, min_conf=0.4))
             self.assertEqual([ln["text"] for ln in lines], ["Rua Augusta"])
+            self.assertIsNone(backend)
+
+    def run_main(self, d: Path, *args: str) -> tuple[dict, str]:
+        """textgeo.py main offline (no lingua, brands or places) → (JSON result, Markdown)."""
+        import contextlib
+        import io
+        from unittest.mock import patch
+        out, md = d / "tg.json", d / "tg.md"
+        argv = ["textgeo.py", *args, "--no-lingua", "--no-brands", "--no-places", "--out", str(out), "--md", str(md)]
+        with patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+            textgeo.main()
+        return json.loads(out.read_text(encoding="utf-8")), md.read_text(encoding="utf-8")
+
+    @staticmethod
+    def write_ocr(d: Path, backend: str, *texts: str) -> str:
+        p = d / f"ocr_{backend}.json"
+        p.write_text(json.dumps({"backend": backend, "items": [{"text": t, "conf": 0.9} for t in texts]}, ensure_ascii=False),
+                     encoding="utf-8")
+        return str(p)
+
+    def test_rapidocr_script_signals_are_observed_and_warned(self):
+        sign = "台北市忠孝東路四段"
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for backend, rapid in (("rapidocr", True), ("apple-vision", False)):
+                res, md = self.run_main(d, "--ocr", self.write_ocr(d, backend, sign))
+                self.assertEqual(res["ocr_backend"], backend)
+                self.assertEqual("OCR backend RapidOCR reads only Chinese characters" in md, rapid, backend)
+                han = [s for s in res["signals"] if s["kind"] == "script"]
+                self.assertTrue(han, backend)
+                for s in han:
+                    self.assertEqual(s["status"], "observed" if rapid else "read", s)
+                    self.assertEqual(s["clue"].endswith("(RapidOCR, unconfirmed)"), rapid, s)
+            res, md = self.run_main(d, "--text", sign)                                      # typed by the agent: read, no warning
+            self.assertNotIn("ocr_backend", res)
+            self.assertNotIn("RapidOCR", md)
+            self.assertTrue(all(s["status"] == "read" for s in res["signals"] if s["kind"] == "script"))
+            res, _ = self.run_main(d, "--ocr", self.write_ocr(d, "rapidocr", sign), "--text", sign)
+            self.assertTrue(all(s["status"] == "read" for s in res["signals"] if s["kind"] == "script"))   # the agent's own reading
+            res, _ = self.run_main(d, "--ocr", self.write_ocr(d, "rapidocr", sign), "--text", "台北")
+            trad = [s for s in res["signals"] if s["clue"].startswith("Traditional")]
+            self.assertEqual(trad[0]["status"], "observed")              # typed Han without the traditional form 東 confirms Han only
+
+    def test_typed_text_is_scored_apart_from_rapidocr(self):
+        def script(res):
+            return sorted((s["clue"].split(" (")[0], s["status"]) for s in res["signals"] if s["kind"] == "script")
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            ocr = self.write_ocr(d, "rapidocr", "东城银行大药房")
+            res, _ = self.run_main(d, "--ocr", ocr, "--text", "银行")           # agrees with the OCR on fewer characters
+            self.assertEqual(script(res), [("Simplified Chinese characters", "read")])
+            res, _ = self.run_main(d, "--ocr", ocr, "--text", "東城銀行")       # corrects the OCR: the typed reading stands, the OCR's stays a lead
+            self.assertEqual(script(res), [("Simplified Chinese characters", "observed"), ("Traditional Chinese characters", "read")])
+
+    def test_rapidocr_empty_result_names_the_blind_spot(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for backend, rapid in (("rapidocr", True), ("apple-vision", False)):
+                res, md = self.run_main(d, "--ocr", self.write_ocr(d, backend))
+                self.assertEqual((res["n_lines"], res["ocr_backend"]), (0, backend))
+                self.assertEqual(textgeo.RAPIDOCR_EMPTY in md, rapid, backend)
 
     @unittest.skipUnless(HAVE_BRANDS, "brand index not cached")
     def test_brand(self):
@@ -190,6 +251,27 @@ class MetaTests(unittest.TestCase):
             self.assertIn("JUMBF:Manifest", prov)
             self.assertNotIn("WARNING", prov)                             # a manifest is provenance, not an AI verdict
             self.assertIsNone(meta._jumbf_notice(data))
+
+    def test_video_time_prefers_creation_date_and_hedges_container_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            v = Path(d) / "clip.mov"
+            v.write_bytes(b"\x00\x00\x00\x14ftypqt  " + b"\x00" * 64)
+            t = meta.digest(v, {"QuickTime:CreateDate": "2024:07:12 09:15:30", "Keys:CreationDate": "2024:07:12 10:15:30+01:00"})["time"]
+            self.assertEqual((t["utc_offset"], t["utc_offset_source"]), ("+01:00", "offset inside the date string"))
+            self.assertNotIn("clock", t)
+            only = meta.digest(v, {"QuickTime:CreateDate": "2024:07:12 09:15:30"})
+            self.assertEqual(only["time"]["clock"], meta.CONTAINER_CLOCK)
+            self.assertNotIn("utc_offset", only["time"])
+            self.assertIn("CreateDate is container time, zone unknown", meta.to_md(only, []))
+            same = meta.digest(v, {"QuickTime:CreateDate": "2024:07:12 09:15:30", "GPS:GPSDateTime": "2024:07:12 09:15:30Z"})["time"]
+            self.assertNotIn("utc_offset", same)                       # equal to GPS UTC: a UTC container or a UTC+0 clock, undecidable
+            self.assertEqual(same["clock"], meta.CONTAINER_CLOCK)
+            local = meta.digest(v, {"QuickTime:CreateDate": "2024:07:12 10:15:30", "GPS:GPSDateTime": "2024:07:12 09:15:30Z"})["time"]
+            self.assertEqual(local["utc_offset"], "+01:00")            # one hour off GPS UTC: the camera clock ran on local time
+            self.assertNotIn("clock", local)
+            photo = Path(d) / "p.jpg"
+            photo.write_bytes(b"\xff\xd8\xff\xd9")
+            self.assertNotIn("clock", meta.digest(photo, {"ExifIFD:CreateDate": "2024:07:12 10:15:30"})["time"])
 
     @unittest.skipUnless(shutil.which("exiftool"), "exiftool missing")
     def test_offset_from_gps_time_and_thumbnail_crop(self):
@@ -354,6 +436,41 @@ class NewToolTests(unittest.TestCase):
         self.assertIn("/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-07-16/GoogleMapsCompatible_Level9/6/19/22.jpg", u)
         self.assertIn("/VIIRS_SNPP_CorrectedReflectance_TrueColor/", tiles.tile_url("gibs:2024-07-16:VIIRS_SNPP_CorrectedReflectance_TrueColor", 1, 1, 3))
 
+    def test_wayback_capture_date_at_the_point(self):
+        import tiles
+
+        def layer(date, lo, hi, src="WV02", res="0.5"):
+            return {"layerId": 0, "attributes": {"SRC_DATE": date, "SRC_DATE2": "1/2/1999", "SRC_RES": res, "SRC_DESC": src,
+                                                 "MinMapLevel": str(lo), "MaxMapLevel": str(hi)}}
+        fine, mid, coarse = layer("20250930", 19, 19, "GE01", "0.46"), layer("20170518", 14, 18), layer("Null", 0, 11, "TerraColor", "15")
+        cap = tiles._capture([fine, mid, coarse], 17)
+        self.assertEqual(cap, {"captured": "2017-05-18", "capture_source": "WV02", "capture_res_m": 0.5})      # the layer spanning z17
+        self.assertEqual(tiles._capture([fine, mid, coarse], 19)["captured"], "2025-09-30")
+        self.assertEqual(tiles._capture([mid, coarse], 19)["captured"], "2017-05-18")      # nothing spans z19: z18 imagery upsampled
+        null = tiles._capture([fine, mid, coarse], 10)
+        self.assertEqual((null["captured"], null["capture_source"], null["capture_res_m"]), (None, "TerraColor", 15.0))  # SRC_DATE2 ignored
+        self.assertIsNone(tiles._capture([], 17)["captured"])
+        self.assertIsNone(tiles._capture([layer("", 14, 18)], 17)["captured"])
+        self.assertEqual(tiles._capture_text(cap, "2018-05-16"), "captured 2017-05-18 at the point (published 2018-05-16), WV02, 0.5 m")
+        self.assertTrue(tiles._capture_text(null, "2014-02-20").startswith("capture unknown; published 2014-02-20 = upper bound"))
+        calls = []
+        real = tiles.fetch_bytes
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                tiles.fetch_bytes = lambda url, proxy=None, timeout=20: calls.append(url) or json.dumps({"results": [mid]}).encode()
+                rel = {"id": 1, "date": "2018-05-16", "metadataLayerUrl": "https://example.org/Metadata_2018/MapServer"}
+                self.assertEqual(tiles.capture_at(rel, 34.0331, -5.0003, 17, None, Path(d))["captured"], "2017-05-18")
+                self.assertEqual(tiles.capture_at(rel, 34.0331, -5.0003, 17, None, Path(d))["captured"], "2017-05-18")   # cached
+                tiles.fetch_bytes = lambda *a, **k: b'{"error": {"code": 400, "message": "Invalid geometry"}}'
+                bad = tiles.capture_at(dict(rel, metadataLayerUrl="https://example.org/Other/MapServer"), 34.0331, -5.0003, 17, None, Path(d))
+                self.assertIn("Invalid geometry", bad["capture_error"])                     # reported per version, never raised
+                self.assertIn("capture_error", tiles.capture_at(dict(rel, metadataLayerUrl=""), 34.0331, -5.0003, 17, None, Path(d)))
+        finally:
+            tiles.fetch_bytes = real
+        self.assertEqual(len(calls), 1)
+        for part in ("/identify?", "layers=all", "tolerance=0", "sr=4326", "geometry=-5.0003%2C34.0331"):
+            self.assertIn(part, calls[0])
+
     def test_motion_photo_video_is_extracted(self):
         with tempfile.TemporaryDirectory() as td:
             td = Path(td)
@@ -453,6 +570,35 @@ class NewToolTests(unittest.TestCase):
         rows = [ln for ln in buf.getvalue().splitlines() if re.match(r"\d{4}-\d\d-\d\d [A-Z][a-z]{2} ", ln)]
         self.assertTrue(rows[0].startswith("2024-07-16 Tue"))
         self.assertIn("clear", rows[0])
+
+
+class ReconSummaryTests(unittest.TestCase):
+    @staticmethod
+    def summary(out: Path) -> str:
+        import recon
+        return recon.summary(Path("photo.jpg"), out, {}, 1.0, False)
+
+    def test_untagged_scene_is_said(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            self.assertIn("- Scene: not tagged (prior did not run) → finish requires no skyline/street check", self.summary(out))
+            (out / "prior").mkdir()
+            (out / "prior" / "prior.json").write_text(json.dumps({"assessment": {"informative": False, "reasons": ["flat"]}}),
+                                                      encoding="utf-8")
+            self.assertIn("- Scene: not tagged (no StreetCLIP)", self.summary(out))
+
+    def test_ocr_hint_follows_the_backend(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            (out / "intake").mkdir()
+            for backend, rapid in (("rapidocr", True), ("apple-vision", False), (None, False)):
+                ocr = {"items": [{"text": "Rua Augusta", "conf": 0.9, "pass": "full"}], **({"backend": backend} if backend else {})}
+                (out / "intake" / "ocr.json").write_text(json.dumps(ocr), encoding="utf-8")
+                md = self.summary(out)
+                self.assertEqual(textgeo.RAPIDOCR_NOTE in md, rapid, backend)
+                self.assertEqual("Vision cannot read Greek" in md, not rapid, backend)
+            (out / "intake" / "ocr.json").write_text(json.dumps({"backend": "rapidocr", "items": []}), encoding="utf-8")
+            self.assertIn(textgeo.RAPIDOCR_EMPTY, self.summary(out))
 
 
 class CluesOcrTests(unittest.TestCase):

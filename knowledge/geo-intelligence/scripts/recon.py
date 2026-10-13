@@ -36,6 +36,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 UV = os.environ.get("UV") or "uv"
+SCENE_UNTAGGED = ("- Scene: not tagged ({}) → finish requires no skyline/street check; pick the decisive check from SKILL.md "
+                  "step 6 by what the photo shows (finish still needs one verification artifact).")
 
 
 def run(name: str, cmd: list[str], log: dict, timeout: int = 1800) -> int:
@@ -95,19 +97,27 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
         L.append(f"- meta.py did not run: {log.get('meta', {}).get('error', '')[:200]}")
     # text
     L += ["", "## Text", ""]
-    ocr = jload(out / "intake" / "ocr.json").get("items", [])
+    oj = jload(out / "intake" / "ocr.json")
+    ocr = oj.get("items", [])
+    rapid = oj.get("backend") == "rapidocr"
+    if rapid:
+        import textgeo                                   # same directory: the RapidOCR blind spot is worded there once
     import re as _re
     marks = [it["text"] for it in ocr if _re.search(r"(19|20)\d\d\s*(google|goodle|apple|yandex|baidu|bing|maxar|airbus)", it["text"], _re.I)]
     if marks:
         L.append(f"- Provider watermark read: “{marks[0]}” → street-level/map imagery screenshot; the year is the copyright year, "
                  "close to (not equal to) the capture date. See references/world/streetview.md.")
     if ocr:
-        L.append("OCR lines (conf, pass) — verify each in the zoomed crop; Vision cannot read Greek, Hebrew, Georgian, Armenian, Indic, "
-                 "Sinhala, Khmer, Lao, Burmese or Ethiopic: read those yourself and run `textgeo.py --text`:")
+        hint = (". " + textgeo.RAPIDOCR_NOTE if rapid else
+                "; Vision cannot read Greek, Hebrew, Georgian, Armenian, Indic, Sinhala, Khmer, Lao, Burmese or Ethiopic: "
+                "read those yourself and run `textgeo.py --text`:")
+        L.append("OCR lines (conf, pass) — verify each in the zoomed crop" + hint)
         for it in ocr[:20]:
             L.append(f"- {it['conf']:.2f} {it['pass']}: {it['text']}")
     else:
         L.append("- OCR found no text (or it is too small: zoom the crops in intake/edges and detect/).")
+        if rapid:
+            L.append(f"- {textgeo.RAPIDOCR_EMPTY}")
     tg = jload(out / "textgeo.json")
     if tg.get("shortlist"):
         L.append("")
@@ -171,8 +181,11 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
             if req:
                 L.append("- **Required before finish** (finish refuses without their files; `photo_session.py checks <session>` lists them): "
                          + "; ".join(f"**{c['name']}** ({c['why']}) → {c['command']}" for c in req))
+        else:
+            L.append(SCENE_UNTAGGED.format("no StreetCLIP"))
     else:
         L.append(f"- not run ({log.get('prior', {}).get('error', 'skipped')[:160]})")
+        L.append(SCENE_UNTAGGED.format("prior did not run"))
     # camera
     cb = jload(out / "calib.json")
     L += ["", "## Camera", ""]

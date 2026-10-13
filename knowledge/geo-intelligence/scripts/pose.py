@@ -3,12 +3,15 @@
 # requires-python = ">=3.10"
 # dependencies = ["pillow", "numpy"]
 # ///
-"""Solve the camera position (camera resection): ≥4 points in the photo whose locations you can identify → camera lat/lon, height, heading, pitch, roll, field of view + error radius.
+"""Solve the camera position (camera resection): ≥3 points in the photo whose locations you can identify → camera lat/lon, height, heading, pitch, roll, field of view + error radius.
+Each point gives 2 equations for 7 unknowns less the fixed ones: 3 points need at least one of hfov/roll/height fixed and are
+reliable with all three fixed (lat/lon, heading, pitch left); 4+ points can leave the FOV free.
 
 Suited to window views, high-rise downward shots, views across a river and other photos where "you can pick out several points on satellite imagery". Compared with a two-sight-line intersection it also uses height and pitch information, and can work out the floor.
 Level shots (standing on the ground photographing a distant tower, bridge, pier) also work: fix height and give the eye height.
 
-  solve    solve the camera position; the output includes a per-point check (leave_one_out): drop one point at a time, re-solve, and see how far off the other points' prediction of it is
+  solve    solve the camera position; the output includes a per-point check (leave_one_out): drop one point at a time, re-solve, and see how far off the other points' prediction of it is;
+           it runs only when 2 × (points − 1) exceeds the free unknowns, never with 3 points: confirm a 3-point solution with a fourth point or a second constraint
   check    score discrete candidate camera positions: use when several places all fit and you must pick one; each candidate solves only the heading, then is rescored with each point dropped in turn;
            only robust Δchi2 > 9 (dropping any one point can't rescue it) counts as inconsistent with the photo
   project  with a known camera position, project a set of lat/lon points onto the photo (check whether riverbanks, roads, buildings line up);
@@ -27,7 +30,7 @@ spec.json format:
 - px: pixel coordinates of the point in the photo (original image, top-left is 0,0).
 - h: height of the point, **on the same datum as the camera height**. Using elevation above sea level throughout is the most reliable: ground points via `terrain.py elev`, rooftop = ground elevation + building height.
 - init: rough camera position and heading; if unknown, give the center of the candidate area, and --restarts will start from multiple points within --search-radius.
-- fix: parameters that can be fixed (hfov, roll, height); if you know the focal length, fix hfov; more stable with few points.
+- fix: parameters that can be fixed (hfov, roll, height); if you know the focal length, fix hfov; more stable with few points; with 3 points fix all three.
 
 Examples:
   pose.py solve spec.json --photo photo.jpg --out pose.png --search-radius 500

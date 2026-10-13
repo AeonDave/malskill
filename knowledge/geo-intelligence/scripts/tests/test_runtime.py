@@ -91,6 +91,18 @@ class NetworkTests(unittest.TestCase):
             self.assertIsNone(baidu_pano.near(35, 110, proxy="http://chosen:8080"))
             self.assertEqual(fetch.call_args.args[1], "http://chosen:8080")
 
+    def test_baidu_sheet_always_writes_its_index(self):
+        rows = [{"id": "09002200121902131010000012345", "heading": 45.0, "pitch": 10, "fov": 80}]
+        with tempfile.TemporaryDirectory() as d:
+            spec, out = Path(d) / "spec.json", Path(d) / "cands_sheet.jpg"
+            spec.write_text(json.dumps(rows), encoding="utf-8")
+            argv = ["baidu_pano.py", "sheet", "--spec", str(spec), "--out", str(out)]
+            with patch.object(baidu_pano, "sheet") as draw, patch.object(sys, "argv", argv), patch("sys.stdout", new=io.StringIO()):
+                baidu_pano.main()
+            self.assertEqual(draw.call_count, 1)                                          # one page from a spec
+            # the street check knows a panorama sheet by the index beside it
+            self.assertEqual(json.loads(out.with_suffix(".index.json").read_text(encoding="utf-8")), rows)
+
     def test_all_poi_sources_forward_proxy(self):
         with patch.object(poi, "_curl", return_value='{}') as fetch:
             poi.search_so("school", None, 2, "direct")

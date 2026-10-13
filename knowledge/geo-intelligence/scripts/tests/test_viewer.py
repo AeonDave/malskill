@@ -6,7 +6,10 @@
 """Offline regressions for viewer.py (state building, focus, stages, the local server). Run: uv run scripts/tests/test_viewer.py"""
 from __future__ import annotations
 
+import contextlib
+from datetime import datetime, timedelta
 import http.client
+import io
 import json
 import os
 import shutil
@@ -142,6 +145,26 @@ class StateTests(unittest.TestCase):
         self.assertEqual(times, sorted(times, reverse=True))
         self.assertNotIn("original/photo.png", [e["text"] for e in s["activity"]])   # the original is not an event
         self.assertTrue(any(a["path"] == "original/photo.png" for a in s["artifacts"]))
+
+    def say(self, text: str) -> str:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(viewer.main(["say", text, "--session", str(self.folder)]), 0)
+        return out.getvalue().strip()
+
+    def test_say_prints_the_status_line(self):
+        meta = json.loads((self.folder / "session.json").read_text(encoding="utf-8"))
+        meta["started_at"] = (datetime.now().astimezone() - timedelta(minutes=12, seconds=20)).isoformat()
+        (self.folder / "session.json").write_text(json.dumps(meta), encoding="utf-8")
+        (self.folder / "a_rank.json").write_text("[]", encoding="utf-8")
+        self.assertEqual(self.say("Ranking panoramas"), "said · +12 min · verification files 1")
+        (self.folder / "recon" / "prior").mkdir(parents=True)
+        (self.folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        self.assertEqual(self.say("Tracing the ridge"),
+                         'said · +12 min · verification files 1 · skyline missing: run terrain.py ridge → fit, or --skip-check skyline:"<reason>"')
+        (self.folder / "recon" / "prior" / "prior.json").write_text("[]", encoding="utf-8")       # a hand-edited tag file: no traceback
+        self.assertEqual(self.say("Reading the sign"), "said · +12 min · verification files 1")
+        self.assertIn('"text": "Tracing the ridge"', (self.folder / "activity.log").read_text(encoding="utf-8"))   # recorded, then reported
 
     def test_several_originals_are_listed_and_are_not_events(self):
         meta = json.loads((self.folder / "session.json").read_text(encoding="utf-8"))
@@ -321,8 +344,13 @@ class StateTests(unittest.TestCase):
         (self.folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9, "urban": 0.1}}), encoding="utf-8")
         ck = viewer.build_state(self.folder)["checks"]
         self.assertEqual((ck[0]["name"], ck[0]["done"]), ("skyline", False))
-        (self.folder / "fit_x.json").write_text("{}", encoding="utf-8")
+        (self.folder / "fit_x.json").write_text(json.dumps({"clusters": [], "cams": [{"total": 1.0}]}), encoding="utf-8")
         self.assertTrue(viewer.build_state(self.folder)["checks"][0]["done"])
+        (self.folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"road": 0.9}}), encoding="utf-8")
+        (self.folder / "pose.json").write_text(json.dumps({"camera_ll": [40.0, 21.0], "rms_px": 2.0}), encoding="utf-8")
+        ck = viewer.build_state(self.folder)["checks"]
+        self.assertEqual((ck[0]["name"], ck[0]["done"], ck[0]["waived_by"]), ("street", False, ["pose.json"]))
+        self.assertIn("street waived by pose.json", viewer._ps.status_line(self.folder))   # the page and `say` agree
 
     def test_version_changes_with_content(self):
         v1 = viewer.build_state(self.folder)["version"]

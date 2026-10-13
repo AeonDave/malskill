@@ -5,6 +5,7 @@
 # ///
 """Archive workflow checks; all sample sessions live in temporary directories."""
 
+from datetime import timedelta
 import hashlib
 import json
 import os
@@ -287,6 +288,9 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("not an answer yet", r.stderr)
         self.assertIn("terrain.py", r.stderr)
+        self.assertIn('--accept-unverified "<reason>" (before 25 min only when the operator stopped or redirected the analysis: '
+                      'put "operator asked: …" in the reason', r.stderr)
+        self.assertNotIn("budget is gone", r.stderr)                                           # the Quick budget is no exit
         self.assertTrue(folder.is_dir())                                                        # nothing renamed
         (folder / "shore_rank.json").write_text("[]", encoding="utf-8")                          # one check later, it closes
         out = self.command("finish", folder, "--country", "Austria", "--city", "Plansee", "--latitude", "47.55", "--longitude", "10.79",
@@ -310,6 +314,7 @@ class PhotoArchiveTests(unittest.TestCase):
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 1)
         self.assertIn("go Deep", r.stderr)
+        self.assertIn('put "operator asked: …" in the reason', r.stderr)
         self.assertTrue(folder.is_dir())
         out = self.command("finish", folder, "--country", "Italy", "--city", "unknown", "--latitude", "42.9", "--longitude", "11.9",
                            "--confidence", "low", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "the user stopped the analysis")
@@ -335,11 +340,13 @@ class PhotoArchiveTests(unittest.TestCase):
         r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), *base], cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 1)
         self.assertIn("Required check 'skyline'", r.stderr)
+        self.assertIn('--skip-check skyline:"<reason>" (before 25 min only when the operator stopped or redirected', r.stderr)
         r = subprocess.run([sys.executable, str(SCRIPT), "finish", str(folder), *base, "--skip-check", "skyline:Quick budget spent"],
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 1)                                                     # the budget is not a reason
-        self.assertIn("only for an analysis the user stopped", r.stderr)
-        (folder / "fit_region.json").write_text("{}", encoding="utf-8")                         # the skyline file exists: closes
+        self.assertIn('only for an analysis the operator stopped or redirected: put "operator asked: …" in the reason', r.stderr)
+        self.assertIn("Next: run terrain.py ridge → fit", r.stderr)                           # and the work that closes it instead
+        (folder / "fit_region.json").write_text(json.dumps({"clusters": [], "cams": [{"total": 1.0}]}), encoding="utf-8")   # fit output: closes
         self.assertTrue(photo_session.required_checks(folder)[0]["done"])
         out = self.command("finish", folder, *base)
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
@@ -358,13 +365,28 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(photo_session.checks_for_scene({"indoor": 0.9, "mountains": 0.9}), [])
         self.assertEqual(photo_session.checks_for_scene(None), [])
 
+    def test_an_operator_redirect_closes_a_check_early_and_is_recorded(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        err = self.finish(folder, "--skip-check", "skyline:redirected to Lago X", success=False)
+        self.assertIn('put "operator asked: …" in the reason', err)                           # the wording that closes it, not a ban
+        self.assertNotIn("user stopped", err)
+        out = self.finish(folder, "--skip-check", "skyline:operator asked: skip the skyline, it is Lago X")
+        res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertEqual(res["checks"][0]["skipped"], "operator asked: skip the skyline, it is Lago X")
+        self.assertIsNone(res["checks"][0]["waived_by"])
+
     def test_pinning_artifact_waives_a_scene_check(self):
         folder = Path(self.start()["folder"])
         (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
         (folder / "recon" / "prior").mkdir(parents=True, exist_ok=True)
         (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
-        (folder / "shop_rank.json").write_text("[]", encoding="utf-8")                            # a sign named the shop; match.py pinned it
-        self.assertEqual(photo_session.pinning_artifacts(folder), ["shop_rank.json"])
+        (folder / "shop_rank.json").write_text(json.dumps([{"rank": 1, "id": "p1", "heading": None, "inliers": 14, "score_global": 0.2,
+                                                            "wgs": [46.2005, 10.9005]}]), encoding="utf-8")   # a sign named the shop; match.py pinned it 68 m away
+        self.assertEqual(photo_session.pinning_artifacts(folder, (46.2, 10.9)), ["shop_rank.json"])
+        self.assertEqual(photo_session.pinning_artifacts(folder), [])                         # a rank file pins only an answer
         out = self.command("finish", folder, "--country", "Italy", "--city", "x", "--latitude", "46.2", "--longitude", "10.9",
                            "--confidence", "medium", "--heading", "unknown", "--taken", "unknown")
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
@@ -380,6 +402,182 @@ class PhotoArchiveTests(unittest.TestCase):
                            cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 1)
         self.assertIn("Required check 'skyline'", r.stderr)
+
+    def scene_folder(self, scene, files):
+        """A bare folder with recon's scene tags and the given files (bytes as written, anything else as JSON)."""
+        folder = Path(tempfile.mkdtemp(dir=self.root))
+        files = {"recon/prior/prior.json": {"scene": scene}, **files}
+        for rel, body in files.items():
+            (folder / rel).parent.mkdir(parents=True, exist_ok=True)
+            (folder / rel).write_bytes(body if isinstance(body, bytes) else json.dumps(body).encode("utf-8"))
+        return folder
+
+    def test_rank_file_waives_only_with_a_near_fair_top_view(self):
+        near, far = [46.2005, 10.9005], [46.218, 10.9]                                       # ~68 m and ~2 km from 46.2, 10.9
+
+        def row(rank, wgs, inliers, score, **extra):
+            return {"rank": rank, "id": f"p{rank}", "heading": None, "inliers": inliers, "score_global": score, "wgs": wgs, **extra}
+
+        def pins(name, rows):
+            return photo_session.pinning_artifacts(self.scene_folder({}, {name: rows}), (46.2, 10.9))
+        self.assertEqual(pins("a_rank.json", []), [])
+        self.assertEqual(pins("a_rank.json", [row(1, far, 40, 0.6)]), [])                    # strong, but 2 km away
+        self.assertEqual(pins("a_rank.json", [row(1, near, 3, 0.1)]), [])                    # near, but weak
+        self.assertEqual(pins("a_rank.json", [row(1, far, 40, 0.6), row(2, near, 3, 0.1), row(3, near, 12, 0.2)]), ["a_rank.json"])
+        self.assertEqual(pins("ranked.json", [row(1, near, None, 0.31)]), ["ranked.json"])     # any name; fair by score alone
+        twelve = [row(k, far, 0, 0.1) for k in range(1, 12)] + [row(12, near, 20, 0.5)]
+        self.assertEqual(pins("b_rank.json", twelve), [])                                     # no saved views: the first 10 only
+        self.assertEqual(pins("b_rank.json", [dict(r, view=f"b_rank_views/{r['rank']:02d}.jpg") for r in twelve]), ["b_rank.json"])
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9}}), encoding="utf-8")
+        (folder / "far_rank.json").write_text(json.dumps([row(1, far, 40, 0.6, view="far_rank_views/01_p1.jpg"), row(2, near, 3, 0.1)]),
+                                              encoding="utf-8")
+        err = self.finish(folder, "--latitude", "46.2", "--longitude", "10.9", success=False)
+        self.assertIn("Required check 'skyline'", err)
+        self.assertIn("far_rank.json #1", err)                                                # the best view, its distance and scores
+        self.assertIn("40 inliers", err)
+        self.assertIn("open far_rank_views/01_p1.jpg", err)
+        self.assertIn("only if it shows the same fixed structures as the photo, answer there", err)
+        self.assertNotIn("--latitude", err)                                                   # the gate is never a coordinate source
+        self.assertNotIn("46.218", err)
+        self.assertIn("--skip-check skyline:", err)
+        (folder / "far_rank.json").write_text(json.dumps([row(1, near, 3, 0.1)]), encoding="utf-8")
+        err = self.finish(folder, "--latitude", "46.2", "--longitude", "10.9", success=False)
+        self.assertIn("too weak", err)
+        self.assertNotIn("answer there", err)                                                 # a weak view is no place to move to
+
+    def test_pins_are_evidence_images_by_name_and_pose_output_by_content(self):
+        solve = {"camera_ll": [46.2003, 10.9004], "height": 31.0, "heading": 212.5, "rms_px": 2.1, "points": 4}
+        check = {"candA": {"rms_px": 3.0, "delta_chi2": 0.0, "robust_delta_chi2": 0.0, "robust_by": "all_points"},
+                 "candB": {"rms_px": 9.0, "delta_chi2": 40.1, "robust_delta_chi2": 12.5, "robust_by": "drop spire"}}
+        spec = {"image_size": [1476, 827], "points": [{"name": "spire", "px": [1180, 120], "ll": [46.2, 10.9], "h": 620}],
+                "init": {"at": [46.2, 10.9], "height": 30}, "fix": ["hfov"]}
+        pinned = {"evidence_1.jpg": b"x", "match.png": b"x", "pose.json": solve, "cam/solution.json": solve, "pose_check.json": check}
+        loose = {"pose_spec.json": spec, "spec_pose.json": spec, "candA_pose.json": {}, "candA-pose.png": b"x",
+                 "intersect_spec.json": {"a": "SS 12"}, "intersect.json": [{"lat": 46.2, "lon": 10.9, "a": "SS 12", "b": "SP 7"}],
+                 "sat_scan_spec.json": {"query": "silo"}, "sat_scan.json": [{"cell": 7, "lat": 46.2, "lon": 10.9, "score": 0.4, "rank": 1}],
+                 "proposed.json": [], "purpose_notes.json": [], "match_spec.json": [], "evidence_spec.json": [], "rank_1.json": [], "x_rank.json": []}
+        folder = self.scene_folder({}, {**pinned, **loose})
+        self.assertEqual(sorted(photo_session.pinning_artifacts(folder)), sorted(pinned))
+        self.assertEqual(sorted(photo_session.pinning_artifacts(folder, (46.2, 10.9))), sorted(pinned))
+
+    def test_heading_hint_and_waiver_read_the_same_top_views(self):
+        near, far = [46.2005, 10.9005], [46.218, 10.9]
+        rows = [{"rank": k, "id": f"p{k}", "heading": 10.0 * k, "inliers": 2, "score_global": 0.1, "wgs": far} for k in (1, 2)]
+        rows.append({"rank": 3, "id": "p3", "heading": 250.0, "inliers": 20, "score_global": 0.3, "wgs": near})
+        folder = self.scene_folder({"mountains": 0.9}, {"r_rank.json": rows, "original/x_rank.json": [dict(rows[2], heading=90.0, inliers=40)]})
+        self.assertEqual(photo_session.pinning_artifacts(folder, (46.2, 10.9)), ["r_rank.json"])
+        hint = photo_session.heading_hint(folder, 46.2, 10.9)
+        self.assertEqual((hint["heading"], hint["source"], hint["inliers"]), (250.0, "r_rank.json", 20))   # row #3; originals are not walked
+        self.assertEqual(photo_session.ranked_headings(folder), ["10° (r_rank.json)"])
+        with patch.object(photo_session, "JSON_MAX_BYTES", 10):                              # one size cap for the hint and the waiver
+            self.assertIsNone(photo_session.heading_hint(folder, 46.2, 10.9))
+            self.assertEqual(photo_session.pinning_artifacts(folder, (46.2, 10.9)), [])
+
+    def test_recon_first_pass_follows_every_recon_json(self):
+        steps = {"photo": "original/p.jpg", "steps": {}}
+        folder = self.scene_folder({"road": 0.9}, {"recon_2/recon.json": steps, "recon_2/detect/detect_sheet.jpg": b"x",
+                                                   "recon_2/intake/rev/yandex_sheet.jpg": b"x", "recon_2/textgeo.json": {"signals": []}})
+        self.assertEqual(photo_session.count_verification_artifacts(folder), 0)              # recon --out-dir recon_2: still the first pass
+        self.assertFalse(photo_session.required_checks(folder)[0]["done"])
+        (folder / "recon_2" / "rank.json").write_text("[]", encoding="utf-8")                   # a check saved beside recon's output counts
+        self.assertEqual(photo_session.count_verification_artifacts(folder), 1)
+        self.assertTrue(photo_session.required_checks(folder)[0]["done"])
+        (folder / "work" / "detect").mkdir(parents=True)
+        (folder / "work" / "detect" / "detect_overview.jpg").write_bytes(b"x")                 # standalone detect.py: never a check
+        (folder / "notes" / "intake").mkdir(parents=True)
+        (folder / "notes" / "recon.json").write_text("{}", encoding="utf-8")                    # not recon's (no steps): nothing excluded
+        (folder / "notes" / "intake" / "x_sheet.jpg").write_bytes(b"x")
+        self.assertEqual(photo_session.count_verification_artifacts(folder), 2)
+        root = self.scene_folder({}, {"recon.json": steps, "intake/edges_sheet.jpg": b"x", "rank_1.json": []})
+        self.assertEqual(photo_session.count_verification_artifacts(root), 1)                # recon in the session root: only its outputs go
+
+    def test_scene_checks_recognised_by_content(self):
+        sky, street, jpg = {"mountains": 0.9}, {"road": 0.9}, b"\xff\xd8\xff\xd9"
+
+        def done(scene, files):
+            return photo_session.required_checks(self.scene_folder(scene, files))[0]["done"]
+        fit = {"clusters": [], "cams": [{"total": 0.8}], "partial": True}
+        refsheet = {"refsheet.jpg": jpg, "refsheet.index.json": [{"candidate": "Trento", "country": "IT", "cells": [{"id": "p", "heading": 90}]}]}
+        tiles = {"cands_sheet.jpg": jpg, "cands_sheet.json": {"zoom": 17, "center": [46.2, 10.9]}}
+        gsv = [{"id": "abc", "heading": 90.0, "wgs": [46.2, 10.9]}]
+        match_rows = [{"rank": 1, "id": "abc", "wgs": [46.2, 10.9], "inliers": 4, "score_global": 0.1}]
+        sweep_rows = [{"rank": 1, "area_rank": 2, "key": "apple:1", "id": "1", "lat": 46.2, "lon": 10.9, "score": 2.1}]
+        sat_rows = [{"cell": 7, "lat": 46.2, "lon": 10.9, "score": 0.4, "rank": 1}]
+        for files in ({"ridge.json": {"ridge": [[0, 10]]}}, {"hits.json": {"hits": [], "clusters": [{"lat": 46.2, "lon": 10.9}]}}, refsheet,
+                      {"refsheet_alps.jpg": jpg}, tiles, {"lake.geojson": fit}, {".geo-cache/fit.json": fit}, {"broken.json": b'{"cams": ['}):
+            self.assertFalse(done(sky, files), files)
+        self.assertTrue(done(sky, {"fine.json": fit}))                                       # fit output under any name, partial included
+        for files in (refsheet, {"refsheet_alps.jpg": jpg}, tiles, {"around.index.json": gsv}, {"sat/ranked.json": sat_rows}):
+            self.assertFalse(done(street, files), files)
+        baidu = {"cands_sheet.jpg": jpg, "cands_sheet.index.json": [{"id": "09002200121902131010000012345", "heading": 45.0, "pitch": 10, "fov": 80}]}
+        for files in ({"around.jpg": jpg, "around.index.json": gsv}, {"r.json": match_rows}, {"out/ranked.json": sweep_rows}, {"evidence.jpg": jpg}, baidu):
+            self.assertTrue(done(street, files), files)
+        count = photo_session.count_verification_artifacts
+        self.assertEqual(count(self.scene_folder(street, {"out/ranked.json": sweep_rows})), 1)
+        self.assertGreaterEqual(count(self.scene_folder(street, {"around.jpg": jpg, "around.index.json": gsv})), 1)
+        self.assertEqual(count(self.scene_folder(sky, {"fine.json": fit})), 1)
+        with patch.object(photo_session, "JSON_MAX_BYTES", 10):
+            self.assertFalse(done(sky, {"fine.json": fit}))                                  # too big to parse: skipped
+        self.assertIn("sweep.py rank → view", photo_session.CHECKS["street"]["command"])
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        (folder / "recon" / "prior").mkdir(parents=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": street}), encoding="utf-8")
+        (folder / "evidence.jpg").write_bytes(jpg)
+        res = json.loads((Path(self.finish(folder)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertTrue(res["checks"][0]["done"])                                             # the street check itself, not a waiver
+        self.assertIsNone(res["checks"][0]["waived_by"])
+
+    def test_status_line_reads_clock_artifacts_and_checks(self):
+        line, jpg = photo_session.status_line, b"\xff\xd8\xff\xd9"
+        self.assertEqual(line(self.scene_folder({}, {})), "verification files 0")                       # no session.json, no scene
+        self.assertEqual(line(self.scene_folder({"mountains": 0.9}, {"fine.json": {"cams": [{"total": 0.8}]}})),
+                         "verification files 1 · skyline done")
+        self.assertEqual(line(self.scene_folder({"mountains": 0.9, "road": 0.9}, {"evidence_1.jpg": jpg})),
+                         "verification files 1 · skyline waived by evidence_1.jpg | street done")
+        self.assertEqual(line(self.scene_folder({}, {"session.json": {"started_at": "yesterday"}})), "verification files 0")
+        started = photo_session.now() - timedelta(minutes=12, seconds=20)
+        near = [{"rank": 1, "id": "p1", "inliers": 14, "score_global": 0.2, "wgs": [46.2005, 10.9005]}]
+        folder = self.scene_folder({"mountains": 0.9}, {"shop_rank.json": near, "session.json": {"started_at": started.isoformat()}})
+        self.assertEqual(line(folder), '+12 min · verification files 1 · skyline missing: run terrain.py ridge → fit, or --skip-check skyline:"<reason>"')   # no answer yet: a rank file pins nothing
+        (folder / "session.json").write_text(json.dumps({"started_at": started.isoformat(), "completed_at": (started + timedelta(minutes=14)).isoformat(),
+                                                         "status": "completed", "result": {"latitude": 46.2, "longitude": 10.9}}), encoding="utf-8")
+        self.assertEqual(line(folder), "+14 min · verification files 1 · skyline waived by shop_rank.json")   # the answer is 68 m from its view
+        skipped = self.scene_folder({"mountains": 0.9}, {"session.json": {"status": "completed", "result": {
+            "latitude": 46.2, "longitude": 10.9, "checks": [{"name": "skyline", "done": False, "skipped": "operator asked: it is Lago X"}]}}})
+        self.assertEqual(line(skipped), "verification files 0 · skyline skipped: operator asked: it is Lago X")
+
+    def test_malformed_scene_tags_never_crash_say_or_checks(self):
+        for prior in ([], {"scene": [0.9]}, {"scene": "mountains"}, "x", {"scene": None}):
+            folder = self.scene_folder({}, {"recon/prior/prior.json": prior})
+            self.assertIsNone(photo_session.scene_tags(folder), prior)
+            self.assertEqual(photo_session.status_line(folder), "verification files 0", prior)
+        folder = self.scene_folder({}, {"recon/prior/prior.json": {"scene": {"mountains": "0.9", "water": None, "urban": "n/a"}}})
+        self.assertEqual(photo_session.scene_tags(folder), {"mountains": 0.9, "water": 0.0, "urban": 0.0})
+        self.assertEqual(photo_session.status_line(folder),
+                         'verification files 0 · skyline missing: run terrain.py ridge → fit, or --skip-check skyline:"<reason>"')
+        r = subprocess.run([sys.executable, str(SCRIPT), "checks", str(folder)], cwd=self.root, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout.splitlines()[2], r'^  skyline +MISSING .* → terrain\.py ridge → fit .*, or --skip-check skyline:"<reason>"$')
+
+    def test_checks_prints_the_status_line_first(self):
+        folder = Path(self.start()["folder"])
+        (folder / "recon" / "prior").mkdir(parents=True)
+        (folder / "recon" / "prior" / "prior.json").write_text(json.dumps({"scene": {"mountains": 0.9, "road": 0.9}}), encoding="utf-8")
+        (folder / "pose.json").write_text(json.dumps({"camera_ll": [46.2, 10.9], "rms_px": 2.0}), encoding="utf-8")   # pose.py solve output
+        r = subprocess.run([sys.executable, str(SCRIPT), "checks", str(folder)], cwd=self.root, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = r.stdout.splitlines()
+        self.assertRegex(lines[0], r"^\+\d+ min · verification files 1 · skyline waived by pose\.json \| street waived by pose\.json$")
+        self.assertRegex(lines[2], r"^  skyline +WAIVED .*: by pose\.json$")                  # the body agrees with the header
+        self.assertRegex(lines[3], r"^  street +WAIVED .*: by pose\.json$")
+        checks = json.loads(r.stdout[r.stdout.index("\n{") + 1:])["checks"]
+        self.assertEqual([c.get("waived_by") for c in checks], [["pose.json"], ["pose.json"]])
 
     def test_new_photos_have_separate_folders_and_missing_bytes_are_explicit(self):
         self.assertNotEqual(self.start()["folder"], self.start()["folder"])

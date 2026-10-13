@@ -56,6 +56,7 @@ this photo and note it in the report. For an image that is already public online
 often stronger than Baidu and Yandex, but keep its two result blocks apart:
 - "Exact matches / pages that include this image": provenance evidence; usable.
 - "AI Overview": forces a place name out of similar-looking photos; a different crop of the same image can yield two places a dozen or so km apart. Treat it only as a candidate; it must be verified back at SKILL.md Steps 6–7.
+- AI Mode (same browser; same skip-and-note on CAPTCHA, sign-in or region), only for outdoor scenes with place-specific content and only when no exact match, read sign or pinning artifact already places the photo: upload the original or a tight crop with a neutral prompt that names no candidate ('Where was this photo taken? Up to three candidates, each with the visible clues'); save `rev/aimode_<crop>.txt|png`. Place names are status `model`; together with the Lens AI Overview they are ONE Google vote and ONE board clue (both names on it when they differ). Re-check each cited clue on the crop; drop what you cannot see.
 
 **Bing Visual Search** and **TinEye** (through the same browser tool): Bing sometimes finds social-media copies
 the others miss; TinEye is the tool for finding the oldest, largest or uncropped copy of a photo, which often
@@ -101,6 +102,7 @@ Bing China gives web results (title + link); Baidu Images and Sogou Images give 
 - **Look at the rest of the set**: the hit post is often a set of images, and the later images often show plates, road signs or shop names. First use shared fixed objects (streetlights, walls, chimneys) to confirm that the photos in the set and the puzzle image are the same place.
 - **The candidate's background doesn't match**: it may be a replica, an identical installation, or another branch of the same chain. Once you have the proper name, search another round for "<proper name> 复制品 / replica / 同款" (复制品 = replica, 同款 = same model); the official introduction where the original stands often says where the replicas are.
 - **The hit is only a "similar scene"**: use it as a clue (city, scenic-area name), not as a conclusion; go back to SKILL.md Steps 6–7 to verify.
+- **Date ceiling**: for an exact copy of this photo (not a similar scene), write its oldest fixed date (post/upload timestamp or archive capture, not a page's 'updated' date) and URL in `## When` as 'taken on or before <date>' — never the capture date; it is the Ceiling rung (SKILL step 7).
 - **For news images, first judge whether it's a real photo**: many news sites illustrate articles with stock images, illustrations or even generated images; before comparing facades, check whether it is this place.
 
 ## 2. Choose where to search by object type

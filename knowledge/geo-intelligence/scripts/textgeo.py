@@ -23,7 +23,8 @@ Reads OCR output (ocr.py / intake.py ocr.json) and/or strings you typed from a z
 
 Every signal says which text produced it. OCR mistakes produce wrong signals: check the zoomed crop
 before you ingest (`board.py ingest textgeo.json`). Scripts and letters narrow languages, not borders
-(minorities, tourists, diaspora shops, imported goods).
+(minorities, tourists, diaspora shops, imported goods). Text you typed (--text/--file) is scored on its own; a script
+signal read by RapidOCR stays `observed` unless the typed text gives one of the same kind over the same countries.
 """
 from __future__ import annotations
 
@@ -76,18 +77,27 @@ def _script_lr(n: int) -> float:
 
 WATERMARK = re.compile(r"(©|\(c\)|copyright)?\s*(19|20)\d\d\s*(google|goog1e|goodle|apple|yandex|baidu|bing|microsoft|maxar|airbus)"
                        r"|^\W*(google|goodle|imagery|street view)\W*$|image ©|map data", re.I)
+RAPIDOCR = "rapidocr"                    # ocr.json "backend" of the OCR used where Apple Vision is unavailable
+RAPIDOCR_NOTE = ("OCR backend RapidOCR reads only Chinese characters, Latin letters and digits, and may drop Latin diacritics. "
+                 "Any other script (Cyrillic, Greek, Hangul, kana, Arabic, Hebrew, Thai, Indic…) comes out as Latin/Chinese "
+                 "look-alikes or nothing: read the zoomed crop and run `textgeo.py --text \"…\"`.")
+RAPIDOCR_EMPTY = ("OCR backend RapidOCR reads only Chinese characters, Latin letters and digits: if the photo shows text in any "
+                  "other script, read it from the zoomed crop and run `textgeo.py --text \"…\"`.")
 
 
-def load_lines(args) -> list[dict]:
+def load_lines(args) -> tuple[list[dict], str | None]:
+    """(lines to analyse, OCR backend named in the --ocr file or None)."""
     lines: list[dict] = []
+    backend = None
     if args.ocr:
         d = json.loads(Path(args.ocr).read_text(encoding="utf-8"))
+        backend = d.get("backend")
         for it in d.get("items", []):
             if WATERMARK.search(str(it.get("text", ""))):
                 continue  # imagery/map provider watermark, not scene text (its year is a dating clue: see meta/recon)
             if it.get("conf", 1) >= args.min_conf and str(it.get("text", "")).strip():
                 lines.append({"text": str(it["text"]).strip(), "conf": float(it.get("conf", 1)),
-                              "box": it.get("box"), "pass": it.get("pass", "full"), "src": "ocr"})
+                              "box": it.get("box"), "pass": it.get("pass", "full"), "src": "ocr", "backend": backend})
     for t in args.text or []:
         if WATERMARK.search(t):
             continue
@@ -96,7 +106,7 @@ def load_lines(args) -> list[dict]:
         for t in Path(args.file).read_text(encoding="utf-8").splitlines():
             if t.strip():
                 lines.append({"text": t.strip(), "conf": 1.0, "box": None, "pass": "typed", "src": "file"})
-    return lines
+    return lines, backend
 
 
 def script_of(ch: str) -> tuple[str | None, bool]:
@@ -153,6 +163,25 @@ def lang_lr(lang: str, primary: float, secondary: float) -> dict[str, float]:
 # ------------------------------------------------------------------ analyses
 
 def analyse_scripts(lines: list[dict], ev: Board) -> dict:
+    """Script, Han-form and digit-system signals. RapidOCR turns scripts it cannot read into Chinese/Latin look-alikes, so its
+    lines are scored apart from the others (typed, another OCR): those give `read` signals of their own, and a RapidOCR signal
+    is kept, `observed`, only where they give none of its kind over the same countries. The LR depends on character counts,
+    so a typed confirmation is matched by kind and country set, never by value."""
+    rapid = [ln for ln in lines if ln.get("backend") == RAPIDOCR]
+    if not rapid:
+        return _script_signals(lines, ev)
+    own, seen = Board(ev.file), Board(ev.file)
+    _script_signals([ln for ln in lines if ln.get("backend") != RAPIDOCR], own)
+    _script_signals(rapid, seen)
+    covered = {(s["kind"], frozenset(s["lr"])) for s in own.signals}
+    for s in seen.signals:
+        if (s["kind"], frozenset(s["lr"])) not in covered:
+            own.signals.append({**s, "status": "observed", "clue": s["clue"] + " (RapidOCR, unconfirmed)"})
+    ev.signals += own.signals
+    return _script_signals(lines, Board(ev.file))              # the counts over every line; the signals come from the split above
+
+
+def _script_signals(lines: list[dict], ev: Board) -> dict:
     letters: Counter = Counter()
     digits: Counter = Counter()
     examples: dict[str, str] = {}
@@ -636,6 +665,8 @@ def shortlist(ev: Board) -> list[dict]:
 
 def to_md(res: dict) -> str:
     L = ["# Text → place signals", ""]
+    if res.get("ocr_backend") == RAPIDOCR and res.get("n_ocr_lines"):
+        L += [f"**{RAPIDOCR_NOTE}**", ""]
     L.append(f"{res['n_lines']} text lines analysed (min OCR confidence {res['min_conf']}). Each signal names the text it came from: "
              "check the zoomed crop before trusting it. Ingest with `board.py ingest textgeo.json`.")
     L += ["", "## Country shortlist from text", ""]
@@ -746,26 +777,28 @@ def main() -> None:
             region = c["iso2"] if c else args.country.upper()
         enumerate_phone(args.phone_pattern, region)
         return
-    lines = load_lines(args)
+    lines, backend = load_lines(args)
+    ocr_info = {"ocr_backend": backend} if args.ocr else {}
     if not lines:
         if not (args.ocr or args.text or args.file):
             sys.exit("No text: give --ocr ocr.json, --text \"…\" or --file")
         # OCR ran but found nothing usable: an empty result, not an error
-        empty = {"tool": "textgeo.py", "n_lines": 0, "min_conf": args.min_conf, "lines": [], "signals": [], "shortlist": [],
+        blind = f"\n{RAPIDOCR_EMPTY}\n" if backend == RAPIDOCR else ""
+        empty = {"tool": "textgeo.py", "n_lines": 0, "min_conf": args.min_conf, **ocr_info, "lines": [], "signals": [], "shortlist": [],
                  "note": "no text above the confidence threshold (watermarks ignored); read small or unsupported scripts yourself"}
         if args.out:
             Path(args.out).write_text(json.dumps(empty, ensure_ascii=False, indent=1), encoding="utf-8")
         if args.md:
-            Path(args.md).write_text("# Text → place signals\n\nNo usable text found.\n", encoding="utf-8")
-        print("No usable text found (nothing to analyse).")
+            Path(args.md).write_text("# Text → place signals\n\nNo usable text found.\n" + blind, encoding="utf-8")
+        print("No usable text found (nothing to analyse)." + blind.rstrip())
         return
     ocr_file = None
     if args.ocr:
         png = Path(args.ocr).with_suffix(".png")
         ocr_file = str(png if png.exists() else Path(args.ocr))
     ev = Board(ocr_file)
-    res: dict = {"tool": "textgeo.py", "n_lines": len(lines), "min_conf": args.min_conf,
-                 "lines": [ln["text"] for ln in lines][:200]}
+    res: dict = {"tool": "textgeo.py", "n_lines": len(lines), "n_ocr_lines": sum(ln["src"] == "ocr" for ln in lines),
+                 "min_conf": args.min_conf, **ocr_info, "lines": [ln["text"] for ln in lines][:200]}
     res["scripts"] = analyse_scripts(lines, ev)
     res["letters"] = analyse_letters(lines, ev)
     res["languages"] = [] if args.no_lingua else analyse_language(lines, ev)

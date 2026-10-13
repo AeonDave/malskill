@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import contextlib
+from datetime import datetime
 import io
 import json
 import math
+import os
 from pathlib import Path
+import shlex
 import sys
 import tempfile
 import unittest
@@ -40,7 +43,7 @@ class FakeDEM:
         return np.maximum(far, near)
 
 
-def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: float = 0.0) -> None:
+def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: float = 0.0, photo: Path | None = None) -> None:
     """Project the fake terrain through a pinhole at f35 / heading, write ridge.json with an assumed 26 mm focal.
     roll tilts the frame with fit's convention: row grows by tan(roll)·(x − cx)."""
     f = f35 / 43.2666 * math.hypot(W, H)
@@ -53,7 +56,7 @@ def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: f
     far = row(ang.max(axis=1)) + tilt
     near_ang = ang[:, dist <= 9000].max(axis=1)
     near = row(near_ang) + tilt
-    ridge = {"photo": "", "image_size": [W, H], "cx": W / 2, "ridge": [[int(x), int(round(y))] for x, y in zip(xs, far)],
+    ridge = {"photo": str(photo or ""), "image_size": [W, H], "cx": W / 2, "ridge": [[int(x), int(round(y))] for x, y in zip(xs, far)],
              "flat": None, "hrow": HROW, "f0": 26 / 43.2666 * math.hypot(W, H), "f0_source": "assumed", "f35_equiv": 26.0,
              "near": [], "near_clear": []}
     if two_layer:
@@ -64,13 +67,29 @@ def synth_ridge(path: Path, f35: float, heading: float, two_layer: bool, roll: f
     path.write_text(json.dumps(ridge), encoding="utf-8")
 
 
-def fit(ridge: Path, out: Path, *extra: str) -> tuple[dict, str]:
-    argv = ["terrain.py", "fit", "--at", f"{LAT0},{LON0}", "--radius", "0", "--ridge", str(ridge), "--out", str(out),
-            "--range", "30000", "--min-peak", "2", "--nsamp", "400", *extra]
+def run_fit(out: Path, *argv: str, dem=FakeDEM) -> tuple[dict, str]:
+    """terrain.py fit --out out *argv on a fake DEM: (fit.json, stderr)."""
     err = io.StringIO()
-    with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+    with patch.object(terrain, "DEM", dem), patch.object(sys, "argv", ["terrain.py", "fit", "--out", str(out), *argv]), \
+            contextlib.redirect_stderr(err):
         terrain.main()
     return json.loads(out.read_text(encoding="utf-8")), err.getvalue()
+
+
+def fit(ridge: Path, out: Path, *extra: str) -> tuple[dict, str]:
+    return run_fit(out, "--at", f"{LAT0},{LON0}", "--radius", "0", "--ridge", str(ridge),
+                   "--range", "30000", "--min-peak", "2", "--nsamp", "400", *extra)
+
+
+def hits_args(d: Path, n: int, params: dict | None = None) -> list[str]:
+    """fit arguments over a scan-shaped d/hits.json: n clusters 1.1 km apart going north, each seeing the fake ranges
+    (far range 4.3°, below fit's fallback --min-peak 6); params is the scan's params block."""
+    synth_ridge(d / "ridge.json", 26.0, 270.0, False)
+    clusters = [{"lat": LAT0 + i * 0.01, "lon": LON0, "name": f"c{i}", "h0": 0, "max_ang": 5, "az": 270, "n": 1} for i in range(n)]
+    (d / "hits.json").write_text(json.dumps({"params": params or {}, "n_samples": n, "n_hits": n, "n_clusters": n,
+                                             "hits": clusters, "clusters": clusters}), encoding="utf-8")
+    return ["--hits", str(d / "hits.json"), "--radius", "0", "--ridge", str(d / "ridge.json"), "--range", "30000",
+            "--nsamp", "400", "--focal-scales", "1"]
 
 
 class ShoreDEM(FakeDEM):
@@ -154,26 +173,182 @@ class SkylineCardTests(unittest.TestCase):
             with Image.open(sheet) as im:
                 self.assertLessEqual(im.width, 360)                                           # one record: one tile, no empty columns
             self.assertIn("peakfinder_url", side["top"][0])
+            self.assertIn("--peaks " + shlex.quote(str(Path(td) / "peaks.geojson")), err)   # the printed view command labels them too
 
 
 class BudgetTests(unittest.TestCase):
     def test_fit_stops_at_the_budget_with_a_partial_ranking(self):
         with tempfile.TemporaryDirectory() as td:
-            ridge, out, hits = Path(td) / "ridge.json", Path(td) / "fit.json", Path(td) / "hits.json"
-            synth_ridge(ridge, 26.0, 270.0, False)
-            clusters = [{"lat": LAT0 + i * 0.01, "lon": LON0, "name": f"c{i}", "h0": 0, "max_ang": 5, "az": 270, "n": 1} for i in range(6)]
-            hits.write_text(json.dumps({"params": {}, "n_samples": 6, "n_hits": 6, "n_clusters": 6, "hits": clusters, "clusters": clusters}), encoding="utf-8")
-            argv = ["terrain.py", "fit", "--hits", str(hits), "--radius", "0", "--ridge", str(ridge), "--out", str(out), "--range", "30000",
-                    "--min-peak", "2", "--nsamp", "400", "--focal-scales", "1", "--budget-min", "0.000001"]
-            err = io.StringIO()
-            with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
-                terrain.main()
-            res = json.loads(out.read_text(encoding="utf-8"))
+            res, err = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 6), "--min-peak", "2", "--budget-min", "0.000001")
             self.assertTrue(res["partial"])
+            self.assertEqual(res["status"], "budget")
             self.assertEqual(res["n_clusters"], 1)                                   # the first cluster is always scored
             self.assertEqual(len(res["unscored_clusters"]), 5)
-            self.assertIn("--select", err.getvalue())
-            self.assertIn("PARTIAL", err.getvalue())
+            self.assertIn("--select", err)
+            self.assertIn("PARTIAL", err)
+
+
+class KillDEM(FakeDEM):
+    """Dies when fit loads the third cluster (LAT0 + 0.02), as a killed process would."""
+
+    def __init__(self, center, *a, **k):
+        if abs(center[0] - (LAT0 + 0.02)) < 1e-9:
+            raise RuntimeError("killed")
+
+
+class CheckpointTests(unittest.TestCase):
+    def killed_run(self, d: Path) -> tuple[dict, str]:
+        out, err = d / "fit.json", io.StringIO()
+        argv = ["terrain.py", "fit", "--out", str(out), *hits_args(d, 6), "--min-peak", "2"]
+        with patch.object(terrain, "DEM", KillDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err), \
+                self.assertRaises(RuntimeError):
+            terrain.main()
+        self.assertEqual(list(d.glob("*.part")), [])
+        return json.loads(out.read_text(encoding="utf-8")), err.getvalue()
+
+    def test_a_killed_fit_leaves_the_scored_clusters_and_the_rest_to_select(self):
+        with tempfile.TemporaryDirectory() as td, patch.object(terrain, "CHECKPOINT_S", 0.0):
+            res, err = self.killed_run(Path(td))
+        self.assertEqual(res["status"], "running")
+        self.assertEqual(res["pid"], os.getpid())                              # running + a pid that is gone = a dead run
+        self.assertIsNotNone(datetime.fromisoformat(res["updated_at"]).tzinfo)
+        self.assertTrue(res["partial"])
+        self.assertEqual(res["n_clusters"], 2)
+        self.assertEqual([x["hit"] for x in res["clusters"] if x["best"]], [0, 1])
+        self.assertEqual(res["unscored_clusters"], [2, 3, 4, 5])
+        self.assertIn("(saved 2/6; if killed: --select 2,3,4,5 with a new --out)", err)
+
+    def test_checkpoints_are_throttled(self):
+        with tempfile.TemporaryDirectory() as td:                               # default 30 s: the second cluster is not written
+            res, err = self.killed_run(Path(td))
+        self.assertEqual(res["n_clusters"], 1)
+        self.assertEqual(res["unscored_clusters"], [1, 2, 3, 4, 5])
+        self.assertIn("cluster 2/6 hit1 c1", err)
+        self.assertIn("(saved 1/6; if killed: --select 1,2,3,4,5 with a new --out)", err)
+
+    def test_an_unbudgeted_run_ends_done(self):
+        with tempfile.TemporaryDirectory() as td:
+            res, err = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 3), "--min-peak", "2", "--budget-min", "0")
+            self.assertEqual(list(Path(td).glob("*.part")), [])
+        self.assertEqual(res["status"], "done")
+        self.assertFalse(res["partial"])
+        self.assertEqual(res["unscored_clusters"], [])
+        self.assertEqual(res["n_clusters"], 3)
+        self.assertIn("(saved 3/3)", err)
+
+    def test_a_failed_checkpoint_is_skipped_and_the_final_write_lands(self):
+        real, calls = terrain.os.replace, []
+
+        def locked(src, dst):                                                   # a reader holds fit.json through every checkpoint
+            calls.append(dst)
+            if json.loads(Path(src).read_text(encoding="utf-8"))["status"] == "running":
+                raise PermissionError(13, "in use", str(dst))
+            real(src, dst)
+
+        with tempfile.TemporaryDirectory() as td, patch.object(terrain, "CHECKPOINT_S", 0.0), patch.object(terrain.os, "replace", locked), \
+                patch.object(terrain, "REPLACE_WAIT_S", 0.0):
+            res, err = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 3), "--min-peak", "2")
+            self.assertEqual(list(Path(td).glob("*.part")), [])
+        self.assertEqual(len(calls), 3 * terrain.REPLACE_TRIES + 1)              # each checkpoint retried, then skipped
+        self.assertEqual(res["status"], "done")
+        self.assertEqual(res["n_clusters"], 3)
+        self.assertIn("not saved yet: PermissionError", err)
+
+    def test_a_short_hold_is_waited_out(self):
+        real, calls = terrain.os.replace, []
+
+        def held(src, dst):                                                     # a viewer poll reads fit.json for a moment
+            calls.append(dst)
+            if len(calls) <= 2:
+                raise PermissionError(13, "in use", str(dst))
+            real(src, dst)
+
+        with tempfile.TemporaryDirectory() as td, patch.object(terrain, "CHECKPOINT_S", 0.0), patch.object(terrain.os, "replace", held), \
+                patch.object(terrain, "REPLACE_WAIT_S", 0.0):
+            res, err = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 2), "--min-peak", "2")
+        self.assertEqual(len(calls), 2 + 3)                                     # two refused tries, then 2 checkpoints and the final write
+        self.assertIn("(saved 1/2;", err)
+        self.assertNotIn("not saved yet", err)
+        self.assertEqual(res["status"], "done")
+
+    def test_a_final_write_that_stays_locked_leaves_the_ranking_and_the_move_command(self):
+        def locked(src, dst):                                                   # a reader never lets go of fit.json
+            raise PermissionError(13, "in use", str(dst))
+
+        with tempfile.TemporaryDirectory() as td, patch.object(terrain, "CHECKPOINT_S", 0.0), patch.object(terrain.os, "replace", locked), \
+                patch.object(terrain, "REPLACE_WAIT_S", 0.0):
+            out, err = Path(td) / "fit.json", io.StringIO()
+            argv = ["terrain.py", "fit", "--out", str(out), *hits_args(Path(td), 2), "--min-peak", "2"]
+            with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+                terrain.main()                                                  # no traceback after the whole scoring run
+            parts = list(Path(td).glob("fit.json.*.part"))
+            self.assertEqual(len(parts), 1)
+            res = json.loads(parts[0].read_text(encoding="utf-8"))
+            self.assertFalse(out.exists())
+        err = err.getvalue()
+        self.assertEqual((res["status"], res["n_clusters"]), ("done", 2))       # the full ranking survives in the .part
+        self.assertIn(f"Move-Item -Force -LiteralPath '{parts[0]}' -Destination '{out}'", err)
+        self.assertIn(f"mv -f {shlex.quote(str(parts[0]))} {shlex.quote(str(out))}", err)
+        self.assertIn("PeakFinder, same camera for the eyes", err)              # the report after the write still prints
+
+    def test_a_long_select_list_is_named_never_truncated(self):              # a pasted "…" would break --select
+        self.assertEqual(terrain._select_list([3, 4], "fit.json"), "3,4 with a new --out")
+        self.assertEqual(terrain._select_list(list(range(21)), "fit.json"), "<the 21 unscored_clusters in fit.json> with a new --out")
+
+
+class MinPeakTests(unittest.TestCase):
+    def test_fit_inherits_the_scan_min_peak(self):
+        with tempfile.TemporaryDirectory() as td:
+            res, _ = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 1, {"min_peak_deg": 2}))
+        self.assertEqual(res["params"]["min_peak_deg"], 2)
+        self.assertEqual(res["n_cams"], 1)                                          # the 4.3° far range passes 2°, not the fallback 6°
+
+    def test_without_scan_params_the_fallback_is_6(self):
+        with tempfile.TemporaryDirectory() as td:
+            res, _ = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 1))
+        self.assertEqual(res["params"]["min_peak_deg"], 6)
+        self.assertEqual(res["n_skipped"]["no_peak"], 1)
+
+    def test_a_stricter_explicit_value_names_both_and_the_exit(self):
+        with tempfile.TemporaryDirectory() as td:
+            res, err = run_fit(Path(td) / "fit.json", *hits_args(Path(td), 1, {"min_peak_deg": 2}), "--min-peak", "6")
+        self.assertEqual(res["params"]["min_peak_deg"], 6)
+        line = next(x for x in err.splitlines() if "stricter" in x)
+        self.assertIn("--min-peak 6°", line)
+        self.assertIn("scan's 2°", line)
+        self.assertIn("rerun without --min-peak", line)
+
+
+class ViewCommandTests(unittest.TestCase):
+    def test_fit_prints_a_view_overlay_command_that_reproduces_the_fit(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            photo = d / "photo.jpg"
+            Image.new("RGB", (W, H), (120, 120, 120)).save(photo)
+            synth_ridge(d / "ridge.json", 26.0, 270.0, False, photo=photo)
+            res, err = fit(d / "ridge.json", d / "fit.json", "--focal-scales", "1")
+            line = next(x for x in err.splitlines() if "terrain.py view " in x)
+            argv = shlex.split(line[line.index("terrain.py view "):])
+            opt = lambda k: argv[argv.index(k) + 1]
+            best = res["cams"][0]
+            pitch = float(opt("--pitch"))
+            self.assertGreater(pitch, 0)                          # horizon row 600 below the frame middle 562.5: looking up
+            self.assertAlmostEqual(pitch, best["cc"] + math.degrees(math.atan((HROW - H / 2) / best["f"])), delta=0.006)
+            self.assertAlmostEqual(float(opt("--hfov")), 2 * math.degrees(math.atan(W / 2 / best["f"])), delta=0.05)
+            self.assertEqual(float(opt("--heading")), best["H"])
+            self.assertEqual(Path(opt("--photo")), photo)
+            self.assertEqual(Path(opt("--out")), d / "view_best.jpg")
+            self.assertIn("--overlay", argv)
+            # run it as printed: at the centre column view's red skyline lands on the photo ridge fit matched
+            with patch.object(terrain, "DEM", FakeDEM), patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+                terrain.main()
+            with Image.open(d / "view_best_overlay.jpg") as im:
+                col = np.asarray(im.convert("RGB"), dtype=int)[:, W // 2]
+            red = np.flatnonzero((col[:, 0] > 200) & (col[:, 1] < 100) & (col[:, 2] < 100))
+            ridge_y = dict(map(tuple, json.loads((d / "ridge.json").read_text(encoding="utf-8"))["ridge"]))[W // 2]
+            self.assertGreater(red.size, 0)
+            self.assertAlmostEqual(float(red.mean()), ridge_y, delta=3)
 
 
 class TieTests(unittest.TestCase):

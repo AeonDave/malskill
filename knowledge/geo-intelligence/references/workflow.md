@@ -98,16 +98,19 @@ Habits that keep it honest and useful:
 
 ## Clock
 
-Every analysis starts in Quick mode: about 10 minutes of tools after the gut call, then answer at the level reached;
-one more block only with a decisive test already named. Deep mode is entered only on the user's request or when the
-Quick answer is unsatisfactory (requested level not reached, decisive checks in contradiction, a single supporting
-clue), and it continues the same session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before
+Every analysis starts in Quick mode: about 10 minutes of tools after the gut call, then the rule in SKILL.md
+'Session and speed'. Deep mode is entered only on the user's request or when the Quick answer is unsatisfactory
+(requested level not reached, decisive checks in contradiction, a single supporting clue), and it continues the same
+session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before widening, and never
+start a whole-town ranking without first trying to name the junction from text and road geometry.
+
 Long tools are bounded, never awaited open-ended: `terrain.py fit` stops at `--budget-min` (20 min) with a partial
-ranking and the `--select` list to continue; `scan` prints what its cluster count will cost. Start them in the
-background, read the partial result at the stop, and decide from it.
-widening, and never start a whole-town ranking without first trying to name the junction from text and road geometry.
-When the clock runs out, report the settled level, the radius it supports and the test that would have separated the
-remaining candidates, and `finish`: never stop to ask whether to continue (autonomy), offer the next step in the answer.
+ranking. While scoring it rewrites fit.json at most every 30 s and after the last cluster (`status` running, with the
+writing `pid` and `updated_at`), so a kill loses the clusters scored since the last save (fit prints `saved N/M`). A
+`running` file whose `pid` no longer runs (`Get-Process -Id <pid>`, `ps -p <pid>`) is a dead run: continue its
+`unscored_clusters` with `--select` and a new `--out`; while the pid runs, never start a second fit. `scan` prints
+what its cluster count will cost. Start them in the background, read the partial result at the stop, and decide
+from it.
 
 ## Autonomy
 
@@ -139,16 +142,22 @@ uv run scripts/photo_session.py finish "/absolute/session/path" --country "Count
 `--heading` and `--taken` are required; `unknown` is a valid value for either, and the answer then says why. With no
 verification artifact in the session, `finish` refuses before 25 minutes have passed (run the decisive check or go
 Deep); it also refuses while a check required by recon's scene tags (skyline for mountains or water, street for a
-city or road) has left no file — `photo_session.py checks <session>` lists them; a pinning artifact (match ranking,
-evidence/match image, pose, intersection, satellite scan) waives a missing check with a note; `--skip-check
-<name>:"<reason>"` is allowed early only for a user stop; `--accept-unverified "<reason>"` closes anyway and records the reason (`result.accepted_unverified`).
-
-```bash
-```
+city or road) has left no file — `photo_session.py checks <session>` lists them. Another geometry that pins the
+place waives a missing check with a note: an `evidence*`/`match*` image (by name), a `pose.py` output (by content,
+any file name: a `solve` solution or a `check` table; its input spec never), or a rank file whose top views (rows
+with a saved view, else the first 10) include one within 150 m of the answer with ≥10 inliers or global score ≥0.25.
+When rank files exist but none qualifies, the refusal names the strongest view (file, rank, distance, inliers,
+score, its saved image) and the exits: open that view and answer there only if it shows the same fixed structures
+as the photo; otherwise run the check, or skip it. `--skip-check <name>:"<reason>"` and
+`--accept-unverified "<reason>"` close anyway and are recorded (`result.checks`, `result.accepted_unverified`);
+before 25 minutes only when the operator stopped or redirected the analysis (the reason then says
+`operator asked: …`), afterwards for any stated reason.
 
 Use the real values (those are only syntax). Without `--latitude/--longitude` the pin is the country centre with a
 ≥100 km radius and confidence low (`result.coordinate_source` says so); `result.verification_artifacts` counts the
-rank, sheet, evidence, terrain, pose and mark files, and `finish` warns when it is zero. Add `--radius-m <m>` and
+rank, sheet, evidence, terrain, pose and mark files, plus fit outputs, street rankings and panorama sheet indexes
+recognised by content; recon's first pass (its outputs beside any `recon.json`, or under `recon/` mid-run) and
+detect.py sheets never count; `finish` warns when it is zero. Add `--radius-m <m>` and
 `--heading <deg>` when the answer has them, and `--taken <YYYY | YYYY-MM | YYYY-MM-DD[THH:MM] | A..B>` with
 `--taken-confidence` and `--taken-basis` (the session records them; without `--taken`, `finish` warns); `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and

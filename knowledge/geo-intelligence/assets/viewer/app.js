@@ -829,7 +829,9 @@
     const ck = s.checks || [];
     $("checks").hidden = !ck.length;
     if (ck.length) {
-      $("checks").innerHTML = "Required checks: " + ck.map((c) => `<span class="${c.done ? "check-done" : "check-missing"}" title="${esc(c.why || "")}">${esc(c.name)} ${c.done ? "✓" : "missing"}</span>`).join(" · ");
+      // the same four states as `photo_session.py checks`: a waived or skipped check no longer blocks finish
+      const state = (c) => c.done ? "✓" : c.skipped ? `skipped: ${c.skipped}` : (c.waived_by || []).length ? `waived by ${c.waived_by[0]}` : "missing";
+      $("checks").innerHTML = "Required checks: " + ck.map((c) => `<span class="${state(c) === "missing" ? "check-missing" : "check-done"}" title="${esc(c.why || "")}">${esc(c.name)} ${esc(state(c))}</span>`).join(" · ");
     }
     renderAnswer(s);
     renderCandidates(s);

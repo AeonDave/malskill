@@ -44,7 +44,13 @@ trustworthy 35 mm focal length, pass `--prior-focal-35mm` to fix it.
 
 ## OCR coverage
 
-Apple Vision with automatic language detection (`--langs auto`, the default) keeps diacritics and Cyrillic; a
+The backend that ran is named in `intake/ocr.json` (`backend`); recon.md and textgeo.md adapt their warning to it.
+RapidOCR (every system except macOS, or when Vision fails) reads only Chinese characters, Latin letters and digits,
+ignores `--langs` and may drop Latin diacritics (Długa → Dtuga). Any other script (Cyrillic, Greek, Hangul, kana,
+Arabic, Hebrew, Thai, Indic…) comes out as Latin/Chinese look-alikes or nothing, so textgeo.py scores it apart from
+text you type with `textgeo.py --text`: the typed text gives `read` signals of its own, and a RapidOCR script or Han
+signal stays `observed` (LR cap 5) with "(RapidOCR, unconfirmed)" unless the typed text gives one of the same kind
+over the same countries. On macOS: Apple Vision with automatic language detection (`--langs auto`, the default) keeps diacritics and Cyrillic; a
 fixed language list strips them. It reads Latin-script European languages, Turkish, Vietnamese, Indonesian,
 Malay, Russian, Ukrainian, Arabic, Thai, Chinese, Japanese and Korean. It does not read Greek, Hebrew,
 Georgian, Armenian, Indic scripts, Sinhala, Khmer, Lao, Burmese or Ethiopic: read those yourself and pass them
