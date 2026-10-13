@@ -268,7 +268,8 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
     L += ["", "## Next", "",
           "0. The checks named under Prior (scene) are required before finish whatever else you find (a mountain or lake: the skyline route; "
           "a street: the panorama route): the floor, not the first route. Run your plan's line A first unless it is one of them; start long "
-          "ones in the background with a budget." + generated_check(meta, ij, aj),
+          "ones in the background with a budget. An explicit Quick request stops before heavy work: record those checks as skipped with "
+          "the reason 'operator asked: Quick, stop before heavy analysis' (SKILL.md Session and speed)." + generated_check(meta, ij, aj),
           "1. Compare this page with your gut call. Where they disagree, find out why (a misread, an unusual scene, a wrong gut). A place name "
           "read here or a near-duplicate hit moves up in your plan.",
           "2. board.json exists since `photo_session.py start` and already holds the text and prior signals (ingested here): "

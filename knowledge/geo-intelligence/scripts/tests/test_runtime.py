@@ -6,6 +6,7 @@
 """Offline runtime regressions. Run: uv run scripts/tests/test_runtime.py"""
 from __future__ import annotations
 
+import contextlib
 import http.server
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -123,7 +124,7 @@ class NetworkTests(unittest.TestCase):
         return cmd[i + 1:cmd.index("--out-dir")]
 
     @staticmethod
-    def run_intake(root: Path, *extra: str, guess: str = "") -> tuple[Path, list[list[str]]]:
+    def run_intake(root: Path, *extra: str, guess: str = "", failed_engine: str | None = None) -> tuple[Path, list[list[str]]]:
         """intake.main() on a white 100x100 photo: the small local helpers run for real (they write the files intake reads);
         revimg is a recorder that writes one result JSON per image and engine, labelled `guess`. Returns the photo and the
         revimg commands."""
@@ -138,6 +139,8 @@ class NetworkTests(unittest.TestCase):
                 return original([sys.executable, *cmd[2:]], **kwargs)
             commands.append(cmd)
             rev_dir, engine = Path(cmd[cmd.index("--out-dir") + 1]), cmd[cmd.index("--engines") + 1]
+            if engine == failed_engine:
+                return 1, "", "engine unavailable"
             for img in NetworkTests.searched(cmd):
                 (rev_dir / f"{Path(img).stem}_{engine}.json").write_text(json.dumps({"guess": [guess] if guess else []}),
                                                                          encoding="utf-8")
@@ -200,6 +203,42 @@ class NetworkTests(unittest.TestCase):
             self.assertEqual(report["votes"], {"city": {}, "place": {"石板路": ["baidu/box1_crop", "yandex/box1_crop"]}})
             self.assertNotIn("上海", (out / "intake.md").read_text(encoding="utf-8"))
             self.assertTrue((out / "rev" / "photo_baidu.json").is_file())
+
+    def test_intake_full_rerun_uses_current_variants_after_a_crop(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.run_intake(root, "--box", "10,10,60,60", "--max-variants", "2")
+            photo, commands = self.run_intake(root, "--max-variants", "2")
+            for cmd in commands:
+                images = self.searched(cmd)
+                self.assertEqual(images[0], str(photo))
+                self.assertEqual(len(images), 3)
+                self.assertTrue(all(Path(p).name.startswith("full_") for p in images[1:]), images)
+            self.assertTrue((root / "intake/variants/box1_crop.jpg").is_file())
+
+    def test_intake_failed_crop_does_not_search_an_earlier_crop(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.run_intake(root, "--box", "10,10,60,60", "--max-variants", "1", guess="Tokyo")
+            previous = (root / "intake/variants/box1_crop.jpg").read_bytes()
+            _, commands = self.run_intake(root, "--box", "not-a-box", "--max-variants", "1")
+            data = json.loads((root / "intake/intake.json").read_text(encoding="utf-8"))
+            self.assertEqual(commands, [])
+            self.assertTrue(data["status"]["variants"].startswith("failed:"))
+            self.assertEqual(data["rev"], [])
+            self.assertEqual(data["votes"], {"city": {}, "place": {}})
+            self.assertEqual(data["status"]["rev-baidu"], "not run: no crop variants prepared")
+            self.assertEqual((root / "intake/variants/box1_crop.jpg").read_bytes(), previous)
+
+    def test_intake_same_crop_rerun_drops_a_failed_engines_old_result(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.run_intake(root, "--box", "10,10,60,60", "--max-variants", "1", guess="Tokyo")
+            self.run_intake(root, "--box", "10,10,60,60", "--max-variants", "1", guess="Berlin", failed_engine="baidu")
+            data = json.loads((root / "intake/intake.json").read_text(encoding="utf-8"))
+            self.assertEqual([(e["variant"], e["engine"]) for e in data["rev"]], [("box1_crop", "yandex")])
+            self.assertEqual(data["votes"]["city"], {"Berlin": ["yandex"]})
+            self.assertTrue(data["status"]["rev-baidu"].startswith("failed:"))
 
     def test_place_labels_are_not_presented_as_places(self):
         # _classify files any label containing 路/山/湖/寺/园/城… under "place": Baidu's 石板路 (stone paving) is a scene word,
@@ -745,6 +784,129 @@ class PanoCacheRaceTests(unittest.TestCase):
                 t.join(10)
             self.assertEqual(errors, [], name)
             self.assertTrue(seen, name)
+
+
+@unittest.skipUnless(shutil.which("curl"), "curl required")
+class PanoUrlPublicationTests(unittest.TestCase):
+    """A URL prefetch must publish complete images without exposing curl's open output to another reader."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)
+        buf = io.BytesIO()
+        Image.effect_noise((1024, 512), 80).convert("RGB").save(buf, "JPEG", quality=95)
+        self.body = buf.getvalue()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @contextlib.contextmanager
+    def server(self, respond):
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(handler):
+                handler.send_response(200)
+                handler.send_header("Content-Length", str(len(self.body)))
+                handler.end_headers()
+                respond(handler)
+
+            def log_message(self, *args):
+                pass
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{server.server_port}"
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(3)
+
+    def test_prefetch_never_exposes_partial_file_to_reader(self):
+        sent, release = threading.Event(), threading.Event()
+        requests = []
+
+        def respond(handler):
+            requests.append(handler.path)
+            if len(requests) == 1:
+                handler.wfile.write(self.body[:len(self.body) // 2])
+                handler.wfile.flush()
+                sent.set()
+                release.wait(8)
+                handler.wfile.write(self.body[len(self.body) // 2:])
+            else:
+                handler.wfile.write(self.body)
+
+        with self.server(respond) as base, patch.object(_pano, "CACHE", self.cache), \
+                patch.dict(os.environ, {"GEO_PROXY": "direct"}):
+            url = base + "/same.jpg"
+            with ThreadPoolExecutor(1) as ex:
+                future = ex.submit(_pano.fetch_many, [url], proxy="direct", timeout=10)
+                try:
+                    self.assertTrue(sent.wait(4), "curl did not request the first image")
+                    # Wait until curl has flushed its output: before the fix this is the final JPEG, afterwards a .part.
+                    deadline = time.monotonic() + 3
+                    while time.monotonic() < deadline:
+                        if any(p.stat().st_size >= len(self.body) // 4 for p in self.cache.rglob("*") if p.is_file()):
+                            break
+                        time.sleep(0.01)
+                    im = _pano._open(url)
+                    self.assertEqual(im.size, (1024, 512))
+                finally:
+                    release.set()
+                self.assertIn(url, future.result(timeout=12))
+            self.assertEqual(_pano.read_image(_pano._cache_path(url)).size, (1024, 512))
+            self.assertEqual(list(self.cache.rglob("*.part")), [])
+
+    def test_failed_download_does_not_hide_a_successful_peer(self):
+        def respond(handler):
+            body = self.body if handler.path == "/good.jpg" else self.body[:len(self.body) // 2]
+            handler.wfile.write(body)
+            handler.wfile.flush()
+            handler.close_connection = True          # a short body with a full Content-Length: curl exits 18
+
+        with self.server(respond) as base, patch.object(_pano, "CACHE", self.cache):
+            good, cut = base + "/good.jpg", base + "/cut.jpg"
+            got = _pano.fetch_many([good, cut], parallel=2, timeout=3, proxy="direct")
+            self.assertEqual(set(got), {good})
+            self.assertEqual(_pano.read_image(got[good]).size, (1024, 512))
+            self.assertFalse(_pano._cache_path(cut).exists())
+            self.assertEqual(list(self.cache.rglob("*.part")), [])
+            self.assertEqual(list(self.cache.rglob("*.curl")), [])
+
+    def test_distinct_downloads_stay_parallel(self):
+        active, peak = [0], [0]
+        guard = threading.Lock()
+
+        def respond(handler):
+            with guard:
+                active[0] += 1
+                peak[0] = max(peak[0], active[0])
+            try:
+                time.sleep(0.1)
+                handler.wfile.write(self.body)
+            finally:
+                with guard:
+                    active[0] -= 1
+
+        with self.server(respond) as base, patch.object(_pano, "CACHE", self.cache):
+            urls = [base + f"/{i}.jpg" for i in range(4)]
+            got = _pano.fetch_many(urls, parallel=4, timeout=3, proxy="direct")
+            self.assertEqual(set(got), set(urls))
+            self.assertGreaterEqual(peak[0], 2)
+
+    def test_timeout_never_publishes_an_unfinished_image(self):
+        def respond(handler):
+            handler.wfile.write(self.body[:len(self.body) // 2])
+            handler.wfile.flush()
+            time.sleep(0.2)                         # curl's deadline expires before the declared body is complete
+            handler.close_connection = True
+
+        with self.server(respond) as base, patch.object(_pano, "CACHE", self.cache):
+            url = base + "/timeout.jpg"
+            self.assertEqual(_pano.fetch_many([url], timeout=0.05, proxy="direct"), {})
+            self.assertFalse(_pano._cache_path(url).exists())
+            self.assertEqual(list(self.cache.rglob("*.part")), [])
+            self.assertEqual(list(self.cache.rglob("*.curl")), [])
 
 
 class PanoCacheHealTests(unittest.TestCase):

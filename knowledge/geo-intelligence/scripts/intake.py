@@ -172,6 +172,7 @@ def main() -> None:
     t_all = time.time()
     timings: dict = {}
     status: dict = {}
+    variant_files: list[Path] = []
 
     def timed(name, fn):
         t0 = time.time()
@@ -195,6 +196,11 @@ def main() -> None:
         calls = ([prep + ["--box", b, "--prefix", f"box{i}"] for i, b in enumerate(args.box, 1)] if args.box
                  else [prep + ["--prefix", "full"]])
         res = [_run(c) for c in calls]
+        for rc, stdout, _ in res:
+            if rc == 0:
+                variant_files.extend(p for line in stdout.splitlines()
+                                     if (p := Path(line.strip())).suffix.lower() in (".jpg", ".png")
+                                     and p.is_file() and p.resolve().parent == (out / "variants").resolve())
         return max(r[0] for r in res), "".join(r[1] for r in res), "".join(r[2] for r in res)
 
     def ocr():
@@ -227,7 +233,7 @@ def main() -> None:
         # the report holds only the results this call's searches write (new or rewritten files): a rerun in the same folder,
         # e.g. --box after a full run, leaves the older results on disk as evidence, outside this report
         before = {p.name: p.stat().st_mtime_ns for p in rev_dir.glob("*.json")}
-        var_files = sorted((out / "variants").glob("*.jpg")) + sorted((out / "variants").glob("*.png"))
+        var_files = sorted(variant_files)     # only this call's successful preparation, never earlier crops or failed outputs
         if args.box:                    # boxes share the slots round-robin, each box's crop first
             groups = [sorted(f for f in var_files if f.stem.startswith(f"box{i}_")) for i in range(1, len(args.box) + 1)]
             prefer = [f for tier in itertools.zip_longest(*groups) for f in tier if f]
@@ -243,10 +249,14 @@ def main() -> None:
                 cmd += ["--proxy", args.proxy]
             return _run(cmd, timeout=900)
 
-        with ThreadPoolExecutor(2) as ex:
-            futs = {eng: ex.submit(timed, f"rev-{eng}", (lambda e=eng: (lambda: rev(e)))()) for eng in [e for e in args.engines.split(",") if e]}
-            for eng, f in futs.items():
-                f.result()
+        engines = [e for e in args.engines.split(",") if e]
+        if images:
+            with ThreadPoolExecutor(2) as ex:
+                futs = {eng: ex.submit(timed, f"rev-{eng}", (lambda e=eng: (lambda: rev(e)))()) for eng in engines}
+                for eng, f in futs.items():
+                    f.result()
+        else:
+            status.update({f"rev-{eng}": "not run: no crop variants prepared" for eng in engines})
         written = {p.name for p in rev_dir.glob("*.json") if before.get(p.name) != p.stat().st_mtime_ns}
         entries, votes, hits = _collect_rev(rev_dir, written)
 

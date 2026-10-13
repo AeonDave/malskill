@@ -80,27 +80,40 @@ def _cache_path(url: str, sub: str = "url") -> Path:
 
 def fetch_many(urls: list[str], parallel: int = 12, timeout: int = 40, proxy: str | None = None) -> dict[str, Path]:
     """Download URLs into the cache with curl --parallel (fast for thousands of small files). Returns {url: path}
-    for the ones that exist afterwards (failures are simply missing). proxy None = GEO_PROXY."""
+    for the ones that exist afterwards (failures are simply missing). Publish only decoded images, atomically, so a
+    concurrent reader never opens curl's unfinished output. proxy None = GEO_PROXY."""
     todo = [u for u in dict.fromkeys(urls) if not (_cache_path(u).exists() and _cache_path(u).stat().st_size > 0)]
     if todo:
         # one config per thread: threads fetching at once (sheet cells, index workers) must not overwrite or delete each other's
         cfg = CACHE / "url" / f"batch_{os.getpid()}_{threading.get_ident()}.curl"
         cfg.parent.mkdir(parents=True, exist_ok=True)
-        lines = []
+        lines, staged = [], {}
         for u in todo:
             p = _cache_path(u)
             p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.download.part")
+            tmp.unlink(missing_ok=True)
+            staged[u] = tmp
             # curl config values are backslash-escaped inside quotes: forward slashes keep Windows paths intact
             q = u.replace("\\", "\\\\").replace('"', '\\"')
-            lines.append(f'url = "{q}"\noutput = "{p.as_posix()}"\n')
-        cfg.write_text("".join(lines), encoding="utf-8")
-        subprocess.run(["curl", "-q", "-s", "-L", "--fail", "--retry", "2", "--max-time", str(timeout), "-A", UA,
-                        *curl_args(proxy), "--parallel", "--parallel-max", str(parallel), "-K", str(cfg)], check=False)
-        cfg.unlink(missing_ok=True)
-        for u in todo:                       # an HTML error or redirect page is not an image: drop it
-            p = _cache_path(u)
-            if p.exists() and not _is_image(p):
-                p.unlink()
+            lines.append(f'url = "{q}"\noutput = "{tmp.as_posix()}"\n')
+        try:
+            cfg.write_text("".join(lines), encoding="utf-8")
+            subprocess.run(["curl", "-q", "-s", "-L", "--fail", "--retry", "2", "--max-time", str(timeout), "-A", UA,
+                            *curl_args(proxy), "--parallel", "--parallel-max", str(parallel), "-K", str(cfg)], check=False)
+            for u, tmp in staged.items():
+                if not tmp.exists():
+                    continue
+                try:
+                    if _is_image(tmp):
+                        read_image(tmp).close()      # a timeout's partial JPEG has a valid header but does not decode
+                        write_atomic(_cache_path(u), lambda atomic, tmp=tmp: tmp.replace(atomic))
+                except (OSError, ValueError):
+                    continue                        # a failed transfer must not hide successful peers in this batch
+        finally:
+            cfg.unlink(missing_ok=True)
+            for tmp in staged.values():
+                tmp.unlink(missing_ok=True)
     return {u: _cache_path(u) for u in urls if _cache_path(u).exists() and _cache_path(u).stat().st_size > 0}
 
 

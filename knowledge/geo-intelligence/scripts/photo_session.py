@@ -56,12 +56,12 @@ TRUTH_START = "<!-- geogussr-truth -->"
 TRUTH_END = "<!-- /geogussr-truth -->"
 THRESHOLDS_KM = (1, 25, 200, 750, 2500)
 SCORE_SCALE_KM = 1492.7  # approximate world-map scoring: 5000 · exp(-d / 1492.7 km)
-UNVERIFIED_CLOCK_MIN = 25  # a quick block plus one more: before that, an answer with no verification artifact is refused
+UNVERIFIED_CLOCK_MIN = 25  # before this elapsed time, an unverified close needs an explicit operator limit
 USER_STOP = re.compile(r"user|utente|usuario|utilisateur|benutzer|operator|operatore|stopp|interrupt|abort|cancel", re.I)   # the only early reason: the operator said so
 # a verdict on the image itself (finish --generated, not-generated) takes the operator's words only in the documented form at the
 # start: "users on the forum agree" or "an interrupted render" inside a basis is not the operator speaking
 OPERATOR_WORDS = re.compile(r"\s*(operator|user)\s+(asked|said|says|confirmed)\s*:", re.I)
-# the early exit as every refusal and help text words it: an operator stop or redirect counts, the Quick budget never does
+# the operator may limit the work (including explicit Quick); an agent-invented time budget is not an early exit
 EARLY_EXIT = (f"before {UNVERIFIED_CLOCK_MIN} min only when the operator stopped or redirected the analysis: "
               "put \"operator asked: …\" in the reason; after it, any stated reason")
 SCENE_THRESHOLD = 0.6
@@ -821,7 +821,7 @@ def finish(args: argparse.Namespace) -> dict:
         if reason and elapsed_min < UNVERIFIED_CLOCK_MIN and not USER_STOP.search(reason):
             raise ValueError(
                 f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: put "
-                f"\"operator asked: …\" in the reason. '{reason[:60]}' is not that: the Quick budget is never a reason to close unverified. "
+                f"\"operator asked: …\" in the reason. '{reason[:60]}' is not that: elapsed Quick time alone is never a reason to close unverified. "
                 f"Next: go Deep with your plan's next line or the scene's required check (SKILL.md step 1, step 6) and finish when it "
                 f"leaves a file; from minute {UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:

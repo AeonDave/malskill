@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pillow", "pillow-heif", "tzdata"]
+# dependencies = ["pillow", "pillow-heif", "tzdata", "cbor2>=6.1.5,<7"]
 # ///
 """Deep metadata and file forensics for one photo or video (uses exiftool; falls back to Pillow).
 
@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import re
 import shutil
@@ -116,8 +117,6 @@ AI_GENERATOR = re.compile(r"midjourney|\bdall[\s·•.\-]?e\b|stable[\s-]?diffus
 # in a comment or description. XMP: Iptc4xmpExt:DigitalSourceType under any prefix bound to the IPTC Extension namespace.
 XMP_SOURCE = "{http://iptc.org/std/Iptc4xmpExt/2008-02-29/}DigitalSourceType"
 RDF_RESOURCE = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource"
-# C2PA: the value of a digitalSourceType key, a CBOR text string (header byte, then 0/1/2/4/8 length bytes) or a JSON-LD string
-C2PA_SOURCE = re.compile(rb'qdigitalSourceType([\x60-\x7b])|(?i:digitalsourcetype)"\s*:\s*"([^"]{1,300})"')
 GENERATED_TYPES = {"trainedAlgorithmicMedia", "algorithmicMedia"}
 SOURCE_UNREAD = ("C2PA present, source type unread (brotli-compressed, remote or none recorded: "
                  "exiftool or c2patool shows the manifest)")
@@ -215,19 +214,66 @@ def _xmp_terms(blob: bytes) -> list[str]:
     return _terms(*(v for v in values if v))
 
 
-def _c2pa_terms(store: bytes) -> list[str]:
-    """Source types of a C2PA store, each read to the exact end of its CBOR or JSON string."""
-    values = []
-    for m in C2PA_SOURCE.finditer(store):
-        if m.group(2) is not None:
-            values.append(m.group(2))
+def _jumbf_payloads(store: bytes, depth: int = 0):
+    """CBOR/JSON content boxes of a JUMBF tree; unsupported or truncated boxes yield no properties."""
+    if depth > 32:
+        return
+    at = 0
+    while at + 8 <= len(store):
+        size, kind, header = int.from_bytes(store[at:at + 4], "big"), store[at + 4:at + 8], 8
+        if size == 1:
+            if at + 16 > len(store):
+                return
+            size, header = int.from_bytes(store[at + 8:at + 16], "big"), 16
+        elif size == 0:
+            size = len(store) - at
+        if size < header or at + size > len(store):
+            return
+        payload = store[at + header:at + size]
+        if kind == b"jumb":
+            yield from _jumbf_payloads(payload, depth + 1)
+        elif kind in (b"cbor", b"json"):
+            yield kind, payload
+        at += size
+
+
+def _c2pa_properties(store: bytes) -> tuple[list[str], list[str]]:
+    """Own properties of decoded C2PA assertion maps; descriptions and opaque byte strings are never parsed as assertions."""
+    import cbor2
+    values, actions = [], []
+
+    def visit(node, depth=0):
+        if depth > 64:
+            return
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "@context":          # JSON-LD maps property names to namespaces; these are not metadata values
+                    continue
+                tag = key.rsplit(":", 1)[-1].lower() if isinstance(key, str) else ""
+                if tag == "digitalsourcetype" and isinstance(value, str):
+                    values.append(value)
+                elif tag == "action" and isinstance(value, str):
+                    actions.append(value)
+                visit(value, depth + 1)
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                visit(item, depth + 1)
+        elif isinstance(node, cbor2.CBORTag):
+            visit(node.value, depth + 1)
+
+    for kind, payload in _jumbf_payloads(store):
+        try:
+            if kind == b"cbor":
+                stream = io.BytesIO(payload)
+                node = cbor2.load(stream, max_depth=64, allow_indefinite=False, allow_duplicate_keys=False)
+                if stream.tell() != len(payload):
+                    continue
+            else:
+                node = json.loads(payload)
+            visit(node)
+        except (cbor2.CBORDecodeError, ValueError, RecursionError):
             continue
-        at, n = m.end(), m.group(1)[0] - 0x60
-        if n > 23:                                                      # 0x78..0x7b: the length follows in 1, 2, 4 or 8 bytes
-            k = 1 << (n - 24)
-            n, at = int.from_bytes(store[at:at + k], "big"), at + k
-        values.append(store[at:at + n])
-    return _terms(*(v.decode("utf-8", "replace") for v in values))
+    return _terms(*values), list(dict.fromkeys(actions))
 
 
 def _xmp_tags(blob: bytes) -> dict:
@@ -297,14 +343,14 @@ def _jumbf(blob: bytes) -> dict:
         where = f"{n} APP11 segment(s)"
     else:
         m = re.search(rb"jumb.{4}jumd", blob, re.S)      # superbox, then its description box: no chance match in pixel data
-        n, store, where = (1, blob[m.start():], "JUMBF box") if m else (0, b"", "")
+        n, store, where = (1, blob[m.start() - 4:], "JUMBF box") if m and m.start() >= 4 else (0, b"", "")
     if not n:
         return {}
     out = {"JUMBF:Manifest": f"C2PA/JUMBF manifest present ({where}{', label c2pa' if b'c2pa' in store else ''})"}
-    terms = _c2pa_terms(store)
+    terms, actions = _c2pa_properties(store)
     if terms:
         out["JUMBF:DigitalSourceType"] = "; ".join(terms)
-    if b"c2pa.opened" in store:
+    if "c2pa.opened" in actions:
         out["JUMBF:Actions"] = "c2pa.opened"
     return out
 
@@ -401,7 +447,9 @@ def source_type(raw: dict) -> tuple[dict, str | None]:
         for term in _terms(*(v if isinstance(v, list) else str(v).split(";"))):
             found.setdefault(term, src)
     terms = list(found)
-    opened = any("c2pa.opened" in str(v) for v in raw.values())
+    opened = any("c2pa.opened" in (v if isinstance(v, list) else [v])
+                 for k, v in raw.items() if (group := k.rpartition(":")[0]) in ("JUMBF", "CBOR", "JSON")
+                 and ((tag := k.rpartition(":")[2]) == "Actions" or tag.endswith("Action")))
     comp = [s for s in terms if s.startswith("composite") and s != "compositeCapture"]
     gen = [s for s in terms if s in GENERATED_TYPES]
     declared = bool(gen) and len(gen) == len(terms) and not opened

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["numpy", "pillow", "phonenumbers>=8.13", "lingua-language-detector>=2.0", "tzdata"]
+# dependencies = ["numpy", "pillow", "phonenumbers>=8.13", "lingua-language-detector>=2.0", "tzdata", "cbor2>=6.1.5,<7"]
 # ///
 """Offline checks for the newer tools. Run: uv run scripts/tests/test_tools.py
 Network-free: GeoNames- and brand-index-dependent checks are skipped when those caches are absent."""
@@ -18,6 +18,7 @@ from argparse import Namespace
 from pathlib import Path
 
 import numpy as np
+import cbor2
 from PIL import Image
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -281,16 +282,16 @@ class MetaTests(unittest.TestCase):
         return out
 
     @staticmethod
-    def c2pa_store(*items: bytes) -> bytes:
-        """jumd 'c2pa' description box, then CBOR-like assertion text."""
+    def c2pa_store(data: dict, *, jsonld: bool = False) -> bytes:
+        """jumd 'c2pa' description box, then a real CBOR or JSON assertion content box."""
         jumd = b"\x00" * 16 + b"\x03" + b"c2pa\x00"
-        return (8 + len(jumd)).to_bytes(4, "big") + b"jumd" + jumd + b"".join(items)
+        payload = json.dumps(data).encode() if jsonld else cbor2.dumps(data, canonical=True)
+        content = (8 + len(payload)).to_bytes(4, "big") + (b"json" if jsonld else b"cbor") + payload
+        return (8 + len(jumd)).to_bytes(4, "big") + b"jumd" + jumd + content
 
     @classmethod
-    def c2pa_source(cls, term: str) -> bytes:
-        """CBOR digitalSourceType key, text header before the URI, a letter-valued header after it."""
-        uri = (cls.IPTC + term).encode()
-        return b"qdigitalSourceTypex" + bytes([len(uri)]) + uri + b"msoftwareAgent"
+    def c2pa_source(cls, term: str) -> dict:
+        return {"digitalSourceType": cls.IPTC + term, "softwareAgent": "test camera"}
 
     def test_source_type_in_xmp_png_and_exiftool_lists(self):
         with tempfile.TemporaryDirectory() as d:
@@ -334,7 +335,7 @@ class MetaTests(unittest.TestCase):
             Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
 
             store, src = self.c2pa_store, self.c2pa_source
-            created = store(b"faction" + b"lc2pa.created", src("trainedAlgorithmicMedia"))
+            created = store({"actions": [{"action": "c2pa.created", **src("trainedAlgorithmicMedia")}]})
             box = (8 + len(created)).to_bytes(4, "big") + b"jumb" + created
             cut = box.index(b"digitalsourcetype/") + 9                   # the URI straddles the segment boundary
             f = self.with_segments(plain, Path(d) / "split.jpg", self.app11(created, split=cut))
@@ -347,14 +348,15 @@ class MetaTests(unittest.TestCase):
                                                              "source": "JUMBF"})
             self.assertNotIn("C2PA", dg["provenance"])
             # an AI composite on an opened ingredient: the composite term wins, generation is not declared
-            edited = store(b"lc2pa.opened", src("trainedAlgorithmicMedia"), src("compositeWithTrainedAlgorithmicMedia"))
+            edited = store({"actions": [{"action": "c2pa.opened", **src("trainedAlgorithmicMedia")},
+                                        {"action": "c2pa.edited", **src("compositeWithTrainedAlgorithmicMedia")}]})
             f = self.with_segments(plain, Path(d) / "edited.jpg", self.app11(edited))
             prov = meta.digest(f, meta.pillow_fallback(f))["provenance"]
             self.assertEqual(prov["generated"], {"declared": False, "term": "compositeWithTrainedAlgorithmicMedia", "composite": True,
                                                  "source": "JUMBF"})
             self.assertIn("AI-edited real photo", prov["WARNING"])
             # generation inside a file made from an opened ingredient: not a declaration, and not called real either
-            opened = store(b"lc2pa.opened", src("trainedAlgorithmicMedia"))
+            opened = store({"actions": [{"action": "c2pa.opened", **src("trainedAlgorithmicMedia")}]})
             f = self.with_segments(plain, Path(d) / "opened.jpg", self.app11(opened))
             prov = meta.digest(f, meta.pillow_fallback(f))["provenance"]
             self.assertEqual((prov["generated"]["declared"], prov["generated"]["composite"], prov["generated"]["term"]),
@@ -407,7 +409,7 @@ class MetaTests(unittest.TestCase):
             for f in (comment, jpeg("described.jpg", described), png("described.png", "XML:com.adobe.xmp", described),
                       jpeg("foreign.jpg", self.xmp(f'<o:DigitalSourceType xmlns:o="http://example.com/other/">{uri}</o:DigitalSourceType>'))):
                 self.assertEqual(generated(f), unread, f.name)
-            noted = self.c2pa_store(b"lc2pa.created", b"kdescription" + bytes([0x78, len(note)]) + note.encode())
+            noted = self.c2pa_store({"actions": [{"action": "c2pa.created", "description": note}]})
             f = self.with_segments(plain, Path(d) / "noted.jpg", self.app11(noted))
             raw = meta.pillow_fallback(f)
             self.assertNotIn("JUMBF:DigitalSourceType", raw)
@@ -420,9 +422,68 @@ class MetaTests(unittest.TestCase):
             for f in (jpeg("ext.jpg", ext), jpeg("bare.jpg", bare)):
                 self.assertEqual(generated(f), {**declared, "source": "XMP"}, f.name)
             self.assertEqual(generated(png("ext.png", "XML:com.adobe.xmp", ext)), {**declared, "source": "PNG"})
-            jsonld = self.c2pa_store(b'{"Iptc4xmpExt:DigitalSourceType": "' + uri.encode() + b'"}')
+            jsonld = self.c2pa_store({"Iptc4xmpExt:DigitalSourceType": uri}, jsonld=True)
             f = self.with_segments(plain, Path(d) / "jsonld.jpg", self.app11(jsonld))
             self.assertEqual(generated(f), {**declared, "source": "JUMBF"})
+
+    def test_c2pa_descriptions_never_supply_source_types_or_actions(self):
+        uri = self.IPTC + "trainedAlgorithmicMedia"
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+            example = 'Documentation example: {"digitalSourceType":"' + uri + '"}'
+            for jsonld in (False, True):
+                store = self.c2pa_store({"actions": [{"action": "c2pa.created", "description": example}]}, jsonld=jsonld)
+                f = self.with_segments(plain, Path(d) / f"description-{jsonld}.jpg", self.app11(store))
+                raw = meta.pillow_fallback(f)
+                self.assertNotIn("JUMBF:DigitalSourceType", raw)
+                self.assertFalse(meta.source_type(raw)[0]["declared"])
+                store = self.c2pa_store({"actions": [{"action": "c2pa.created", "digitalSourceType": uri,
+                                                       "description": "Documentation mentions c2pa.opened."}]}, jsonld=jsonld)
+                f = self.with_segments(plain, Path(d) / f"created-{jsonld}.jpg", self.app11(store))
+                raw = meta.pillow_fallback(f)
+                self.assertNotIn("JUMBF:Actions", raw)
+                self.assertTrue(meta.source_type(raw)[0]["declared"])
+            # ExifTool -G1 reports CBOR/JSON action fields, not a free-text mention of an action.
+            raw = {"ExifTool:ExifToolVersion": 13.1, "CBOR:ActionsDigitalSourceType": uri,
+                   "CBOR:ActionsAction": ["c2pa.created"], "CBOR:ActionsDescription": "c2pa.opened"}
+            self.assertTrue(meta.source_type(raw)[0]["declared"])
+            raw["CBOR:ActionsAction"] = ["c2pa.opened", "c2pa.edited"]
+            self.assertFalse(meta.source_type(raw)[0]["declared"])
+
+    def test_c2pa_jsonld_context_is_not_a_source_value(self):
+        uri = self.IPTC + "trainedAlgorithmicMedia"
+        context = {"DigitalSourceType": "http://iptc.org/std/Iptc4xmpExt/2008-02-29/DigitalSourceType"}
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+            for name, data, declared in (
+                    ("property", {"@context": context, "DigitalSourceType": uri}, True),
+                    ("description", {"@context": context, "description": uri}, False),
+                    ("context-only", {"@context": {"DigitalSourceType": uri}}, False)):
+                store = self.c2pa_store(data, jsonld=True)
+                f = self.with_segments(plain, Path(d) / f"{name}.jpg", self.app11(store))
+                raw = meta.pillow_fallback(f)
+                gen = meta.source_type(raw)[0]
+                self.assertEqual(gen["declared"], declared, name)
+                self.assertEqual(gen["term"], "trainedAlgorithmicMedia" if declared else None, name)
+                self.assertEqual(raw.get("JUMBF:DigitalSourceType"), "trainedAlgorithmicMedia" if declared else None, name)
+
+    def test_c2pa_nested_content_and_unreadable_assertions(self):
+        store = self.c2pa_store({"actions": [{"action": "c2pa.created", **self.c2pa_source("algorithmicMedia")}]})
+        nested = (8 + len(store)).to_bytes(4, "big") + b"jumb" + store
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+            f = self.with_segments(plain, Path(d) / "nested.jpg", self.app11(nested))
+            self.assertTrue(meta.source_type(meta.pillow_fallback(f))[0]["declared"])
+            for name, data in (("truncated", store[:-5]), ("compressed", store.replace(b"cbor", b"brob", 1)),
+                               ("remote", self.c2pa_store({"url": "https://example.org/manifest"}))):
+                f = self.with_segments(plain, Path(d) / f"{name}.jpg", self.app11(data))
+                raw = meta.pillow_fallback(f)
+                self.assertIn("JUMBF:Manifest", raw)
+                self.assertNotIn("JUMBF:DigitalSourceType", raw)
+                self.assertIn("C2PA present, source type unread", meta.digest(f, raw)["provenance"]["C2PA"])
 
     def test_video_time_prefers_creation_date_and_hedges_container_time(self):
         with tempfile.TemporaryDirectory() as d:

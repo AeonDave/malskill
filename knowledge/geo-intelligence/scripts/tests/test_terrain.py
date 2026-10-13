@@ -385,6 +385,19 @@ class CamLevelTests(unittest.TestCase):
             self.assertLess(level["n_cams"], free["n_cams"])
             self.assertEqual(level["params"]["cam_level_m"], 5)
             self.assertGreater(level["n_cams"], 0)                                      # the lake side still scores
+            err = io.StringIO()                                                          # the shore run keeps most positions: no warning
+            with patch.object(terrain, "DEM", ShoreDEM), patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+                terrain.main()
+            self.assertLess(level["n_skipped"]["off_level"], level["n_cams"])
+            self.assertNotIn("rerun with a larger --cam-level", err.getvalue())
+            above = list(argv)                                                           # level taken 200 m up the slope (60 m above the
+            above[above.index("--at") + 1] = f"{LAT0},{LON0 - 200 / (111320 * math.cos(math.radians(LAT0)))}"   # flat side): most positions go
+            err = io.StringIO()
+            with patch.object(terrain, "DEM", ShoreDEM), patch.object(sys, "argv", above), contextlib.redirect_stderr(err):
+                terrain.main()
+            tight = json.loads(out.read_text(encoding="utf-8"))
+            self.assertGreaterEqual(tight["n_skipped"]["off_level"], tight["n_cams"])
+            self.assertIn("rerun with a larger --cam-level", err.getvalue())
 
 
 class FocalTests(unittest.TestCase):

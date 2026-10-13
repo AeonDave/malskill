@@ -1302,6 +1302,10 @@ def _cmd_fit(args) -> None:
                  if skipped["no_peak"] else ""), file=sys.stderr)
     if skipped["missing_dem"]:
         print(f"WARNING: {skipped['missing_dem']} camera positions not scored because their sight lines touch missing tiles", file=sys.stderr)
+    if skipped["off_level"] and skipped["off_level"] >= len(recs):        # the level filter decided the ranking more than the skyline did
+        print(f"WARNING: --cam-level {args.cam_level:g} dropped {skipped['off_level']} camera positions (ground more than {args.cam_level:g} m "
+              f"from the line's level) and kept {len(recs)}. A lake shore keeps a few metres; a camera on a valley floor, a meadow or a road "
+              f"above the river stands higher: rerun with a larger --cam-level.", file=sys.stderr)
     for x in clusters_out[:min(args.top, 10)]:
         b = x["best"]
         if b:

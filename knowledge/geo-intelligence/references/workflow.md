@@ -115,11 +115,12 @@ Habits that keep it honest and useful:
 
 ## Clock
 
-Every analysis starts in Quick mode: about 10 minutes of tools after the gut call, then the rule in SKILL.md
-'Session and speed'. Deep mode is entered on the user's request or when the Quick result is uncertain (the
-`board.py check` verdict, a level the user named not reached, decisive checks in contradiction), and it continues
-the same session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before widening,
-and never start a whole-town ranking without first trying to name the junction from text and road geometry.
+Every analysis begins with the lightweight Quick phase; transitions are in SKILL.md "Session and speed".
+Quick has no fixed duration. With an explicit Quick request, stop before heavy analysis and use the operator
+reason for required checks skipped. Otherwise continue into Deep automatically whenever a feasible route
+can still locate or refine the position; a certain country or city alone does not end that search. Keep the
+same session. Every 15 minutes reread saved result lists before widening, and try to name the junction from
+text and road geometry before a whole-town ranking.
 
 Long tools are bounded, never awaited open-ended: `terrain.py fit` stops at `--budget-min` (20 min) with a partial
 ranking. While scoring it rewrites fit.json at most every 30 s and after the last cluster (`status` running, with the
@@ -176,7 +177,7 @@ rank, sheet, evidence, terrain, pose and mark files, plus fit outputs, street ra
 recognised by content; recon's first pass (its outputs beside any `recon.json`, or under `recon/` mid-run) and
 detect.py sheets never count; `finish` warns when it is zero. Add `--radius-m <m>` and
 `--heading <deg>` when the answer has them, and `--taken <YYYY | YYYY-MM | YYYY-MM-DD[THH:MM] | A..B>` with
-`--taken-confidence` and `--taken-basis` (the session records them; without `--taken`, `finish` warns); `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
+`--taken-confidence` and `--taken-basis` (use `unknown` when the capture date is undetermined; omitting `--taken` is refused); `session.json` stores both in the result and the `report.md` footer prints them. The folder becomes
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and
 result; `report.md` gets the final path and timestamps appended. Use the printed paths from then on.
 
