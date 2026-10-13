@@ -74,7 +74,7 @@ traffic → infrastructure → climate and phenology → terrain and water → u
 - Points to: a city-level candidate list (green-family taxis are common in several Sichuan cities); build the list live, it changes over the years.
 - Strength: weak (single source); medium together with bus livery and terrain.
 - Counterexamples: one city often runs several colours and changes them by generation; Chongqing, Xi'an, Changzhi and other cities also run green-family taxis; ride-hailing cars do not count.
-- Verify: `revimg.py --query "<城市> 出租车 颜色" --out-dir q/` for each candidate city.
+- Verify: `revimg.py --query "<城市> 出租车 颜色" --country CN --out-dir q/` for each candidate city.
 - Source: general knowledge (single source).
 
 ### Bus livery (roof and body, readable even from above)
@@ -82,7 +82,7 @@ traffic → infrastructure → climate and phenology → terrain and water → u
 - Points to: a city fingerprint (narrow to a few cities with taxis first, then separate them by bus livery). Inside a municipality or a large prefecture-level city it separates districts and counties: outlying districts run different bus companies with very different liveries.
 - Strength: medium (can narrow a city to one or two districts); strong when route signs or company names are visible.
 - Counterexamples: several liveries coexist and change by generation; ad wraps hide the base colours; cross-district routes run into other districts; absence from the first result pages proves nothing.
-- Verify: confirm the urban-core livery first; if it does not match, `revimg.py --query "<城市> <颜色> 公交" --out-dir q/`, read district names from route signs and company names in the results, resolve each with `poi.py` before using it, then compare rear ends and waistlines district by district ([Discriminating tests inside a city](#discriminating-tests-inside-a-city)).
+- Verify: confirm the urban-core livery first; if it does not match, `revimg.py --query "<城市> <颜色> 公交" --country CN --out-dir q/`, read district names from route signs and company names in the results, resolve each with `poi.py` before using it, then compare rear ends and waistlines district by district ([Discriminating tests inside a city](#discriminating-tests-inside-a-city)).
 - Source: (unverified; two independent observations).
 
 ## Infrastructure
@@ -225,7 +225,7 @@ traffic → infrastructure → climate and phenology → terrain and water → u
 
 Livery is the cheap test `board.py next` proposes when several districts of one city still fit:
 
-- `revimg.py --query "<城市> <颜色> 公交" --out-dir q/` (query: <city> <colour> bus); read route signs and company names in the results.
+- `revimg.py --query "<城市> <颜色> 公交" --country CN --out-dir q/` (query: <city> <colour> bus); read route signs and company names in the results.
 - Resolve each place name to a district with `poi.py` before using it; a bus from district A is not a clue for district B.
 - Compare the rear end and waistline stripe district by district.
 
@@ -245,6 +245,6 @@ Working rules:
 
 ## Searching and maps in China
 
-- Chinese keyword search (Bing China, Baidu and Sogou Images): [search.md, Chinese keyword search](../search.md#chinese-keyword-search). Where to search by object type (Douyin, Xiaohongshu, Weibo, Ctrip reviews, property-site albums): [search.md §2](../search.md#2-choose-where-to-search-by-object-type). Local feeds and check-in spots: [search.md §4](../search.md#4-social-media-and-check-in-spot-search).
+- Chinese keyword search (Baidu and Sogou Images, `--country CN`): [search.md, Keyword image search on the local engines](../search.md#keyword-image-search-on-the-local-engines). Where to search by object type (Douyin, Xiaohongshu, Weibo, Ctrip reviews, property-site albums): [search.md §2](../search.md#2-choose-where-to-search-by-object-type). Local feeds and check-in spots: [search.md §4](../search.md#4-social-media-and-check-in-spot-search).
 - Street-level imagery is Baidu (`baidu_pano.py`); Google has only a few tourist sites ([streetview.md](streetview.md)).
 - Chinese web maps use GCJ-02 (Amap, Tencent, 360 Maps) or BD-09 (Baidu): report WGS84 and GCJ-02 and convert with `geo.py convert` ([data-sources.md](../data-sources.md)).

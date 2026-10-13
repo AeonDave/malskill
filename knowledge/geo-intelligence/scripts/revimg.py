@@ -3,10 +3,10 @@
 # requires-python = ">=3.10"
 # dependencies = ["playwright", "pillow"]
 # ///
-"""Reverse image search + Chinese keyword search: headless Chrome or Chromium opens the search engines, saves result screenshots, extracts guess text and links.
+"""Reverse image search + keyword image search on the local engines: headless Chrome or Chromium opens the search engines, saves result screenshots, extracts guess text and links.
 
   revimg.py <image> [<image> ...] --out-dir rev/ [--engines baidu,yandex]      reverse image search
-  revimg.py --query "<keywords>" [--query ...] --out-dir q/ [--text-engines bing,baiduimg,sogouimg]   keyword search
+  revimg.py --query "<keywords>" [--query ...] --country XX --out-dir q/ [--text-engines naverimg,daumimg]   keyword search
 
 Reverse image search:
 - baidu: the main engine for China. Best coverage of Chinese web pages, Weibo, Baijiahao, e-commerce and scenic-area content; gives a one-line "图中可能是…" ("the image may show…").
@@ -15,10 +15,13 @@ Reverse image search:
 - yandex: supplement for buildings, street scenes and foreign content; gives "Image appears to contain" tags and source sites.
 - Google Lens asks for human verification from a server egress, so the script doesn't do it; when you have a browser-control tool (e.g. Claude in Chrome), search in the user's own browser, see references/search.md.
 
-Keyword search (use when general web search tools often fail on Chinese domestic content):
-- bing: Bing China web results (title + link).
-- baiduimg / sogouimg: result-page screenshots from Baidu Images and Sogou Images, for photos of similar scenes.
-- Baidu web search pops up a security check, not done.
+Keyword search (general web search tools rarely index a country's local web):
+- --country XX (ISO2) picks the image engines that index that country's web (table under --country below and in
+  references/search.md); --text-engines overrides it.
+- Image engines: naverimg, daumimg, yahoojpimg, yandeximg, bingimg, googleimg, baiduimg, sogouimg. Each query saves up to
+  two 3000-px screenshots of the result grid (`qNN_<engine>.png`, plus `qNN_<engine>_2.png` when the page loads a second batch).
+- bing: Bing China web results (title + link). Baidu web search pops up a security check, not done.
+- A CAPTCHA, consent or region-block page is reported as blocked, never bypassed; that engine is skipped for the rest of the run.
 
 Each item outputs `<name>_<engine>.png` (result-page screenshot, always open it) and `.json` (guess text + links; Baidu also has `similar` and the similar-images contact sheet).
 Before reverse image search, use `imgprep.py variants` to make tight-crop / flipped / color-cast-removed versions and search each one — no hit on the full image is normal.
@@ -29,7 +32,7 @@ Examples:
   revimg.py photo.jpg --out-dir rev/
   revimg.py v/left_crop.jpg v/left_flip.jpg --out-dir rev/ --engines baidu
   revimg.py photo.jpg --out-dir rev/ --engines yandex
-  revimg.py --query "蓝色拱形顶棚 人行天桥" --query "<city> 出租车 颜色" --out-dir q/   (queries in Chinese: blue arched canopy footbridge; <city> taxi color)
+  revimg.py --query "蓝色拱形顶棚 人行天桥" --query "<city> 出租车 颜色" --country CN --out-dir q/   (queries in Chinese: blue arched canopy footbridge; <city> taxi color)
 """
 from __future__ import annotations
 
@@ -37,24 +40,51 @@ import argparse
 from geolib.browser import launch_browser
 from geolib.net import fetch_bytes, PROXY_HELP
 import asyncio
+import html
 import io
 import json
 import os
+import re
 import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
+# The engine's own hosts: links there are not results, except posts and articles (path two levels deep) on KEEP hosts
 OWN = {"baidu": ("baidu.com", "bdimg.com", "bdstatic.com"), "yandex": ("yandex.", "ya.ru", "yastatic.net"),
        "bing": ("bing.com", "bing.net", "microsoft.com"), "baiduimg": ("baidu.com", "bdimg.com", "bdstatic.com"),
-       "sogouimg": ("sogou.com", "sogoucdn.com")}
+       "sogouimg": ("sogou.com", "sogoucdn.com"), "naverimg": ("naver.com", "naver.net", "pstatic.net"),
+       "daumimg": ("daum.net", "kakao.com", "daumcdn.net", "melon.com", "www.tistory.com"),
+       "yahoojpimg": ("yahoo.co.jp", "yahoo-net.jp", "yimg.jp", "lycorp.co.jp"), "googleimg": ("google.", "gstatic.com")}
+OWN["yandeximg"], OWN["bingimg"] = OWN["yandex"], OWN["bing"]
+KEEP = {"naverimg": ("blog.naver.com", "cafe.naver.com", "post.naver.com", "news.naver.com"),
+        "daumimg": ("v.daum.net", "cafe.daum.net")}
 BAIDU_REFUSED = ("功能优化中", "建议您重新上传其他图片")
 # www.bing.com: cn.bing.com redirects non-China egress to the www homepage and drops the /search path (empty page, no error);
 # inside China www.bing.com redirects to cn.bing.com keeping the path. No mkt=zh-CN: that market page answers "no results"
 # from outside China; the zh-CN context locale already gives the Chinese UI and ranking
 TEXT_URL = {"bing": "https://www.bing.com/search?q={q}", "baiduimg": "https://image.baidu.com/search/index?tn=baiduimage&word={q}",
-            "sogouimg": "https://pic.sogou.com/pics?query={q}"}
+            "sogouimg": "https://pic.sogou.com/pics?query={q}",
+            "naverimg": "https://search.naver.com/search.naver?where=image&query={q}",
+            "daumimg": "https://search.daum.net/search?w=img&q={q}",
+            "yahoojpimg": "https://search.yahoo.co.jp/image/search?p={q}&ei=UTF-8",
+            "yandeximg": "https://yandex.com/images/search?text={q}",
+            "bingimg": "https://www.bing.com/images/search?q={q}",
+            "googleimg": "https://www.google.com/search?q={q}&udm=2"}
+TEXT_LOCALE = {"bing": "zh-CN", "baiduimg": "zh-CN", "sogouimg": "zh-CN", "naverimg": "ko-KR", "daumimg": "ko-KR",
+               "yahoojpimg": "ja-JP", "yandeximg": "ru-RU"}                  # the rest: en-US
+# --country → the image engines that index that country's web; references/search.md holds the operator's table
+COUNTRY_ENGINES = {"KR": ("naverimg", "daumimg"), "JP": ("yahoojpimg", "yandeximg", "googleimg"), "CN": ("baiduimg", "sogouimg"),
+                   "RU": ("yandeximg", "googleimg"), "BY": ("yandeximg", "googleimg"), "KZ": ("yandeximg", "googleimg")}
+DEFAULT_ENGINES = ("bingimg", "yandeximg")
+# A result tile or row: Bing's "no results" page has none (its #b_results container is still there)
+RESULT_ITEM = {"bing": "li.b_algo", "bingimg": "a.iusc"}
+# Verification, consent and region walls: (where, marker, what); "url" is the host + path, "text" the page's first 400 characters
+BLOCKS = (("url", "captcha", "a CAPTCHA"), ("url", "/sorry/", "a CAPTCHA"), ("url", "consent.", "a consent page"),
+          ("text", "安全验证", "a security check"), ("text", "unusual traffic from your computer network", "a CAPTCHA"),
+          ("text", "欧州経済領域", "a region block (Yahoo! JAPAN is not served in the EEA and the UK)"))
+SLICE = 3000            # px per result screenshot: thumbnails stay legible once the image is scaled down for reading
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 
 
@@ -65,17 +95,63 @@ async def _collect(page, engine: str) -> dict:
         .filter(x => x.t.length >= 4)""")
     seen, out = set(), []
     for ln in links:
-        host = urlparse(ln["h"]).netloc
-        if any(o in host for o in OWN[engine]) or ln["h"] in seen:
+        u = urlparse(ln["h"])
+        host = u.netloc
+        kept = host in KEEP.get(engine, ()) and len([s for s in u.path.split("/") if s]) >= 2
+        if (any(o in host for o in OWN[engine]) and not kept) or ln["h"] in seen:
             continue
         seen.add(ln["h"])
-        out.append({"title": ln["t"], "url": ln["h"], "site": host})
+        out.append({"title": html.unescape(ln["t"]), "url": ln["h"], "site": host})
     lines = [s.strip() for s in text.splitlines() if s.strip()]
     guess = [s for s in lines if s.startswith("图中可能是") or "appears to contain" in s.lower()]
     if engine == "yandex" and guess:            # the tags are the few lines right after "appears to contain"
         i = lines.index(guess[0])
         guess = [guess[0] + ": " + " / ".join(lines[i + 1:i + 8])]
     return {"url": page.url, "guess": guess, "links": out[:25], "text_head": "\n".join(lines[:60])[:2500]}
+
+
+def query_url(engine: str, query: str) -> str:
+    return TEXT_URL[engine].format(q=quote(query, safe=""))
+
+
+def pick_text_engines(country: str | None, explicit: str | None) -> list[str]:
+    """An explicit --text-engines list wins; otherwise the country's engines, or the default pair."""
+    if explicit:
+        return [e for e in explicit.split(",") if e in TEXT_URL]
+    return list(COUNTRY_ENGINES.get((country or "").upper(), DEFAULT_ENGINES))
+
+
+def _blocked(url: str, text: str) -> str | None:
+    u = urlparse(url)
+    where = {"url": (u.netloc + u.path).lower(), "text": text}
+    return next((what for kind, marker, what in BLOCKS if marker in where[kind]), None)
+
+
+async def _dismiss_cookies(page) -> None:
+    for label in ("Allow essential cookies", "Only essential", "Accept essential", "Allow all", "Accept all"):
+        try:                                            # a cookie popup covers part of the screenshot
+            btn = page.get_by_role("button", name=label)
+            if await btn.count():
+                await btn.first.click(timeout=2000)
+                await page.wait_for_timeout(800)
+                return
+        except Exception:  # noqa: BLE001
+            continue
+
+
+async def _grid_shots(page, shot: Path) -> list[str]:
+    """Scrolls two slices down, which loads an infinite-scroll second batch, then back up, which loads its lazy
+    thumbnails; saves one or two slices."""
+    steps = list(range(0, 2 * SLICE + 1, 1000))
+    for y in steps + steps[::-1]:
+        await page.evaluate(f"window.scrollTo(0, {y})")
+        await page.wait_for_timeout(400)
+    await page.wait_for_timeout(1000)
+    height = await page.evaluate("document.documentElement.scrollHeight")
+    paths = [shot] + ([shot.with_name(shot.stem + "_2.png")] if height > SLICE + 500 else [])
+    for i, path in enumerate(paths):
+        await page.screenshot(path=str(path), full_page=True, clip={"x": 0, "y": i * SLICE, "width": 1400, "height": SLICE})
+    return [str(p) for p in paths]
 
 
 def _site(url: str) -> str:
@@ -196,53 +272,55 @@ async def _yandex(ctx, img: Path, shot: Path) -> dict:
         if "url=" in page.url or "cbir_id" in page.url:
             break
     await page.wait_for_timeout(4500)
-    for label in ("Allow essential cookies", "Only essential", "Accept essential", "Allow all", "Accept all"):
-        try:                                            # the cookie popup covers the bottom right of the screenshot
-            btn = page.get_by_role("button", name=label)
-            if await btn.count():
-                await btn.first.click(timeout=2000)
-                await page.wait_for_timeout(800)
-                break
-        except Exception:  # noqa: BLE001
-            continue
+    await _dismiss_cookies(page)
     await page.screenshot(path=str(shot), full_page=True, clip={"x": 0, "y": 0, "width": 1400, "height": 3200})
     res = await _collect(page, "yandex")
     await page.close()
     return res
 
 
-async def _text(ctx, engine: str, query: str, shot: Path) -> dict:
-    from urllib.parse import quote
+async def _give_up(page, shot: Path, res: dict) -> dict:
+    await page.screenshot(path=str(shot))
+    await page.close()
+    return res
 
+
+async def _text(ctx, engine: str, query: str, shot: Path) -> dict:
     page = await ctx.new_page()
-    await page.goto(TEXT_URL[engine].format(q=quote(query)), wait_until="domcontentloaded", timeout=60000)
+    await page.goto(query_url(engine, query), wait_until="domcontentloaded", timeout=60000)
     await page.wait_for_timeout(3500)
     head = await page.evaluate("document.body ? document.body.innerText.slice(0, 400) : ''")
-    if "安全验证" in head or "captcha" in page.url.lower():
-        await page.screenshot(path=str(shot))
-        await page.close()
-        return {"error": "asked for human verification (don't bypass it); switch to another engine"}
+    what = _blocked(page.url, head)
+    if what:
+        return await _give_up(page, shot, {"error": f"{engine} answered with {what} (not bypassed, not retried this run): use the "
+                                                    "other engines, or --proxy with an exit in the engine's country", "blocked": True})
+    await _dismiss_cookies(page)
     if engine == "bing":
         try:                                            # Bing lands on an rdr=1 redirect page first; results render a few seconds later
             await page.wait_for_selector("li.b_algo", timeout=15000)
-        except Exception:  # noqa: BLE001 - zero results or a changed layout: judged below from #b_results
+        except Exception:  # noqa: BLE001 - zero results or a changed layout: judged below
             pass
-    await page.screenshot(path=str(shot), full_page=True, clip={"x": 0, "y": 0, "width": 1400, "height": 3000})
-    if engine == "bing":
         if not await page.evaluate("!!document.querySelector('#b_results')"):
-            await page.close()
-            return {"error": f"results page not reached (landed on {page.url}); check the screenshot"}
-        rows = await page.evaluate("""() => [...document.querySelectorAll('li.b_algo')].map(li => ({
-            t: (li.querySelector('h2') || {}).innerText || '',
-            h: (li.querySelector('h2 a') || {}).href || '',
-            site: (li.querySelector('cite') || {}).innerText || '',
-            s: ((li.querySelector('.b_caption p, .b_lineclamp2, .b_lineclamp3, .b_paractl') || {}).innerText || '').slice(0, 200)}))""")
-        links = [{"title": r["t"].strip(), "url": r["h"], "site": r["site"].strip()[:80], "snippet": r["s"].strip()} for r in rows if r["t"]]
-        res = {"url": page.url, "guess": [], "links": links[:20], "text_head": ""}
-    else:
+            return await _give_up(page, shot, {"error": f"results page not reached (landed on {page.url}); check the screenshot"})
+    if engine in RESULT_ITEM and not await page.query_selector(RESULT_ITEM[engine]):
+        return await _give_up(page, shot, {"error": f"no results for this query on {engine}: not evidence that nothing matches "
+                                                    "(Bing note in references/search.md); use the other engines"})
+    if engine != "bing":
+        shots = await _grid_shots(page, shot)
         res = await _collect(page, engine)
+        if len(shots) > 1:
+            res["screenshot_2"] = shots[1]
+        await page.close()
+        return res
+    await page.screenshot(path=str(shot), full_page=True, clip={"x": 0, "y": 0, "width": 1400, "height": SLICE})
+    rows = await page.evaluate("""() => [...document.querySelectorAll('li.b_algo')].map(li => ({
+        t: (li.querySelector('h2') || {}).innerText || '',
+        h: (li.querySelector('h2 a') || {}).href || '',
+        site: (li.querySelector('cite') || {}).innerText || '',
+        s: ((li.querySelector('.b_caption p, .b_lineclamp2, .b_lineclamp3, .b_paractl') || {}).innerText || '').slice(0, 200)}))""")
+    links = [{"title": r["t"].strip(), "url": r["h"], "site": r["site"].strip()[:80], "snippet": r["s"].strip()} for r in rows if r["t"]]
     await page.close()
-    return res
+    return {"url": page.url, "guess": [], "links": links[:20], "text_head": ""}
 
 
 async def run(images: list[Path], engines: list[str], out_dir: Path, proxy: str | None,
@@ -259,15 +337,29 @@ async def run(images: list[Path], engines: list[str], out_dir: Path, proxy: str 
 
         if queries:
             b = await browser()
-            ctx = await b.new_context(viewport={"width": 1400, "height": 1000}, locale="zh-CN")
+            ctxs: dict = {}
+            blocked: set[str] = set()
             for k, q in enumerate(queries):
                 for eng in text_engines or []:
                     shot = out_dir / f"q{k + 1:02d}_{eng}.png"
-                    try:
-                        res = await _text(ctx, eng, q, shot)
-                    except Exception as e:  # noqa: BLE001
-                        res = {"error": str(e)[:300]}
-                    res.update({"query": q, "engine": eng, "screenshot": str(shot), "image": f"q{k + 1:02d}"})
+                    for old in (shot, shot.with_name(shot.stem + "_2.png")):    # an earlier call's query had these names
+                        old.unlink(missing_ok=True)
+                    res = {"image": f"q{k + 1:02d}"}
+                    if eng in blocked:              # a wall stays up for this session; asking again only hardens it
+                        res["error"] = f"skipped: {eng} was blocked earlier in this run (not retried)"
+                    else:
+                        try:
+                            if eng not in ctxs:
+                                ctxs[eng] = await b.new_context(viewport={"width": 1400, "height": 1000},
+                                                                locale=TEXT_LOCALE.get(eng, "en-US"))
+                            res.update(await _text(ctxs[eng], eng, q, shot))
+                        except Exception as e:  # noqa: BLE001
+                            res["error"] = str(e)[:300]
+                        if shot.exists():
+                            res["screenshot"] = str(shot)
+                        if res.get("blocked"):
+                            blocked.add(eng)
+                    res.update({"query": q, "engine": eng})
                     (out_dir / f"q{k + 1:02d}_{eng}.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
                     results.append(res)
             await b.close()
@@ -297,7 +389,9 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, required=True)
     ap.add_argument("--engines", default="baidu,yandex", help="reverse image search engines")
     ap.add_argument("--query", action="append", help="keyword search, repeatable")
-    ap.add_argument("--text-engines", default="bing,baiduimg,sogouimg", help="keyword search engines")
+    ap.add_argument("--country", metavar="XX", help="ISO2 country of the --query words: picks the engines that index its web ("
+                    + "; ".join(f"{c} {','.join(e)}" for c, e in COUNTRY_ENGINES.items()) + f"; other or none {','.join(DEFAULT_ENGINES)})")
+    ap.add_argument("--text-engines", help="keyword search engines, comma-separated; overrides --country: " + ",".join(TEXT_URL))
     ap.add_argument("--proxy", default=os.environ.get("GEO_PROXY"), help=PROXY_HELP)
     ap.add_argument("--exclude", help="comma-separated exclude words: results whose title contains them are not listed (e.g. to hide the puzzle's source in blind tests)")
     ap.add_argument("--similar-pages", type=int, default=2, help="how many more pages of Baidu similar images to load by scrolling past the first (about 30 per page)")
@@ -309,15 +403,21 @@ def main() -> None:
     missing = [str(p) for p in args.images if not p.is_file()]
     if missing:
         ap.error("image not found: " + ", ".join(missing))
+    if args.country and not re.fullmatch(r"[A-Za-z]{2}", args.country):
+        ap.error(f"--country takes an ISO2 code (KR, JP, RU…), not {args.country!r}")
     engines = [e for e in args.engines.split(",") if e in ("baidu", "yandex")]
-    text_engines = [e for e in args.text_engines.split(",") if e in TEXT_URL]
+    text_engines = pick_text_engines(args.country, args.text_engines)
+    if args.query and all(len(q.split()) > 3 for q in args.query):   # long conjunctions mixing the anchor with the foreground found nothing
+        print("Note: every --query has more than 3 words. Start with the settled town and the anchor's noun (2-3 words), then add one "
+              "attribute per further --query; never a foreground feature.", file=sys.stderr)
     for r in asyncio.run(run(args.images, engines, args.out_dir, args.proxy, args.query, text_engines,
                              args.similar_pages, args.similar_sheet)):
         head = f"[{r['engine']}] {r['query'] if r.get('query') else Path(r['image']).name}"
+        shots = "  screenshot " + "  ".join(r[k] for k in ("screenshot", "screenshot_2") if k in r) if "screenshot" in r else ""
         if r.get("error"):
-            print(f"{head}  error: {r['error']}  screenshot {r['screenshot']}")
+            print(f"{head}  error: {r['error']}{shots}")
             continue
-        print(f"{head}  screenshot {r['screenshot']}")
+        print(f"{head}{shots}")
         for g in r["guess"][:2]:
             print(f"   guess: {g[:160]}")
         links = [ln for ln in r["links"] if not any(w in ln["title"] for w in excl)]

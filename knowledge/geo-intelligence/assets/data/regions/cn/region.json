@@ -48,7 +48,7 @@
   "datum": "GCJ-02 on Chinese web maps; report WGS84 and GCJ-02 (geo.py convert)"
  },
  "tips": {
-  "livery": "bus/taxi livery → `revimg.py --query \"<城市> <颜色> 公交\"` (query in Chinese: <city> <color> bus); read route signs from the results, compare the rear waistline stripe district by district",
+  "livery": "bus/taxi livery → `revimg.py --query \"<城市> <颜色> 公交\" --country CN` (query in Chinese: <city> <color> bus); read route signs from the results, compare the rear waistline stripe district by district",
   "municipal": "guardrails, street lights, bus stops, curb styles → `baidu_pano.py sample --bbox <candidate built-up area> --n 24`, one contact sheet per candidate"
  }
 }

@@ -82,20 +82,35 @@ the actual place often sits further down, and a lookalike can absorb an hour of 
    and drop it with a written reason before going deep on any one.
 4. Stalled for about 15 minutes on one lead? Return to the saved lists and the table before searching wider.
 
-### Chinese keyword search
+### Keyword image search on the local engines
 
-General web search tools are often ineffective for Chinese content inside China. Use the script:
+General web search tools rarely index a country's local web (blogs, cafés, local news); its own engines do.
+`--country` picks them; `--text-engines a,b` overrides the pick. All queries go in one call (repeat `--query`): a
+blocked engine is skipped only within a call, and file numbers restart at `q01` with each call, so a later call takes a
+new `--out-dir`:
 
 ```bash
-uv run scripts/revimg.py --query "蓝色拱形顶棚 人行天桥 高架" --query "<city> 出租车 颜色" --out-dir q/
+uv run scripts/revimg.py --query "<town> <noun>" --query "<town> <noun> <colour>" --country XX --out-dir q/
 ```
 
-(Queries in Chinese: "blue arched canopy, pedestrian bridge, elevated road"; "<city> taxi color".)
+| `--country` | Engines | Notes |
+|---|---|---|
+| KR | `naverimg`, `daumimg` | |
+| JP | `yahoojpimg`, `yandeximg`, `googleimg` | Yahoo! JAPAN is not served in the EEA and the UK |
+| CN | `baiduimg`, `sogouimg` | `--text-engines bing` gives Bing China web results (title + link) |
+| RU, BY, KZ | `yandeximg`, `googleimg` | |
+| any other, none | `bingimg`, `yandeximg` | |
 
-`revimg.py --query` covers Chinese engines only. Elsewhere use the general web and image search tools, with
-queries in the local language as well as English.
-
-Bing China gives web results (title + link); Baidu Images and Sogou Images give result-page screenshots (look at photos of similar scenes). For long descriptive queries ("楼顶操场 学校" rooftop playground school, "黄色公交" yellow bus) Bing mostly returns travel-guide pages; look directly at the Baidu Images screenshot. Baidu web search pops up a verification challenge, so it isn't done.
+- Each engine saves `qNN_<engine>.png` and, when the page loads a second batch, `qNN_<engine>_2.png`: open both, the
+  matching photo often sits below the first rows.
+- Bing (`bingimg`, `bing`) in a headless browser shows its "no results" page for most CJK queries and now and then for
+  any query; the run reports it as an error, not as nothing found. Yandex answers CJK and Cyrillic queries; it gives one
+  page (its next page asks for a CAPTCHA).
+- A CAPTCHA, consent or region-block page (`googleimg` from a headless browser, usually) is reported as blocked, never
+  bypassed, and that engine is skipped for the rest of the run: use the other engines, `--proxy` with an exit in that
+  country, or the engine in your own browser tool.
+- Chinese example: `--query "蓝色拱形顶棚 人行天桥" --query "<city> 出租车 颜色" --country CN` (blue arched canopy
+  footbridge; <city> taxi color). Baidu web search pops up a verification challenge, so it isn't done.
 
 ### After a hit
 
@@ -118,14 +133,14 @@ Bing China gives web results (title + link); Baidu Images and Sogou Images give 
 | Several chain shops seen together (a mall, a station, a high street) | Each brand's official store list; keep the venue or street on every list; the lists' unit numbers lead into the venue's floor plan (`datasets.md` "Inside a venue") |
 | Built or installed objects (bridges, towers, stadium roofs, sports and play structures, sculptures, shop fit-outs) | The builder's, manufacturer's or architect's project/reference list (often a PDF naming every installation and its town) and the operator's catalogue of its assets (a motorway company's bridges, a chain's branches, a park service's facilities); a results page from such a list also counts as an independent result for the place it names |
 | Nameless facilities found on satellite imagery (plants, warehouses, farms, mines) | Search the web and news for the facility-type word in the local language + nearby place names, and compare the accompanying photos with the facade; once you find the name, search images another round |
-| Vehicle livery (bus, taxi, school bus) | `revimg.py --query "<city> <color description> 公交"` (query in Chinese: <city> <color description> bus), and read route signs and company names from the result images; first resolve any place name you read to a district (county) with `poi.py` before using it; don't treat a vehicle from district A as a clue for district B |
+| Vehicle livery (bus, taxi, school bus) | `revimg.py --query "<city> <color description> 公交" --country CN` (query in Chinese: <city> <color description> bus), and read route signs and company names from the result images; first resolve any place name you read to a district (county) with `poi.py` before using it; don't treat a vehicle from district A as a clue for district B |
 
 ## 3. Descriptive keyword image search
 
 Suits objects that "you can't name, but have a rare shape" (a fountain, a clock tower, a canopy).
 
-1. Write the object as a "shape + components + position" phrase: `顶上有金色球形装饰的白色钟楼` (white clock tower with a golden ball ornament on top), `蓝色拱形顶棚的人行天桥` (pedestrian bridge with a blue arched canopy).
-2. Prepare both a version **with place names** and one **without**, one set each in Chinese and in English (or the local language), and search them together. Finding nothing with place names is normal: replicas and obscure places have few photos online, while there is more material on the original and on similar objects.
+1. Start short on the country's engines ([Keyword image search on the local engines](#keyword-image-search-on-the-local-engines)), all queries in one call: the settled town + the object's noun (`<town> 钟楼`, clock tower), then one attribute per further `--query` (`<town> 钟楼 金色球`, golden ball; `<town> 天桥 蓝色`, blue footbridge). Long phrases that mix the object with the foreground rarely match.
+2. Then a version **without** the place name, in the local language and in English. Finding nothing with place names is normal: replicas and obscure places have few photos online, while there is more material on the original and on similar objects.
 3. If you can't count the shapes, use broad words; don't write a wrong count.
 4. Use style words (Romanesque, Gothic, Hui-style) only after checking the form: if the arches are pointed, it isn't Romanesque.
 

@@ -254,6 +254,12 @@ class PoiMapTests(unittest.TestCase):
         self.assertEqual(so.call_args.args[0], "Eiffel Tower")
         self.assertIn("1 candidates with coordinates", out)
 
+    def test_no_result_hint_searches_the_address_on_the_country_engines(self):
+        for argv, country in [(["上海市 不存在花园", "--sources", "osm"], "CN"), (["Nowhere Street 99", "--sources", "osm", "--country", "fr"], "FR")]:
+            with self.subTest(country=country), patch.object(self.poi, "search_osm", return_value=[]):
+                out = _stdout(self.poi.main, argv)
+            self.assertIn(f'revimg.py --query "<address>" --country {country}', out)
+
     def test_routes_use_mode_specific_servers_and_skip_geocoding_points(self):
         urls = []
         fake = {"code": "Ok", "routes": [{"distance": 4000.0, "duration": 3000.0, "legs": []}]}

@@ -169,7 +169,9 @@ def cmd_search(args) -> None:
         pts[label] = r["wgs"]
         print(f"  {label}  {r['wgs'][0]},{r['wgs'][1]}  [{r['src']}] {r['type']}  {r['address'][:60]}")
     if not uniq:
-        print("  None. Try another spelling (drop the \"小区/花园\" (compound/garden) suffix, add the district name), or use revimg.py --query to search the web for an address")
+        cc = (args.country or ("cn" if han else "xx"))[:2].upper()     # revimg.py takes one ISO2 code; Nominatim may hold a list
+        print("  None. Try another spelling (drop the \"小区/花园\" (compound/garden) suffix, add the district name), "
+              f"or search the address on that country's image engines: revimg.py --query \"<address>\" --country {cc}")
     if args.out:
         args.out.write_text(json.dumps(pts, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"-> {args.out}")

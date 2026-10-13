@@ -32,6 +32,7 @@ import types
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
+from urllib.parse import parse_qs, urlparse
 
 from PIL import Image
 
@@ -305,6 +306,190 @@ class BrowserTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(launch.await_count, 3)
             self.assertTrue(all(call.args[1] == "direct" for call in launch.await_args_list))
             self.assertEqual(baidu.await_args.args[-1], "direct")
+
+
+class RevimgQueryTests(unittest.IsolatedAsyncioTestCase):
+    QUERY = "부산 등대 & 東京/タワー #1"
+
+    def test_query_urls_encode_non_latin_queries_for_every_engine(self):
+        hosts = {"bing": ("www.bing.com", "q"), "baiduimg": ("image.baidu.com", "word"), "sogouimg": ("pic.sogou.com", "query"),
+                 "naverimg": ("search.naver.com", "query"), "daumimg": ("search.daum.net", "q"),
+                 "yahoojpimg": ("search.yahoo.co.jp", "p"), "yandeximg": ("yandex.com", "text"),
+                 "bingimg": ("www.bing.com", "q"), "googleimg": ("www.google.com", "q")}
+        self.assertEqual(set(revimg.TEXT_URL), set(hosts))
+        for engine, (host, param) in hosts.items():
+            with self.subTest(engine=engine):
+                url = revimg.query_url(engine, self.QUERY)
+                parts = urlparse(url)
+                self.assertEqual((parts.scheme, parts.netloc), ("https", host))
+                self.assertIn("%EB%B6%80%EC%82%B0", url)                           # UTF-8 percent-encoded Hangul
+                self.assertFalse(re.search(r"[^\x21-\x7e]", url))                 # no raw space or non-ASCII left
+                self.assertEqual(parse_qs(parts.query)[param], [self.QUERY])       # '&', '/', '#' stay inside the query
+                self.assertFalse(parts.fragment)
+
+    def test_country_picks_local_engines_and_explicit_list_wins(self):
+        for country, engines in [("KR", ["naverimg", "daumimg"]), ("kr", ["naverimg", "daumimg"]),
+                                 ("JP", ["yahoojpimg", "yandeximg", "googleimg"]), ("CN", ["baiduimg", "sogouimg"]),
+                                 ("RU", ["yandeximg", "googleimg"]), ("BY", ["yandeximg", "googleimg"]),
+                                 ("KZ", ["yandeximg", "googleimg"]), ("IT", ["bingimg", "yandeximg"]),
+                                 ("ZZ", ["bingimg", "yandeximg"]), (None, ["bingimg", "yandeximg"])]:
+            with self.subTest(country=country):
+                self.assertEqual(revimg.pick_text_engines(country, None), engines)
+        self.assertEqual(revimg.pick_text_engines("KR", "bing,googleimg,nope"), ["bing", "googleimg"])
+
+    def test_search_md_engine_table_matches_the_code(self):
+        text = (Path(revimg.__file__).resolve().parents[1] / "references" / "search.md").read_text(encoding="utf-8")
+        rows = re.findall(r"^\| ([A-Z]{2}(?:, [A-Z]{2})*|any other, none) \| ([^|]+) \|", text, re.M)
+        table = {}
+        for countries, engines in rows:
+            for c in countries.split(", "):
+                table[c] = tuple(re.findall(r"`(\w+)`", engines))
+        self.assertEqual([table.pop(k, None) for k in ("any other", "none")], [revimg.DEFAULT_ENGINES] * 2)
+        self.assertEqual(table, revimg.COUNTRY_ENGINES)
+
+    def test_cli_passes_country_engines_and_rejects_a_country_name(self):
+        def cli(*argv):
+            with patch.object(sys, "argv", ["revimg.py", "--query", self.QUERY, "--out-dir", "q", *argv]), \
+                    patch.object(revimg, "run", return_value=[]) as run, contextlib.redirect_stdout(io.StringIO()):
+                revimg.main()
+            return run.call_args.args[5]
+        self.assertEqual(cli("--country", "kr"), ["naverimg", "daumimg"])
+        self.assertEqual(cli(), ["bingimg", "yandeximg"])
+        self.assertEqual(cli("--country", "KR", "--text-engines", "bingimg"), ["bingimg"])
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            cli("--country", "Korea")
+
+    def test_only_long_queries_get_the_short_query_hint(self):
+        def hint(*queries):
+            argv = ["revimg.py", "--out-dir", "q", "--country", "KR"] + [a for q in queries for a in ("--query", q)]
+            err = io.StringIO()
+            with patch.object(sys, "argv", argv), patch.object(revimg, "run", return_value=[]),                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                revimg.main()
+            return err.getvalue()
+        self.assertIn("more than 3 words", hint("부산 해안 산책로 돌담 등대 야경", "부산 등대 빨간 철제 난간 밤"))
+        self.assertNotIn("more than 3 words", hint("부산 등대", "부산 등대 빨간 철제 난간 밤"))
+
+    def test_blocked_pages_are_recognised_and_result_pages_are_not(self):
+        google = ("https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3Dx%26udm%3D2",
+                  "About this page\nOur systems have detected unusual traffic from your computer network. This page checks to see if it's really you sending the requests, and not a robot.")
+        yahoo = ("https://search.yahoo.co.jp/image/search?p=x",
+                 "お知らせ\n2022年4月6日 (水) よりYahoo! JAPANは欧州経済領域（EEA）およびイギリスからご利用いただけなくなりました")
+        for url, text in [google, yahoo, ("https://consent.google.com/ml?continue=https://www.google.com/search", "Before you continue to Google"),
+                          ("https://yandex.com/showcaptcha?cc=1&mt=C43A", ""), ("https://image.baidu.com/search/index?word=x", "百度安全验证")]:
+            with self.subTest(url=url):
+                self.assertTrue(revimg._blocked(url, text))
+        self.assertIn("EEA", revimg._blocked(*yahoo))
+        naver = ("https://search.naver.com/search.naver?where=image&query=captcha%20consent.",
+                 "NAVER\n이미지\ncaptcha 이미지검색 결과\n부산 등대 포토뉴스")
+        self.assertIsNone(revimg._blocked(*naver))
+
+    async def test_links_keep_posts_on_engine_hosts_and_drop_its_navigation(self):
+        naver = [{"t": "내 블로그", "h": "https://blog.naver.com/MyBlog.naver"}, {"t": "가입한 카페", "h": "https://section.cafe.naver.com/"},
+                 {"t": "도움말새 창 열림", "h": "https://help.naver.com/alias/search/word/word_35.naver"},
+                 {"t": "부산 등대 기록 네이버 블로그", "h": "https://blog.naver.com/someone/223099420934"},
+                 {"t": "등대 보존 포토뉴스", "h": "http://www.example-news.co.kr/news/articleView.html?idxno=1"}]
+        daum = [{"t": "티스토리", "h": "https://www.tistory.com/?nil_profile=mini"}, {"t": "백과사전", "h": "https://100.daum.net/"},
+                {"t": "&quot;등대&quot; 복원", "h": "https://v.daum.net/v/20220224121049494"},
+                {"t": "등대 카페 후기", "h": "https://cafe.daum.net/club/MirA/827"}]
+        for engine, links, kept in [("naverimg", naver, ["https://blog.naver.com/someone/223099420934", "http://www.example-news.co.kr/news/articleView.html?idxno=1"]),
+                                    ("daumimg", daum, ["https://v.daum.net/v/20220224121049494", "https://cafe.daum.net/club/MirA/827"])]:
+            with self.subTest(engine=engine):
+                page = SimpleNamespace(url="https://results", evaluate=AsyncMock(side_effect=["NAVER", links]))
+                res = await revimg._collect(page, engine)
+                self.assertEqual([ln["url"] for ln in res["links"]], kept)
+        self.assertEqual(res["links"][0]["title"], '"등대" 복원')
+
+    async def test_grid_screenshots_take_a_second_slice_only_when_the_page_loaded_one(self):
+        for height, names in [(2327, ["q01_daumimg.png"]), (7177, ["q01_daumimg.png", "q01_daumimg_2.png"])]:
+            with self.subTest(height=height):
+                page = SimpleNamespace(evaluate=AsyncMock(side_effect=lambda js: height if "scrollHeight" in js else None),
+                                       wait_for_timeout=AsyncMock(), screenshot=AsyncMock())
+                paths = await revimg._grid_shots(page, Path("q") / "q01_daumimg.png")
+                self.assertEqual([Path(p).name for p in paths], names)
+                self.assertEqual([c.kwargs["clip"]["y"] for c in page.screenshot.await_args_list], [0, revimg.SLICE][:len(names)])
+
+    async def test_bing_no_results_page_is_an_error_not_an_empty_success(self):
+        class Page:
+            def __init__(self, engine, items):
+                self.url = revimg.query_url(engine, "부산 등대")
+                self.items, self.shots, self.closed = items, [], False
+                self.goto, self.wait_for_timeout = AsyncMock(), AsyncMock()
+                self.wait_for_selector = AsyncMock(side_effect=TimeoutError("li.b_algo"))
+
+            async def evaluate(self, js):
+                if "innerText.slice(0, 400)" in js:          # the block check's head
+                    return ("Rewards AllAI ModeImages SafeSearch: Moderate There are no results for 부산 등대 Check your spelling"
+                            if "images" in self.url else "跳至内容 全部 图片 没有与此相关的结果: 부산 등대 检查拼写或尝试其他关键字")
+                return "#b_results" in js                    # Bing web's results container is there on its empty page
+
+            async def query_selector(self, sel):
+                return object() if sel in self.items else None
+
+            def get_by_role(self, role, name):
+                return SimpleNamespace(count=AsyncMock(return_value=0))
+
+            async def screenshot(self, **kw):
+                self.shots.append(kw)
+
+            async def close(self):
+                self.closed = True
+
+        for engine in ("bingimg", "bing"):
+            with self.subTest(engine=engine):
+                page = Page(engine, items=())
+                res = await revimg._text(SimpleNamespace(new_page=AsyncMock(return_value=page)), engine, "부산 등대", Path("q01.png"))
+                self.assertIn("no results", res["error"])
+                self.assertIn(engine, res["error"])
+                self.assertNotIn("blocked", res)                                    # the next query still asks this engine
+                self.assertNotIn("links", res)
+                self.assertEqual(len(page.shots), 1)
+                self.assertTrue(page.closed)
+
+    async def test_each_query_starts_without_the_screenshots_of_an_earlier_call(self):
+        browser = SimpleNamespace(new_context=AsyncMock(), close=AsyncMock())
+        manager = AsyncMock()
+        manager.__aenter__.return_value = object()
+        fake = SimpleNamespace(async_playwright=lambda: manager)
+
+        async def text(ctx, engine, query, shot):
+            if engine == "daumimg":
+                raise TimeoutError("page.goto: Timeout 60000ms exceeded")
+            shot.write_bytes(b"new")                                                # one slice only
+            return {"error": "a CAPTCHA", "blocked": True} if engine == "googleimg" else {"url": "u", "guess": [], "links": []}
+        with tempfile.TemporaryDirectory() as folder, patch.dict(sys.modules, {"playwright.async_api": fake}),                 patch.object(revimg, "launch_browser", AsyncMock(return_value=(browser, "test"))), patch.object(revimg, "_text", text):
+            out = Path(folder)
+            for eng in ("naverimg", "googleimg", "daumimg"):
+                for name in (f"q01_{eng}.png", f"q01_{eng}_2.png"):
+                    (out / name).write_bytes(b"old query")
+            results = await revimg.run([], [], out, "direct", ["new query"], ["naverimg", "googleimg", "daumimg"])
+            left = sorted(p.name for p in out.glob("*.png"))
+            olds = [p.name for p in out.glob("*.png") if p.read_bytes() == b"old query"]
+        self.assertEqual(left, ["q01_googleimg.png", "q01_naverimg.png"])
+        self.assertEqual(olds, [])
+        failed = next(r for r in results if r["engine"] == "daumimg")
+        self.assertIn("Timeout", failed["error"])
+        self.assertNotIn("screenshot", failed)                                      # nothing was captured this call
+        self.assertTrue(all("screenshot" in r for r in results if r["engine"] != "daumimg"))
+
+    async def test_blocked_engine_is_not_retried_and_each_engine_gets_its_locale(self):
+        browser = SimpleNamespace(new_context=AsyncMock(), close=AsyncMock())
+        manager = AsyncMock()
+        manager.__aenter__.return_value = object()
+        fake = SimpleNamespace(async_playwright=lambda: manager)
+        calls = []
+
+        async def text(ctx, engine, query, shot):
+            calls.append(engine)
+            return {"error": "a CAPTCHA", "blocked": True} if engine == "googleimg" else {"url": "u", "guess": [], "links": []}
+        with tempfile.TemporaryDirectory() as folder, patch.dict(sys.modules, {"playwright.async_api": fake}), \
+                patch.object(revimg, "launch_browser", AsyncMock(return_value=(browser, "test"))), patch.object(revimg, "_text", text):
+            results = await revimg.run([], [], Path(folder), "direct", ["one", "two"], ["googleimg", "naverimg"])
+            self.assertEqual(calls, ["googleimg", "naverimg", "naverimg"])
+            skipped = json.loads((Path(folder) / "q02_googleimg.json").read_text(encoding="utf-8"))
+        self.assertIn("not retried", skipped["error"])
+        self.assertNotIn("screenshot", skipped)                                    # nothing was captured
+        self.assertEqual(len(results), 4)
+        self.assertEqual([c.kwargs["locale"] for c in browser.new_context.await_args_list], ["en-US", "ko-KR"])
 
 
 class DoctorTests(unittest.TestCase):
