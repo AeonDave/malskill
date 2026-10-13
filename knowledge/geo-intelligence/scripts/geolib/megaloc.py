@@ -505,7 +505,7 @@ class Embedder:
         from safetensors.torch import load_file
 
         from .cli import device as _pick
-        self.dev = device or _pick()           # GEOINT_DEVICE, else cuda → mps → DirectML → cpu (same order in every script)
+        self.dev = device or _pick()           # GEOINT_DEVICE, else cuda → xpu → mps → cpu (same order in every script)
         self.size = size
         t0 = time.time()
         try:

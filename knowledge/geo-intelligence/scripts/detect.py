@@ -32,6 +32,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))      # geolib: device p
 warnings.filterwarnings("ignore")
 from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
+from geolib.accel import handoff  # noqa: E402
+
 MODEL = "google/owlv2-base-patch16-ensemble"
 CLASSES = {
     "sign": ["a sign with text", "a shop sign", "a billboard"],
@@ -58,7 +60,7 @@ CLASSES = {
 
 def device(want: str | None = None):
     from geolib.cli import device as pick
-    return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → mps → DirectML → cpu
+    return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → xpu → mps → cpu
 
 
 def tiles(W: int, H: int, grid: int, overlap: float = 0.2) -> list[tuple[int, int, int, int]]:
@@ -128,6 +130,7 @@ class Detector:
 
 
 def main() -> None:
+    handoff(__file__)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("photo", nargs="?")
     ap.add_argument("--out-dir", default="detect")
@@ -137,7 +140,7 @@ def main() -> None:
     ap.add_argument("--max-per-class", type=int, default=6)
     ap.add_argument("--min-px", type=int, default=12, help="ignore boxes smaller than this")
     ap.add_argument("--crop-min", type=int, default=384, help="crops are upscaled so the long side is at least this")
-    ap.add_argument("--device", default="auto", help="auto, cuda, mps, directml or cpu (auto honours GEOINT_DEVICE)")
+    ap.add_argument("--device", default="auto", help="auto, cuda, xpu, mps or cpu (auto honours GEOINT_DEVICE)")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:

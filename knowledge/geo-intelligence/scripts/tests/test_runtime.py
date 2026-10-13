@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pillow", "numpy", "streetlevel"]
+# dependencies = ["pillow", "numpy", "streetlevel", "torch"]
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cpu" }
+#
+# [[tool.uv.index]]
+# name = "pytorch-cpu"
+# url = "https://download.pytorch.org/whl/cpu"
+# explicit = true
 # ///
 """Offline runtime regressions. Run: uv run scripts/tests/test_runtime.py"""
 from __future__ import annotations
@@ -31,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from geolib import net as _net
 from geolib import browser as _browser
 from geolib import pano as _pano   # import-time side effect under test: bounds requests' default timeout
+from geolib import accel
 import baidu_pano
 import doctor
 from geolib import coverage as cov
@@ -306,7 +315,7 @@ class DoctorTests(unittest.TestCase):
                 self.assertEqual(row["status"], status)
 
     def test_local_checks_do_not_probe_network_or_print_proxy_credentials(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(doctor, "browser_check", AsyncMock(return_value=doctor.check("browser", "PASS", "ready"))), patch.object(doctor, "probe") as probe, patch.dict(os.environ, {"GEO_PROXY": "http://user:secret@localhost:8080"}):
+        with tempfile.TemporaryDirectory() as folder, patch.object(doctor, "browser_check", AsyncMock(return_value=doctor.check("browser", "PASS", "ready"))), patch.object(doctor, "probe") as probe, patch.dict(os.environ, {"GEO_PROXY": "http://user:secret@localhost:8080"}),                 patch.object(doctor.accel, "detected", return_value=None):
             report = doctor.diagnose(False, None)
             probe.assert_not_called()
             self.assertTrue(report["ok"])
@@ -647,6 +656,7 @@ class MatchRenderFailureTests(unittest.TestCase):
         argv = ["match.py", "--cache", str(folder / "cache"), "rank", "--query", str(query), "--items", str(items),
                 "--render", "gsv", "--refine", "none", "--out", str(out)]
         with patch.object(gsv, "view", side_effect=view), patch.object(match, "Embedder", Embedder), patch.object(sys, "argv", argv), \
+                patch.object(match, "handoff"), \
                 patch.dict(os.environ), patch("sys.stdout", new=io.StringIO()), patch("sys.stderr", new=io.StringIO()) as err:
             match.main()
         return out, err.getvalue()
@@ -1073,13 +1083,14 @@ class PanoCacheHealTests(unittest.TestCase):
 
 
 class DeviceTests(unittest.TestCase):
-    """geolib.cli.device: a script's --device, else GEOINT_DEVICE, else cuda → mps → DirectML → cpu; one picker for every model script."""
+    """geolib.cli.device: a script's --device, else GEOINT_DEVICE, else cuda → xpu → mps → cpu; one picker for every model script."""
 
     @staticmethod
-    def torch(cuda=False, mps=False):
+    def torch(cuda=False, mps=False, xpu=False):
         t = types.ModuleType("torch")
         t.device = lambda name: f"torch.device({name})"
         t.cuda = SimpleNamespace(is_available=lambda: cuda)
+        t.xpu = SimpleNamespace(is_available=lambda: xpu)
         t.backends = SimpleNamespace(mps=SimpleNamespace(is_available=lambda: mps))
         return t
 
@@ -1091,8 +1102,9 @@ class DeviceTests(unittest.TestCase):
             dml = types.ModuleType("torch_directml")
             dml.device = lambda: directml
         with patch.dict(sys.modules, {"torch": torch, "torch_directml": dml}), patch.dict(os.environ, env):
-            if "GEOINT_DEVICE" not in env:
-                os.environ.pop("GEOINT_DEVICE", None)
+            for key in ("GEOINT_DEVICE", "GEOINT_GPU_CHILD"):
+                if key not in env:
+                    os.environ.pop(key, None)
             return cli.device(**kw)
 
     def test_env_cpu_wins_over_available_gpus(self):
@@ -1104,25 +1116,37 @@ class DeviceTests(unittest.TestCase):
         self.assertIn("GEOINT_DEVICE='tpu'", str(cm.exception))
         self.assertEqual(len(str(cm.exception).splitlines()), 1)
 
-    def test_auto_order_cuda_mps_directml_cpu(self):
-        self.assertEqual(self.pick({}, self.torch(cuda=True, mps=True), directml="dml:0"), "torch.device(cuda)")
+    def test_auto_order_cuda_xpu_mps_cpu_never_directml(self):
+        self.assertEqual(self.pick({}, self.torch(cuda=True, xpu=True, mps=True), directml="dml:0"), "torch.device(cuda)")
+        self.assertEqual(self.pick({}, self.torch(xpu=True, mps=True), directml="dml:0"), "torch.device(xpu)")
         self.assertEqual(self.pick({}, self.torch(mps=True), directml="dml:0"), "torch.device(mps)")
-        self.assertEqual(self.pick({}, self.torch(), directml="dml:0"), "dml:0")
-        self.assertEqual(self.pick({}, self.torch()), "torch.device(cpu)")
+        self.assertEqual(self.pick({}, self.torch(), directml="dml:0"), "torch.device(cpu)")    # DirectML installed, never picked
 
-    def test_directml_requested_explicitly(self):
-        self.assertEqual(self.pick({"GEOINT_DEVICE": "directml"}, self.torch(cuda=True), directml="dml:0"), "dml:0")
-        with self.assertRaises(SystemExit) as cm:
-            self.pick({"GEOINT_DEVICE": "directml"}, self.torch(cuda=True))
-        self.assertIn("torch_directml", str(cm.exception))
+    def test_directml_request_points_to_the_gpu_environment(self):
+        for env, kw in (({"GEOINT_DEVICE": "directml"}, {}), ({}, {"want": "directml"})):
+            with self.subTest(env=env, kw=kw), self.assertRaises(SystemExit) as cm:
+                self.pick(env, self.torch(cuda=True), directml="dml:0", **kw)
+            self.assertIn(accel.GPU_CMD, str(cm.exception))
+            self.assertEqual(len(str(cm.exception).splitlines()), 1)
 
     def test_cuda_cpu_only_models_fall_back_to_cpu(self):
-        # calib.py (GeoCalib, float64 linear algebra): GEOINT_DEVICE=cpu|cuda honoured, mps/directml → cpu with a note
-        with patch("sys.stderr", new=io.StringIO()) as err:
-            self.assertEqual(self.pick({"GEOINT_DEVICE": "mps"}, self.torch(mps=True), allow_mps=False), "torch.device(cpu)")
-        self.assertIn("using cpu", err.getvalue())
+        # calib.py (GeoCalib, float64 linear algebra): GEOINT_DEVICE=cpu|cuda honoured, mps/xpu → cpu with a note
+        for want in ("mps", "xpu"):
+            with self.subTest(want=want), patch("sys.stderr", new=io.StringIO()) as err:
+                self.assertEqual(self.pick({"GEOINT_DEVICE": want}, self.torch(mps=True, xpu=True), allow_mps=False), "torch.device(cpu)")
+            self.assertIn("using cpu", err.getvalue())
         self.assertEqual(self.pick({"GEOINT_DEVICE": "cuda"}, self.torch(cuda=True), allow_mps=False), "torch.device(cuda)")
-        self.assertEqual(self.pick({}, self.torch(mps=True), directml="dml:0", allow_mps=False), "torch.device(cpu)")
+        self.assertEqual(self.pick({}, self.torch(mps=True, xpu=True), directml="dml:0", allow_mps=False), "torch.device(cpu)")
+
+    def test_gpu_child_exits_75_instead_of_running_on_the_cpu(self):
+        # the GPU builds' own CPU path is far slower than the default environment's CPU torch: the parent reruns there
+        child = {"GEOINT_GPU_CHILD": "1"}
+        self.assertEqual(self.pick(child, self.torch(cuda=True)), "torch.device(cuda)")
+        for env in (child, {**child, "GEOINT_DEVICE": "cpu"}):
+            with self.subTest(env=env), self.assertRaises(SystemExit) as cm:
+                self.pick(env, self.torch())
+            self.assertEqual(cm.exception.code, 75)
+        self.assertEqual(self.pick({}, self.torch()), "torch.device(cpu)")                  # outside the child: cpu as before
 
     def test_script_flag_beats_env_and_auto_defers_to_env(self):
         self.assertEqual(self.pick({"GEOINT_DEVICE": "cpu"}, self.torch(cuda=True), want="cuda"), "torch.device(cuda)")
@@ -1135,6 +1159,458 @@ class DeviceTests(unittest.TestCase):
         megaloc = (scripts / "geolib" / "megaloc.py").read_text(encoding="utf-8")
         self.assertIn("from .cli import device as _pick", megaloc)
         self.assertNotIn("torch.backends.mps.is_available() else", megaloc)   # the old private order (mps before cuda)
+
+
+AMD = {"vendor": "amd", "name": "AMD Radeon RX 6900 XT", "arch": "gfx1030"}
+AMD_INDEX = "https://stable.repo.amd.com/rocm/whl-next/"
+
+
+class GpuCacheCase(unittest.TestCase):
+    """A temporary GEOINT_CACHE (the GPU environment lives in <cache>/gpu), outside any GPU run."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        env = patch.dict(os.environ, {"GEOINT_CACHE": str(self.dir), "UV": "uv-bin"})
+        env.start()
+        self.addCleanup(env.stop)
+        for key in ("GEOINT_DEVICE", "GEOINT_GPU_CHILD"):
+            os.environ.pop(key, None)
+        self.gpu = self.dir / "gpu"
+        self.script = str(Path(__file__).resolve().parents[1] / "prior.py")
+
+    def profile(self, python_exists: bool = True, env: dict | None = None) -> Path:
+        py = self.gpu / "venv" / "python.exe"
+        py.parent.mkdir(parents=True, exist_ok=True)
+        if python_exists:
+            py.write_bytes(b"")
+        (self.gpu / "profile.json").write_text(json.dumps({"backend": "rocm", "python": str(py), "uv_args": ["--index", AMD_INDEX],
+                                                          "torch": "2.14.0+rocm10.1.0", "env": env or {},
+                                                          "created": "2026-10-13T12:00:00"}), encoding="utf-8")
+        return py
+
+    def detected(self, gpu):
+        self.gpu.mkdir(parents=True, exist_ok=True)
+        (self.gpu / "detected.json").write_text(json.dumps({"gpu": gpu}), encoding="utf-8")
+
+
+@contextlib.contextmanager
+def no_process():
+    """Fails the test if the hand-off starts any process: a sync, a GPU run or a hardware detection."""
+    with patch.object(accel.subprocess, "run", side_effect=AssertionError("subprocess.run")), \
+            patch.object(accel.subprocess, "Popen", side_effect=AssertionError("subprocess.Popen")), \
+            patch.object(accel, "detect_gpu", side_effect=AssertionError("detect_gpu")):
+        yield
+
+
+class AccelTests(GpuCacheCase):
+    """geolib.accel: the model scripts rerun themselves in the GPU environment doctor.py --gpu builds; without it nothing changes."""
+
+    def handoff(self, argv=("photo.jpg", "--out-dir", "prior")) -> str:
+        err = io.StringIO()
+        with patch.object(sys, "argv", [self.script, *argv]), patch("sys.stderr", new=err):
+            accel.handoff(self.script)
+        return err.getvalue()
+
+    def test_without_a_profile_or_gpu_nothing_runs_and_nothing_prints(self):
+        self.detected(None)
+        with no_process():
+            self.assertEqual(self.handoff(), "")
+
+    def test_cpu_request_and_the_gpu_run_itself_return_at_once(self):
+        self.profile()
+        for env in ({"GEOINT_DEVICE": "cpu"}, {"GEOINT_DEVICE": " CPU "}, {"GEOINT_GPU_CHILD": "1"}):
+            with self.subTest(env=env), patch.dict(os.environ, env), no_process():
+                self.assertEqual(self.handoff(), "")
+
+    def test_script_device_flag_is_read_as_cli_device_reads_it(self):
+        # the script's --device unless auto, else GEOINT_DEVICE: a CPU request never syncs or starts the GPU run
+        self.profile()
+        for env, argv in (({}, ("photo.jpg", "--device", "cpu")), ({}, ("photo.jpg", "--device=CPU")),
+                          ({"GEOINT_DEVICE": "cpu"}, ("photo.jpg", "--device", "auto"))):
+            with self.subTest(env=env, argv=argv), patch.dict(os.environ, env), no_process():
+                self.assertEqual(self.handoff(argv), "")
+        stop = SimpleNamespace(returncode=1, stdout="", stderr="stop")
+        with patch.dict(os.environ, {"GEOINT_DEVICE": "cpu"}), patch.object(accel.subprocess, "run", return_value=stop) as run:
+            self.handoff(("photo.jpg", "--device", "cuda"))
+        run.assert_called_once()                                                      # --device cuda outranks GEOINT_DEVICE=cpu
+
+    def test_missing_gpu_python_is_one_line_and_runs_here(self):
+        self.profile(python_exists=False)
+        with no_process():
+            out = self.handoff()
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        self.assertIn("doctor.py --gpu", out)
+
+    def test_already_in_the_gpu_python_returns(self):
+        py = self.profile()
+        with patch.object(sys, "executable", str(py)), no_process():
+            self.assertEqual(self.handoff(), "")
+        twin = self.dir / "cpu-venv-python.exe"
+        os.link(py, twin)                                   # POSIX venv pythons all link to one base interpreter: not "in it"
+        with patch.object(sys, "executable", str(twin)), \
+                patch.object(accel.subprocess, "run", return_value=SimpleNamespace(returncode=1, stdout="", stderr="stop")) as run:
+            self.handoff()
+        run.assert_called_once()
+
+    def test_profile_syncs_the_script_then_reruns_it_with_the_same_argv(self):
+        py = self.profile()
+        child = SimpleNamespace(wait=lambda: 3, kill=lambda: None, send_signal=lambda s: None)
+        with patch.object(accel.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")) as run, \
+                patch.object(accel.subprocess, "Popen", return_value=child) as popen, self.assertRaises(SystemExit) as cm:
+            self.handoff()
+        self.assertEqual(cm.exception.code, 3)                                        # the GPU run's exit code
+        child.wait = lambda: -2                                                       # POSIX: killed by SIGINT
+        with patch.object(accel.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+                patch.object(accel.subprocess, "Popen", return_value=child), self.assertRaises(SystemExit) as cm:
+            self.handoff()
+        self.assertEqual(cm.exception.code, 130)                                      # what a shell reports for the direct run
+        self.assertEqual(run.call_args.args[0], ["uv-bin", "pip", "install", "-q", "--python", str(py), "--index", AMD_INDEX,
+                                                 "-c", str(self.gpu / "constraints.txt"), "-r", self.script])
+        self.assertEqual(popen.call_args.args[0], [str(py), self.script, "photo.jpg", "--out-dir", "prior"])
+        self.assertEqual(popen.call_args.kwargs["env"]["GEOINT_GPU_CHILD"], "1")
+
+    def test_gpu_run_stays_on_the_device_the_smoke_test_chose(self):
+        self.profile(env={"HIP_VISIBLE_DEVICES": "1"})                               # a Radeon listed after the Ryzen iGPU
+        child = SimpleNamespace(wait=lambda: 0, kill=lambda: None, send_signal=lambda s: None)
+        for env, want in (({}, "1"), ({"HIP_VISIBLE_DEVICES": "0"}, "0")):           # the operator's own setting wins
+            with self.subTest(env=env), patch.dict(os.environ, env), \
+                    patch.object(accel.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+                    patch.object(accel.subprocess, "Popen", return_value=child) as popen, self.assertRaises(SystemExit):
+                self.handoff()
+            self.assertEqual(popen.call_args.kwargs["env"]["HIP_VISIBLE_DEVICES"], want)
+
+    def test_failed_sync_is_one_line_and_runs_here(self):
+        self.profile()
+        fail = SimpleNamespace(returncode=1, stdout="", stderr="\n  × No solution found when resolving dependencies:\n  ╰─▶ Because torch==9 …\n")
+        with patch.object(accel.subprocess, "run", return_value=fail), \
+                patch.object(accel.subprocess, "Popen", side_effect=AssertionError("GPU run after a failed sync")):
+            out = self.handoff()
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        for part in ("No solution found", "doctor.py --gpu", "CPU"):
+            self.assertIn(part, out)
+        os.environ.pop("UV")
+        with patch.object(accel.shutil, "which", return_value=None), \
+                patch.object(accel.subprocess, "Popen", side_effect=AssertionError("GPU run without uv")):
+            out = self.handoff()
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        self.assertIn("uv", out)
+
+    def test_gpu_run_without_a_device_returns_to_the_cpu(self):
+        self.profile()
+        child = SimpleNamespace(wait=lambda: accel.NO_DEVICE, kill=lambda: None, send_signal=lambda s: None)
+        with patch.object(accel.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+                patch.object(accel.subprocess, "Popen", return_value=child):
+            out = self.handoff()                                                      # returns: this process runs on the CPU
+        self.assertEqual(accel.NO_DEVICE, 75)
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        self.assertIn("CPU", out)
+
+    def test_found_gpu_without_a_profile_prints_the_build_command_once_per_run(self):
+        with patch.object(accel, "detect_gpu", return_value=AMD) as det, patch.object(sys, "platform", "win32"):
+            first, second = self.handoff(), self.handoff()
+            self.assertEqual(det.call_count, 1)                                       # cached in <cache>/gpu/detected.json
+            # one command string everywhere (doctor's Next hints): no absolute path to break on a space in the skill path
+            line = ("GPU AMD Radeon RX 6900 XT found: `uv run scripts/doctor.py --gpu` builds its environment once "
+                    "(~1 GB download, ~4 GB on disk); this run uses the CPU")
+            self.assertEqual(first.splitlines(), [line])
+            self.assertEqual(second.splitlines(), [line])
+            (self.gpu / "failed.txt").write_text("smoke test: no GPU device", encoding="utf-8")
+            self.assertEqual(self.handoff(), "")                                      # a failed build silences it; doctor shows why
+
+    @unittest.skipIf(os.name == "nt", "Windows: taskkill /T and the console's Ctrl+C reach the GPU run directly")
+    def test_sigterm_reaches_the_gpu_run(self):
+        import signal
+        sent, before = [], signal.getsignal(signal.SIGTERM)
+
+        def wait():
+            signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)                    # recon's timeout stops the parent
+            return -signal.SIGTERM
+
+        child = SimpleNamespace(wait=wait, kill=lambda: None, send_signal=sent.append)
+        with patch.object(accel.subprocess, "Popen", return_value=child):
+            self.assertEqual(accel._run_child(["py"], {}), -signal.SIGTERM)
+        self.assertEqual(sent, [signal.SIGTERM])
+        self.assertEqual(signal.getsignal(signal.SIGTERM), before)
+
+    def test_ctrl_c_waits_for_the_gpu_run_to_clean_up(self):
+        # the console's Ctrl+C reaches the GPU run too: killing it would skip its own cleanup (temp files, partial index)
+        import signal
+        killed, before = [], signal.getsignal(signal.SIGINT)
+
+        def wait():
+            signal.raise_signal(signal.SIGINT)
+            return -signal.SIGINT                                                     # the child's own exit after its cleanup
+
+        child = SimpleNamespace(wait=wait, kill=lambda: killed.append(True), send_signal=lambda s: None)
+        with patch.object(accel.subprocess, "Popen", return_value=child):
+            try:
+                rc = accel._run_child(["py"], {})
+            except KeyboardInterrupt:
+                rc = "KeyboardInterrupt"
+        self.assertEqual((rc, killed), (-signal.SIGINT, []))
+        self.assertEqual(signal.getsignal(signal.SIGINT), before)
+
+    def test_gpu_plan_per_platform(self):
+        nv_new = {"vendor": "nvidia", "name": "NVIDIA GeForce RTX 4090", "driver": "580.65.06"}
+        nv_old = {**nv_new, "driver": "566.36"}
+        arc = {"vendor": "intel", "name": "Intel(R) Arc(TM) A770 Graphics"}
+        for platform, gpu in (("win32", None), ("linux", None), ("darwin", None), ("linux", nv_new), ("win32", {**AMD, "arch": None})):
+            with self.subTest(platform=platform, gpu=gpu):
+                self.assertIsNone(accel.gpu_plan(platform, gpu))                       # Linux PyPI torch is CUDA 13: driver 580+ uses it
+        for platform, gpu in (("win32", nv_new), ("win32", nv_old), ("linux", nv_old)):
+            plan = accel.gpu_plan(platform, gpu)
+            self.assertEqual((plan["backend"], plan["args"], plan["extra"], plan["pre"], plan["env"]),
+                             ("cuda", ["--torch-backend=auto"], "", [], {}))
+        win = accel.gpu_plan("win32", AMD)
+        self.assertEqual((win["backend"], win["args"], win["extra"], win["pre"], win["env"]),
+                         ("rocm", ["--index", AMD_INDEX], "[device-gfx1030]", ["--prerelease", "allow"], {}))
+        self.assertEqual(win["gb"], 1)
+        lin = accel.gpu_plan("linux", AMD)
+        self.assertEqual((lin["backend"], lin["args"], lin["extra"], lin["env"]),
+                         ("rocm", ["--torch-backend=auto"], "", {"UV_AMD_GPU_ARCHITECTURE": "gfx1030"}))
+        xpu = accel.gpu_plan("win32", arc)
+        self.assertEqual((xpu["backend"], xpu["args"]), ("xpu", ["--torch-backend=xpu"]))
+        # download and installed GB of the torch stack (wheel sizes and their unpacked contents, cp312, torch 2.14)
+        plans = (win, lin, xpu, accel.gpu_plan("linux", arc), accel.gpu_plan("win32", nv_old), accel.gpu_plan("linux", nv_old))
+        self.assertEqual([(p["gb"], p["disk"]) for p in plans], [(1, 4), (7, 16), (1.5, 4), (2.5, 7), (2.5, 4), (4, 7)])
+        self.assertEqual(accel.size_note(win), "~1 GB download, ~4 GB on disk")
+
+    @staticmethod
+    def tools(outputs):
+        """The detection tools' stdout by command name; a missing name is a missing tool."""
+        return patch.object(accel, "_run", side_effect=lambda cmd, timeout=20: outputs.get(cmd[0], ""))
+
+    @staticmethod
+    def clinfo(*devices):
+        """clinfo as the AMD Windows driver prints it, one block per (board name, compute units, gfx target)."""
+        head = ("Number of platforms:\t\t\t\t 1\n  Platform Name:\t\t\t\t AMD Accelerated Parallel Processing\n\n\n"
+                f"  Platform Name:\t\t\t\t AMD Accelerated Parallel Processing\nNumber of devices:\t\t\t\t {len(devices)}\n")
+        return head + "".join(f"  Device Type:\t\t\t\t\t CL_DEVICE_TYPE_GPU\n  Vendor ID:\t\t\t\t\t 1002h\n  Board name:\t\t\t\t\t {board}\n"
+                              f"  Max compute units:\t\t\t\t {units}\n    Max work items[0]:\t\t\t\t 1024\n"
+                              f"  Platform ID:\t\t\t\t\t 00007FF963FC1000\n  Name:\t\t\t\t\t\t {arch}\n"
+                              "  Vendor:\t\t\t\t\t Advanced Micro Devices, Inc.\n" for board, units, arch in devices)
+
+    def test_detect_reads_nvidia_smi_wmi_clinfo_rocm_and_kfd(self):
+        with self.tools({"nvidia-smi": "NVIDIA GeForce RTX 4090, 580.88\n"}):
+            self.assertEqual(accel.detect_gpu("win32"), {"vendor": "nvidia", "name": "NVIDIA GeForce RTX 4090", "driver": "580.88"})
+        wmi = json.dumps([{"Name": "Meta Virtual Monitor", "PNPDeviceID": "ROOT\\DISPLAY\\0000"},
+                          {"Name": "AMD Radeon RX 6900 XT", "PNPDeviceID": "PCI\\VEN_1002&DEV_73BF&SUBSYS_232C1458&REV_C0\\6&2D888E3C&0&00000019"}])
+        clinfo = self.clinfo(("AMD Radeon RX 6900 XT", 40, "gfx1030"))
+        with self.tools({"powershell": wmi, "clinfo": clinfo}):
+            self.assertEqual(accel.detect_gpu("win32"), AMD)
+        with self.tools({"powershell": wmi}):
+            self.assertEqual(accel.detect_gpu("win32"), {**AMD, "arch": None})            # no clinfo: no gfx target, no plan
+        arc = json.dumps({"Name": "Intel(R) Arc(TM) A770 Graphics", "PNPDeviceID": "PCI\\VEN_8086&DEV_56A0"})   # one adapter: an object
+        with self.tools({"powershell": arc}):
+            self.assertEqual(accel.detect_gpu("win32"), {"vendor": "intel", "name": "Intel(R) Arc(TM) A770 Graphics"})
+        with self.tools({"powershell": json.dumps({"Name": "Intel(R) UHD Graphics 620", "PNPDeviceID": "PCI\\VEN_8086&DEV_5917"})}):
+            self.assertIsNone(accel.detect_gpu("win32"))                                  # integrated graphics: no torch build
+        with self.tools({"rocm_agent_enumerator": "gfx000\ngfx1100\n"}):
+            self.assertEqual(accel.detect_gpu("linux"), {"vendor": "amd", "name": "AMD gfx1100", "arch": "gfx1100"})
+        nodes = self.dir / "nodes"
+        for node, version in (("0", 0), ("1", 90010)):
+            (nodes / node).mkdir(parents=True)
+            (nodes / node / "properties").write_text(f"cpu_cores_count 16\ngfx_target_version {version}\n", encoding="utf-8")
+        with self.tools({}), patch.object(accel, "KFD_NODES", nodes):
+            self.assertEqual(accel.detect_gpu("linux"), {"vendor": "amd", "name": "AMD gfx90a", "arch": "gfx90a"})
+        with self.tools({}), patch.object(accel, "KFD_NODES", self.dir / "none"):
+            self.assertIsNone(accel.detect_gpu("linux"))
+            self.assertIsNone(accel.detect_gpu("darwin"))
+        self.assertEqual(accel.kfd_arch("gfx_target_version 100300\n"), "gfx1030")
+
+    def test_detect_picks_the_amd_gpu_with_the_most_compute_units(self):
+        # a Ryzen iGPU next to a Radeon: name and gfx target both of the Radeon, whatever order WMI and clinfo list them in
+        igpu = {"Name": "AMD Radeon(TM) Graphics", "PNPDeviceID": "PCI\\VEN_1002&DEV_164E&SUBSYS_88771043&REV_C9\\4&1A0B5A1F&0&0041"}
+        dgpu = {"Name": "AMD Radeon RX 7900 XTX", "PNPDeviceID": "PCI\\VEN_1002&DEV_744C&SUBSYS_471E1849&REV_C8\\6&2D888E3C&0&00000019"}
+        devices = [("AMD Radeon(TM) Graphics", 1, "gfx1036"), ("AMD Radeon RX 7900 XTX", 48, "gfx1100")]
+        for cards in ([igpu, dgpu], [dgpu, igpu]):
+            for listed in (devices, devices[::-1]):
+                with self.subTest(wmi=cards[0]["Name"], clinfo=listed[0][0]), \
+                        self.tools({"powershell": json.dumps(cards), "clinfo": self.clinfo(*listed)}):
+                    self.assertEqual(accel.detect_gpu("win32"), {"vendor": "amd", "name": "AMD Radeon RX 7900 XTX", "arch": "gfx1100"})
+
+    def test_torchvision_pairs_with_torch_minor_plus_15(self):
+        self.assertEqual(accel.torchvision_spec("2.14.0+rocm10.1.0", "[device-gfx1030]"), "torchvision[device-gfx1030]>=0.29.0a0,<0.30")
+        self.assertEqual(accel.torchvision_spec("2.9.1+cu126"), "torchvision>=0.24.0a0,<0.25")
+
+    def test_model_scripts_hand_off_first_and_cpu_scripts_never(self):
+        import ast
+        scripts = Path(__file__).resolve().parents[1]
+        for name in ("prior.py", "detect.py", "match.py", "sweep.py", "sat_scan.py"):
+            tree = ast.parse((scripts / name).read_text(encoding="utf-8"))
+            main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+            self.assertEqual(ast.unparse(main.body[0]), "handoff(__file__)", name)
+        for name in ("calib.py", "aidet.py"):                                             # no GPU gain / ONNX on the CPU
+            self.assertNotIn("handoff", (scripts / name).read_text(encoding="utf-8"), name)
+
+
+class GpuDoctorTests(GpuCacheCase):
+    """doctor.py: the GPU row of the report and `--gpu [remove]`."""
+
+    def test_gpu_row_is_info_with_hardware_state_and_command(self):
+        def row(gpu, platform="win32"):
+            r = doctor.gpu_row(gpu, platform)
+            self.assertEqual((r["name"], r["status"]), ("GPU", "INFO"))
+            return r
+
+        self.assertIn("No NVIDIA, AMD or Intel Arc GPU found", row(None)["detail"])
+        self.assertIn("mps", row(None, "darwin")["detail"])
+        nv = row({"vendor": "nvidia", "name": "NVIDIA GeForce RTX 4090", "driver": "580.65.06"}, "linux")
+        self.assertIn("default environment", nv["detail"])
+        self.assertEqual(nv["fix"], "")
+        self.assertIn("clinfo", row({**AMD, "arch": None})["detail"])
+        r = row(AMD)
+        for part in ("AMD Radeon RX 6900 XT", "gfx1030", "CPU"):
+            self.assertIn(part, r["detail"])
+        self.assertEqual(r["fix"], "uv run scripts/doctor.py --gpu (~1 GB download, ~4 GB on disk, once)")
+        self.gpu.mkdir(parents=True)
+        (self.gpu / "failed.txt").write_text("smoke test: no GPU device", encoding="utf-8")
+        r = row(AMD)
+        self.assertIn("smoke test: no GPU device", r["detail"])
+        self.assertIn("doctor.py --gpu", r["fix"])
+        py = self.profile()
+        r = row(AMD)
+        for part in ("rocm", "torch 2.14.0+rocm10.1.0", "smoke test passed", "2026-10-13"):
+            self.assertIn(part, r["detail"])
+        self.assertEqual(r["fix"], "")
+        py.unlink()
+        self.assertIn("doctor.py --gpu", row(AMD)["fix"])
+
+    def build(self, gpu, platform, smoke_rc=0, versions=("2.14.0+rocm10.1.0", "0.29.0a0+rocm10.1.0"), index=0):
+        calls, out = [], io.StringIO()
+
+        def run(cmd, **kw):
+            calls.append([str(c) for c in cmd])
+            if cmd[1:2] == ["-c"]:                                                        # the smoke test, in the GPU python
+                ok = json.dumps({"device": "AMD Radeon RX 6900 XT", "index": index, "torch": versions[0], "matmul": 2e-7, "conv": 4e-7})
+                return SimpleNamespace(returncode=smoke_rc, stdout=ok if smoke_rc == 0 else "",
+                                       stderr="" if smoke_rc == 0 else "Traceback …\nRuntimeError: no GPU device visible to torch\n")
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        version = dict(zip(("torch", "torchvision"), versions))
+        with patch.object(doctor.accel, "detected", return_value=gpu), patch.object(sys, "platform", platform), \
+                patch.object(doctor.subprocess, "run", side_effect=run), \
+                patch.object(doctor, "_version", side_effect=lambda py, package: version[package]), \
+                patch("sys.stdout", new=out), patch("sys.stderr", new=out):
+            rc = doctor.gpu_build()
+        return rc, calls, out.getvalue()
+
+    def test_gpu_build_pins_the_pair_smoke_tests_then_writes_the_profile(self):
+        rc, calls, out = self.build(AMD, "win32")
+        self.assertEqual(rc, 0, out)
+        venv = self.gpu / "venv"
+        py = str(doctor.accel.venv_python(venv))
+        cons = str(self.gpu / "constraints.txt")
+        self.assertEqual(calls[0], ["uv-bin", "venv", "--clear", "--managed-python", "--python", "3.12", str(venv)])   # survives a system Python upgrade
+        self.assertEqual(calls[1], ["uv-bin", "pip", "install", "--python", py, "--index", AMD_INDEX, "torch[device-gfx1030]", "numpy", "pillow"])
+        self.assertEqual(calls[2], ["uv-bin", "pip", "install", "--python", py, "--index", AMD_INDEX, "--prerelease", "allow",
+                                    "-c", cons, "torchvision[device-gfx1030]>=0.29.0a0,<0.30"])
+        self.assertEqual(calls[3][:2], [py, "-c"])
+        self.assertEqual(Path(cons).read_text(encoding="utf-8"), "torch==2.14.0+rocm10.1.0\ntorchvision==0.29.0a0+rocm10.1.0\n")
+        prof = json.loads((self.gpu / "profile.json").read_text(encoding="utf-8"))
+        self.assertEqual({k: prof[k] for k in ("backend", "python", "uv_args", "torch", "env")},
+                         {"backend": "rocm", "python": py, "uv_args": ["--index", AMD_INDEX], "torch": "2.14.0+rocm10.1.0",
+                          "env": {"MIOPEN_LOG_LEVEL": "3"}})                               # MIOpen's per-run warnings stay out of the output
+        self.assertTrue(prof["created"])
+        self.assertIn("(~1 GB download, ~4 GB on disk, once)", out)
+        nv = {"vendor": "nvidia", "name": "NVIDIA GeForce RTX 4090", "driver": "580.88"}
+        rc, calls, out = self.build(nv, "win32", versions=("2.14.1+cu130", "0.29.1+cu130"))
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(calls[1][5:], ["--torch-backend=auto", "torch", "numpy", "pillow"])
+        prof = json.loads((self.gpu / "profile.json").read_text(encoding="utf-8"))
+        self.assertEqual(prof["uv_args"], ["--torch-backend=cu130"])                      # the backend uv chose, fixed for every re-sync
+
+    def test_gpu_build_keeps_the_gpu_runs_on_the_smoke_tested_device(self):
+        # the smoke test picks the GPU with the most compute units; a later index (the Radeon after a Ryzen iGPU) is
+        # recorded so the GPU runs see only that device
+        nv = {"vendor": "nvidia", "name": "NVIDIA GeForce RTX 4090", "driver": "580.88"}
+        for gpu, versions, env in ((AMD, ("2.14.0+rocm10.1.0", "0.29.0a0+rocm10.1.0"), {"MIOPEN_LOG_LEVEL": "3", "HIP_VISIBLE_DEVICES": "1"}),
+                                   (nv, ("2.14.1+cu130", "0.29.1+cu130"), {"CUDA_VISIBLE_DEVICES": "1"})):
+            with self.subTest(gpu=gpu["name"]):
+                rc, calls, out = self.build(gpu, "win32", versions=versions, index=1)
+                self.assertEqual(rc, 0, out)
+                self.assertEqual(json.loads((self.gpu / "profile.json").read_text(encoding="utf-8"))["env"], env)
+
+    def test_failed_smoke_test_writes_no_profile(self):
+        self.profile()                                                                    # an earlier environment
+        rc, calls, out = self.build(AMD, "win32", smoke_rc=1)
+        self.assertEqual(rc, 1)
+        self.assertFalse((self.gpu / "profile.json").exists())
+        self.assertIn("no GPU device visible to torch", (self.gpu / "failed.txt").read_text(encoding="utf-8"))
+        self.assertIn("CPU", out)
+
+    def test_nothing_to_build_runs_nothing(self):
+        for gpu, platform, text in ((None, "win32", "No NVIDIA, AMD or Intel Arc GPU found"), (None, "darwin", "mps"),
+                                    ({"vendor": "nvidia", "name": "RTX", "driver": "580.65.06"}, "linux", "default environment")):
+            with self.subTest(platform=platform):
+                rc, calls, out = self.build(gpu, platform)
+                self.assertEqual((rc, calls), (0, []))
+                self.assertIn(text, out)
+                self.assertFalse((self.gpu / "profile.json").exists())
+
+    def test_gpu_remove_deletes_the_environment(self):
+        self.profile()
+        with patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(doctor.gpu_remove(), 0)
+        self.assertFalse(self.gpu.exists())
+
+
+class GeoCLIPGalleryTests(unittest.TestCase):
+    def test_gallery_encoded_once_gives_the_per_crop_probabilities(self):
+        import numpy as np
+        import torch
+        import prior
+        F = torch.nn.functional
+        torch.manual_seed(0)
+        calls = []
+
+        class ImageEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.lin = torch.nn.Linear(12, 16)
+
+            @staticmethod
+            def preprocess_image(im):
+                return torch.tensor(np.asarray(im.resize((2, 2)), dtype=np.float32).reshape(1, 12) / 255)
+
+            def forward(self, x):
+                return self.lin(x)
+
+        class LocationEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.lin = torch.nn.Linear(2, 16)
+
+            def forward(self, gps):
+                calls.append(len(gps))
+                return torch.sin(self.lin(gps / 90))
+
+        class GeoCLIP(torch.nn.Module):
+            """GeoCLIP 1.2's forward: the per-crop reference path."""
+            def __init__(self):
+                super().__init__()
+                self.image_encoder, self.location_encoder = ImageEncoder(), LocationEncoder()
+                self.logit_scale = torch.nn.Parameter(torch.tensor(3.0))
+                self.gps_gallery = torch.rand(64, 2) * torch.tensor([180.0, 360.0]) - torch.tensor([90.0, 180.0])
+
+            def forward(self, image, location):
+                image_features = F.normalize(self.image_encoder(image), dim=1)
+                location_features = F.normalize(self.location_encoder(location), dim=1)
+                return self.logit_scale.exp() * (image_features @ location_features.t())
+
+        model = GeoCLIP().eval()
+        crops = [Image.new("RGB", (8, 8), c) for c in ((200, 30, 30), (30, 200, 30), (30, 30, 200), (120, 120, 120))]
+        with torch.no_grad():
+            ref = sum(model(model.image_encoder.preprocess_image(c), model.gps_gallery).softmax(dim=-1)[0] for c in crops) / len(crops)
+        top = torch.topk(ref, 10)
+        gm = prior.GeoCLIPModel.__new__(prior.GeoCLIPModel)
+        gm.torch, gm.model, gm.dev = torch, model, "cpu"
+        calls.clear()
+        gps, probs = gm.points(crops, 10)
+        self.assertEqual(calls, [64])                                                     # the gallery is encoded once, not per crop
+        np.testing.assert_allclose(probs, top.values.numpy(), rtol=0, atol=1e-6)
+        np.testing.assert_array_equal(gps, model.gps_gallery.index_select(0, top.indices).numpy())
 
 
 class PanoTimeoutTests(unittest.TestCase):

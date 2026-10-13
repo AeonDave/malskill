@@ -21,10 +21,14 @@ These defaults apply whenever this skill runs, from any project folder.
 - Archive root: `--root`, else `$GEOINT_PHOTOS`, else `photos_root` in `config.local.json` next to `SKILL.md`,
   else `~/geoint-photos/`. `start --beside` ignores the root and creates the session next to the first photo
   (`scoreboard` and `list` then need `--root <that folder>`).
-- Device: `GEOINT_DEVICE=cuda|mps|cpu|directml|auto` overrides the picker. NVIDIA → CUDA automatically; AMD on Linux →
-  ROCm PyTorch wheels (they appear as `cuda`); AMD on Windows → `uv run --with torch-directml` plus
-  `GEOINT_DEVICE=directml` (experimental, some ops fall back to CPU); Apple → `mps`. The local models (~6 GB, `doctor.py
-  --models`) live in `~/.cache/huggingface` and `~/.cache/torch`.
+- Device: `GEOINT_DEVICE=auto|cuda|xpu|mps|cpu` overrides the picker (auto: cuda, ROCm included, → xpu → mps → cpu).
+  Linux NVIDIA (driver 580+) and Apple `mps` work in each script's own environment. Windows NVIDIA, AMD (Windows and
+  Linux) and Intel Arc: `uv run scripts/doctor.py --gpu` once builds a GPU torch environment in `<shared cache>/gpu`
+  (1–7 GB download, 4–16 GB on disk, smoke-tested on the GPU with the most compute units; `--gpu remove` deletes it);
+  prior, detect, match, sweep and sat_scan then rerun themselves there, calib and aidet stay on the CPU. Until it
+  exists those scripts print the command once per run when a GPU is found. `GEOINT_DEVICE=cpu` or a script's
+  `--device cpu` skips it. The local models (~6 GB, `doctor.py --models`) live in `~/.cache/huggingface`
+  and `~/.cache/torch`.
 - Proxy: `GEO_PROXY=<url>|direct` routes every script.
 - Archive time zone: `$GEOINT_TZ`, else `timezone` in `config.local.json`, else this computer's (set an IANA name such as `Europe/Rome`; otherwise the footer shows the OS's local zone name).
 - Shared cache (GeoNames, panorama indexes, sweep descriptors, Wayback list, test-set panoramas):

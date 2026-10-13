@@ -38,6 +38,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
 import tiles  # noqa: E402
+from geolib.accel import handoff  # noqa: E402
 from match import CLIPN, _feat, _tensor  # noqa: E402  (CLIP preprocessing shared with match.py)
 
 CLIP_ID = "openai/clip-vit-base-patch32"
@@ -225,6 +226,7 @@ from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
 
 
 def main() -> None:
+    handoff(__file__)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 

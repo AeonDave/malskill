@@ -35,8 +35,8 @@ from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
 
 def device(want: str | None = None):
-    # GeoCalib's optimizer uses float64 linear algebra that MPS/DirectML do not support; CPU is fast enough (~1 s).
-    # --device, else GEOINT_DEVICE (cuda|cpu honoured; mps/directml fall back to cpu), else cuda → cpu
+    # GeoCalib's optimizer uses float64 linear algebra that MPS/XPU do not support; CPU is fast enough (~1 s).
+    # --device, else GEOINT_DEVICE (cuda|cpu honoured; mps/xpu fall back to cpu), else cuda → cpu
     from geolib.cli import device as pick
     return pick(allow_mps=False, want=want)
 

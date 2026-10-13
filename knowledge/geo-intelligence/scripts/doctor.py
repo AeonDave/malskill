@@ -8,6 +8,9 @@
   uv run scripts/doctor.py                   local tools, data, caches, browser, writable directory
   uv run scripts/doctor.py --network         also run known-answer probes of the core services (sources_check.py subset)
   uv run scripts/doctor.py --models          also load each local model once (downloads ~6.2 GB on first run)
+  uv run scripts/doctor.py --gpu             build the GPU environment the model scripts hand off to (NVIDIA, AMD,
+                                             Intel Arc; 1-7 GB download, 4-16 GB on disk, once); --gpu remove
+                                             deletes it
   uv run scripts/doctor.py --json            machine-readable results on stdout
 
 --network runs `sources_check.py --only <core subset>` (full list: uv run scripts/sources_check.py); without uv it
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime
 import json
 import os
 import platform
@@ -29,6 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from geolib import accel  # noqa: E402
 from geolib.browser import launch_browser  # noqa: E402
 from geolib.net import PROXY_HELP, curl_args, resolve_proxy  # noqa: E402
 from geolib.paths import DATA_DIR, cache_root  # noqa: E402
@@ -37,7 +42,7 @@ import regions  # noqa: E402
 # Core probes run by --network (sources_check.py keys); the rest stay in the full sources_check run.
 NETWORK_SUBSET = ("nominatim-search", "overpass", "google-sat", "esri", "esri-wayback", "terrarium", "open-meteo",
                   "geonames-info", "gsv-coverage", "osrm-driving")
-GEOLIB_MODULES = ("net", "paths", "browser", "cli", "geomath", "coverage", "pano", "streetlevel", "megaloc")
+GEOLIB_MODULES = ("net", "paths", "browser", "cli", "geomath", "coverage", "pano", "streetlevel", "megaloc", "accel")
 # Known-answer Street View check on the coverage tiles gsv.py uses: the z17 tile at
 # Shibuya crossing must list official panoramas. An HTTP 200 alone proves nothing: a changed endpoint still answers.
 STREET_VIEW_POINT = (35.6595, 139.7005)
@@ -177,6 +182,7 @@ def diagnose(network: bool, proxy: str | None) -> dict:
     gc = (Path(os.environ.get("TORCH_HOME") or Path.home() / ".cache" / "torch") / "hub" / "geocalib" / "pinhole.tar").exists()
     rows.append(check("GeoCalib (calib.py)", "PASS" if gc else "INFO", "Weights cached." if gc else "Downloads on first use (~100 MB)."))
     rows.append(check("Other ML models", "INFO", "match.py (DINOv2/CLIP) and sat_scan.py (CLIP) download weights on first use."))
+    rows.append(gpu_row(accel.detected(refresh=True)))
     if network and shutil.which("curl"):
         known = network_checks(proxy)
         if known is not None:
@@ -273,6 +279,131 @@ def network_checks(proxy: str | None) -> list[dict] | None:
     return rows
 
 
+# Runs in the GPU python: the device exists, float32 kernels match the CPU (TF32 off) and torchvision's ops load,
+# which fails when torch and torchvision are not a built pair. It tests the GPU with the most compute units (a Radeon,
+# not the Ryzen iGPU next to it) and reports its index for the profile.
+SMOKE = """
+import json, torch, torchvision
+kind = "cuda" if torch.cuda.is_available() else "xpu" if hasattr(torch, "xpu") and torch.xpu.is_available() else None
+if kind is None:
+    raise SystemExit(f"no GPU device visible to torch {torch.__version__}")
+index = 0 if kind == "xpu" else max(range(torch.cuda.device_count()),
+                                    key=lambda i: torch.cuda.get_device_properties(i).multi_processor_count)
+dev = f"{kind}:{index}"
+torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
+g = torch.Generator().manual_seed(0)
+a, b = torch.randn(256, 256, generator=g) / 16, torch.randn(256, 256, generator=g)
+x, w = torch.randn(2, 16, 32, 32, generator=g), torch.randn(16, 16, 3, 3, generator=g) / 12
+conv = torch.nn.functional.conv2d
+err = {"matmul": (a.to(dev) @ b.to(dev)).cpu().sub(a @ b).abs().max().item(),
+       "conv": conv(x.to(dev), w.to(dev), padding=1).cpu().sub(conv(x, w, padding=1)).abs().max().item()}
+torchvision.ops.nms(torch.tensor([[0.0, 0, 10, 10], [1, 1, 11, 11]], device=dev), torch.tensor([0.9, 0.8], device=dev), 0.5)
+name = (torch.cuda if kind == "cuda" else torch.xpu).get_device_name(index)
+print(json.dumps({"device": name, "index": index, "torch": torch.__version__, **err}))
+if max(err.values()) > 1e-4:
+    raise SystemExit(f"GPU results differ from the CPU: {err}")
+"""
+
+
+# How a GPU run is kept on one device; xpu always tests device 0
+VISIBLE = {"cuda": "CUDA_VISIBLE_DEVICES", "rocm": "HIP_VISIBLE_DEVICES"}
+
+
+def gpu_row(gpu: dict | None, platform: str = sys.platform) -> dict:
+    """GPU hardware and the GPU environment's state; INFO only, as the CPU path always works."""
+    prof = accel.profile()
+    if prof:
+        ok = Path(prof.get("python") or "").is_file()
+        return check("GPU", "INFO", f"{prof['backend']} environment, torch {prof['torch']}, smoke test passed {prof['created'][:10]}; "
+                     + ("prior, detect, match, sweep and sat_scan run there." if ok else "its python is missing."),
+                     "" if ok else f"{accel.GPU_CMD} rebuilds it.")
+    if platform == "darwin":
+        return check("GPU", "INFO", "Apple Silicon: the default environment uses mps.")
+    if not gpu:
+        return check("GPU", "INFO", "No NVIDIA, AMD or Intel Arc GPU found; the models run on the CPU.")
+    name = ", ".join(v for v in (gpu["name"], gpu.get("arch"), gpu.get("driver") and f"driver {gpu['driver']}") if v)
+    plan = accel.gpu_plan(platform, gpu)
+    if not plan:
+        if gpu["vendor"] == "nvidia":
+            return check("GPU", "INFO", f"{name}: the default environment uses CUDA.")
+        return check("GPU", "INFO", f"{name}: GPU target unknown (clinfo, from the AMD driver, reports it); the models run on the CPU.")
+    failed = accel.build_failed()
+    if failed:
+        return check("GPU", "INFO", f"{name}: the last GPU build failed ({failed}); the models run on the CPU.",
+                     f"{accel.GPU_CMD} retries (after a driver update).")
+    return check("GPU", "INFO", f"{name}: no GPU environment yet; the models run on the CPU.",
+                 f"{accel.GPU_CMD} ({accel.size_note(plan)}, once)")
+
+
+def _version(py: Path, package: str) -> str:
+    return subprocess.run([str(py), "-c", f"import importlib.metadata as m; print(m.version({package!r}))"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def _step(cmd: list, env: dict) -> None:
+    r = subprocess.run([str(c) for c in cmd], env=env)
+    if r.returncode:
+        raise RuntimeError(f"{' '.join(str(c) for c in cmd[:3])} … exited {r.returncode}")
+
+
+def gpu_build() -> int:
+    """Build <cache>/gpu/venv with a GPU torch for this machine, pin torch/torchvision, smoke-test it, and only then write
+    the profile the model scripts hand off to. A failure writes no profile, so everything stays on the CPU."""
+    gpu = accel.detected(refresh=True)
+    plan = accel.gpu_plan(sys.platform, gpu)
+    if not plan:
+        print(gpu_row(gpu, sys.platform)["detail"] + " Nothing to build.")
+        return 0
+    root = accel.gpu_dir()
+    venv, cons, failed = root / "venv", root / "constraints.txt", root / "failed.txt"
+    py = accel.venv_python(venv).absolute()
+    uv = os.environ.get("UV") or shutil.which("uv") or "uv"
+    env = {**os.environ, **plan["env"]}
+    print(f"{gpu['name']}: building the {plan['backend']} torch environment in {venv} ({accel.size_note(plan)}, once)",
+          flush=True)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "profile.json").unlink(missing_ok=True)
+    failed.unlink(missing_ok=True)
+    pip = [uv, "pip", "install", "--python", py, *plan["args"]]
+    try:
+        _step([uv, "venv", "--clear", "--managed-python", "--python", "3.12", venv], env)   # a uv-managed Python: a system upgrade cannot break it
+        _step([*pip, f"torch{plan['extra']}", "numpy", "pillow"], env)    # torchvision's dependencies as final releases
+        torch_v = _version(py, "torch")
+        cons.write_text(f"torch=={torch_v}\n", encoding="utf-8")
+        _step([*pip, *plan["pre"], "-c", cons, accel.torchvision_spec(torch_v, plan["extra"])], env)
+        cons.write_text(f"torch=={torch_v}\ntorchvision=={_version(py, 'torchvision')}\n", encoding="utf-8")
+        smoke = subprocess.run([str(py), "-c", SMOKE], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900)
+        if smoke.returncode:
+            raise RuntimeError("smoke test: " + ((smoke.stderr or smoke.stdout).strip().splitlines() or ["no output"])[-1])
+        index = json.loads(smoke.stdout.strip().splitlines()[-1]).get("index")
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        failed.write_text(str(exc), encoding="utf-8")
+        print(f"GPU build failed: {exc}. No profile written: the models keep running on the CPU.", file=sys.stderr)
+        return 1
+    tag = torch_v.partition("+")[2]          # the backend uv chose (cu130, rocm7.2, xpu), fixed for every later sync
+    args = [f"--torch-backend={tag}" if a == "--torch-backend=auto" and tag else a for a in plan["args"]]
+    visible = {VISIBLE[plan["backend"]]: str(index)} if index else {}    # device 0 needs no restriction
+    quiet = {"MIOPEN_LOG_LEVEL": "3"} if plan["backend"] == "rocm" else {}   # MIOpen warns on every run (kernel database, CK library)
+    accel.write_json(root / "profile.json", {"backend": plan["backend"], "python": str(py), "uv_args": args, "torch": torch_v,
+                                             "env": {**quiet, **visible}, "created": datetime.now().isoformat(timespec="seconds")})
+    print(f"Smoke test passed: {smoke.stdout.strip()}\nprior, detect, match, sweep and sat_scan now run on {gpu['name']}; "
+          "GEOINT_DEVICE=cpu skips the GPU environment, doctor.py --gpu remove deletes it.")
+    return 0
+
+
+def gpu_remove() -> int:
+    root = accel.gpu_dir()
+    try:
+        shutil.rmtree(root)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        print(f"Could not remove {root}: {exc} (close the scripts that use it).", file=sys.stderr)
+        return 1
+    print(f"Removed {root}: the models run on the CPU.")
+    return 0
+
+
 def model_checks() -> list[dict]:
     """Load each local model once on a synthetic image (downloads weights the first time)."""
     here = Path(__file__).resolve().parent
@@ -297,7 +428,11 @@ def main() -> None:
     parser.add_argument("--proxy", help=PROXY_HELP)
     parser.add_argument("--json", action="store_true", help="print JSON for issue reports or automation")
     parser.add_argument("--models", action="store_true", help="load every local model once (downloads weights on first run)")
+    parser.add_argument("--gpu", nargs="?", const="build", choices=("build", "remove"),
+                        help="build the GPU environment the model scripts hand off to; `--gpu remove` deletes it")
     args = parser.parse_args()
+    if args.gpu:
+        sys.exit(gpu_build() if args.gpu == "build" else gpu_remove())
     report = diagnose(args.network, args.proxy)
     if args.models:
         report["checks"].extend(model_checks())

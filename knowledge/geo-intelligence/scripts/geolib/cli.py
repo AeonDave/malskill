@@ -8,6 +8,8 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
+from .accel import CHILD, GPU_CMD, NO_DEVICE, requested
+
 _NEG = re.compile(r"^-\d[\d.]*([,:@]-?[\d.]+)+$")   # lat,lon; lat,lon:lat,lon spans (board.py --covers); lat,lon@bearing (geo.py --sight)
 
 
@@ -114,42 +116,32 @@ def font(size: int, text: str = "", prefer_wide: bool = False):
 
 # ---------------------------------------------------------------- torch device
 
-DEVICES = ("auto", "cuda", "mps", "cpu", "directml")
-
-
-def _directml():
-    """torch_directml's device (AMD/Intel GPUs on Windows), or None when the package is missing or finds no adapter."""
-    try:
-        import torch_directml
-        return torch_directml.device()
-    except Exception:  # noqa: BLE001 - ImportError, or a runtime error from a broken DirectML install
-        return None
+DEVICES = ("auto", "cuda", "xpu", "mps", "cpu")
 
 
 def device(allow_mps: bool = True, want: str | None = None):
-    """Torch device for every model: `want` (a script's --device), else GEOINT_DEVICE, else auto = cuda → mps → DirectML → cpu.
-    Returns a torch.device, or torch_directml's device object. allow_mps=False restricts to cuda/cpu (GeoCalib needs
-    float64 linear algebra): mps/directml requests then fall back to cpu with a note."""
+    """Torch device for every model: `want` (a script's --device), else GEOINT_DEVICE, else auto = cuda (ROCm too) → xpu →
+    mps → cpu. allow_mps=False restricts to cuda/cpu (GeoCalib needs float64 linear algebra): mps/xpu requests then fall
+    back to cpu with a note. In the GPU environment (geolib.accel) a cpu result exits NO_DEVICE instead: the parent reruns
+    on the default environment's CPU torch, as the GPU builds' own CPU path is far slower (no MKL in the ROCm build)."""
     import torch
-    want = (want if want and want != "auto" else os.environ.get("GEOINT_DEVICE") or "auto").strip().lower()
+    want = requested(want)
+    if want == "directml":
+        sys.exit("DirectML is not supported (wrong MegaLoc and GeoCLIP results); AMD and Intel GPUs on Windows: "
+                 f"`{GPU_CMD}` builds the GPU environment once")
     if want not in DEVICES:
         sys.exit(f"GEOINT_DEVICE={want!r} is not one of {'|'.join(DEVICES)}")
-    if not allow_mps and want in ("mps", "directml"):
+    if not allow_mps and want in ("mps", "xpu"):
         print(f"{want} is not supported by this model (float64 linear algebra); using cpu", file=sys.stderr)
-        return torch.device("cpu")
-    if want == "directml":
-        dml = _directml()
-        if dml is None:
-            sys.exit("GEOINT_DEVICE=directml but torch_directml is not installed or finds no adapter (pip install torch-directml)")
-        return dml
-    if want != "auto":
-        return torch.device(want)
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if allow_mps and getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        return torch.device("mps")
-    dml = _directml() if allow_mps else None
-    return dml if dml is not None else torch.device("cpu")
+        want = "cpu"
+    if want == "auto":
+        xpu, mps = getattr(torch, "xpu", None), getattr(torch.backends, "mps", None)
+        want = ("cuda" if torch.cuda.is_available() else
+                "xpu" if allow_mps and xpu is not None and xpu.is_available() else
+                "mps" if allow_mps and mps is not None and mps.is_available() else "cpu")
+    if want == "cpu" and os.environ.get(CHILD):
+        sys.exit(NO_DEVICE)
+    return torch.device(want)
 
 
 # ---------------------------------------------------------------- contact sheets

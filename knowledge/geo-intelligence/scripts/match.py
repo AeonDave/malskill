@@ -52,6 +52,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
+from geolib.accel import handoff  # noqa: E402
 from geolib.coverage import USER_UPLOAD_PREFIXES, official  # noqa: E402
 
 MODELS = {"dino": "facebook/dinov2-small", "clip": "openai/clip-vit-base-patch32", "megaloc": "gberton/MegaLoc"}
@@ -410,6 +411,7 @@ from geolib.cli import neg_coords as _neg_coords  # noqa: E402  (shared helper)
 
 
 def main() -> None:
+    handoff(__file__)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--proxy", default=os.environ.get("GEO_PROXY"), help=PROXY_HELP)
     ap.add_argument("--cache", type=Path, default=Path(".geo-cache"))

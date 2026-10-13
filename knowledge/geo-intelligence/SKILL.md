@@ -281,7 +281,7 @@ uv run ${CLAUDE_SKILL_DIR}/scripts/viewer.py stop "<folder>"                    
 
 ## Runtime notes
 
-- `doctor.py --network` on first use or after a failure; `doctor.py --models` pre-downloads the local models. Device, caches and proxy: `workflow.md` "Paths and settings".
+- `doctor.py --network` on first use or after a failure; `doctor.py --models` pre-downloads the local models; `doctor.py --gpu` once, with the user's consent, when a script reports a GPU (1–7 GB download, 4–16 GB on disk). Device, caches and proxy: `workflow.md` "Paths and settings".
 - Quote arguments with double quotes: an apostrophe inside single quotes (`'Oya's'`) breaks the command, and wrappers may show no error at all; a `say`, `clue` or `evidence` that printed nothing did not happen.
 - Overpass: one query at a time, long ones in the background. Windows and macOS have no `timeout`: run long jobs in the background (zsh does not word-split `$var`: use `bash -c`).
 - OCR misses whole scripts on some backends; `recon.md` and `textgeo.md` say when: read such text yourself and run `textgeo.py --text "…"`.

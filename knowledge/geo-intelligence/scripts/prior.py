@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["torch>=2.2", "torchvision", "transformers>=4.40,<6", "geoclip>=1.2", "pillow", "numpy", "safetensors"]
+# dependencies = ["torch>=2.2", "torchvision", "transformers>=4.40,<6", "geoclip>=1.2,<2", "pillow", "numpy", "safetensors"]
 # ///
 """World prior: where on Earth does this image look like? Two learned geolocation models, ranked output.
 
@@ -38,6 +38,7 @@ warnings.filterwarnings("ignore")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import geodata  # noqa: E402
+from geolib.accel import handoff  # noqa: E402
 
 import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw, ImageOps  # noqa: E402
@@ -58,7 +59,7 @@ SCENE_PROMPTS = {
 
 def device(want: str | None = None):
     from geolib.cli import device as pick
-    return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → mps → DirectML → cpu
+    return pick(want=want)              # --device, else GEOINT_DEVICE, else cuda → xpu → mps → cpu
 
 
 def crops(im: Image.Image) -> list[Image.Image]:
@@ -162,13 +163,18 @@ class GeoCLIPModel:
         self.dev = dev
 
     def points(self, ims: list[Image.Image], top_k: int) -> tuple[np.ndarray, np.ndarray]:
+        """GeoCLIP.forward per crop, with the 100k-point gallery encoded once per run instead of once per crop."""
         t = self.torch
+        F = t.nn.functional
+        m = self.model
         with t.no_grad():
-            gallery = self.model.gps_gallery.to(self.dev)
+            gallery = m.gps_gallery.to(self.dev)
+            locations = F.normalize(m.location_encoder(gallery), dim=1)
+            scale = m.logit_scale.exp()
             probs = None
             for im in ims:
-                x = self.model.image_encoder.preprocess_image(im).to(self.dev)
-                p = self.model.forward(x, gallery).softmax(dim=-1)[0]
+                x = m.image_encoder.preprocess_image(im).to(self.dev)
+                p = (scale * (F.normalize(m.image_encoder(x), dim=1) @ locations.t())).softmax(dim=-1)[0]
                 probs = p if probs is None else probs + p
             probs = probs / len(ims)
             top = t.topk(probs, top_k)
@@ -396,6 +402,7 @@ def to_md(res: dict) -> str:
 
 
 def main() -> None:
+    handoff(__file__)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("photo", nargs="?")
     ap.add_argument("--out-dir", default="prior")
@@ -405,7 +412,7 @@ def main() -> None:
     ap.add_argument("--top", type=int, default=15)
     ap.add_argument("--top-k", type=int, default=300, help="GeoCLIP gallery points kept")
     ap.add_argument("--cluster-km", type=float, default=150.0)
-    ap.add_argument("--device", default="auto", help="auto, cuda, mps, directml or cpu (auto honours GEOINT_DEVICE)")
+    ap.add_argument("--device", default="auto", help="auto, cuda, xpu, mps or cpu (auto honours GEOINT_DEVICE)")
     ap.add_argument("--selftest", action="store_true", help="load the models on a synthetic image (downloads weights)")
     args = ap.parse_args()
     args.models = [m.strip() for m in args.models.split(",") if m.strip()]

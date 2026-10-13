@@ -65,7 +65,7 @@ geo-intelligence/
 - Recommended: `exiftool` for full metadata (a pure-Python fallback exists), `ffmpeg` for video frames.
 - Reverse image search drives a browser: local Chrome, or Playwright Chromium via `uvx playwright install chromium`.
 - Optional local models (about 6 GB, downloaded on first use into the Hugging Face and Torch caches) for the world prior, object detection, camera calibration, CLIP ranking and MegaLoc sweeps. Everything else works without them.
-- GPU: NVIDIA is used automatically; Apple Silicon uses `mps`; AMD on Linux works through ROCm PyTorch wheels; AMD on Windows can try `uv run --with torch-directml` with `GEOINT_DEVICE=directml` (experimental). CPU is the default fallback and is sufficient for the whole method.
+- GPU: Linux NVIDIA (driver 580+) and Apple Silicon (`mps`) work out of the box. Windows NVIDIA, AMD (Windows and Linux) and Intel Arc run `uv run scripts/doctor.py --gpu` once: it builds a GPU torch environment (1–7 GB download, 4–16 GB on disk) that the model scripts then hand off to. `GEOINT_DEVICE=cpu` forces the CPU, which is sufficient for the whole method.
 
 Windows, macOS and Linux are supported. Windows and Linux are tested with the regression suites on every change.
 
@@ -162,7 +162,7 @@ All scripts live in `scripts/` and are run with `uv run ${CLAUDE_SKILL_DIR}/scri
 | Geometry | `geo.py`, `pose.py`, `sun.py`, `terrain.py` | bearings, destinations, sight-line intersection, FOV and frame checks, WGS84/GCJ-02/BD-09 conversion, pier spacing; camera pose from known points with self-check; sun position, shadow and lit-face solving, time and date, dish pointing, past weather; elevation, viewsheds, skyline rendering, ridge extraction, scans and skyline fitting |
 | Maintenance | `bench.py`, `refresh.py`, `doctor.py`, `sources_check.py` | street-view test sets with hidden truth and scoring; refresh of the lookup tables from their sources; environment check; live known-answer probes of every external endpoint |
 
-`geolib/` is the shared package behind them: HTTP with proxy and retries (`net.py`), browser launch (`browser.py`), panorama providers and manifests (`pano.py`, `streetlevel.py`, `coverage.py`), MegaLoc descriptors (`megaloc.py`), cache paths (`paths.py`), geodesy (`geomath.py`) and argument helpers (`cli.py`).
+`geolib/` is the shared package behind them: HTTP with proxy and retries (`net.py`), browser launch (`browser.py`), panorama providers and manifests (`pano.py`, `streetlevel.py`, `coverage.py`), MegaLoc descriptors (`megaloc.py`), cache paths (`paths.py`), geodesy (`geomath.py`), argument helpers and the torch device (`cli.py`) and the GPU hand-off (`accel.py`).
 
 ## Configuration
 
@@ -173,7 +173,7 @@ Everything is optional; defaults work out of the box.
 | `GEOINT_PHOTOS` | Root for session archives (default `~/geoint-photos/`; `--root` overrides per call, `start --beside` uses the photo's own folder) |
 | `GEOINT_TZ` | IANA time zone for session timestamps (default: the machine's zone) |
 | `GEOINT_CACHE` | Shared cache for GeoNames, panorama indexes, descriptors (default `~/.cache/geoint`, on Windows `%LOCALAPPDATA%\geoint`) |
-| `GEOINT_DEVICE` | `cuda`, `mps`, `cpu`, `directml` or `auto` for the local models |
+| `GEOINT_DEVICE` | `auto` (default), `cuda`, `xpu`, `mps` or `cpu` for the local models; `cpu` also skips the GPU environment |
 | `GEO_PROXY` | Proxy URL for every script, or `direct` to bypass system proxies |
 | `GEO_OVERPASS_URL` | Comma-separated Overpass instances to try before the public mirrors |
 | `GEO_REGIONS` | Extra region-pack directories (`os.pathsep`-separated); a pack there overrides a bundled one |

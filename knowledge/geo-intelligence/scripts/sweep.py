@@ -43,6 +43,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import pano as P  # noqa: E402
+from geolib.accel import handoff  # noqa: E402
 from geolib.paths import cache_root  # noqa: E402
 
 ROOT = cache_root() / "sweep"
@@ -404,6 +405,7 @@ def selftest() -> None:
 
 
 def main() -> None:
+    handoff(__file__)
     if "--selftest" in sys.argv:
         selftest()
         return
