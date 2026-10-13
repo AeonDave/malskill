@@ -654,7 +654,7 @@ def launch_viewer(folder: Path, port: int) -> str:
 REPORT_SKELETON = """# Geolocation report: {name}
 
 ## Gut call (before tools)
-<!-- fill: ranked shortlist with percentages and the cues behind each; region hunch; what would change your mind -->
+<!-- fill: ranked countries with percentages and the cues behind each; region hunch; what would change your mind; Plan: A. B. C. the most selective fixed features, each → what it can leave → its route (no percentages) -->
 
 ## Evidence
 <!-- fill: decisive clues with the files that show them, commands actually run, sources with links -->
@@ -821,14 +821,15 @@ def finish(args: argparse.Namespace) -> dict:
             raise ValueError(
                 f"--accept-unverified before {UNVERIFIED_CLOCK_MIN} min is only for an analysis the operator stopped or redirected: put "
                 f"\"operator asked: …\" in the reason. '{reason[:60]}' is not that: the Quick budget is never a reason to close unverified. "
-                f"Next: go Deep with the decisive check (SKILL.md step 6 by scene type) and finish when it leaves a file; from minute "
-                f"{UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
+                f"Next: go Deep with your plan's next line or the scene's required check (SKILL.md step 1, step 6) and finish when it "
+                f"leaves a file; from minute {UNVERIFIED_CLOCK_MIN} (now {elapsed_min:.0f}) any stated reason closes it.")
         if not reason and elapsed_min < UNVERIFIED_CLOCK_MIN:
             raise ValueError(
-                f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Next: run the decisive check for the scene "
-                f"(SKILL.md step 6: mountains, or a lake/coast with a skyline → osm.py geom + terrain.py scan/ridge/fit; a road, railway or "
-                f"power line → osm.py + terrain.py scan; a facility → osm.py find + sat_scan.py; a street → gsv.py sheet + match.py rank; "
-                f"look-alike countries → refsheet.py), or go Deep. Close without one: --accept-unverified \"<reason>\" ({EARLY_EXIT}).")
+                f"No verification artifact after {elapsed_min:.0f} min: this is not an answer yet. Next: run your plan's line A or B, "
+                f"or a step 6 check (SKILL.md step 6: mountains, or a lake/coast with a skyline → osm.py geom + terrain.py scan/ridge/fit; "
+                f"a road, railway or power line → osm.py + terrain.py scan; a facility → osm.py find + sat_scan.py; a street → gsv.py "
+                f"sheet + match.py rank; a venue → evidence.py --match against a reference photo; look-alike countries → refsheet.py), "
+                f"or go Deep. Close without one: --accept-unverified \"<reason>\" ({EARLY_EXIT}).")
         accepted_unverified = reason or f"clock: {elapsed_min:.0f} min without a verification artifact"
         print(f"Warning: no verification artifact ({accepted_unverified}): the answer is an unverified estimate and must say so.", file=sys.stderr)
     result = {
@@ -966,6 +967,7 @@ def _rename(src: Path, dst: Path, attempts: int = 5) -> None:
 
 
 GUT_LINE = re.compile(r"^\s*(?:\d+[.)]\s*|[-*]\s+)?(?P<country>.+?)\s*[:,]?\s+(?P<p>\d+(?:\.\d+)?)\s*%")
+GUT_END = re.compile(r"^\s*(?:[-*]\s+)?[*_]*\s*(?:region hunch|would change|plan)\b", re.I)   # ranked rows end at the first labelled line
 
 
 def gut_call(report: str) -> list[tuple[str, float]]:
@@ -973,6 +975,8 @@ def gut_call(report: str) -> list[tuple[str, float]]:
     m = re.search(r"^## Gut call \(before tools\)[^\n]*\n(.*?)(?=^## |\Z)", report, re.M | re.S)
     rows = []
     for line in (m.group(1) if m else "").splitlines():
+        if GUT_END.match(line):                     # region hunch, would-change, plan lines may carry percentages: never countries
+            break
         g = GUT_LINE.match(line)
         if g:
             rows.append((g.group("country").strip(" *_`"), float(g.group("p"))))

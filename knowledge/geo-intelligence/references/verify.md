@@ -10,7 +10,7 @@
 - [7. When there are many candidate cities or candidate points](#7-when-there-are-many-candidate-cities-or-candidate-points)
 - [8. Final check before concluding](#8-final-check-before-concluding)
 
-Used in SKILL.md Steps 6–7. The usual failure is not missing the place but **confirming too loosely**: declaring
+Used in SKILL.md Steps 6–8. The usual failure is not missing the place but **confirming too loosely**: declaring
 after checking two items, claiming metre precision from one alignment line, dropping a pin and calling it found,
 or writing "measured on the map" with no file to show for it. The rules in this file are mandatory.
 

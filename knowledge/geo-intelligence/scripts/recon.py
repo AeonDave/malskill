@@ -266,9 +266,11 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
         L.append("- The detector found nothing above its threshold: scan the image yourself (edges, corners, distant signs).")
     L.append("- Edge and corner crops: `intake/edges/` (look at every one); OCR boxes: `intake/ocr.png`.")
     L += ["", "## Next", "",
-          "0. The required checks named under Prior (scene) are not optional: a mountain or lake needs the skyline route, a street the panorama "
-          "route, whatever else you find. Start them early; long ones run in the background with a budget." + generated_check(meta, ij, aj),
-          "1. Compare this page with your gut call. Where they disagree, find out why (a misread, an unusual scene, a wrong gut).",
+          "0. The checks named under Prior (scene) are required before finish whatever else you find (a mountain or lake: the skyline route; "
+          "a street: the panorama route): the floor, not the first route. Run your plan's line A first unless it is one of them; start long "
+          "ones in the background with a budget." + generated_check(meta, ij, aj),
+          "1. Compare this page with your gut call. Where they disagree, find out why (a misread, an unusual scene, a wrong gut). A place name "
+          "read here or a near-duplicate hit moves up in your plan.",
           "2. board.json exists since `photo_session.py start` and already holds the text and prior signals (ingested here): "
           "record your own observations as clues (`board.py clue`), then evidence for the candidates they touch.",
           "3. Separate the top candidates with the cheapest decisive test (text lookups, web search, `refsheet.py`, the world clue files).",

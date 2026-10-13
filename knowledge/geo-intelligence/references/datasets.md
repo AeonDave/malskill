@@ -39,6 +39,16 @@ coordinates, then checking the short list. A whole city becomes 5–200 points; 
 | Street width (crossing bars, lane count) | design manual + open data | bars × (bar + gap) ≈ crossing width; calibrate on a known crossing in the same city with a map measure; filter a width column with `--range` (`geometry.md` §3) |
 | Railway beside a highway, river crossings, power-line crossings | OSM lines | `osm.py intersect / crossings / near` (`corridors.md`) |
 
+### Inside a venue
+
+Once the venue is known, shop, unit, gate and exit names on signs are filters: `osm.py geom '["name"~"<sign>",i]'
+--bbox <venue>` and read `level` and `ref` where OSM maps the inside; otherwise the venue's own floor directory, or a
+map's level picker read by eye (Google Maps on the web; the national map apps where Google is thin), citing URL and
+level. A hit on the photo's level puts the camera beside that shopfront (tenants change: the photo's date must fit);
+a miss says nothing against the venue; a radius ≤100 m still needs SKILL.md hard rule 8. A Google 360 inside the
+venue renders by its id (`streetlevel.md` §1, the browser rung) and is compared like any reference; its position is
+the uploader's. Draw the plan: `osm.py geom` → `viewer.py mark area <file> --level <L>`.
+
 ## 3. City open data with `opendata.py`
 
 Thousands of city, county and state portals publish their assets with coordinates. Socrata hosts a large share

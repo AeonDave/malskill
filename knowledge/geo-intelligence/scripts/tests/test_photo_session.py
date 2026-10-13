@@ -156,9 +156,9 @@ class PhotoArchiveTests(unittest.TestCase):
     def test_finish_without_coordinates_pins_the_country_centre(self):
         folder = Path(self.start()["folder"])
         report = (folder / "report.md").read_text(encoding="utf-8")
-        for marker in ("<!-- fill: ranked shortlist with percentages and the cues behind each; region hunch; what would change your mind -->",
+        for marker in ("<!-- fill: ranked countries with percentages and the cues behind each; region hunch; what would change your mind; Plan: A. B. C. the most selective fixed features, each → what it can leave → its route (no percentages) -->",
                        "<!-- fill: country / region / city, coordinates (WGS84; GCJ-02 too in mainland China), confidence per level, radius and what it rests on -->"):
-            report = report.replace(marker, "1. Namibia 80% — yellow edge lines, red sand" if "shortlist" in marker else "Namibia, country level only")
+            report = report.replace(marker, "1. Namibia 80% — yellow edge lines, red sand" if "ranked" in marker else "Namibia, country level only")
         report = report.replace('<!-- fill: year or year range, season, date, time of day: each with the clue and the file it rests on; "not determinable" with the reason when it is -->',
                                 "not determinable: no metadata, no dated imagery checked")
         (folder / "report.md").write_text(report, encoding="utf-8")
@@ -710,6 +710,9 @@ class PhotoArchiveTests(unittest.TestCase):
         (folder / "report.md").write_text("# Report\n\n## Gut call (before tools)\n1. Portugal 55% — calçada, whitewash\n"
                                           "2. **Spain** 25% — similar roofs\nRegion hunch: Alentejo\n\n## Answer\nPoprad\n", encoding="utf-8")
         self.assertEqual(photo_session.gut_call((folder / "report.md").read_text(encoding="utf-8")), [("Portugal", 55.0), ("Spain", 25.0)])
+        hunch = ("## Gut call (before tools)\n1. South Korea 99% - Hangul\nRegion hunch: Seoul Goto Mall 45%, Incheon 40%\n"
+                 "Plan:\nA. sign 30% visible → a street → step 3\n\n## Answer\n")
+        self.assertEqual(photo_session.gut_call(hunch), [("South Korea", 99.0)])     # labelled lines never parse as countries
         renamed = self.finish(folder)["folder"]
         truth = self.command("truth", renamed, "--latitude", "38.9", "--longitude", "-6.3", "--country", "Spain")["truth"]
         self.assertEqual((truth["country_hit"], truth["gut_country_hit"], truth["gut_p_truth"]), (False, True, 25.0))

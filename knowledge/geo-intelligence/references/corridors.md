@@ -140,17 +140,15 @@ uv run scripts/terrain.py scan --lines lines.geojson --out hits.json \
 
 - **When the mountain is right in front of you** (its foot a few hundred meters from the camera position), the defaults miss it: within the 1200 m `--near-radius` you are sure to climb onto its slope, and `--dist` starting at 1.5 km can't measure this mountain either. Shrink `--near-radius` to a few hundred meters (`--near-step` must be smaller than it, otherwise only the camera position itself is sampled and the flat-nearby check does nothing), and start `--dist` at 400 m. In hilly areas, loosening like this gives many candidates; when the skyline can't separate them, you need a second constraint.
 - **Lake shore, coast, riverbank** (the camera stands at the water's edge, mountains right behind the far shore): the lines are the
-  shores themselves, `osm.py geom '["natural"="water"]["name"]' --bbox <region> --out lakes.geojson` (multipolygon lakes come as
-  MultiLineString; `scan` reads them). Both plain-oriented filters reject the truth here and are loosened or dropped:
-  `terrain.py scan --lines lakes.geojson --near-radius 400 --near-flat 80 --flat-run 0 --max-low 2 --min-peak <half the photo's
-  highest ridge angle> --out scan.json` (on a 1 km alpine lake the defaults left 0 hits, these left 2 on the right shore). Then
-  `terrain.py fit --hits scan.json --ridge ridge.json --cam-flat 10000 --cam-level 6 --radius 700 --grid 120 --zoom 12
-  --sheet top.jpg`: `--cam-level` keeps only camera positions at the shore's elevation (the hit's `h0`); without it the
-  flat filter rejects every shore position, and with the flat filter merely off the grid climbs the slope and scores cameras
-  100 m above the water. For `ridge`, sample the rock skyline only (`--x0/--x1` past the near tree line) and give `--hrow` by hand
-  at the far waterline: a lake-level camera sees the horizon exactly there. Tree canopy on the ridge and DEM smoothing leave
-  10–20 px of residual on a 1600 px frame even at the true shore: compare clusters by rank and by the overlay shape (cliff,
-  saddle, ridge slope), not by an absolute rms, and settle the shore with the satellite shape of the beach.
+  shores themselves (multipolygon lakes come as MultiLineString; `scan` reads them), and both plain-oriented filters reject the
+  truth here. Run the shore chain in SKILL.md step 6 (on a 1 km alpine lake the defaults left 0 hits, the chain's flags 2 on
+  the right shore). What its flags do: in `scan`, `--near-radius 400 --near-flat 80 --flat-run 0 --max-low 2` admit a shore with
+  a slope behind it; in `fit`, `--cam-level 6` keeps only camera positions at the shore's elevation (the hit's `h0`): without it the
+  default flat filter rejects every shore position, and with the flat filter merely off (`--cam-flat 10000`) the grid climbs
+  the slope and scores cameras 100 m above the water. For `ridge`, sample the rock skyline only (`--x0/--x1` past the near tree line) and give
+  `--hrow` by hand at the far waterline: a lake-level camera sees the horizon exactly there. Tree canopy on the ridge and DEM
+  smoothing leave 10–20 px of residual on a 1600 px frame even at the true shore: compare clusters by rank and by the overlay
+  shape (cliff, saddle, ridge slope), not by an absolute rms, and settle the shore with the satellite shape of the beach.
 - **When mountains fill the whole frame** (no stretch of flat horizon anywhere), the flat-run condition rejects the ground truth: pass `--flat-run 0 --min-low-deg 0` to drop it and rely on `--near-flat` + `--min-peak`, then rank with `terrain.py fit`. If the skyline alone can't separate the top clusters (rms within a few px of each other), add the heading constraint from the line (view ≈ perpendicular to the line when the wires cross the frame nearly level): `terrain.py fit --perp-line lines.geojson`. When a lower near range stands in front of the far one, score both layers (`ridge --near/--near-clear`, `geometry.md` 7.4); the outermost skyline alone ranks look-alike ranges level with the right one.
 - **Set thresholds at about half the photo estimate**. At z10 one cell is about 150 m, peaks get flattened, and computed elevation angles come out low: thresholds at the photo estimate can drop every point near the ground truth. Better too many than missing one; leave the count to the next ranking step.
 - How far the infrastructure is at the left edge, center and right edge of the frame is also an independent numeric constraint: use evenly spaced structures as a ruler (`geometry.md` section 3) to estimate the three distances, and pass them to `terrain.py fit` via `--line` / `--line-dist` for joint scoring.

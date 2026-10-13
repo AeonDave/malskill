@@ -21,6 +21,11 @@ These defaults apply whenever this skill runs, from any project folder.
 - Archive root: `--root`, else `$GEOINT_PHOTOS`, else `photos_root` in `config.local.json` next to `SKILL.md`,
   else `~/geoint-photos/`. `start --beside` ignores the root and creates the session next to the first photo
   (`scoreboard` and `list` then need `--root <that folder>`).
+- Device: `GEOINT_DEVICE=cuda|mps|cpu|directml|auto` overrides the picker. NVIDIA → CUDA automatically; AMD on Linux →
+  ROCm PyTorch wheels (they appear as `cuda`); AMD on Windows → `uv run --with torch-directml` plus
+  `GEOINT_DEVICE=directml` (experimental, some ops fall back to CPU); Apple → `mps`. The local models (~6 GB, `doctor.py
+  --models`) live in `~/.cache/huggingface` and `~/.cache/torch`.
+- Proxy: `GEO_PROXY=<url>|direct` routes every script.
 - Archive time zone: `$GEOINT_TZ`, else `timezone` in `config.local.json`, else this computer's (set an IANA name such as `Europe/Rome`; otherwise the footer shows the OS's local zone name).
 - Shared cache (GeoNames, panorama indexes, sweep descriptors, Wayback list, test-set panoramas):
   `$GEOINT_CACHE`, else `~/.cache/geoint` (on Windows without `~/.cache`, `%LOCALAPPDATA%/geoint`).
@@ -46,6 +51,10 @@ uv run scripts/photo_session.py start --image "/absolute/path/to/photo.jpg"
 - `start` also writes an empty `board.json`; `recon.py` run from the session folder ingests `textgeo.json` and
   `prior/prior.json` into it, so the first candidates and clues are there before any manual `board.py` call.
 - Interrupted? `photo_session.py list --status pending` shows sessions to resume; never start over silently.
+- Video: `meta.py original/<clip>` first (frames lose the clip's GPS and time); then `mkdir frames`, the length in
+  seconds `S` from `ffprobe -v error -show_entries format=duration -of csv=p=0 original/<clip>`, and
+  `ffmpeg -i original/<clip> -vf fps=60/S -frames:v 60 frames/%03d.jpg` (60 frames spread over the whole clip, whatever
+  its length); skim them and run recon on the clearest frame.
 
 ## Live view
 
@@ -202,6 +211,14 @@ Lead with exactly:
 The place line also carries the camera heading, the direction of travel (moving platform) and the capture time
 when they are known. In mainland China add a second coordinate line in the local datum (`GCJ-02: … | BD-09: …`
 from `geo.py convert`), because map apps there take those, not WGS84.
+
+Radius floors: a skyline fit → at least half the span of the tied positions `fit` prints; a settled venue (building,
+station, mall, campus, park whose OSM name matches the identified venue) → `osm.py geom` it with its named entrances
+into one GeoJSON (`'["name"~"<venue>"]' --bbox <block>` usually catches both) and run `geo.py bearings --at <pin>
+--geojson <file>`: the largest `far` (metres from the pin to the farthest vertex) is the floor; if the footprint may
+be partial, never go below a round estimate. The venue floor applies while nothing places the camera inside it: a
+shopfront or unit read in the frame and placed on the map sets the radius to the distance at which that sign is legible
+(usually ≤150 m; ≤100 m still needs hard rule 8).
 
 Then: one confidence/accuracy line (what level is settled, what radius, what it rests on; an unverified
 estimate is called an estimate); the decisive clues in a few bullets; the evidence image when there is one
