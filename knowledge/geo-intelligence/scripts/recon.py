@@ -196,8 +196,8 @@ def summary(photo: Path, out: Path, log: dict, total: float, rev: bool) -> str:
         if city:
             L.append("- City-level labels: " + "; ".join(f"{t} ({len(e)} votes)" for t, e in city))
         if place:
-            L.append("- Specific places named: " + "; ".join(f"{t} ({len(e)})" for t, e in place)
-                     + f" → `poi.py \"{place[0][0]}\"` (or web search) for coordinates, then verify")
+            L.append("- Labels that may name a place (often a scene or object word): " + "; ".join(f"{t} ({len(e)})" for t, e in place)
+                     + " → `poi.py \"<name>\"` (or web search) only for a proper name, then verify")
         sims = [e for e in ij.get("rev", []) if e.get("similar_sheet")]
         if sims:
             L.append("- Near-duplicate sheets to open first: " + ", ".join(f"`intake/rev/{e['similar_sheet']}`" for e in sims[:4]))

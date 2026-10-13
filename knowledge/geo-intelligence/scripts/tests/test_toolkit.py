@@ -384,7 +384,7 @@ class SourcesRegistryTests(unittest.TestCase):
 
 
 class GeometrySunBenchTests(unittest.TestCase):
-    """sun.py dish names / half-day label / tz / --out note, geo.py fov --aspect and intersect errors, imgprep plateau peaks,
+    """sun.py dish names / half-day label / tz / --out note, geo.py fov --aspect and intersect errors, frame --anchor heading, imgprep plateau peaks,
     opendata group, bench satscan and match --dry-run (bench runs through uv: its deps are not in this suite's env)."""
 
     def _main(self, mod, argv: list[str]) -> tuple[str, str]:
@@ -458,6 +458,19 @@ class GeometrySunBenchTests(unittest.TestCase):
             self.assertEqual(cm.exception.code, 2)
             self.assertEqual(len(err.getvalue().strip().splitlines()), 1, err.getvalue())
             self.assertIn("malformed --", err.getvalue())
+
+    def test_frame_anchor_gives_heading(self):
+        import geo
+        # landmark due east of the camera; f = (W/2)/tan(hfov/2), heading = bearing - atan((px - W/2)/f)
+        anchor = ["--anchor", "A:0,0.01:px=750", "--width", "1000"]
+        out, _ = self._main(geo, ["geo.py", "frame", "--at", "0,0", "--anchor", "A:0,0.01:px=500", "--width", "1000", "--hfov", "60"])
+        self.assertIn("heading 90.0°", out)                                    # centred landmark: heading is its bearing
+        out, _ = self._main(geo, ["geo.py", "frame", "--at", "0,0", *anchor, "--hfov", "90"])
+        self.assertIn("heading 63.43°", out)                                   # 90 - atan(250/500)
+        out, _ = self._main(geo, ["geo.py", "frame", "--at", "0,0", "--at", "0.0002,0", *anchor, "--hfov", "60:90"])
+        self.assertEqual(out.count("heading is between"), 2, out)              # one heading range per --at
+        self.assertIn("as field of view goes 60.0°→90.0°, heading is between 73.9°→63.43°", out)   # 90 - atan(250/866)
+        self.assertIn("heading is between 75.04°→64.58°", out)                 # 22 m north: the bearing to the landmark moves
 
     def test_bearings_far_is_the_footprint_radius_from_the_pin(self):
         import geo

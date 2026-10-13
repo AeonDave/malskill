@@ -321,6 +321,7 @@ uv run scripts/tiles.py mark area.jpg --points ring_keep.json --geojson ... --ou
 ```
 
 - `--anchor` makes the heading change with the FOV: the narrower the FOV, the narrower the frame, and the more easily landmarks next to A fall out of frame.
+- Without `--pt` the same command gives the camera heading from one identified landmark: `geo.py frame --at <camera lat,lon> --anchor A:<lat,lon>:px=<x> --width <W> --hfov <lo:hi>` prints the heading at each field of view. The nearer the landmark, the more the heading moves with camera-position error: prefer the farthest identified landmark, and repeat `--at` once per plausible camera position to see the spread.
 - Each landmark gets a verdict: "in frame over the whole field-of-view range" / "in frame at field of view a–b°, out of frame otherwise" / "not in frame over the whole field-of-view range"; plus "may be blocked" (the height and width of a nearer landmark can block a farther one) and "may not be visible" when it is too small (`--min-px`, default 12 px).
 - **Only a landmark that is "in frame over the whole field-of-view range, large enough and not blocked" can exclude this camera position by its absence**. Nearby buildings the script doesn't know about also occlude; a direction with tall buildings in the foreground still can't be excluded.
 - Look up the landmarks' h and w or measure them on satellite imagery; h and `--cam-h` use the same datum.

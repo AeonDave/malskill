@@ -374,7 +374,10 @@ def _streetlevel_view(entry: dict, spec: dict) -> View:
         faces = strip_to_faces(Image.fromarray(strip.astype(np.uint8)), "frblud", "horizontal")
         return View("cube", {k: v.astype(np.float32) for k, v in faces.items()}, float(spec.get("center", heading)))
     eq = _cached_equirect(f"{svc}:{pid}:{z}", lambda: mod.get_panorama(finders[svc](), zoom=z))
-    return View("equirect", eq, float(spec.get("center", heading)))
+    c = spec.get("center")
+    if svc == "kakao" and (c is None or abs((float(c) - heading + 180) % 360 - 180) < 0.5):
+        c = heading + 180.0     # Kakao heading = travel direction, the image middle looks back; older manifests carry center == heading
+    return View("equirect", eq, float(heading if c is None else c))
 
 
 def _apple_equirect(entry: dict, spec: dict) -> tuple[np.ndarray, float]:

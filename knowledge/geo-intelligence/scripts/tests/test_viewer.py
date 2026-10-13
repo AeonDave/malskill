@@ -379,6 +379,22 @@ class StateTests(unittest.TestCase):
         self.assertIn("a ranking, not a verdict", html)
         self.assertIn("Detector skipped (", html)                                             # a recorded skip, not "not run"
 
+    def test_camera_mark_after_finish_points_to_refinish(self):
+        def mark() -> str:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(viewer.main(["mark", "camera", "--lat", "40.4863", "--lon", "21.1331", "--heading", "240", "--session", str(self.folder)]), 0)
+            return err.getvalue()
+        answer = {"outcome": "place", "latitude": 40.4863, "longitude": 21.1331, "heading": None}
+        self.write_meta(status="completed", result=answer)
+        self.assertIn("--heading 240", mark())                                               # the cone is not the answer: re-finish
+        self.write_meta(result={**answer, "heading": 250.0})
+        self.assertNotIn("Note:", mark())                                                    # inside the cone's field of view
+        self.write_meta(result={"outcome": "generated", "latitude": None, "longitude": None})
+        self.assertNotIn("Note:", mark())                                                    # no place, no heading to amend
+        self.write_meta(status="pending", result=None)
+        self.assertNotIn("Note:", mark())
+
     def test_area_marks_draw_outlines_corridors_and_levels(self):
         feats = [
             {"type": "Feature", "id": "way/1", "properties": {"name": "Central Underground Mall", "shop": "mall", "level": "-1", "layer": "-1"},

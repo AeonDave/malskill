@@ -627,8 +627,8 @@ def heading_hint(folder: Path, lat: float, lon: float) -> dict | None:
 
 
 def when_text(report: str) -> str | None:
-    """The `## When` section of report.md as one line (the model's own dating), without the placeholder."""
-    m = re.search(r"^## When[^\n]*\n(.*?)(?=^## |\Z)", report, re.M | re.S)
+    """The `## When` section of report.md as one line (the model's own dating), without the placeholder or finish's footer."""
+    m = re.search(r"^## When[^\n]*\n(.*?)(?=^## |\Z)", report.split(FOOTER, 1)[0], re.M | re.S)
     if not m:
         return None
     body = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S)
@@ -767,8 +767,10 @@ def finish(args: argparse.Namespace) -> dict:
         except (OSError, ValueError):
             pass
         years = sorted(set(re.findall(r"\b(19\d\d|20\d\d)\b", dated)))
-        print("Note: --taken unknown" + (f", yet the report or the board's clues name {', '.join(years)}: encode it (`--taken {years[0]}..` for 'from {years[0]} on', "
-              f"`--taken {years[0]}` for that year, `--taken {years[0]}-MM` for a month, `..{years[-1]}` for 'before')" if years else ": the answer still says why the date could not be determined")
+        print("Note: --taken unknown" + (f", yet the report or the board's clues name {', '.join(years)}: if one dates or bounds this photo (a dated sign "
+              f"in it, a change against dated imagery, an earliest copy), encode it (`--taken {years[0]}..` from {years[0]} on, `--taken {years[0]}` "
+              f"that year, `--taken {years[0]}-MM` a month, `..{years[-1]}` before); the date of a reference image, page or file alone is not the "
+              "photo's date" if years else ": the answer still says why the date could not be determined")
               + ".", file=sys.stderr)
     hint = None
     if heading is None:
@@ -777,7 +779,9 @@ def finish(args: argparse.Namespace) -> dict:
         print("Warning: --heading unknown, so the map draws no firm view cone"
               + (f"; the best ranked view {hint['distance_m']} m from the answer looks at {hint['heading']:.0f}° ({hint['inliers']} inliers, {hint['source']}): pass --heading {hint['heading']:.0f} if that view is the shot" if hint
                  else (f"; the top ranked views look at {', '.join(hints[:3])}" if hints else ""))
-              + ". A Street View frame that shows the scene, the road bearing when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
+              + ". A landmark identified in the frame (`geo.py frame --at <answer lat,lon> --anchor <name>:<lat,lon>:px=<its pixel column> --width "
+              "<photo width> --hfov 45:70` prints the heading at each field of view), a Street View frame that shows the scene, the road bearing "
+              "when the photo looks along the road, or sun.py compass give the heading.", file=sys.stderr)
     # the scene's required checks: a mountain or lake photo closes only with a skyline file, a street photo with a panorama/match file
     try:
         elapsed_min = (now() - datetime.fromisoformat(metadata["started_at"])).total_seconds() / 60
@@ -925,12 +929,19 @@ def _close(folder: Path, metadata: dict, report: str, timestamp: str, names: lis
         if cwd == folder or folder in cwd.parents:
             os.chdir(folder.parent)               # Windows refuses to rename a folder that is this process's cwd
         _rename(folder, destination)
-    metadata.update({"status": "completed", "completed_at": now().isoformat(timespec="microseconds"), "folder": str(destination), "result": result})
+    # finish again on a closed session is the correction path: the first close time stays, the replaced answer goes to result_history
+    prior = metadata.get("result") if metadata.get("status") == "completed" else None
+    stamp = now().isoformat(timespec="microseconds")
+    metadata.update({"status": "completed", "completed_at": metadata.get("completed_at") if prior and metadata.get("completed_at") else stamp,
+                     "folder": str(destination), "result": result})
+    if prior:
+        metadata.setdefault("result_history", []).append({"replaced_at": stamp, "result": prior})
     body = report.split(FOOTER, 1)[0].rstrip().replace(str(folder), str(destination))
     footer = (
         f"\n\n{FOOTER}\n\n"
         f"Analysis started: {metadata['started_at']} ({TZ_NAME})  \n"
         f"Analysis completed: {metadata['completed_at']}  \n"
+        + (f"Amended: {stamp} (previous result kept in session.json result_history)  \n" if prior else "")
         + lines
         + f"Archive: [{destination.name}](<{destination}>)\n"
     )

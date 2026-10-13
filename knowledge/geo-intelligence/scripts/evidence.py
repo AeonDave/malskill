@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -56,14 +57,61 @@ def _path(base: Path, rel: str) -> Path:
     raise SystemExit(f"image {rel!r} not found next to the spec ({base}) or in the working directory ({Path.cwd()})")
 
 
+def _wrap(text: str, font, width: float, max_lines: int = 3) -> list[str]:
+    """Greedy word wrap to `width` px; a token wider than the width (CJK with no spaces, a URL) breaks per character."""
+    lines, cur = [], ""
+    for word in text.split():
+        if cur and font.getlength(f"{cur} {word}") <= width:
+            cur = f"{cur} {word}"
+            continue
+        if cur:
+            lines.append(cur)
+            cur = ""
+        for ch in word:
+            if cur and font.getlength(cur + ch) > width:
+                lines.append(cur)
+                cur = ch
+            else:
+                cur += ch
+    lines.append(cur)
+    return lines[:max_lines]
+
+
+def _warn_camera_outside(spec: dict, m: Mosaic, size: tuple[int, int], map_path: Path) -> None:
+    """One stderr line when the camera falls outside the final image: the evidence would not show the answer it proves.
+    Only the camera is checked: a long-range wedge (a lake, a skyline) may leave the image by design."""
+    lat, lon = spec["camera"]
+    x, y = m.to_px(lat, lon)
+    w, h = size
+    if not (0 <= x < w and 0 <= y < h):
+        span = math.hypot(x - w / 2, y - h / 2) / 2 + max(size) / 2      # px from the new centre: the camera and the old extent
+        dz = 0
+        while span / 2 ** dz > 8 * 256 and dz < m.z:                     # over 8 rings (17x17 tiles): zoom out instead
+            dz += 1
+        rad = max(2, math.ceil(span / 2 ** dz / 256))
+        clat, clon = m.to_ll((x + w / 2) / 2, (y + h / 2) / 2)
+        src = f" --source {m.meta['source']}" if "source" in m.meta else ""
+        crop = '; drop or redo "crop" (pixel coordinates of the old map)' if spec.get("crop") else ""
+        print(f"camera {lat:.6f},{lon:.6f} is outside this map (px {x:.0f},{y:.0f} vs box {(0, 0, w, h)}); refetch: tiles.py fetch "
+              f"{clat:.6f},{clon:.6f} --zoom {m.z - dz} --radius {rad}{src} --out {map_path}{crop}", file=sys.stderr)
+    elif spec.get("crop"):
+        x0, y0, x1, y1 = spec["crop"]
+        if not (x0 <= x < x1 and y0 <= y < y1):
+            print(f"camera {lat:.6f},{lon:.6f} is outside the crop (px {x:.0f},{y:.0f} vs crop {tuple(spec['crop'])}); "
+                  "widen or drop \"crop\"", file=sys.stderr)
+
+
 def build(spec: dict, base: Path, out: Path) -> None:
     map_path = _path(base, spec["map"])
     m = Mosaic(map_path)
     im = Image.open(map_path).convert("RGBA")
+    if "camera" in spec:
+        _warn_camera_outside(spec, m, im.size, map_path)
     scale_font = max(im.size) / 1400
 
     ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
+    pts = None
     if "camera" in spec:
         cam = tuple(spec["camera"])
         if "heading" in spec:
@@ -74,10 +122,6 @@ def build(spec: dict, base: Path, out: Path) -> None:
         a = m.to_px(*ln["from"])
         b = m.to_px(*geo.dest(tuple(ln["from"]), ln["bearing"], ln["length_m"]))
         d.line([a, b], fill=ln.get("color", "#00ffff"), width=int(8 * scale_font) or 3)
-    if "camera" in spec:
-        x, y = m.to_px(*spec["camera"])
-        r = 18 * scale_font
-        d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 40, 40, 255), outline="white", width=4)
     im = Image.alpha_composite(im, ov).convert("RGB")
 
     d = ImageDraw.Draw(im)
@@ -93,6 +137,12 @@ def build(spec: dict, base: Path, out: Path) -> None:
         y = min(max(8, y), im.size[1] - th - 16)
         d.rectangle([x - 8, y - 6, x + tw + 8, y + th + 10], fill="black")
         d.text((x, y), lb["text"], font=f, fill=lb.get("color", "white"))
+    if "camera" in spec:                                   # camera and wedge outline last: no label may hide the answer
+        if pts:
+            d.line(pts + [pts[0]], fill=(255, 220, 0), width=3)
+        x, y = m.to_px(*spec["camera"])
+        r = 18 * scale_font
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 40, 40), outline="white", width=4)
 
     if spec.get("crop"):
         im = im.crop(tuple(spec["crop"]))
@@ -104,17 +154,7 @@ def build(spec: dict, base: Path, out: Path) -> None:
         pw = W // len(panels)
         ph = int(pw * 3 / 4)
         cf = font(20, prefer_wide=True)
-        lines_per = []
-        for p in panels:                                   # wrap captions to the panel width so they don't overlap the neighboring panel
-            cap, cur, lines = p.get("caption", ""), "", []
-            for ch in cap:
-                if cf.getlength(cur + ch) > pw - 12:
-                    lines.append(cur)
-                    cur = ch
-                else:
-                    cur += ch
-            lines.append(cur)
-            lines_per.append(lines[:3])
+        lines_per = [_wrap(p.get("caption", ""), cf, pw - 12) for p in panels]   # panel width: no overlap with the neighbour
         cap_h = 10 + 26 * max(len(x) for x in lines_per)
         S = Image.new("RGB", (W, im.size[1] + ph + cap_h), "black")
         S.paste(im, (0, 0))

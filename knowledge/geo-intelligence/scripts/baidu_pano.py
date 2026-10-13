@@ -30,10 +30,11 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).parent))
 import geo  # noqa: E402
+from geolib.cli import contact_sheet, sheet_pages  # noqa: E402
 
 API = "https://mapsv0.bdimg.com/"
 
@@ -143,22 +144,30 @@ def render(pid: str, heading: float, pitch: float = 10, fov: float = 80,
            f"&pitch={pitch:.1f}&width={w}&height={h}")
     try:
         data = _get(url, 40, proxy)
-    except Exception:
-        return Image.new("RGB", (w, h), "gray")
+        im = Image.open(io.BytesIO(data))
+        im.load()                       # a reply that is no image (a block page) is a failed view, not a crash
+    except Exception as e:  # noqa: BLE001
+        print(f"baidu render failed for {pid}: {type(e).__name__}: {str(e)[:160]}", file=sys.stderr)
+        im = Image.new("RGB", (w, h), "gray")
+        ImageDraw.Draw(im).text((10, 10), f"failed: {str(e)[:60]}", fill="white")
+        im.info["failed"] = f"{type(e).__name__}: {str(e)[:120]}"
+        return im                       # never cached: a rerun asks again
     if cache:
         (cache / key).write_bytes(data)
-    return Image.open(io.BytesIO(data))
+    return im
 
 
-def sheet(items: list[dict], out: Path, cols: int = 3, tw: int = 480, th: int = 360,
-          cache: Path | None = None, proxy: str | None = None) -> None:
-    """items: [{id, heading, pitch?, fov?, label?}] → numbered contact sheet."""
+def cells(items: list[dict], cache: Path | None = None, proxy: str | None = None) -> list[Image.Image]:
+    """items: [{id, heading, pitch?, fov?}] → their views, rendered in parallel; a failed one is render()'s grey cell."""
     def one(it):
         return render(it["id"], it["heading"], it.get("pitch", 10), it.get("fov", 80), cache=cache, proxy=proxy)
 
     with ThreadPoolExecutor(12) as ex:
-        ims = list(ex.map(one, items))
-    from geolib.cli import contact_sheet
+        return list(ex.map(one, items))
+
+
+def sheet(items: list[dict], ims: list[Image.Image], out: Path, cols: int = 3, tw: int = 480, th: int = 360) -> None:
+    """items [{id, heading, label?}] and their rendered views → one numbered contact sheet."""
     contact_sheet([(im, it.get("label") or f"{i}: …{it['id'][-9:]} h{it['heading']:.0f}") for i, (it, im) in enumerate(zip(items, ims))],
                   out, cols, tw, th, bar=22, font_size=16)
 
@@ -231,9 +240,7 @@ def main() -> None:
         if not items:
             sys.exit("no panorama points found in the area (area too small, or no Baidu street view here)")
         pages = [items[k:k + 12] for k in range(0, len(items), 12)]
-        for pi, page in enumerate(pages):
-            out = args.out if pi == 0 else args.out.with_name(f"{args.out.stem}_{pi + 1}{args.out.suffix}")
-            sheet(page, out, cache=args.cache, proxy=args.proxy)
+        for out in sheet_pages(pages, args.out, lambda page: cells(page, args.cache, args.proxy), sheet):
             print(out)
         idx = args.out.with_suffix(".index.json")
         idx.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -286,14 +293,11 @@ def main() -> None:
                     ap.error("need --heading, --headings or --toward")
                 items.append({"id": pid, "heading": hd % 360, "pitch": args.pitch, "fov": args.fov})
         pages = [items[k:k + args.limit] for k in range(0, len(items), args.limit)] or [[]]
-        for pi, page in enumerate(pages):
-            # page 1 is written to --out itself, later pages get _2, _3…, to avoid "the file given by --out doesn't exist"
-            out = args.out if pi == 0 else args.out.with_name(f"{args.out.stem}_{pi + 1}{args.out.suffix}")
-            sheet(page, out, cache=args.cache, proxy=args.proxy)
+        for out in sheet_pages(pages, args.out, lambda page: cells(page, args.cache, args.proxy), sheet):
             print(out)
         if len(pages) > 1:
             print(f"{len(pages)} pages: {args.out.name} plus {args.out.stem}_2 … _{len(pages)}, {args.limit} cells per page")
-        idx = args.out.with_suffix(".index.json")          # always, a single --spec page too: the street check knows a sheet by it
+        idx = args.out.with_suffix(".index.json")          # unless every cell failed, a single --spec page too: the street check knows a sheet by it
         idx.write_text(json.dumps(items, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"index -> {idx}")
 

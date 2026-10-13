@@ -17,13 +17,15 @@ Always open the image-search screenshots and the similar-image contact sheets; "
 
 Examples:
   intake.py photo.jpg --out-dir intake/
-  intake.py photo.jpg --out-dir intake/ --box 300,120,900,760 --exclude 网络迷踪,<creator name>   # in blind tests, exclude walkthrough posts (网络迷踪 = photo geolocation)
-  intake.py photo.jpg --out-dir intake/ --no-rev                                                   # only metadata, edge crops, OCR (under 30 seconds)
+  intake.py photo.jpg --out-dir intake/ --exclude 网络迷踪,<creator name>   # blind tests: exclude walkthrough posts (网络迷踪 = photo geolocation)
+  intake.py photo.jpg --out-dir rev_crop/ --box 300,120,900,760            # after recon: only the tight crop is searched
+  intake.py photo.jpg --out-dir intake/ --no-rev                           # only metadata, edge crops, OCR (under 30 seconds)
 """
 from __future__ import annotations
 
 import argparse
 from geolib.net import PROXY_HELP
+import itertools
 import json
 import os
 import re
@@ -148,19 +150,22 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("photo")
     ap.add_argument("--out-dir", type=Path, required=True)
-    ap.add_argument("--box", action="append", help="x0,y0,x1,y1: tight-crop variant, repeatable")
+    ap.add_argument("--box", action="append", help="x0,y0,x1,y1: search only this tight crop (the full frame is searched by recon "
+                                                       "or a run without --box); repeatable")
     ap.add_argument("--engines", default="baidu,yandex")
     ap.add_argument("--exclude", help="words to exclude from reverse image search results (for blind tests)")
     ap.add_argument("--no-rev", action="store_true")
     ap.add_argument("--no-ocr", action="store_true")
-    ap.add_argument("--max-variants", type=int, default=4, help="max number of variants each engine searches (besides the original)")
+    ap.add_argument("--max-variants", type=int, default=4,
+                    help="max number of variants each engine searches (plus the original when there is no --box)")
     ap.add_argument("--proxy", default=os.environ.get("GEO_PROXY"), help=PROXY_HELP)
     args = ap.parse_args()
 
     photo = Path(args.photo).resolve()
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    (out / "edges").mkdir(exist_ok=True)
+    if not args.box:
+        (out / "edges").mkdir(exist_ok=True)
     (out / "variants").mkdir(exist_ok=True)
     t_all = time.time()
     timings: dict = {}
@@ -184,23 +189,24 @@ def main() -> None:
         return _run([UV, "run", _script("imgprep.py"), "edges", str(photo), "--out-dir", str(out / "edges")])
 
     def variants():
-        rc, so, se = _run([UV, "run", _script("imgprep.py"), "variants", str(photo), "--prefix", "full", "--out-dir", str(out / "variants")])
-        for i, b in enumerate(args.box or [], 1):
-            r2 = _run([UV, "run", _script("imgprep.py"), "variants", str(photo), "--box", b, "--prefix", f"box{i}", "--out-dir", str(out / "variants")])
-            rc, so, se = max(rc, r2[0]), so + r2[1], se + r2[2]
-        return rc, so, se
+        prep = [UV, "run", _script("imgprep.py"), "variants", str(photo), "--out-dir", str(out / "variants")]
+        calls = ([prep + ["--box", b, "--prefix", f"box{i}"] for i, b in enumerate(args.box, 1)] if args.box
+                 else [prep + ["--prefix", "full"]])
+        res = [_run(c) for c in calls]
+        return max(r[0] for r in res), "".join(r[1] for r in res), "".join(r[2] for r in res)
 
     def ocr():
         return _run([UV, "run", _script("ocr.py"), str(photo), "--out", str(out / "ocr.json"), "--draw", str(out / "ocr.png")])
 
-    # Batch 1: metadata, edges, variants, OCR in parallel
+    # Batch 1: metadata, edges, variants, OCR in parallel; --box: crop variants only, the full frame's edges and variants are recon's
     with ThreadPoolExecutor(4) as ex:
         f_exif = ex.submit(timed, "exif", exif)
-        f_edges = ex.submit(timed, "edges", edges)
+        f_edges = None if args.box else ex.submit(timed, "edges", edges)
         f_var = ex.submit(timed, "variants", variants)
         f_ocr = None if args.no_ocr else ex.submit(timed, "ocr", ocr)
         exif_res = f_exif.result()
-        f_edges.result()
+        if f_edges:
+            f_edges.result()
         f_var.result()
         if f_ocr:
             f_ocr.result()
@@ -210,14 +216,19 @@ def main() -> None:
         exif_json = {"raw": exif_res[1][:500]}
     (out / "exif.json").write_text(json.dumps(exif_json, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    # Batch 2: reverse image search, two engines in parallel, each searches the original + up to max-variants variants
+    # Batch 2: reverse image search, two engines in parallel, each searches the original (not with --box: recon searched it)
+    # + up to max-variants variants
     rev_dir = out / "rev"
     entries, votes, hits = [], {"city": {}, "place": {}}, []
     if not args.no_rev:
         rev_dir.mkdir(exist_ok=True)
         var_files = sorted((out / "variants").glob("*.jpg")) + sorted((out / "variants").glob("*.png"))
-        prefer = [f for f in var_files if any(k in f.stem for k in ("crop", "flip", "box"))] + [f for f in var_files if not any(k in f.stem for k in ("crop", "flip", "box"))]
-        images = [str(photo)] + [str(f) for f in prefer[: args.max_variants]]
+        if args.box:                    # boxes share the slots round-robin, each box's crop first
+            groups = [sorted(f for f in var_files if f.stem.startswith(f"box{i}_")) for i in range(1, len(args.box) + 1)]
+            prefer = [f for tier in itertools.zip_longest(*groups) for f in tier if f]
+        else:
+            prefer = [f for f in var_files if any(k in f.stem for k in ("crop", "flip", "box"))] + [f for f in var_files if not any(k in f.stem for k in ("crop", "flip", "box"))]
+        images = ([] if args.box else [str(photo)]) + [str(f) for f in prefer[: args.max_variants]]
 
         def rev(engine):
             cmd = [UV, "run", _script("revimg.py"), *images, "--out-dir", str(rev_dir), "--engines", engine]
@@ -284,7 +295,9 @@ def main() -> None:
             L.append("A near-duplicate photo is the fastest route to a location: the same object or scene has often been photographed by others and posted on Dianping, Douyin, Xiaohongshu, and the source page's shop name, scenic-area name or location tag gives the place directly. "
                      "Open the contact sheet and compare each cell with the query image in the top-left corner on **fixed features** (shapes of structural parts, soot and damage, the mountains/buildings/bridges/pylons behind); merely the same kind of object doesn't count. "
                      "For a near-duplicate: number i is `similar[i]` in that image's JSON, `from` is the source page, `site` is the site; look through the other images on the same source page too. "
-                     "For sources that need a login, don't log in and don't bypass verification; instead do a keyword search from image features + site type. Look at the original image's sheet first; look at the variants' sheets only if the original's has no near-duplicate.")
+                     "For sources that need a login, don't log in and don't bypass verification; instead do a keyword search from image features + site type. "
+                     + ("Only the --box crops were searched here (recon or a run without --box searched the full frame); compare each crop's sheet with the crop."
+                        if args.box else "Look at the original image's sheet first; look at the variants' sheets only if the original's has no near-duplicate."))
             L.append("")
             for e in baidu:
                 head = f"**{e['variant']}**: "
@@ -298,7 +311,7 @@ def main() -> None:
                     note = f"; {e['similar_note']}" if e["similar_note"] else ""
                     L.append(f"- {head}{e['similar_n']} images ({sites}); {sheet}{note}; source list in `similar` of `rev/{e['json']}`")
             L.append("")
-        L.append("### Tiered vote count (several variants from one engine naming the same city count as one vote; conflicting specific places don't cancel city votes)")
+        L.append("### Tiered vote count (several variants from one engine naming the same city count as one vote; conflicting place labels don't cancel city votes)")
         L.append("")
         if votes["city"]:
             for t, engs in sorted(votes["city"].items(), key=lambda kv: -len(kv[1])):
@@ -307,9 +320,10 @@ def main() -> None:
             L.append("- City level: none")
         if votes["place"]:
             for t, srcs in sorted(votes["place"].items(), key=lambda kv: -len(kv[1])):
-                L.append(f"- Specific place **{t}**: {len(srcs)} times ({', '.join(srcs)}) → `poi.py \"{t}\" --city <city> --region <cc>` to get coordinates; list every same-name place, then verify")
+                L.append(f"- Label **{t}** (scene/object word or place name): {len(srcs)} times ({', '.join(srcs)}); if it is a proper name "
+                         f"→ `poi.py \"{t}\" --city <city> --region <cc>`, list every same-name place, then verify")
         else:
-            L.append("- Specific place level: none")
+            L.append("- Place-name labels: none")
         L.append("")
         L.append("### Each image, each engine")
         L.append("")
@@ -322,7 +336,8 @@ def main() -> None:
             for ln in e["links"][:8]:
                 L.append(f"- [{ln.get('site', '')}] {ln.get('title', '')[:80]} — {ln.get('url', '')[:100]}")
             L.append("")
-    L += ["## Output files", "", f"- Edge crops: `edges/` ({len(list((out / 'edges').glob('*')))} images; look at the four edges and four corners one by one)",
+    L += ["## Output files", "",
+          None if args.box else f"- Edge crops: `edges/` ({len(list((out / 'edges').glob('*')))} images; look at the four edges and four corners one by one)",
           f"- Variants: `variants/` ({len(list((out / 'variants').glob('*')))} images)", "- OCR annotated image: `ocr.png`" if not args.no_ocr else "",
           f"- Image-search screenshots: `rev/` ({len(list(rev_dir.glob('*.png'))) if rev_dir.exists() else 0} images)" if not args.no_rev else "",
           f"- Baidu similar-image contact sheets: `rev/*_baidu_similar.jpg` ({len(list(rev_dir.glob('*_baidu_similar.jpg'))) if rev_dir.exists() else 0})" if not args.no_rev else "", "",

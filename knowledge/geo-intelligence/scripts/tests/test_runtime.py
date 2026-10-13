@@ -100,7 +100,7 @@ class NetworkTests(unittest.TestCase):
             spec, out = Path(d) / "spec.json", Path(d) / "cands_sheet.jpg"
             spec.write_text(json.dumps(rows), encoding="utf-8")
             argv = ["baidu_pano.py", "sheet", "--spec", str(spec), "--out", str(out)]
-            with patch.object(baidu_pano, "sheet") as draw, patch.object(sys, "argv", argv), patch("sys.stdout", new=io.StringIO()):
+            with patch.object(baidu_pano, "cells", return_value=[Image.new("RGB", (8, 8))]),                     patch.object(baidu_pano, "sheet") as draw, patch.object(sys, "argv", argv), patch("sys.stdout", new=io.StringIO()):
                 baidu_pano.main()
             self.assertEqual(draw.call_count, 1)                                          # one page from a spec
             # the street check knows a panorama sheet by the index beside it
@@ -116,29 +116,92 @@ class NetworkTests(unittest.TestCase):
             poi.search_osm("school", None, 2, "http://chosen:8080", "us")
             self.assertEqual(fetch.call_args.kwargs["proxy"], "http://chosen:8080")
 
-    def test_intake_forwards_route_to_both_engines(self):
+    @staticmethod
+    def searched(cmd: list[str]) -> list[str]:
+        """The image arguments of a revimg.py command line."""
+        i = next(k for k, part in enumerate(cmd) if str(part).endswith("revimg.py"))
+        return cmd[i + 1:cmd.index("--out-dir")]
+
+    @staticmethod
+    def run_intake(root: Path, *extra: str, guess: str = "") -> tuple[Path, list[list[str]]]:
+        """intake.main() on a white 100x100 photo: the small local helpers run for real (they write the files intake reads);
+        revimg is a recorder that writes one result JSON per image and engine, labelled `guess`. Returns the photo and the
+        revimg commands."""
         import intake
-        from PIL import Image
+        photo = root / "photo.jpg"
+        Image.new("RGB", (100, 100), "white").save(photo)
         commands = []
-        def run(cmd, **kwargs):
-            commands.append(cmd)
-            return 0, "", ""
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            photo = root / "photo.jpg"
-            Image.new("RGB", (100, 100), "white").save(photo)
-            # Preparation writes files used by intake; run the actual small local helpers.
-            original = intake._run
-            def local_or_search(cmd, **kwargs):
-                if any(str(part).endswith("revimg.py") for part in cmd):
-                    return run(cmd, **kwargs)
+        original = intake._run
+
+        def local_or_search(cmd, **kwargs):
+            if not any(str(part).endswith("revimg.py") for part in cmd):
                 return original([sys.executable, *cmd[2:]], **kwargs)
-            with patch.object(intake, "_run", side_effect=local_or_search), patch.object(sys, "argv", ["intake.py", str(photo), "--out-dir", str(root / "out"), "--no-ocr", "--max-variants", "1", "--proxy", "direct"]):
-                intake.main()
+            commands.append(cmd)
+            rev_dir, engine = Path(cmd[cmd.index("--out-dir") + 1]), cmd[cmd.index("--engines") + 1]
+            for img in NetworkTests.searched(cmd):
+                (rev_dir / f"{Path(img).stem}_{engine}.json").write_text(json.dumps({"guess": [guess] if guess else []}),
+                                                                         encoding="utf-8")
+            return 0, "", ""
+        argv = ["intake.py", str(photo), "--out-dir", str(root / "intake"), "--no-ocr", *extra]
+        with patch.object(intake, "_run", side_effect=local_or_search), patch.object(sys, "argv", argv), \
+                patch("sys.stdout", new=io.StringIO()):
+            intake.main()
+        return photo, commands
+
+    def test_intake_forwards_route_to_both_engines(self):
+        with tempfile.TemporaryDirectory() as folder:
+            photo, commands = self.run_intake(Path(folder), "--max-variants", "1", "--proxy", "direct")
             self.assertEqual(len(commands), 2)
             for cmd in commands:
                 self.assertEqual(cmd[cmd.index("--proxy") + 1], "direct")
+                self.assertEqual(self.searched(cmd)[0], str(photo))                 # without --box the original goes first
             self.assertEqual({cmd[cmd.index("--engines") + 1] for cmd in commands}, {"baidu", "yandex"})
+
+    def test_intake_box_searches_only_crops(self):
+        # recon already searched the full frame on both engines: a --box rerun searches the crop's variants only
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            photo, commands = self.run_intake(root, "--box", "10,10,60,60", "--max-variants", "2")
+            self.assertEqual(len(commands), 2)
+            for cmd in commands:
+                self.assertNotIn(str(photo), cmd)
+                images = self.searched(cmd)
+                self.assertEqual(len(images), 2)
+                self.assertTrue(all(Path(p).name.startswith("box1_") for p in images), images)
+            self.assertFalse((root / "intake" / "edges").exists())
+            self.assertEqual(list((root / "intake" / "variants").glob("full_*")), [])
+            md = (root / "intake" / "intake.md").read_text(encoding="utf-8")
+            self.assertIn("Only the --box crops were searched here (recon or a run without --box searched the full frame); "
+                          "compare each crop's sheet with the crop.", md)
+            self.assertNotIn("Look at the original image's sheet first", md)
+            self.assertNotIn("Edge crops", md)
+            self.assertIn("- Place-name labels: none", md)
+
+    def test_intake_two_boxes_both_searched(self):
+        # --box is repeatable: the variant slots go round-robin across boxes, each box's crop first
+        with tempfile.TemporaryDirectory() as folder:
+            _, commands = self.run_intake(Path(folder), "--box", "10,10,60,60", "--box", "40,40,90,90", "--max-variants", "2")
+            self.assertEqual(len(commands), 2)
+            for cmd in commands:
+                self.assertEqual([Path(p).name for p in self.searched(cmd)], ["box1_crop.jpg", "box2_crop.jpg"])
+
+    def test_place_labels_are_not_presented_as_places(self):
+        # _classify files any label containing 路/山/湖/寺/园/城… under "place": Baidu's 石板路 (stone paving) is a scene word,
+        # so neither report may turn it into a geocoding command
+        import recon
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.run_intake(root, "--max-variants", "0", guess="图中可能是：石板路")
+            md = (root / "intake" / "intake.md").read_text(encoding="utf-8")
+            self.assertIn("conflicting place labels don't cancel city votes", md)
+            self.assertIn("- Label **石板路** (scene/object word or place name): 2 times (baidu/photo, yandex/photo); if it is a "
+                          "proper name → `poi.py \"石板路\" --city <city> --region <cc>`, list every same-name place, then verify", md)
+            self.assertNotIn("Specific place", md)
+            summary = recon.summary(Path("photo.jpg"), root, {}, 1.0, True)
+            self.assertIn("- Labels that may name a place (often a scene or object word): 石板路 (2) → `poi.py \"<name>\"` "
+                          "(or web search) only for a proper name, then verify", summary)
+            self.assertNotIn("Specific places named", summary)
+            self.assertNotIn('poi.py "石板路"', summary)
 
 
 class BrowserTests(unittest.IsolatedAsyncioTestCase):
@@ -738,6 +801,205 @@ class GazetteerNameTests(unittest.TestCase):
         self.assertIn('rel["name:en"="Shenzhen"]["boundary"="administrative"];', queries[-1])
         self.assertIn(");map_to_area->.p;", queries[-1])
         self.assertIn('rel(area.p)["int_name"="Nanshan"]["boundary"="administrative"]["admin_level"="6"];', queries[-1])
+
+
+class PanoSheetAndKakaoTests(unittest.TestCase):
+    """Street-level sheets: pano.py list/sheet selection by capture period, sheets whose cells failed (pano, gsv, baidu),
+    and the Kakao render centre."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def rows(*specs: tuple[str, str, float]) -> list[dict]:
+        """Kakao manifest rows (id, date, metres north of 33.5,126.5)."""
+        return [{"provider": "kakao", "id": i, "lat": 33.5 + m / 110540.0, "lon": 126.5, "heading": 0.0, "date": d,
+                 "high": {"kind": "streetlevel", "service": "kakao", "pano": i, "zoom": 2, "center": 180.0}} for i, d, m in specs]
+
+    @staticmethod
+    def pano_main(*argv: str) -> tuple[str, str]:
+        import pano
+        with patch.object(sys, "argv", ["pano.py", *argv]), patch.dict(os.environ), patch("sys.stdout", new=io.StringIO()) as out, \
+                patch("sys.stderr", new=io.StringIO()) as err:
+            pano.main()
+        return out.getvalue(), err.getvalue()
+
+    @staticmethod
+    def view():
+        return SimpleNamespace(render=lambda *a: Image.new("RGB", (480, 320)))
+
+    def test_kakao_center_is_opposite_the_travel_angle(self):
+        # Kakao's `angle` is the travel direction and the stitched image's middle column looks back: checked against the Kakao
+        # Roadview compass and OSM landmarks on pano 1206769250 (Jeju, angle 219.9) and 1198500660 (Seoul, angle 270.5)
+        import pano
+        p = SimpleNamespace(id=1206769250, lat=33.5156457665871, lon=126.529766754107, heading=math.radians(219.9), date=None)
+        fake = SimpleNamespace(find_panoramas=lambda *a, **k: [p])
+        with patch.object(pano.P, "_sl", lambda s: fake), patch.object(pano.time, "sleep"):
+            rows = pano._point_lookup("kakao", (33.5150, 126.5290, 33.5162, 126.5305), 200, 5)
+        self.assertEqual(len(rows), 1)
+        self.assertAlmostEqual(rows[0]["heading"], 219.9, places=1)            # the travel axis `sheet --along` faces
+        self.assertAlmostEqual(rows[0]["low"]["center"], 39.9, places=1)
+        self.assertAlmostEqual(rows[0]["high"]["center"], 39.9, places=1)
+
+    def test_kakao_legacy_manifest_center_is_corrected(self):
+        import numpy as np
+        fake = SimpleNamespace(find_panorama_by_id=lambda pid: object(), get_panorama=lambda p, zoom: None)
+
+        def centre(service: str, heading: float, center: float | None) -> float:
+            spec = {"kind": "streetlevel", "service": service, "pano": "1206769250", "zoom": 1}
+            if center is not None:
+                spec["center"] = center
+            with patch.object(_pano, "_sl", lambda s: fake), \
+                    patch.object(_pano, "_cached_equirect", lambda tag, make: np.zeros((4, 8, 3), np.float32)):
+                return _pano.load({"provider": service, "id": "1206769250", "heading": heading, "high": spec}, "high").heading % 360
+        for center in (219.9, 39.9, None):      # a manifest listed before the fix (centre = angle), one listed after, none
+            self.assertAlmostEqual(centre("kakao", 219.9, center), 39.9, places=6, msg=center)
+        self.assertEqual(centre("mapy", 120.0, 0.0), 0.0)                       # other providers keep their own centre
+
+    def test_list_date_filter_runs_before_thin(self):
+        import pano
+        new, old = self.rows(("new", "2026-03", 0), ("old", "2008-10", 5))
+        for listed, period, kept in (([new, old], "2008", "old"), ([old, new], "2026", "new")):
+            out = self.dir / f"m{period}.jsonl"
+            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit: list(listed)}):
+                self.pano_main("list", "--provider", "kakao", "--bbox", "33.49,126.49,33.51,126.51", "--thin", "20", "--date", period,
+                               "--out", str(out))
+            self.assertEqual([r["id"] for r in pano.P.read_manifest(out)], [kept])
+
+    def test_sheet_date_filter_names_available_periods(self):
+        import pano
+        rows = self.rows(("a", "2008-10-29", 0), ("b", "2008-10-29", 10), ("c", "2008-10-29", 25))
+        out = self.dir / "s.jpg"
+        argv = ("sheet", "--manifest", "x.jsonl", "--near", "33.5,126.5", "--radius", "50", "--date", "2026", "--bearings", "0",
+                "--out", str(out))
+        with patch.object(pano.P, "read_manifest", return_value=rows), self.assertRaises(SystemExit) as cm:
+            self.pano_main(*argv)
+        self.assertIn("no 2026 capture in the selection (available: 2008-10)", str(cm.exception))
+        self.assertFalse(out.exists())
+        self.assertFalse(out.with_suffix(".index.json").exists())
+        rows += self.rows(("d", "2026-03-05", 15))
+        with patch.object(pano.P, "read_manifest", return_value=rows), patch.object(pano.P, "load", return_value=self.view()):
+            self.pano_main(*argv)
+        self.assertEqual([r["id"] for r in json.loads(out.with_suffix(".index.json").read_text(encoding="utf-8"))], ["d"])
+
+    def test_pano_sheet_all_failed_writes_nothing(self):
+        import pano
+        out = self.dir / "s.jpg"
+        with patch.object(pano.P, "read_manifest", return_value=self.rows(("a", "2026-03", 0), ("b", "2026-03", 10))), \
+                patch.object(pano.P, "load", side_effect=RuntimeError("boom")), self.assertRaises(SystemExit) as cm:
+            self.pano_main("sheet", "--manifest", "x.jsonl", "--ids", "a,b", "--bearings", "0", "--out", str(out))
+        self.assertIn("every one of the 2 cells failed (RuntimeError: boom): no sheet written", str(cm.exception))
+        self.assertFalse(out.exists())
+        self.assertFalse(out.with_suffix(".index.json").exists())
+
+    def test_pano_sheet_partial_failure_is_reported(self):
+        import pano
+        out = self.dir / "s.jpg"
+
+        def load(entry, level):                  # by id, not by call order: the cells render on parallel threads
+            if entry["id"] == "b":
+                raise RuntimeError("boom")
+            return self.view()
+        with patch.object(pano.P, "read_manifest", return_value=self.rows(("a", "2026-03", 0), ("b", "2026-03", 10))), \
+                patch.object(pano.P, "load", side_effect=load):
+            _, err = self.pano_main("sheet", "--manifest", "x.jsonl", "--ids", "a,b", "--bearings", "0", "--out", str(out))
+        self.assertTrue(out.exists())
+        self.assertEqual(len(json.loads(out.with_suffix(".index.json").read_text(encoding="utf-8"))), 2)
+        self.assertIn("1/2 cells failed (first: RuntimeError: boom); grey cells are not views", err)
+
+    def test_gsv_sheet_all_failed_writes_nothing(self):
+        out = self.dir / "s.jpg"
+        blocked = patch.object(gsv.SL, "equirect", side_effect=RuntimeError("blocked"))
+        with blocked, patch.dict(os.environ), patch("sys.stderr", new=io.StringIO()) as err:
+            ims = gsv.cells([{"id": "x", "heading": 0}], None, self.dir)
+        self.assertEqual([im.info.get("failed") for im in ims], ["RuntimeError: blocked"])
+        self.assertIn("gsv render failed for x", err.getvalue())
+        argv = ["gsv.py", "sheet", "--ids", "x", "--heading", "0", "--out", str(out), "--cache", str(self.dir)]
+        with blocked, patch.object(gsv.SL, "metadata", return_value={}), patch.object(sys, "argv", argv), patch.dict(os.environ), \
+                patch("sys.stdout", new=io.StringIO()), patch("sys.stderr", new=io.StringIO()), self.assertRaises(SystemExit) as cm:
+            gsv.main()
+        self.assertIn("every one of the 1 cells failed (RuntimeError: blocked): no sheet written", str(cm.exception))
+        self.assertFalse(out.exists())
+        self.assertFalse(out.with_suffix(".index.json").exists())
+        pts, idx = self.dir / "pts.json", self.dir / "t.index.json"
+        pts.write_text(json.dumps({"church": [51.44, 5.47]}), encoding="utf-8")
+        argv = ["gsv.py", "targets", "--points", str(pts), "--out", str(idx), "--sheet", str(out), "--cache", str(self.dir)]
+        with blocked, patch.object(gsv, "panos_around", return_value=[("x", 51.4402, 5.4702, 25.0)]), patch.object(sys, "argv", argv), \
+                patch.dict(os.environ), patch("sys.stdout", new=io.StringIO()) as so, patch("sys.stderr", new=io.StringIO()) as se:
+            gsv.main()                                                       # the exit code of targets is unchanged
+        self.assertIn("every one of the 1 sheet cells failed (RuntimeError: blocked): no sheet written; the index stays the "
+                      "candidate list for match.py", se.getvalue())
+        self.assertNotIn(str(out), so.getvalue())
+        self.assertFalse(out.exists())
+        self.assertEqual(len(json.loads(idx.read_text(encoding="utf-8"))), 1)
+
+    def test_sheet_run_with_a_failed_page_writes_every_page(self):
+        # all-failed is decided over the whole run: a grey page beside real views on another page is still written,
+        # so the sheet at --out sits beside its index and counts as the street check
+        import photo_session
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 48), "green").save(buf, "JPEG")
+
+        def gsv_view(pid, *a, **k):
+            if pid != "good":
+                raise RuntimeError("blocked")
+            return Image.new("RGB", (640, 480), "green")
+
+        def baidu_get(url, *a, **k):
+            if "panoid=good&" not in url:
+                raise RuntimeError("Request failed (curl exit 22)")
+            return buf.getvalue()
+        bad = [{"id": f"bad{k}", "heading": 0.0, "pitch": 10, "fov": 80} for k in range(12)]
+        good = {"id": "good", "heading": 0.0, "pitch": 10, "fov": 80}
+        spec = self.dir / "spec.json"
+        spec.write_text(json.dumps([bad[0], good]), encoding="utf-8")
+        runs = {"gsv": (gsv, patch.object(gsv, "view", side_effect=gsv_view),
+                        ["sheet", "--ids", "bad0,good", "--heading", "0", "--limit", "1"]),
+                "baidu sheet": (baidu_pano, patch.object(baidu_pano, "_get", side_effect=baidu_get),
+                                ["sheet", "--spec", str(spec), "--limit", "1"]),
+                "baidu sample": (baidu_pano, patch.object(baidu_pano, "_get", side_effect=baidu_get),
+                                 ["sample", "--bbox", "22.5,113.9,22.6,114.1"])}     # 12 cells per page: 12 failed, then one view
+        for name, (mod, fetch, argv) in runs.items():
+            with self.subTest(run=name):
+                folder = self.dir / name.replace(" ", "_")
+                folder.mkdir()
+                out = folder / "s.jpg"
+                cmd = [f"{mod.__name__}.py", "--cache", str(folder / "cache"), *argv, "--out", str(out)]
+                with fetch, patch.object(gsv.SL, "metadata", return_value={}), patch.object(baidu_pano, "sample", return_value=bad + [good]),                         patch.object(sys, "argv", cmd), patch.dict(os.environ), patch("sys.stdout", new=io.StringIO()) as so,                         patch("sys.stderr", new=io.StringIO()) as se:
+                    mod.main()
+                for page in (out, folder / "s_2.jpg"):
+                    self.assertTrue(page.exists(), page)
+                    self.assertIn(str(page), so.getvalue())
+                self.assertRegex(se.getvalue(), r"(1/2|12/13) cells failed")
+                files = sorted(p.name for p in folder.iterdir() if p.is_file())
+                self.assertEqual(photo_session.check_hits(folder, files)["street"], ["s.index.json"])
+
+    def test_baidu_sheet_all_failed_exits(self):
+        pid = "09002200121902131010000012345"
+        rows = [{"id": pid, "heading": 45.0, "pitch": 10, "fov": 80}]
+        spec, out, cache = self.dir / "spec.json", self.dir / "s.jpg", self.dir / "cache"
+        spec.write_text(json.dumps(rows), encoding="utf-8")
+        sheet = ["sheet", "--spec", str(spec), "--out", str(out)]
+        sample = ["sample", "--bbox", "22.5,113.9,22.6,114.1", "--n", "1", "--out", str(out)]
+        for argv, reply in ((sheet, RuntimeError("Request failed (curl exit 22)")), (sheet, b"<html>busy</html>"),
+                            (sample, RuntimeError("Request failed (curl exit 28)"))):
+            get = (patch.object(baidu_pano, "_get", side_effect=reply) if isinstance(reply, Exception)
+                   else patch.object(baidu_pano, "_get", return_value=reply))      # refused, or a reply that is no image
+            with self.subTest(cmd=argv[0], reply=reply):
+                with get, patch.object(baidu_pano, "sample", return_value=list(rows)), \
+                        patch.object(sys, "argv", ["baidu_pano.py", "--cache", str(cache), *argv]), \
+                        patch("sys.stdout", new=io.StringIO()), patch("sys.stderr", new=io.StringIO()) as err, \
+                        self.assertRaises(SystemExit) as cm:
+                    baidu_pano.main()
+                self.assertIn("every one of the 1 cells failed", str(cm.exception))
+                self.assertIn(f"baidu render failed for {pid}", err.getvalue())
+                self.assertFalse(out.exists())
+                self.assertFalse(out.with_suffix(".index.json").exists())
+                self.assertEqual(list(cache.glob("*")), [])                   # a failed view is never cached
 
 
 if __name__ == "__main__":

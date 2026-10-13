@@ -1,4 +1,5 @@
-"""Command-line plumbing shared by the scripts: negative-coordinate arguments, UTF-8 console, label fonts, torch device."""
+"""Command-line plumbing shared by the scripts: negative-coordinate arguments, UTF-8 console, label fonts, torch device,
+contact sheets."""
 from __future__ import annotations
 
 import os
@@ -172,3 +173,43 @@ def contact_sheet(cells: list, out, cols: int = 3, tw: int = 480, th: int = 360,
         d.rectangle([x, y, x + tw, y + bar], fill="black")
         d.text((x + 4, y + 2), lab, fill="yellow", font=font(font_size, lab, prefer_wide=True))
     S.save(out, quality=quality)
+
+
+def failed_cells(ims: list) -> list[str]:
+    """Error messages of the cells that failed to render: a renderer's grey placeholder carries info["failed"]."""
+    return [im.info["failed"] for im in ims if im.info.get("failed")]
+
+
+def sheet_failures(failed: list[str], n: int) -> None:
+    """Outcome of a street-level sheet run of n cells: exit when every cell failed (grey outage tiles are no street check,
+    so the caller writes no index either), else note the failed share on stderr."""
+    if n and len(failed) == n:
+        sys.exit(f"every one of the {n} cells failed ({failed[0]}): no sheet written, so this is not a street check. "
+                 "Rerun to retry; doctor.py --network checks service access; with no street-level imagery, evidence.py on the "
+                 "tiles.py map is the street check")
+    if failed:
+        print(f"{len(failed)}/{n} cells failed (first: {failed[0]}); grey cells are not views; rerun to retry them", file=sys.stderr)
+
+
+def sheet_pages(pages: list[list], out: Path, render, draw) -> list[Path]:
+    """Street-level sheet pages out, out_2, out_3…: render(page) -> images, draw(page, images, path) writes one page.
+    Whether every cell failed is decided over the whole run (sheet_failures): then nothing is written; otherwise every
+    page is drawn, an all-grey one too, so the sheet at `out` always sits beside the caller's index. A page with a real
+    view is drawn at once; an all-grey one waits for the verdict. Returns the written paths in page order."""
+    written, held, failed, n = {}, [], [], 0
+    for i, page in enumerate(pages):
+        path = out if i == 0 else out.with_name(f"{out.stem}_{i + 1}{out.suffix}")
+        ims = render(page)
+        bad = failed_cells(ims)
+        failed += bad
+        n += len(ims)
+        if ims and len(bad) == len(ims):
+            held.append((i, page, ims, path))
+        else:
+            draw(page, ims, path)
+            written[i] = path
+    sheet_failures(failed, n)
+    for i, page, ims, path in held:
+        draw(page, ims, path)
+        written[i] = path
+    return [written[i] for i in sorted(written)]

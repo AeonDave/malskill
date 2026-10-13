@@ -171,6 +171,12 @@ detect.py sheets never count; `finish` warns when it is zero. Add `--radius-m <m
 `YYYY-MM-DD_HH-mm-ss-microseconds±HHMM__country__region__city`; `session.json` records the completion time and
 result; `report.md` gets the final path and timestamps appended. Use the printed paths from then on.
 
+Running `finish` again on a completed session is the correction path (an operator's correction, a heading or date found
+later): every gate runs as before, so pass the full flags again. The first `completed_at` stays; the replaced result goes to
+`session.json` `result_history` as `{replaced_at, result}`; the footer gains `Amended: <time>` after `Analysis completed:`;
+the folder name follows the new answer (place or `--generated`, either way). A recorded truth is kept and not rescored: it
+scored the result current when `truth` ran (compare `truth.recorded_at` with `replaced_at`).
+
 `finish "<folder>" --generated "<basis>"` closes a generated image with no real place: no place flag (with one, or
 with `--skip-check`/`--accept-unverified`, it exits 2), folder `<timestamp>__generated-image`, `result.outcome`
 `generated`, coordinates null, `result.generated` = {basis, score, model, skipped, override}. The basis is the term

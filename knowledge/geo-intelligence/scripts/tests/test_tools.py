@@ -970,5 +970,110 @@ class CluesOcrTests(unittest.TestCase):
                 sys.modules["rapidocr_onnxruntime"] = real
 
 
+class EvidenceBuildTests(unittest.TestCase):
+    LAT0, LON0 = 37.5665, 126.9780
+
+    def _map(self, td: Path) -> Path:
+        """A 512x512 black zoom-19 mosaic whose second tile column/row holds (LAT0, LON0)."""
+        import geo
+        tx, ty = (int(v // 256) for v in geo.ll2px(19, self.LAT0, self.LON0))
+        Image.new("RGB", (512, 512), "black").save(td / "map.jpg")
+        (td / "map.json").write_text(json.dumps({"zoom": 19, "origin_tile": [tx - 1, ty - 1], "size": [512, 512]}),
+                                     encoding="utf-8")
+        return td / "map.jpg"
+
+    def _build(self, spec: dict, td: Path, out: str = "ev.jpg") -> str:
+        import contextlib
+        import io
+        import evidence
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            evidence.build(dict({"map": "map.jpg", "width": 512}, **spec), td, td / out)
+        self.assertTrue((td / out).exists())
+        return err.getvalue()
+
+    def test_camera_outside_map_warns_with_refetch_that_covers_it(self):
+        import re
+        import geo
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            self._map(td)
+            cam = geo.dest((self.LAT0, self.LON0), 90, 600)
+            err = self._build({"camera": list(cam), "heading": 90}, td)
+            for s in ("outside this map", "tiles.py fetch", "--radius"):
+                self.assertIn(s, err)
+            m = re.search(r"fetch ([-\d.]+),([-\d.]+) --zoom (\d+) --radius (\d+)", err)
+            z, rad = int(m[3]), int(m[4])
+            cx, cy = (int(v // 256) for v in geo.ll2px(z, float(m[1]), float(m[2])))
+            tx, ty = (int(v // 256) for v in geo.ll2px(z, self.LAT0, self.LON0))
+            kx, ky = (int(v // 256) for v in geo.ll2px(z, *cam))
+            for x, y in ((kx, ky), (tx - 1, ty - 1), (tx, ty)):             # the new map holds the camera and the old extent
+                self.assertLessEqual(abs(x - cx), rad)
+                self.assertLessEqual(abs(y - cy), rad)
+
+    def test_far_camera_refetch_zooms_out_instead_of_growing(self):
+        # 5 km at zoom 19 would need 41 rings (6,889 tiles, beyond PIL's decompression-bomb limit): the suggestion stays within
+        # 8 rings (17x17 tiles) by lowering the zoom, and still holds the camera and the old extent
+        import re
+        import geo
+        from tiles import Mosaic
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            mosaic = Mosaic(self._map(td))
+            corners = [mosaic.to_ll(0, 0), mosaic.to_ll(511, 511)]
+            for km, crop in ((5, [0, 0, 512, 512]), (20, None)):
+                cam = geo.dest((self.LAT0, self.LON0), 90, km * 1000)
+                err = self._build(dict({"camera": list(cam)}, **({"crop": crop} if crop else {})), td)
+                m = re.search(r"fetch ([-\d.]+),([-\d.]+) --zoom (\d+) --radius (\d+)", err)
+                z, rad = int(m[3]), int(m[4])
+                self.assertLess(z, 19, km)
+                self.assertLessEqual((2 * rad + 1) ** 2, 17 ** 2, km)
+                cx, cy = (int(v // 256) for v in geo.ll2px(z, float(m[1]), float(m[2])))
+                for ll in (cam, *corners):
+                    kx, ky = (int(v // 256) for v in geo.ll2px(z, *ll))
+                    self.assertLessEqual(max(abs(kx - cx), abs(ky - cy)), rad, (km, ll))
+                self.assertEqual('drop or redo "crop"' in err, bool(crop), km)   # crop is in pixels of the map the refetch replaces
+
+    def test_long_wedge_from_a_camera_inside_does_not_warn(self):
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            self._map(td)
+            self.assertEqual(self._build({"camera": [self.LAT0, self.LON0], "heading": 90, "range_m": 2000}, td), "")
+
+    def test_camera_outside_the_crop_warns(self):
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            self._map(td)
+            self.assertIn("outside the crop", self._build({"camera": [self.LAT0, self.LON0], "crop": [0, 0, 100, 100]}, td))
+
+    def test_wrap_breaks_at_spaces_and_falls_back_for_cjk(self):
+        import evidence
+        from geolib.cli import font
+        f = font(20, prefer_wide=True)
+        text = "Public reference: same tile facade, white bands and chimney"
+        lines = evidence._wrap(text, f, 414)
+        self.assertGreater(len(lines), 1)
+        for ln in lines:
+            self.assertTrue(set(ln.split()) <= set(text.split()), ln)                # whole words only, never "white ba|nds"
+        ko = "서울특별시중구세종대로한국프레스센터앞횡단보도신호등버스정류장공중전화부스가로수"  # 40 Hangul, no spaces
+        lines = evidence._wrap(ko, f, 414)
+        self.assertGreater(len(lines), 1)
+        self.assertTrue(all(f.getlength(ln) <= 414 for ln in lines))
+        self.assertEqual("".join(lines), ko)
+
+    def test_evidence_camera_drawn_over_labels(self):
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            from tiles import Mosaic
+            cam = Mosaic(self._map(td)).to_ll(256, 256)
+            label = {"at": list(cam), "text": "Long label anchored on the camera position, clamped back over it"}
+            self._build({"camera": list(cam), "heading": 240, "labels": [label]}, td, "ev.png")   # PNG: no JPEG colour bleed
+            with Image.open(td / "ev.png") as im:
+                r, g, b = im.convert("RGB").getpixel((256, 256))
+            self.assertGreater(r, 200)
+            self.assertLess(g, 90)
+            self.assertLess(b, 90)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

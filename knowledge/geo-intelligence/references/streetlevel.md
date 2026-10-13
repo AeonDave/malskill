@@ -74,7 +74,7 @@ get (a 2013 local archive beats 2024 coverage) plus Wayback; for a recent phone 
 | `apple` | US, Canada, Japan, Australia, NZ, much of Europe (cities) | HEIC faces (needs `pillow-heif`); tops/bottoms not rendered |
 | `bing` | US, parts of Europe | Microsoft and TomTom captures, mostly 2009–2022 |
 | `yandex` | Russia, Belarus, Kazakhstan, Turkey, Serbia, others | nearest-panorama lookups; grid sampling for areas |
-| `naver`, `kakao` | South Korea | Kakao keeps captures back to ~2009 |
+| `naver`, `kakao` | South Korea | Kakao keeps captures back to ~2009; its `heading` is the travel direction (`--along` faces it) and renders match the official viewer; an older Kakao `sweep.py` index may label its views 180° off: when `sweep.py view --id kakao:<id>` without `--bearing` settles ~180° from the `brg` `sweep.py rank` gave that panorama, delete `$GEOINT_CACHE/sweep/<name>/` and re-index |
 | `mapy` | Czechia, Slovakia, neighbouring countries | panoramas are stored north-centred |
 | `ja` | Iceland | blocks bursts (HTTP 403): keep `--spacing` large |
 | `kartaview` | patchy worldwide | dashcam photos (one direction), 2015–2020 mostly |
@@ -86,6 +86,13 @@ get (a 2013 local archive beats 2024 coverage) plus Wayback; for a recent phone 
 `pano.py coverage` answers "who covers this?"; `pano.py list --provider X --near lat,lon --radius m --out
 town.jsonl` writes the manifest a sweep needs. Point-lookup providers (Yandex, Naver, Kakao, Mapy, Já) are
 sampled on a grid (`--spacing`), throttled; Já.is in particular blocks bursts.
+
+`pano.py sheet --date 2026|2026-03` keeps one capture period, before `--limit`; when none lies near the point it exits
+naming the periods there (`list --date` likewise filters before `--thin`). A sheet run whose every cell failed
+(`pano.py sheet`, `gsv.py sheet`, `baidu_pano.py sheet|sample`) writes no image and no index and exits non-zero: it is no
+street check (`gsv.py targets --sheet` keeps its index as `match.py`'s candidate list and only notes the missing sheet).
+Rerun, run `doctor.py --network`, or, with no street-level imagery, use `evidence.py` on the `tiles.py` map. Grey cells in
+a partial sheet (`k/n cells failed`) are not views.
 
 ## 3. Any other source: write a manifest
 

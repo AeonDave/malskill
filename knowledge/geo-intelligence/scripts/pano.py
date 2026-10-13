@@ -242,6 +242,8 @@ def _point_lookup(service: str, bb, spacing, limit) -> list[dict]:
                 if service == "yandex":           # Yandex: 0 = south, 90 = west
                     h = h + 180
                 center = 0.0 if service == "mapy" else h  # Mapy shifts every panorama so north is in the middle
+                if service == "kakao":            # Kakao angle = travel direction; the stitched image's middle looks back
+                    center = h + 180
                 zlow, zhigh = ZOOMS[service]
                 rows[str(p.id)] = {"provider": service, "id": str(p.id), "lat": p.lat, "lon": p.lon, "heading": round(h % 360, 1),
                                    "date": _date(getattr(p, "date", None)),
@@ -468,9 +470,9 @@ def cmd_list(a) -> None:
         la, lo = (float(v) for v in a.near.split(","))
         rows = [r for r in rows if dist_m((la, lo), (r["lat"], r["lon"])) <= a.radius]
     n0 = len(rows)
-    rows = thin(rows, a.thin)
-    if a.date:
+    if a.date:                        # before thinning: first-come thinning could drop a whole capture period
         rows = [r for r in rows if str(r.get("date", "")).startswith(a.date)]
+    rows = thin(rows, a.thin)
     P.write_manifest(a.out, rows)
     ds = sorted(r["date"] for r in rows if r.get("date"))
     print(f"{a.provider}: {n0} panoramas in the area ({time.time() - t0:.0f}s), kept {len(rows)}"
@@ -502,7 +504,14 @@ def cmd_render(a) -> None:
 
 
 def cmd_sheet(a) -> None:
-    rows = _select(a)[: a.limit]
+    rows = _select(a)
+    if a.date:
+        sel = [r for r in rows if str(r.get("date") or "").startswith(a.date)]
+        if rows and not sel:
+            have = ", ".join(sorted({str(r["date"])[:7] for r in rows if r.get("date")})) or "undated"
+            raise SystemExit(f"no {a.date} capture in the selection (available: {have}); widen --radius or pick another period")
+        rows = sel
+    rows = rows[: a.limit]
     if not rows:
         raise SystemExit("no panoramas selected")
     target = tuple(float(v) for v in a.toward.split(",")) if a.toward else None
@@ -525,10 +534,12 @@ def cmd_sheet(a) -> None:
         except Exception as e:  # noqa: BLE001
             im = Image.new("RGB", (tw, th), "gray")
             ImageDraw.Draw(im).text((8, 30), f"failed: {str(e)[:60]}", fill="white")
+            im.info["failed"] = f"{type(e).__name__}: {str(e)[:120]}"
             return im
     with ThreadPoolExecutor(6) as ex:
         ims = list(ex.map(one, items))
-    from geolib.cli import contact_sheet
+    from geolib.cli import contact_sheet, failed_cells, sheet_failures
+    sheet_failures(failed_cells(ims), len(ims))            # exits when every cell failed: neither sheet nor index
     contact_sheet([(im, f"{i}: {r['provider']} {r['id'][-14:]} {r.get('date', '')} brg {b:.0f}") for i, ((r, b), im) in enumerate(zip(items, ims))],
                   a.out, a.cols, tw, th, bar=20, font_size=15)
     Path(a.out).with_suffix(".index.json").write_text(json.dumps(
@@ -575,6 +586,7 @@ def main() -> None:
             s.add_argument("--ids")
             s.add_argument("--near")
             s.add_argument("--radius", type=float, default=50)
+            s.add_argument("--date", help="keep one capture period, e.g. 2026 or 2026-03 (default: all dates)")
             g = s.add_mutually_exclusive_group()
             g.add_argument("--bearings", default="0,90,180,270")
             g.add_argument("--toward", help="lat,lon: every panorama faces this point")

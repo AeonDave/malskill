@@ -78,6 +78,22 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(final["folder"], second["folder"])
         self.assertEqual(Path(second["report"]).read_text(encoding="utf-8").count("<!-- geogussr-archive -->"), 1)
 
+    def test_refinish_keeps_first_close_and_history(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n\n## When\nNot determinable: no dated clue.\n", encoding="utf-8")
+        final = self.finish(folder)
+        self.finish(Path(final["folder"]), "--heading", "240")
+        meta = json.loads((Path(final["folder"]) / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["completed_at"], final["completed_at"])                        # the close time is the first one
+        self.assertEqual(meta["result"]["heading"], 240.0)
+        self.assertEqual(len(meta["result_history"]), 1)
+        self.assertIsNone(meta["result_history"][0]["result"]["heading"])                    # the replaced answer is kept
+        self.assertEqual(meta["result"]["when_text"], "Not determinable: no dated clue.")     # the first footer is not part of ## When
+        report = Path(final["report"]).read_text(encoding="utf-8")
+        self.assertEqual(report.count("<!-- geogussr-archive -->"), 1)
+        self.assertIn("Amended:", report)
+        self.assertIn("heading 240°", report)
+
     def test_invalid_coordinates_and_missing_report_preserve_pending_folder(self):
         started = self.start()
         folder = Path(started["folder"])
@@ -271,6 +287,8 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("name 2015", r.stderr)                                                  # the report knew a year
         self.assertIn("looks at 120", r.stderr)                                               # the best match nearby had a heading
+        self.assertIn("geo.py frame", r.stderr)                                               # and the landmark route is named
+        self.assertIn("--anchor", r.stderr)
         out = json.loads(r.stdout)
         res = json.loads((Path(out["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertIsNone(res["heading"])
@@ -279,6 +297,18 @@ class PhotoArchiveTests(unittest.TestCase):
         footer = (Path(out["folder"]) / "report.md").read_text(encoding="utf-8")
         self.assertIn("suggested, not asserted", footer)
         self.assertIn("Taken: not given (report: Season: spring", footer)
+
+    def test_taken_note_does_not_push_a_reference_date(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n\n## When\nNot determinable; the 2026-03-05 reference panorama does not date the photo.\n",
+                                          encoding="utf-8")
+        r = self.run_cli("finish", folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
+                         "--confidence", "medium", "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dates or bounds this photo", r.stderr)                                 # encode a year only when it dates the photo
+        self.assertIn("2026", r.stderr)
+        res = json.loads((Path(json.loads(r.stdout)["folder"]) / "session.json").read_text(encoding="utf-8"))["result"]
+        self.assertIsNone(res["taken"])
 
     def test_finish_refuses_an_unverified_answer_before_the_clock(self):
         folder = Path(self.start()["folder"])
@@ -612,6 +642,7 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertIn("48.150000, 17.110000", report)
         self.assertEqual(report.count("<!-- geogussr-archive -->"), 1)
         self.assertLess(report.index("## Ground truth"), report.index("<!-- geogussr-archive -->"))
+        self.assertLess(report.index("<!-- geogussr-archive -->"), report.index("Amended:"))
 
     def test_scoreboard_and_list(self):
         archives = self.root / "archives"
@@ -816,6 +847,21 @@ class PhotoArchiveTests(unittest.TestCase):
         renamed = Path(self.command("finish", folder, "--generated", "operator asked: it is generated after all")["folder"])
         res = json.loads((renamed / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertEqual(res["generated"]["override"]["reason"], "operator asked: it is real, continue")
+
+    def test_refinish_switches_outcome_and_keeps_history(self):
+        place = self.finish(self.generated_session())
+        generated = self.command("finish", place["folder"], "--generated", "operator asked: it is generated")
+        meta = json.loads((Path(generated["folder"]) / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual((meta["result"]["outcome"], meta["completed_at"]), ("generated", place["completed_at"]))
+        self.assertEqual(meta["result_history"][0]["result"]["outcome"], "place")
+        back = self.finish(Path(generated["folder"]))
+        self.assertEqual(back["folder"], place["folder"])                                      # the folder name follows the answer
+        meta = json.loads((Path(back["folder"]) / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual((meta["result"]["outcome"], meta["completed_at"]), ("place", place["completed_at"]))
+        self.assertEqual([h["result"]["outcome"] for h in meta["result_history"]], ["place", "generated"])
+        report = Path(back["report"]).read_text(encoding="utf-8")
+        self.assertEqual(report.count("<!-- geogussr-archive -->"), 1)
+        self.assertNotIn("generated image, no real place", report)                            # the footer is the current answer's
 
     def test_finish_generated_records_a_skipped_detector(self):
         folder = self.generated_session()

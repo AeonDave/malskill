@@ -39,7 +39,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geolib import streetlevel as SL  # noqa: E402
-from geolib.cli import neg_coords as _neg_coords  # noqa: E402
+from geolib.cli import contact_sheet, failed_cells, neg_coords as _neg_coords, sheet_failures, sheet_pages  # noqa: E402
 from geolib.paths import cache_dir  # noqa: E402
 from geolib.streetlevel import ServiceError, _coverage_rows, panos_around, tile_panos, tiles_around  # noqa: E402,F401
 import geo  # noqa: E402
@@ -128,14 +128,19 @@ def render(pid: str, heading: float, pitch: float, fov: float, w: int, h: int, p
         print(f"gsv render failed for {pid}: {type(e).__name__}: {str(e)[:160]}", file=sys.stderr)
         im = Image.new("RGB", (w, h), "gray")
         ImageDraw.Draw(im).text((10, 10), f"render failed: {str(e)[:60]}", fill="white")
+        im.info["failed"] = f"{type(e).__name__}: {str(e)[:120]}"
         return im
 
 
-def sheet(items: list[dict], out: Path, proxy: str | None, cache: Path, cols: int = 3, tw: int = 480, th: int = 360) -> None:
+def cells(items: list[dict], proxy: str | None, cache: Path) -> list[Image.Image]:
+    """Every item's view, rendered in parallel; a failed one is render()'s grey cell."""
     with ThreadPoolExecutor(4) as ex:
-        ims = list(ex.map(lambda it: render(it["id"], it["heading"], it.get("pitch", 0), it.get("fov", 90),
-                                           640, 480, proxy, cache), items))
-    from geolib.cli import contact_sheet
+        return list(ex.map(lambda it: render(it["id"], it["heading"], it.get("pitch", 0), it.get("fov", 90),
+                                            640, 480, proxy, cache), items))
+
+
+def sheet(items: list[dict], ims: list[Image.Image], out: Path, cols: int = 3, tw: int = 480, th: int = 360) -> None:
+    """The items' rendered views as one numbered contact sheet."""
     contact_sheet([(im, it.get("label") or f"{i}: …{it['id'][-8:]} h{it['heading']:.0f}") for i, (it, im) in enumerate(zip(items, ims))],
                   out, cols, tw, th, bar=22, font_size=16)
 
@@ -177,8 +182,16 @@ def cmd_targets(args) -> None:
               "split the target points into smaller batches or narrow the area before ranking", file=sys.stderr)
     if args.sheet and items:
         model_proxy_env(args.proxy)       # rendering downloads panoramas through the streetlevel package
-        sheet(items[:args.limit], args.sheet, args.proxy, args.cache)
-        print(args.sheet)
+        shown = items[:args.limit]
+        ims = cells(shown, args.proxy, args.cache)
+        bad = failed_cells(ims)
+        if len(bad) == len(shown):
+            print(f"every one of the {len(shown)} sheet cells failed ({bad[0]}): no sheet written; the index stays the candidate "
+                  "list for match.py", file=sys.stderr)
+        else:
+            sheet(shown, ims, args.sheet)
+            print(args.sheet)
+            sheet_failures(bad, len(shown))         # the k/n line only: some cell rendered
     if failed:
         # failed tiles aren't cached, so running the same command again retries only those
         sys.exit(f"Google Street View coverage lookup failed for {len(failed)} of {len(pts)} targets; "
@@ -341,9 +354,7 @@ def main() -> None:
             sys.exit(f"No panorama within --radius {args.radius:g} m of any requested point: nothing rendered. "
                      "Increase --radius (e.g. 300–1000) or check coverage with `gsv.py near <lat,lon> --radius 1000`.")
         pages = [items[k:k + args.limit] for k in range(0, len(items), args.limit)]
-        for pi, page in enumerate(pages):
-            out = args.out if pi == 0 else args.out.with_name(f"{args.out.stem}_{pi + 1}{args.out.suffix}")
-            sheet(page, out, args.proxy, args.cache)
+        for out in sheet_pages(pages, args.out, lambda page: cells(page, args.proxy, args.cache), sheet):
             print(out)
         args.out.with_suffix(".index.json").write_text(json.dumps(items, indent=1, ensure_ascii=False), encoding="utf-8")
 

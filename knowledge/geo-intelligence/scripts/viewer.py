@@ -1036,6 +1036,16 @@ def cmd_mark(args) -> int:
     marks.append(mark)
     write_marks(session, marks)
     print(log or json.dumps(mark, ensure_ascii=False))
+    if args.what == "camera":                     # a cone drawn after finish does not change the answer: name the correction path
+        meta = _read_json(session / "session.json")
+        result = meta.get("result") if isinstance(meta, dict) and meta.get("status") == "completed" else None
+        if isinstance(result, dict) and _ps.outcome(result) == "place":
+            rh, h = result.get("heading"), mark["heading"]
+            rh = rh if isinstance(rh, (int, float)) else None
+            if rh is None or abs((rh - h + 180) % 360 - 180) > (args.fov or 90) / 2:
+                print(f"Note: the answer in session.json has heading {'unknown' if rh is None else f'{rh:.0f}°'}; this cone is only drawn on "
+                      f"the map. To make it the answer, run photo_session.py finish \"{session}\" again with the same flags and --heading {h:.0f}.",
+                      file=sys.stderr)
     return 0
 
 
