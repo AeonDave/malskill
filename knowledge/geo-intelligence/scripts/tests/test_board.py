@@ -379,6 +379,30 @@ class ExclusionAndReportTests(unittest.TestCase):
         self.assertEqual(passing.returncode, 0)
         self.assertIn("Result: pass", passing.stdout)
 
+    def test_check_ends_with_a_verdict_on_the_result(self):
+        verdict = lambda out: next(ln for ln in out.stdout.splitlines() if ln.startswith("Verdict:"))
+        v = verdict(self.run_board("check", ok=False))                                      # two districts, no evidence
+        self.assertIn("uncertain", v)
+        self.assertIn("no read or computed evidence", v)
+        self.run_board("evidence", "--clue", "K1", "--for", "Echuca:20", "--why", "read", "--file", "frame.json")
+        v = verdict(self.run_board("check"))
+        self.assertIn("uncertain", v)
+        self.assertIn("rests on one clue (K1)", v)
+        self.run_board("clue", "panorama match", "--kind", "match", "--status", "computed", "--file", "frame.json")
+        self.run_board("evidence", "--clue", "K2", "--for", "Echuca:5", "--why", "match", "--file", "frame.json")
+        v = verdict(self.run_board("check"))
+        self.assertTrue(v.startswith("Verdict: certain at district level: Echuca"), v)
+        self.assertIn("Quick is enough", v)
+        self.run_board("clue", "shadow bearing", "--kind", "sun", "--status", "computed", "--file", "frame.json")
+        self.run_board("evidence", "--clue", "K3", "--against", "Echuca:0.5", "--why", "sun", "--file", "frame.json")
+        v = verdict(self.run_board("check"))
+        self.assertIn("evidence against it (K3)", v)
+        self.run_board("clue", "bus destination", "--kind", "text", "--status", "read", "--file", "frame.json")
+        self.run_board("evidence", "--clue", "K4", "--for", "Moama:20", "--why", "read", "--file", "frame.json")
+        v = verdict(self.run_board("check"))
+        self.assertIn("rivals not separated: Moama", v)
+        self.assertIn("go Deep", v)
+
     def test_ingest_skips_self_assessed_uninformative_output(self):
         prior = self.root / "prior.json"
         prior.write_text(json.dumps({"tool": "prior.py", "assessment": {"informative": False, "reasons": ["flat distribution"]},

@@ -99,10 +99,10 @@ Habits that keep it honest and useful:
 ## Clock
 
 Every analysis starts in Quick mode: about 10 minutes of tools after the gut call, then the rule in SKILL.md
-'Session and speed'. Deep mode is entered only on the user's request or when the Quick answer is unsatisfactory
-(requested level not reached, decisive checks in contradiction, a single supporting clue), and it continues the same
-session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before widening, and never
-start a whole-town ranking without first trying to name the junction from text and road geometry.
+'Session and speed'. Deep mode is entered on the user's request or when the Quick result is uncertain (the
+`board.py check` verdict, a level the user named not reached, decisive checks in contradiction), and it continues
+the same session. Deep mode: no fixed clock, but every 15 minutes reread the saved result lists before widening,
+and never start a whole-town ranking without first trying to name the junction from text and road geometry.
 
 Long tools are bounded, never awaited open-ended: `terrain.py fit` stops at `--budget-min` (20 min) with a partial
 ranking. While scoring it rewrites fit.json at most every 30 s and after the last cluster (`status` running, with the

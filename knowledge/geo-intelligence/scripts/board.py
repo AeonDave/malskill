@@ -1064,9 +1064,40 @@ def cmd_check(args, p: Path) -> None:
     for name in [n for n, c in b["candidates"].items() if c.get("status") != "excluded"]:
         if b["falsify"].get(name):
             print(f"  ok   {name} falsification condition: {'; '.join(b['falsify'][name])}")
+    certain, head, why = _verdict(b, args.prior_by)
+    if certain:
+        print(f"Verdict: certain at {head} → Quick is enough: finish, unless the user named a finer level or your step 9 confidence "
+              f"for it is low (then go Deep)")
+    else:
+        print(f"Verdict: uncertain at {head} ({'; '.join(why)}) → in Quick: write the Quick answer and go Deep with the test that "
+              f"separates or confirms (board.py next); in Deep: go on while a feasible test remains, then answer with the alternatives "
+              f"and their tests")
     print("Result: " + ("pass" if ok else "has FAIL, fix those first"))
     if not ok:
         sys.exit(1)
+
+
+def _verdict(b: dict, prior_by: str) -> tuple[bool, str, list[str]]:
+    """Is the result certain at the board's frontier level? (certain, "level: leader share", reasons it is not). Uncertain when the
+    leader has no read or computed evidence, rests on one clue, has read or computed evidence against it, or a rival keeps ≥15 %
+    (the threshold of the alternatives warning). The step 9 confidence and a level the user named are the agent's to add."""
+    lv = _frontier(b)
+    rows = [r for r in _scores(b, lv, prior_by) if not r["excluded"]] if lv else []
+    if not rows:
+        return False, "no level", ["no open candidate on the board"]
+    top, why = rows[0], []
+    if top["n_verified"] == 0:
+        why.append("no read or computed evidence for the leader")
+    support = sorted({e["clue"] for e in top["ev"] if e["lr"] > 1})
+    if len(support) == 1:
+        why.append(f"it rests on one clue ({support[0]})")
+    against = sorted({e["clue"] for e in top["ev"] if e["lr"] < 1 and b["clues"][e["clue"]]["status"] in ("read", "computed")})
+    if against:
+        why.append(f"read or computed evidence against it ({', '.join(against)})")
+    rivals = [f"{r['name']} {r['share']:.0%}" for r in rows[1:] if r["share"] >= 0.15]
+    if rivals:
+        why.append("rivals not separated: " + ", ".join(rivals))
+    return not why, f"{LEVEL_LABEL[lv]} level: {top['name']} {top['share']:.0%}", why
 
 
 def _ancestor_gap(b: dict, name: str, prior_by: str) -> str | None:
@@ -1545,7 +1576,7 @@ def main() -> None:
     n = sub.add_parser("next")
     rank_opts(n)
 
-    k = sub.add_parser("check")
+    k = sub.add_parser("check", help="pre-conclusion check; ends with the verdict on the result (certain: Quick is enough; uncertain, with the reasons: go Deep) and pass/FAIL")
     rank_opts(k)
     k.add_argument("--evidence", help="evidence image path (default: evidence.jpg next to board.json)")
 
