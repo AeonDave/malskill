@@ -190,7 +190,7 @@
         }
         for (const c of d.cameras) {
           const p = toScreen(c.lat, c.lon); if (!p.visible) continue;
-          const a = (c.heading - 90) * D, half = ((c.fov || 90) / 2) * D, len = Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220), 48);
+          const a = (c.heading - 90) * D, half = ((c.fov || 90) / 2) * D, len = this.coneLen(kmToPx);
           g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, len, a - half, a + half); g.closePath();
           g.fillStyle = "rgba(240,180,69,0.16)"; g.fill(); g.strokeStyle = "rgba(240,180,69,0.7)"; g.lineWidth = 1; g.stroke();
           g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x + Math.cos(a) * len, p.y + Math.sin(a) * len); g.strokeStyle = COLORS.amber; g.lineWidth = 1.5; g.stroke();
@@ -248,13 +248,17 @@
         for (const l of lines) seen = this.trace(g, toScreen, l, false) || seen;
         if (!seen) continue;
         g.setLineDash(f.dashed ? [5, 4] : []);
-        g.strokeStyle = "rgba(230,236,245,0.8)"; g.lineWidth = 1.2; g.stroke(); g.setLineDash([]);
+        g.strokeStyle = "rgba(11,21,38,0.55)"; g.lineWidth = 3; g.stroke();        // dark halo: the line reads on bright imagery too
+        g.strokeStyle = "rgba(230,236,245,0.9)"; g.lineWidth = 1.2; g.stroke(); g.setLineDash([]);
         const name = f.tags && f.tags.name;
         named = named || !!name;
         if (name && kmToPx(f.r_km || 0) >= 24) text(f.lat, f.lon, name);
       }
       if (!named && a.label && a.lat != null && kmToPx(a.r_km || 0) >= 24) text(a.lat, a.lon, a.label);
     }
+
+    // a view cone is a direction glyph, not a range: short on the globe (48 px), growing with the map up to 220 px (2 km on screen)
+    coneLen(kmToPx) { return Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220, kmToPx(2)), 48); }
 
     // one ring or line of [lon, lat] into the current path; back-side globe points sit on the limb, so a ring closes along the horizon
     trace(g, toScreen, coords, closed) {
@@ -493,7 +497,7 @@
       if (!p.visible) return;
       const r = Math.max(kmToPx(f.radius_km), 4);
       if (f.final && f.heading == null && f.heading_hint != null) {   // suggested by the best match: dashed, labelled
-        const a = (f.heading_hint - 90) * D, len = Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220), 48);
+        const a = (f.heading_hint - 90) * D, len = this.coneLen(kmToPx);
         g.setLineDash([5, 5]);
         g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, len, a - 25 * D, a + 25 * D); g.closePath();
         g.fillStyle = "rgba(240,180,69,0.08)"; g.fill(); g.strokeStyle = "rgba(240,180,69,0.7)"; g.lineWidth = 1; g.stroke();
@@ -503,7 +507,7 @@
         g.strokeText("suggested heading", lx, ly); g.fillText("suggested heading", lx, ly);
       }
       if (f.final && f.heading != null) {
-        const a = (f.heading - 90) * D, len = Math.max(Math.min(Math.min(this.w, this.h) * 0.22, 220), 48);
+        const a = (f.heading - 90) * D, len = this.coneLen(kmToPx);
         g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, len, a - 25 * D, a + 25 * D); g.closePath();
         g.fillStyle = "rgba(240,180,69,0.18)"; g.fill();
         g.strokeStyle = "rgba(240,180,69,0.6)"; g.lineWidth = 1; g.stroke();
