@@ -22,7 +22,7 @@ from PIL import Image
 # coverage tiles live in coverage.py (stdlib only); re-exported here for gsv.py, refsheet.py, bench.py and the tests
 from .coverage import COVERAGE_MAX_AGE_S, ServiceError, _coverage_rows, official, panos_around, tile_panos, tiles_around  # noqa: F401
 from .geomath import haversine_m as dist_m, tile_xy  # noqa: F401  (gsv.py, pano.py and bench.py use SL.tile_xy / SL.dist_m)
-from .pano import bound_requests_timeout, equirect_view, file_lock, write_atomic
+from .pano import bound_requests_timeout, equirect_view, read_image, read_or_build, write_atomic
 from .paths import cache_dir
 
 _SV = None
@@ -111,22 +111,21 @@ def metadata(pid: str) -> dict | None:
 
 
 def equirect(pid: str, cache: Path, zoom: int = 3) -> tuple[np.ndarray, float]:
-    """Equirectangular panorama as an array plus the car heading (degrees) at the image centre; cached, downloaded once
-    however many threads ask for it."""
-    cache.mkdir(parents=True, exist_ok=True)
+    """Equirectangular panorama as an array plus the car heading (degrees) at the image centre; cached with a JSON sidecar,
+    downloaded once however many threads ask for it, downloaded again when the cached pair is broken."""
     img_p, meta_p = cache / f"{pid}_z{zoom}.jpg", cache / f"{pid}_z{zoom}.json"
-    with file_lock(img_p):
-        if not (img_p.exists() and meta_p.exists()):
-            sv = streetview()
-            p = sv.find_panorama_by_id(pid)
-            if p is None:
-                raise RuntimeError(f"panorama {pid} not found")
-            im = sv.get_panorama(p, zoom=zoom).convert("RGB")
-            heading = math.degrees(p.heading or 0.0) % 360
-            write_atomic(img_p, lambda tmp: im.save(tmp, "JPEG", quality=90))
-            write_atomic(meta_p, lambda tmp: tmp.write_text(json.dumps({"heading": heading}, ensure_ascii=False), encoding="utf-8"))
-            return np.asarray(im), heading
-    return np.asarray(Image.open(img_p).convert("RGB")), json.loads(meta_p.read_text(encoding="utf-8"))["heading"]
+
+    def build():
+        sv = streetview()
+        p = sv.find_panorama_by_id(pid)
+        if p is None:
+            raise RuntimeError(f"panorama {pid} not found")
+        im = sv.get_panorama(p, zoom=zoom).convert("RGB")
+        heading = math.degrees(p.heading or 0.0) % 360
+        write_atomic(img_p, lambda tmp: im.save(tmp, "JPEG", quality=90))
+        write_atomic(meta_p, lambda tmp: tmp.write_text(json.dumps({"heading": heading}, ensure_ascii=False), encoding="utf-8"))
+    return read_or_build([img_p, meta_p],
+                         lambda: (np.asarray(read_image(img_p)), json.loads(meta_p.read_text(encoding="utf-8"))["heading"]), build)
 
 
 def perspective(eq: np.ndarray, pano_heading: float, yaw: float, pitch: float = 0.0, hfov: float = 90.0,

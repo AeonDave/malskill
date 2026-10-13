@@ -280,6 +280,18 @@ class MetaTests(unittest.TestCase):
             out += b"\xff\xeb" + (len(payload) + 2).to_bytes(2, "big") + payload
         return out
 
+    @staticmethod
+    def c2pa_store(*items: bytes) -> bytes:
+        """jumd 'c2pa' description box, then CBOR-like assertion text."""
+        jumd = b"\x00" * 16 + b"\x03" + b"c2pa\x00"
+        return (8 + len(jumd)).to_bytes(4, "big") + b"jumd" + jumd + b"".join(items)
+
+    @classmethod
+    def c2pa_source(cls, term: str) -> bytes:
+        """CBOR digitalSourceType key, text header before the URI, a letter-valued header after it."""
+        uri = (cls.IPTC + term).encode()
+        return b"qdigitalSourceTypex" + bytes([len(uri)]) + uri + b"msoftwareAgent"
+
     def test_source_type_in_xmp_png_and_exiftool_lists(self):
         with tempfile.TemporaryDirectory() as d:
             plain = Path(d) / "plain.jpg"
@@ -321,19 +333,12 @@ class MetaTests(unittest.TestCase):
             plain = Path(d) / "plain.jpg"
             Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
 
-            def store(*items: bytes) -> bytes:                       # jumd 'c2pa' description box, then CBOR-like action text
-                jumd = b"\x00" * 16 + b"\x03" + b"c2pa\x00"
-                return (8 + len(jumd)).to_bytes(4, "big") + b"jumd" + jumd + b"".join(items)
-
-            def src(term: str) -> bytes:                              # CBOR text header before the URI, a letter-valued header after it
-                uri = (self.IPTC + term).encode()
-                return b"qdigitalSourceTypex" + bytes([len(uri)]) + uri + b"msoftwareAgent"
-
+            store, src = self.c2pa_store, self.c2pa_source
             created = store(b"faction" + b"lc2pa.created", src("trainedAlgorithmicMedia"))
             box = (8 + len(created)).to_bytes(4, "big") + b"jumb" + created
             cut = box.index(b"digitalsourcetype/") + 9                   # the URI straddles the segment boundary
             f = self.with_segments(plain, Path(d) / "split.jpg", self.app11(created, split=cut))
-            self.assertIsNone(meta.SOURCE_TERM.search(f.read_bytes()))   # no plain-byte match: only the rejoined store reads it
+            self.assertNotIn(b"digitalsourcetype/", f.read_bytes().lower())   # no plain-byte match: only the rejoined store reads it
             raw = meta.pillow_fallback(f)
             self.assertEqual(raw["JUMBF:DigitalSourceType"], "trainedAlgorithmicMedia")
             self.assertIn("2 APP11 segment(s), label c2pa", raw["JUMBF:Manifest"])
@@ -365,6 +370,59 @@ class MetaTests(unittest.TestCase):
             png.write_bytes(data[:-12] + chunk + data[-12:])           # before IEND
             gen = meta.digest(png, meta.pillow_fallback(png))["provenance"]["generated"]
             self.assertEqual(gen, {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False, "source": "JUMBF"})
+
+    def test_source_type_only_from_the_property_never_from_a_mention(self):
+        uri = "https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
+        note = f"Documentation {uri}"
+        described = self.xmp('<dc:description xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Alt>'
+                             f'<rdf:li xml:lang="x-default">{note}</rdf:li></rdf:Alt></dc:description>')
+        unread = {"declared": False, "term": None, "composite": False, "source": None}
+        declared = {"declared": True, "term": "trainedAlgorithmicMedia", "composite": False}
+        from PIL.PngImagePlugin import PngInfo
+        with tempfile.TemporaryDirectory() as d:
+            plain = Path(d) / "plain.jpg"
+            Image.new("RGB", (64, 48), (120, 120, 120)).save(plain)
+
+            def generated(f: Path) -> dict:
+                return meta.digest(f, meta.pillow_fallback(f))["provenance"]["generated"]
+
+            def jpeg(name: str, packet: str) -> Path:
+                app1 = b"http://ns.adobe.com/xap/1.0/\x00" + packet.encode()
+                return self.with_segments(plain, Path(d) / name, b"\xff\xe1" + (len(app1) + 2).to_bytes(2, "big") + app1)
+
+            def png(name: str, key: str, value: str) -> Path:
+                info = PngInfo()
+                if key == "XML:com.adobe.xmp":                       # compressed iTXt: only the PNG text path reads it
+                    info.add_itxt(key, value, zip=True)
+                else:
+                    info.add_text(key, value)
+                f = Path(d) / name
+                Image.new("RGB", (64, 48), (90, 90, 90)).save(f, pnginfo=info)
+                return f
+
+            # the vocabulary URI quoted in a comment, a description or a foreign namespace is ordinary text
+            comment = png("comment.png", "Comment", note)
+            self.assertNotIn("PNG:DigitalSourceType", meta.pillow_fallback(comment))
+            self.assertEqual(meta.source_type(meta.pillow_fallback(comment)), (unread, None))
+            for f in (comment, jpeg("described.jpg", described), png("described.png", "XML:com.adobe.xmp", described),
+                      jpeg("foreign.jpg", self.xmp(f'<o:DigitalSourceType xmlns:o="http://example.com/other/">{uri}</o:DigitalSourceType>'))):
+                self.assertEqual(generated(f), unread, f.name)
+            noted = self.c2pa_store(b"lc2pa.created", b"kdescription" + bytes([0x78, len(note)]) + note.encode())
+            f = self.with_segments(plain, Path(d) / "noted.jpg", self.app11(noted))
+            raw = meta.pillow_fallback(f)
+            self.assertNotIn("JUMBF:DigitalSourceType", raw)
+            self.assertIn("C2PA present, source type unread", meta.digest(f, raw)["provenance"]["C2PA"])
+            # the property itself: any prefix bound to the IPTC Extension namespace, attribute form, a bare term, C2PA JSON-LD
+            ext = ('<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+                   f'<rdf:Description xmlns:ext="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" ext:DigitalSourceType="{uri}"/>'
+                   "</rdf:RDF></x:xmpmeta>")
+            bare = self.xmp("<Iptc4xmpExt:DigitalSourceType>trainedAlgorithmicMedia</Iptc4xmpExt:DigitalSourceType>")
+            for f in (jpeg("ext.jpg", ext), jpeg("bare.jpg", bare)):
+                self.assertEqual(generated(f), {**declared, "source": "XMP"}, f.name)
+            self.assertEqual(generated(png("ext.png", "XML:com.adobe.xmp", ext)), {**declared, "source": "PNG"})
+            jsonld = self.c2pa_store(b'{"Iptc4xmpExt:DigitalSourceType": "' + uri.encode() + b'"}')
+            f = self.with_segments(plain, Path(d) / "jsonld.jpg", self.app11(jsonld))
+            self.assertEqual(generated(f), {**declared, "source": "JUMBF"})
 
     def test_video_time_prefers_creation_date_and_hedges_container_time(self):
         with tempfile.TemporaryDirectory() as d:

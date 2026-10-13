@@ -185,6 +185,22 @@ class NetworkTests(unittest.TestCase):
             for cmd in commands:
                 self.assertEqual([Path(p).name for p in self.searched(cmd)], ["box1_crop.jpg", "box2_crop.jpg"])
 
+    def test_intake_rerun_reports_only_this_calls_searches(self):
+        # a --box rerun in the folder of a full run: the full run's results stay on disk as evidence, but the new report
+        # holds only the crop's results and votes
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "intake"
+            self.run_intake(Path(folder), "--max-variants", "1", guess="图中可能是：上海")
+            self.assertEqual(json.loads((out / "intake.json").read_text(encoding="utf-8"))["votes"]["city"],
+                             {"上海": ["baidu", "yandex"]})
+            self.run_intake(Path(folder), "--box", "10,10,60,60", "--max-variants", "1", guess="图中可能是：石板路")
+            report = json.loads((out / "intake.json").read_text(encoding="utf-8"))
+            self.assertEqual(sorted((e["variant"], e["engine"]) for e in report["rev"]),
+                             [("box1_crop", "baidu"), ("box1_crop", "yandex")])
+            self.assertEqual(report["votes"], {"city": {}, "place": {"石板路": ["baidu/box1_crop", "yandex/box1_crop"]}})
+            self.assertNotIn("上海", (out / "intake.md").read_text(encoding="utf-8"))
+            self.assertTrue((out / "rev" / "photo_baidu.json").is_file())
+
     def test_place_labels_are_not_presented_as_places(self):
         # _classify files any label containing 路/山/湖/寺/园/城… under "place": Baidu's 石板路 (stone paving) is a scene word,
         # so neither report may turn it into a geocoding command
@@ -566,6 +582,56 @@ class GsvRenderTests(unittest.TestCase):
                 self.assertFalse(out.exists())
 
 
+class MatchRenderFailureTests(unittest.TestCase):
+    """match.py kept a renderer's grey 'render failed' cells (info["failed"]) as candidates and wrote them into the ranking,
+    so a ranking of an outage counted as the street check."""
+
+    @staticmethod
+    def rank(folder: Path, ids: list[str]) -> tuple[Path, str]:
+        import numpy as np
+        import match
+
+        class Embedder:                     # no model download: every image gets the same unit vector
+            def __init__(self, method):
+                pass
+
+            def embed(self, ims, multi=False, batch=32):
+                return np.full((len(ims), 4 if multi else 1, 8), 8 ** -0.5, np.float32)
+
+        def view(pid, *a, **k):
+            if pid.startswith("bad"):
+                raise RuntimeError("blocked")
+            return Image.new("RGB", (640, 480), "green")
+        items, query, out = folder / "items.json", folder / "q.jpg", folder / "r.json"
+        items.write_text(json.dumps([{"id": i, "heading": 0.0, "wgs": [33.5, 126.5]} for i in ids]), encoding="utf-8")
+        Image.new("RGB", (64, 48), "green").save(query)
+        argv = ["match.py", "--cache", str(folder / "cache"), "rank", "--query", str(query), "--items", str(items),
+                "--render", "gsv", "--refine", "none", "--out", str(out)]
+        with patch.object(gsv, "view", side_effect=view), patch.object(match, "Embedder", Embedder), patch.object(sys, "argv", argv), \
+                patch.dict(os.environ), patch("sys.stdout", new=io.StringIO()), patch("sys.stderr", new=io.StringIO()) as err:
+            match.main()
+        return out, err.getvalue()
+
+    def test_all_failed_renders_write_no_ranking(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(SystemExit) as cm:
+                self.rank(Path(d), ["bad1", "bad2"])
+            self.assertIsInstance(cm.exception.code, str)                      # a message, so a non-zero exit
+            self.assertIn("every one of the 2 candidates failed to render (RuntimeError: blocked)", cm.exception.code)
+            self.assertIn("`sources_check.py --only gsv`", cm.exception.code)              # the engine name selects its probes there
+            import sources_check
+            self.assertLessEqual({"gsv-coverage", "gsv-metadata"}, {p.key for p in sources_check.select(sources_check.build_registry(), "gsv")})
+            self.assertFalse((Path(d) / "r.json").exists())
+            self.assertFalse((Path(d) / "r_views").exists())
+
+    def test_failed_renders_are_dropped_from_the_ranking(self):
+        with tempfile.TemporaryDirectory() as d:
+            out, err = self.rank(Path(d), ["good1", "bad1", "good2"])
+            self.assertEqual(sorted(r["id"] for r in json.loads(out.read_text(encoding="utf-8"))), ["good1", "good2"])
+            self.assertEqual(len(list((Path(d) / "r_views").iterdir())), 2)
+            self.assertIn("1/3 candidates failed to render (first: RuntimeError: blocked), dropped", err)
+
+
 class NaverTypeTests(unittest.TestCase):
     """Naver recaptures carry dtl_type 14, a PanoramaType streetlevel 0.12.12 does not know: every lookup that met one raised
     ValueError, so `pano.py list` and `coverage` showed no Naver panorama where Naver has them."""
@@ -679,6 +745,169 @@ class PanoCacheRaceTests(unittest.TestCase):
                 t.join(10)
             self.assertEqual(errors, [], name)
             self.assertTrue(seen, name)
+
+
+class PanoCacheHealTests(unittest.TestCase):
+    """A panorama JPEG or sidecar left broken in the cache (a killed process, a full disk, a writer from before the atomic
+    writes) failed every later read and was never downloaded again."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)
+        self.image = Image.linear_gradient("L").convert("RGB").resize((512, 256))
+        self.calls, self.offline = [], False
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def fetch(self, what):
+        self.calls.append(what)
+        if self.offline:
+            raise RuntimeError("offline")
+
+    def sl(self):
+        """The streetlevel cache of Kakao, Naver and the others: one JPEG per panorama."""
+        with patch.object(_pano, "CACHE", self.cache):
+            return _pano._cached_equirect("kakao:P1:1", lambda: self.fetch("make") or self.image)
+
+    def google(self):
+        """The Google cache: a JPEG and a JSON sidecar with the heading."""
+        sv = SimpleNamespace(find_panorama_by_id=lambda pid: self.fetch("find") or SimpleNamespace(id=pid, heading=0.5),
+                             get_panorama=lambda p, zoom: self.image)
+        with patch.object(gsv.SL, "streetview", return_value=sv):
+            eq, heading = gsv.SL.equirect("G1", self.cache / "google", 3)
+        self.assertAlmostEqual(heading, math.degrees(0.5))
+        return eq
+
+    def url(self):
+        """The download cache of the manifest kinds that name a URL (equirect, cube-strip, photo, cube faces)."""
+        import numpy as np
+
+        def fetch(u):                       # as fetch_many: a cached file that is not empty is not downloaded again
+            path = _pano._cache_path(u)
+            if not (path.exists() and path.stat().st_size):
+                self.fetch("download")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                self.image.save(path, "JPEG")
+            return path
+        with patch.object(_pano, "CACHE", self.cache), patch.object(_pano, "fetch", fetch):
+            return np.asarray(_pano._open("https://example.org/pano/1.jpg"))
+
+    def cases(self):
+        return (("sl", self.sl, lambda: next((self.cache / "sl").glob("*.jpg"))),
+                ("google", self.google, lambda: self.cache / "google" / "G1_z3.jpg"),
+                ("url", self.url, lambda: next((self.cache / "url").rglob("*.jpg"))))
+
+    @staticmethod
+    def truncate(p: Path) -> None:
+        data = p.read_bytes()
+        p.write_bytes(data[:len(data) // 2])
+
+    def test_valid_cache_is_read_without_a_rebuild(self):
+        for name, read, _ in self.cases():
+            with self.subTest(cache=name):
+                self.calls.clear()
+                self.assertEqual(read().shape, (256, 512, 3))
+                self.assertEqual(read().shape, (256, 512, 3))
+                self.assertEqual(len(self.calls), 1)
+
+    def test_truncated_jpeg_is_rebuilt_once(self):
+        for name, read, jpg in self.cases():
+            with self.subTest(cache=name):
+                self.calls.clear()
+                read()
+                self.truncate(jpg())
+                self.assertEqual(read().shape, (256, 512, 3))
+                read()
+                self.assertEqual(len(self.calls), 2)                            # one rebuild, then the healed file is read
+
+    def test_corrupt_sidecar_is_rebuilt_once(self):
+        self.google()
+        (self.cache / "google" / "G1_z3.json").write_text('{"head', encoding="utf-8")
+        self.assertEqual(self.google().shape, (256, 512, 3))
+        self.google()
+        self.assertEqual(self.calls, ["find", "find"])
+
+    def test_failed_rebuild_raises_after_one_attempt(self):
+        for name, read, jpg in self.cases():
+            with self.subTest(cache=name):
+                self.calls.clear()
+                self.offline = False
+                read()
+                broken = jpg()
+                self.truncate(broken)
+                self.offline = True
+                with self.assertRaisesRegex(RuntimeError, "offline"):
+                    read()
+                self.assertEqual(len(self.calls), 2)
+                self.assertFalse(broken.exists())                               # the next run downloads it
+
+    @unittest.skipUnless(shutil.which("curl"), "curl required")
+    def test_threads_downloading_distinct_urls_each_get_their_own_image(self):
+        # fetch_many wrote one curl config per process: threads downloading or healing different URLs at once (pano.py sheet,
+        # sweep.py index) overwrote and deleted each other's config, so most cells failed with "download failed"
+        import numpy as np
+        shades = {f"/pano/{i}.jpg": 10 + i * 20 for i in range(12)}
+        bodies = {}
+        for path, v in shades.items():
+            buf = io.BytesIO()
+            Image.new("RGB", (64, 32), (v, v, v)).save(buf, "JPEG")
+            bodies[path] = buf.getvalue()
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = bodies.get(self.path)
+                time.sleep(0.05)                              # requests overlap, as on a real provider
+                self.send_response(200 if body else 404)
+                self.send_header("Content-Length", str(len(body or b"")))
+                self.end_headers()
+                self.wfile.write(body or b"")
+
+            def log_message(self, *args):
+                pass
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        urls = {f"http://127.0.0.1:{server.server_port}{path}": v for path, v in shades.items()}
+
+        def shade(u):
+            try:
+                return int(np.asarray(_pano._open(u))[16, 32, 0])
+            except Exception as e:  # noqa: BLE001  (every failure is reported, not only the first)
+                return f"{type(e).__name__}: {e}"
+        try:
+            with patch.object(_pano, "CACHE", self.cache), patch.dict(os.environ, {"GEO_PROXY": "direct"}):
+                for state in ("missing", "truncated"):
+                    with self.subTest(cache=state), ThreadPoolExecutor(6) as ex:
+                        got = dict(zip(urls, ex.map(shade, urls)))
+                        self.assertEqual({u: g if isinstance(g, str) or abs(g - v) > 3 else v for u, g in got.items()}, urls)
+                    for u in urls:
+                        self.truncate(_pano._cache_path(u))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
+    def test_corrupt_apple_sidecar_is_rebuilt(self):
+        # Look Around keeps its heading in a JSON sidecar beside the JPEG
+        import hashlib
+        stem = self.cache / "sl" / hashlib.sha1(b"apple:A1:7:4").hexdigest()
+        jpg, meta = stem.with_suffix(".jpg"), stem.with_suffix(".json")
+        jpg.parent.mkdir(parents=True)
+        self.image.save(jpg, "JPEG")
+        meta.write_text(json.dumps({"heading_rad": math.radians(-30)}), encoding="utf-8")
+        la = SimpleNamespace(get_coverage_tile_by_latlon=lambda lat, lon: self.fetch("tile"))
+        entry, spec = {"lat": 48.85, "lon": 2.35, "heading": 10.0}, {"pano": "A1", "build": 7, "zoom": 4}
+        with patch.object(_pano, "CACHE", self.cache), patch.object(_pano, "_sl", lambda s: la), \
+                patch.dict(sys.modules, {"pillow_heif": SimpleNamespace(register_heif_opener=lambda: None)}):
+            eq, center = _pano._apple_equirect(entry, spec)
+            self.assertEqual((eq.shape, round(center, 6), self.calls), ((256, 512, 3), 210.0, []))
+            meta.write_text('{"heading', encoding="utf-8")
+            self.offline = True
+            with self.assertRaisesRegex(RuntimeError, "offline"):
+                _pano._apple_equirect(entry, spec)
+        self.assertEqual(self.calls, ["tile"])
+        self.assertFalse(jpg.exists() or meta.exists())
 
 
 class DeviceTests(unittest.TestCase):
@@ -869,6 +1098,56 @@ class PanoSheetAndKakaoTests(unittest.TestCase):
                 self.pano_main("list", "--provider", "kakao", "--bbox", "33.49,126.49,33.51,126.51", "--thin", "20", "--date", period,
                                "--out", str(out))
             self.assertEqual([r["id"] for r in pano.P.read_manifest(out)], [kept])
+
+    def test_list_limit_caps_the_manifest(self):
+        # --limit went to the point-lookup listers, which ignore it: a Kakao list with --limit 1 wrote both panoramas
+        import pano
+        found = [SimpleNamespace(id=i, lat=33.5, lon=126.5, heading=0.0, date=None) for i in (1, 2)]
+        fake = SimpleNamespace(find_panoramas=lambda *a, **k: list(found))
+        for limit, n in (("1", 1), ("0", 2)):                                # 0 = no limit
+            out = self.dir / f"l{limit}.jsonl"
+            with patch.object(pano.P, "_sl", lambda s: fake), patch.object(pano.time, "sleep"):
+                self.pano_main("list", "--provider", "kakao", "--bbox", "33.4999,126.4999,33.5001,126.5001", "--limit", limit,
+                               "--out", str(out))
+            self.assertEqual(len(pano.P.read_manifest(out)), n, limit)
+
+    def test_list_near_limit_keeps_the_nearest(self):
+        # the lister's grid order starts at the south-west corner: --near --limit 2 kept two edge panoramas, not the one at the point
+        import pano
+        listed = self.rows(("edge0", "2026-03", -343), ("edge1", "2026-03", 245), ("edge2", "2026-03", -300), ("edge3", "2026-03", 330),
+                           ("centre", "2026-03", 0))
+        for extra, kept in (((), ["centre", "edge1"]), (("--thin", "100"), ["centre", "edge1"])):
+            out = self.dir / "near.jsonl"
+            with patch.dict(pano.LISTERS, {"kakao": lambda bb, spacing, limit: list(listed)}):
+                self.pano_main("list", "--provider", "kakao", "--near", "33.5,126.5", "--radius", "400", "--spacing", "60", "--limit", "2",
+                               *extra, "--out", str(out))
+            self.assertEqual([r["id"] for r in pano.P.read_manifest(out)], kept, extra)
+
+    def test_list_limit_stops_the_lister_only_when_no_filter_follows(self):
+        # kartaview stops walking its grid at the limit; with --date, --near or --thin after it, that cut would come before the filter
+        import pano
+        calls = []
+
+        def http_json(url, data=None, **k):
+            calls.append(data)
+            n = len(calls)
+            return {"currentPageItems": [{"id": f"{n}-{i}", "lat": data["lat"], "lng": data["lng"], "heading": 0, "shot_date": "2024-05-01",
+                                          "th_name": "a/b.jpg", "name": "a/b.jpg", "sequence_id": 1, "sequence_index": i}
+                                         for i in range(25)]}
+        bbox = "45.00,7.00,45.05,7.07"
+        whole = len(pano.grid(tuple(float(v) for v in bbox.split(",")), 700))
+        for extra, requests in (((), 1), (("--date", "2024"), whole), (("--thin", "5"), whole),
+                                (("--near", "45.025,7.035", "--radius", "2000"), None)):
+            calls.clear()
+            out = self.dir / "k.jsonl"
+            area = () if "--near" in extra else ("--bbox", bbox)
+            with patch.object(pano, "http_json", http_json):
+                self.pano_main("list", "--provider", "kartaview", *area, "--limit", "20", *extra, "--out", str(out))
+            self.assertEqual(len(pano.P.read_manifest(out)), 20, extra)
+            if requests:
+                self.assertEqual(len(calls), requests, extra)
+            else:
+                self.assertGreater(len(calls), 1, extra)
 
     def test_sheet_date_filter_names_available_periods(self):
         import pano

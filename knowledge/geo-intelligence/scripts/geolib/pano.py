@@ -83,7 +83,8 @@ def fetch_many(urls: list[str], parallel: int = 12, timeout: int = 40, proxy: st
     for the ones that exist afterwards (failures are simply missing). proxy None = GEO_PROXY."""
     todo = [u for u in dict.fromkeys(urls) if not (_cache_path(u).exists() and _cache_path(u).stat().st_size > 0)]
     if todo:
-        cfg = CACHE / "url" / f"batch_{os.getpid()}.curl"
+        # one config per thread: threads fetching at once (sheet cells, index workers) must not overwrite or delete each other's
+        cfg = CACHE / "url" / f"batch_{os.getpid()}_{threading.get_ident()}.curl"
         cfg.parent.mkdir(parents=True, exist_ok=True)
         lines = []
         for u in todo:
@@ -114,15 +115,23 @@ def fetch(url: str) -> Path | None:
     return fetch_many([url], parallel=1).get(url)
 
 
+def read_image(p) -> Image.Image:
+    """The image at p in RGB; its file is closed even when decoding fails (Windows cannot delete an open file)."""
+    with Image.open(p) as im:
+        return im.convert("RGB")
+
+
 def _open(src: str) -> Image.Image:
-    if src.startswith(("http://", "https://")):
-        p = fetch(src)
-        if p is None:
+    """A local image, or a URL's through the download cache, in RGB. A cached download that does not decode (cut short by a
+    timeout or a killed curl) is fetched again, once."""
+    if not src.startswith(("http://", "https://")):
+        return read_image(src)
+    p = _cache_path(src)
+
+    def build():
+        if fetch(src) is None:
             raise RuntimeError(f"download failed: {src}")
-        src = str(p)
-    im = Image.open(src)
-    im.load()
-    return im
+    return read_or_build([p], lambda: read_image(p), build)
 
 
 # ---------------------------------------------------------------- rendering
@@ -235,7 +244,7 @@ def load(entry: dict, level: str = "low") -> View:
     heading = float(entry.get("heading") or 0.0)
     kind = spec["kind"]
     if kind == "equirect":
-        im = _open(spec.get("url") or spec["path"]).convert("RGB")
+        im = _open(spec.get("url") or spec["path"])
         return View("equirect", np.asarray(im, dtype=np.float32), float(spec.get("center", heading)))
     if kind == "cube":
         urls = {k: v for k, v in spec["faces"].items()}
@@ -244,7 +253,7 @@ def load(entry: dict, level: str = "low") -> View:
         for k, u in urls.items():
             src = got.get(u, u)
             if Path(str(src)).exists():
-                faces[k] = np.asarray(Image.open(src).convert("RGB"), dtype=np.float32)
+                faces[k] = np.asarray(_open(u), dtype=np.float32)
         if not all(k in faces for k in "fblr"):
             raise RuntimeError(f"{key(entry)}: missing cube faces")
         return View("cube", faces, heading)
@@ -253,8 +262,7 @@ def load(entry: dict, level: str = "low") -> View:
         faces = {k: v.astype(np.float32) for k, v in strip_to_faces(im, spec.get("order", "lfrbud"), spec.get("axis", "vertical")).items()}
         return View("cube", faces, heading)
     if kind == "photo":
-        im = _open(spec.get("url") or spec["path"]).convert("RGB")
-        return View("photo", np.asarray(im), heading)
+        return View("photo", np.asarray(_open(spec.get("url") or spec["path"])), heading)
     if kind == "streetlevel":
         return _streetlevel_view(entry, spec)
     raise ValueError(f"unknown image kind {kind!r}")
@@ -335,14 +343,34 @@ def write_atomic(path: Path, write) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def read_or_build(files: list[Path], read, build):
+    """read() a cache entry: files[0] and its sidecars. When that fails (missing, or truncated or garbled by a killed process,
+    a full disk or a writer from before the atomic writes), every file of the entry is deleted, build() writes it again and
+    read() runs once more; a second failure propagates. Under files[0]'s lock: threads that want one entry build it once."""
+    with file_lock(files[0]):
+        try:
+            return read()
+        except (OSError, ValueError, KeyError):
+            for p in files:
+                p.unlink(missing_ok=True)
+        files[0].parent.mkdir(parents=True, exist_ok=True)
+        build()
+        return read()
+
+
+def _sl_entry(tag: str) -> tuple[Path, Path]:
+    """Cache files of a streetlevel panorama: the JPEG and its JSON sidecar (only Look Around writes one)."""
+    stem = CACHE / "sl" / hashlib.sha1(tag.encode()).hexdigest()
+    return stem.with_suffix(".jpg"), stem.with_suffix(".json")
+
+
 def _cached_equirect(tag: str, make) -> np.ndarray:
-    p = CACHE / "sl" / f"{hashlib.sha1(tag.encode()).hexdigest()}.jpg"
-    with file_lock(p):
-        if not p.exists():
-            p.parent.mkdir(parents=True, exist_ok=True)
-            im = make().convert("RGB")
-            write_atomic(p, lambda tmp: im.save(tmp, "JPEG", quality=90))
-    return np.asarray(Image.open(p).convert("RGB"), dtype=np.float32)
+    p, _ = _sl_entry(tag)
+
+    def build():
+        im = make().convert("RGB")
+        write_atomic(p, lambda tmp: im.save(tmp, "JPEG", quality=90))
+    return read_or_build([p], lambda: np.asarray(read_image(p), dtype=np.float32), build)
 
 
 def _streetlevel_view(entry: dict, spec: dict) -> View:
@@ -385,10 +413,9 @@ def _apple_equirect(entry: dict, spec: dict) -> tuple[np.ndarray, float]:
     Needs pillow-heif for the HEIC faces."""
     la = _sl("lookaround")
     zoom = int(spec.get("zoom", 4))
-    tag = f"apple:{spec['pano']}:{spec.get('build')}:{zoom}"
-    meta_p = CACHE / "sl" / f"{hashlib.sha1(tag.encode()).hexdigest()}.json"
+    img_p, meta_p = _sl_entry(f"apple:{spec['pano']}:{spec.get('build')}:{zoom}")
 
-    def make():
+    def build():
         import pillow_heif
         pillow_heif.register_heif_opener()
         tile = la.get_coverage_tile_by_latlon(entry["lat"], entry["lon"])
@@ -412,10 +439,13 @@ def _apple_equirect(entry: dict, spec: dict) -> tuple[np.ndarray, float]:
             if x + sc.width > full_w:
                 eq.paste(sc, (x - full_w, y))
         write_atomic(meta_p, lambda tmp: tmp.write_text(json.dumps({"heading_rad": pano.heading}, ensure_ascii=False), encoding="utf-8"))
-        return eq
+        write_atomic(img_p, lambda tmp: eq.save(tmp, "JPEG", quality=90))
 
-    eq = _cached_equirect(tag, make)
-    h_rad = json.loads(meta_p.read_text(encoding="utf-8"))["heading_rad"] if meta_p.exists() else math.radians(-(entry.get("heading") or 0))
+    def read():                         # an entry cached before the sidecar existed takes the heading from the manifest
+        h = json.loads(meta_p.read_text(encoding="utf-8"))["heading_rad"] if meta_p.exists() else math.radians(-(entry.get("heading") or 0))
+        return np.asarray(read_image(img_p), dtype=np.float32), h
+
+    eq, h_rad = read_or_build([img_p, meta_p], read, build)
     # Look Around headings run counter-clockwise from north; the stitched image's middle looks backwards
     center = (-math.degrees(h_rad) + 180.0) % 360
     return eq, float(spec.get("center", center))

@@ -461,5 +461,100 @@ class ExclusionAndReportTests(unittest.TestCase):
         self.assertNotEqual(b["candidates"]["Portugal"].get("status"), "excluded")
 
 
+class LevelAliasTests(unittest.TestCase):
+    """Agents write --level region/state: stored as the canonical admin1; province, county and prefecture name admin1 in some countries
+    and admin2 in others, so they are refused with both choices; an unknown level still lists the canonical names."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.path = self.root / "board.json"
+        run = CorridorPendingTests.run_board
+        self.run_board = lambda *a, ok=True: run(self, *a, ok=ok)
+        self.run_board("init", "--photo", "photo.jpg")
+
+    def levels(self):
+        return {k: c["level"] for k, c in json.loads(self.path.read_text(encoding="utf-8"))["candidates"].items()}
+
+    def children(self, *argv):
+        """Parse `children` in process; the GeoNames fetch is replaced by a recorder of the parsed arguments."""
+        seen, real, argv0 = {}, board._children_geonames, sys.argv
+        board._children_geonames = lambda b, args, p, c: seen.update(vars(args))
+        sys.argv = ["board.py", "--board", str(self.path), "children", *argv]
+        try:
+            board.main()
+        finally:
+            board._children_geonames, sys.argv = real, argv0
+        return seen
+
+    def test_add_stores_aliases_as_canonical_levels(self):
+        for alias, level in (("region", "admin1"), ("State", "admin1"), ("admin1", "admin1"), ("ADMIN2", "admin2")):
+            with self.subTest(alias=alias):
+                self.run_board("add", f"Place {alias}", "--level", alias)
+                self.assertEqual(self.levels()[f"Place {alias}"], level)
+
+    def test_country_dependent_level_words_are_refused_with_both_choices(self):
+        # Japanese prefectures are admin1, Chinese ones admin2; Kenyan counties admin1, US ones admin2; Chinese provinces admin1,
+        # Italian ones admin2: stored at one fixed level they ranked as rivals of their parent or of their siblings
+        self.run_board("add", "Japan", "--level", "country")
+        before = self.path.read_bytes()
+        for argv in (("add", "Osaka", "--level", "prefecture", "--parent", "Japan"), ("add", "Osaka", "--level", "Prefecture"),
+                     ("add", "Nairobi", "--level", "county"), ("add", "Trento", "--level", "province"),
+                     ("children", "Japan", "--level", "prefecture"), ("children", "Japan", "--as-level", "county")):
+            with self.subTest(argv=argv):
+                err = " ".join(self.run_board(*argv, ok=False).stderr.split())
+                self.assertIn(argv[3].lower(), err)
+                for choice in ("admin1", "admin2", "give admin1 or admin2"):
+                    self.assertIn(choice, err)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_unknown_level_errors_with_the_canonical_list(self):
+        before = self.path.read_bytes()
+        for argv in (("add", "Place", "--level", "kingdom"), ("children", "France", "--level", "kingdom"),
+                     ("children", "France", "--as-level", "kingdom")):
+            with self.subTest(argv=argv):
+                err = self.run_board(*argv, ok=False).stderr
+                for lv in board.LEVELS:
+                    self.assertIn(lv, err)
+                self.assertIn("region", err)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_help_lists_canonical_levels_and_accepted_aliases(self):
+        out = self.run_board("add", "--help").stdout
+        self.assertIn("/".join(board.LEVELS), " ".join(out.split()))
+        for alias in ("region", "province", "state", "prefecture", "county"):
+            self.assertIn(alias, out)
+
+    def test_children_level_name_records_the_canonical_level(self):
+        args = self.children("France", "--level", "region")
+        self.assertEqual(args["as_level"], "admin1")
+        self.assertIsNone(args["level"])
+        self.assertEqual(self.children("France", "--as-level", "State")["as_level"], "admin1")
+
+    def test_children_of_a_country_below_admin1_point_to_osm(self):
+        # GeoNames lists a country's first-level regions only: --level county/district recorded France's régions as that level
+        before = self.path.read_bytes()
+        for argv in (("children", "France", "--level", "district"), ("children", "France", "--as-level", "admin2"),
+                     ("children", "France", "--source", "geonames", "--as-level", "city"), ("children", "France", "--level", "county")):
+            with self.subTest(argv=argv):
+                err = " ".join(self.run_board(*argv, ok=False).stderr.split())
+                self.assertIn("--source osm", err)
+                self.assertIn("--level", err)
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(self.children("France")["as_level"], None)                          # no level: GeoNames, as admin1
+        self.assertEqual(self.children("France", "--level", "region")["as_level"], "admin1")
+
+    def test_children_numeric_level_stays_the_osm_admin_level(self):
+        seen, real = [], board._run
+        board._run = lambda cmd, timeout=None: seen.append(cmd) or subprocess.CompletedProcess(cmd, 1, "", "offline")
+        try:
+            with self.assertRaises(SystemExit):
+                self.children("Bavaria", "--level", "6")
+        finally:
+            board._run = real
+        self.assertEqual(seen[0][seen[0].index("--level") + 1], "6")
+
+
 if __name__ == "__main__":
     unittest.main()

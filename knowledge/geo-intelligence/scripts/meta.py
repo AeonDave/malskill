@@ -22,8 +22,9 @@ Finds what plain EXIF readers miss:
   meta.py a.jpg b.heic --json              → one compact JSON digest per file (GPS + GCJ-02, time, optics)
 
 Without exiftool a pure-Python fallback reads EXIF, GPS, XMP (incl. DJI XMP fields), video ISO 6709 location and the
-source type in XMP, PNG text and C2PA manifests (JPEG APP11, PNG caBX); a brotli-compressed or remote manifest needs
-exiftool or c2patool. The output then carries a one-line notice of what needs exiftool (large previews, maker notes, QuickTime atoms).
+source type, from its own property only, in XMP (a PNG's too) and C2PA manifests (JPEG APP11, PNG caBX); a brotli-compressed
+or remote manifest needs exiftool or c2patool. The output then carries a one-line notice of what needs exiftool (large previews,
+maker notes, QuickTime atoms).
 Optics: focal_35mm and the 4:3 field of view feed geo.py range / terrain.py; GCJ-02 is added for points in China.
 Social apps (WeChat, WhatsApp, QQ) strip metadata on forwarding; screenshots carry none. Empty output means nothing.
 
@@ -39,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -110,13 +112,12 @@ _EXIFTOOL_NAMES = {"DateTime": "ModifyDate", "DateTimeDigitized": "CreateDate", 
                    "MakerNote": None, "UserComment": None, "PrintImageMatching": None, "ComponentsConfiguration": None}
 # generator names seen in Software / CreatorTool / HistorySoftwareAgent of AI-made images
 AI_GENERATOR = re.compile(r"midjourney|\bdall[\s·•.\-]?e\b|stable[\s-]?diffusion|\bfirefly\b|\bgoogle\s+imagen\b|\bimagen\s*[0-9]|\bflux\b|\bleonardo\b|\bideogram\b", re.I)
-# IPTC digital source types (cv.iptc.org/newscodes/digitalsourcetype), longest first: inside a C2PA manifest the URI is a
-# CBOR string whose next header byte is often a letter, so a bare [A-Za-z]+ would swallow it; unknown terms keep the bare word.
-SOURCE_TYPES = ("compositeWithTrainedAlgorithmicMedia", "algorithmicallyEnhanced", "trainedAlgorithmicMedia", "computationalCapture",
-                "compositeSynthetic", "compositeCapture", "algorithmicMedia", "virtualRecording", "dataDrivenMedia", "digitalCapture",
-                "digitalCreation", "minorHumanEdits", "screenCapture", "softwareImage", "negativeFilm", "positiveFilm", "humanEdits",
-                "digitalArt", "print")
-SOURCE_TERM = re.compile(rb"digitalsourcetype/(" + b"|".join(s.encode() for s in SOURCE_TYPES) + rb"|[A-Za-z]+)", re.I)
+# IPTC digital source type (cv.iptc.org/newscodes/digitalsourcetype): read only from the property, never from a URI quoted
+# in a comment or description. XMP: Iptc4xmpExt:DigitalSourceType under any prefix bound to the IPTC Extension namespace.
+XMP_SOURCE = "{http://iptc.org/std/Iptc4xmpExt/2008-02-29/}DigitalSourceType"
+RDF_RESOURCE = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource"
+# C2PA: the value of a digitalSourceType key, a CBOR text string (header byte, then 0/1/2/4/8 length bytes) or a JSON-LD string
+C2PA_SOURCE = re.compile(rb'qdigitalSourceType([\x60-\x7b])|(?i:digitalsourcetype)"\s*:\s*"([^"]{1,300})"')
 GENERATED_TYPES = {"trainedAlgorithmicMedia", "algorithmicMedia"}
 SOURCE_UNREAD = ("C2PA present, source type unread (brotli-compressed, remote or none recorded: "
                  "exiftool or c2patool shows the manifest)")
@@ -124,6 +125,7 @@ PROV_TAG = re.compile(r"(DigitalSourceType|C2PA|JUMBF|Manifest|Claim|Credential|
                       r"Software|CreatorTool|ProcessingSoftware|(?i:provenance))")
 FALLBACK_NOTICE = ("exiftool not found: Pillow fallback read EXIF, GPS, XMP and video ISO 6709 location only; "
                    "large embedded previews, maker notes, QuickTime atoms and full DJI metadata need exiftool")
+_XMP_PACKET = re.compile(rb"<x:xmpmeta.*?</x:xmpmeta>", re.S)
 _XMP_ATTR = re.compile(rb'([A-Za-z][\w.-]*):([A-Za-z][\w.-]*)="([^"]{0,500})"')
 _XMP_ELEM = re.compile(rb"<([A-Za-z][\w.-]*):([A-Za-z][\w.-]*)>([^<]{1,500})</\1:\2>")
 _ISO6709 = re.compile(rb"([+-]\d{1,2}\.\d{2,})([+-]\d{1,3}\.\d{2,})([+-]\d+(?:\.\d+)?)?/")
@@ -194,20 +196,49 @@ def _scan_bytes(path: Path, limit: int = 8 << 20) -> bytes:
         return head + fh.read(limit)
 
 
-def _terms(*blobs: bytes) -> list[str]:
-    return list(dict.fromkeys(t.decode("ascii") for b in blobs for t in SOURCE_TERM.findall(b)))
+def _terms(*values) -> list[str]:
+    """IPTC terms of DigitalSourceType values: the last segment of the vocabulary URI, or a bare term."""
+    return list(dict.fromkeys(t for v in values if (t := str(v).strip().rstrip("/").rsplit("/", 1)[-1]).isalpha()))
+
+
+def _xmp_terms(blob: bytes) -> list[str]:
+    """Source types of the XMP packets in blob: element text, rdf:resource or attribute of XMP_SOURCE. A packet that is not
+    well-formed XML yields none (its namespaces cannot be resolved)."""
+    values = []
+    for packet in _XMP_PACKET.findall(blob):
+        try:
+            root = ET.fromstring(packet.decode("utf-8", "replace"))    # starts at x:xmpmeta: no DTD, no entity expansion
+        except ET.ParseError:
+            continue
+        values += [el.get(XMP_SOURCE) for el in root.iter()]
+        values += [el.get(RDF_RESOURCE) or el.text for el in root.iter(XMP_SOURCE)]
+    return _terms(*(v for v in values if v))
+
+
+def _c2pa_terms(store: bytes) -> list[str]:
+    """Source types of a C2PA store, each read to the exact end of its CBOR or JSON string."""
+    values = []
+    for m in C2PA_SOURCE.finditer(store):
+        if m.group(2) is not None:
+            values.append(m.group(2))
+            continue
+        at, n = m.end(), m.group(1)[0] - 0x60
+        if n > 23:                                                      # 0x78..0x7b: the length follows in 1, 2, 4 or 8 bytes
+            k = 1 << (n - 24)
+            n, at = int.from_bytes(store[at:at + k], "big"), at + k
+        values.append(store[at:at + n])
+    return _terms(*(v.decode("utf-8", "replace") for v in values))
 
 
 def _xmp_tags(blob: bytes) -> dict:
     """Simple XMP properties as exiftool-style 'XMP-<prefix>:<Name>' keys (GPS converted to signed degrees); the source type
-    is read from the packet text, so the element, attribute and rdf:resource forms all count."""
+    comes from _xmp_terms alone, so a same-named property of another namespace is not read as one."""
     out: dict = {}
-    packets = [m.group(0) for m in re.finditer(rb"<x:xmpmeta.*?</x:xmpmeta>", blob, re.S)]
-    for packet in packets:
+    for packet in _XMP_PACKET.findall(blob):
         for rx in (_XMP_ATTR, _XMP_ELEM):
             for pre, name, val in rx.findall(packet):
                 pre_s, name_s = pre.decode("ascii", "replace"), name.decode("ascii", "replace")
-                if pre_s in ("xmlns", "x", "rdf", "xml", "stEvt", "stRef"):
+                if pre_s in ("xmlns", "x", "rdf", "xml", "stEvt", "stRef") or "digitalsourcetype" in name_s.lower():
                     continue
                 v = val.decode("utf-8", "replace").strip()
                 if not v:
@@ -219,7 +250,7 @@ def _xmp_tags(blob: bytes) -> dict:
                 elif pre_s == "drone-dji" or name_s in ("GPSAltitude", "GPSImgDirection", "GPSDestBearing", "GPSSpeed", "GPSHPositioningError"):
                     v = _rational(v)
                 out.setdefault(f"XMP-{pre_s}:{name_s}", v)
-    terms = _terms(*packets)
+    terms = _xmp_terms(blob)
     if terms:
         out["XMP-Iptc4xmpExt:DigitalSourceType"] = "; ".join(terms)
     return out
@@ -270,7 +301,7 @@ def _jumbf(blob: bytes) -> dict:
     if not n:
         return {}
     out = {"JUMBF:Manifest": f"C2PA/JUMBF manifest present ({where}{', label c2pa' if b'c2pa' in store else ''})"}
-    terms = _terms(store)
+    terms = _c2pa_terms(store)
     if terms:
         out["JUMBF:DigitalSourceType"] = "; ".join(terms)
     if b"c2pa.opened" in store:
@@ -309,7 +340,8 @@ def pillow_fallback(path: Path) -> dict:
         if not out:
             out["error"] = str(e)
         return out
-    png_terms = _terms(*(v.encode("utf-8", "ignore") for v in text.values() if isinstance(v, str)))
+    xmp = text.get("XML:com.adobe.xmp")      # a PNG declares the source type in its XMP packet (or caBX, read above)
+    png_terms = _xmp_terms(xmp.encode("utf-8", "ignore")) if isinstance(xmp, str) else []
     if png_terms:
         out["PNG:DigitalSourceType"] = "; ".join(png_terms)
     try:
@@ -366,10 +398,8 @@ def source_type(raw: dict) -> tuple[dict, str | None]:
         if "digitalsourcetype" not in tag.lower():
             continue
         src = "exiftool" if exiftool_raw else group if group in ("JUMBF", "PNG") else "XMP"
-        for x in v if isinstance(v, list) else str(v).split(";"):
-            term = str(x).strip().rstrip("/").rsplit("/", 1)[-1]
-            if term.isalpha():
-                found.setdefault(term, src)
+        for term in _terms(*(v if isinstance(v, list) else str(v).split(";"))):
+            found.setdefault(term, src)
     terms = list(found)
     opened = any("c2pa.opened" in str(v) for v in raw.values())
     comp = [s for s in terms if s.startswith("composite") and s != "compositeCapture"]

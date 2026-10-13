@@ -465,14 +465,18 @@ def _area(a):
 def cmd_list(a) -> None:
     bb = _area(a)
     t0 = time.time()
-    rows = LISTERS[a.provider](bb, a.spacing, a.limit)
-    if a.near:
+    # the lister stops at --limit only when nothing after it drops rows; otherwise it lists the whole area and the limit caps the result
+    rows = LISTERS[a.provider](bb, a.spacing, 0 if (a.near or a.date or a.thin) else a.limit)
+    if a.near:                        # nearest first, as sheet selects: thinning and the limit keep the panoramas at the point
         la, lo = (float(v) for v in a.near.split(","))
-        rows = [r for r in rows if dist_m((la, lo), (r["lat"], r["lon"])) <= a.radius]
+        rows = sorted((r for r in rows if dist_m((la, lo), (r["lat"], r["lon"])) <= a.radius),
+                      key=lambda r: dist_m((la, lo), (r["lat"], r["lon"])))
     n0 = len(rows)
     if a.date:                        # before thinning: first-come thinning could drop a whole capture period
         rows = [r for r in rows if str(r.get("date", "")).startswith(a.date)]
     rows = thin(rows, a.thin)
+    if a.limit > 0:
+        rows = rows[: a.limit]
     P.write_manifest(a.out, rows)
     ds = sorted(r["date"] for r in rows if r.get("date"))
     print(f"{a.provider}: {n0} panoramas in the area ({time.time() - t0:.0f}s), kept {len(rows)}"
@@ -568,7 +572,7 @@ def main() -> None:
     li.add_argument("--spacing", type=float, default=30, help="grid step for point-lookup providers (m)")
     li.add_argument("--thin", type=float, default=0, help="keep panoramas at least this far apart (m)")
     li.add_argument("--date", help="keep one capture period, e.g. 2014 or 2014-04")
-    li.add_argument("--limit", type=int, default=0)
+    li.add_argument("--limit", type=int, default=0, help="keep at most this many panoramas, after --date and --thin; nearest first with --near (0: all)")
     li.add_argument("--out", required=True)
     for name in ("render", "sheet"):
         s = sub.add_parser(name)

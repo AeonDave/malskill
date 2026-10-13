@@ -10,7 +10,8 @@
             --beside puts the session folder next to the photo instead of under the archive root
             --viewer also opens the live page (viewer.py serve) in the default browser; board.json is created too
   finish    append the chosen country/region/city to the folder name, record the result; --generated BASIS closes a
-            generated image with no real place (<timestamp>__generated-image), on evidence only, never on a detector score
+            generated image with no real place (<timestamp>__generated-image), on evidence only, never on a detector score;
+            finish again replaces the answer (the old one goes to result_history with its truth metrics) and rescores a recorded truth
   not-generated  record the operator's "it is real, continue" (session.json generated_override): a place finish is then
             never refused for a declared generation
   truth     record the real location later (from the photo's owner, a puzzle answer, a game reveal), or --generated,
@@ -888,8 +889,9 @@ def _declared_generation_gate(folder: Path, metadata: dict, answer: tuple[float,
 
 def _generated_result(basis: str, folder: Path, metadata: dict) -> tuple[dict, str]:
     """finish --generated: the result and its footer line. BASIS must be evidence (generated_basis); the detector's score is
-    recorded beside it, never decides it. The operator's earlier "it is real" outranks the declared term alone: then only new
-    operator words or a saved file close as generated."""
+    recorded beside it, never decides it. The operator's earlier "it is real" and a pinned place (pinning_artifacts, a ranked view
+    tested against the finished answer as the status line does) each outrank the declared term alone: then only new operator words
+    or a saved file close as generated."""
     basis = basis.strip()
     kind = generated_basis(basis, folder)
     if not kind:
@@ -908,6 +910,15 @@ def _generated_result(basis: str, folder: Path, metadata: dict) -> tuple[dict, s
             f"generated → photo_session.py finish \"{folder}\" --generated \"operator asked: …\"; a saved file that shows the generation "
             "(the AI-gallery page with its prompt or model, the sheet confirming the duplicate) → --generated naming that file; otherwise "
             "finish with the place (--country, --city, --latitude/--longitude…), which the declaration no longer refuses.")
+    if kind == "declared":
+        prev = metadata.get("result") if isinstance(metadata.get("result"), dict) else {}
+        pins = pinning_artifacts(folder, _latlon((prev.get("latitude"), prev.get("longitude"))))
+        if pins:
+            raise ValueError(
+                f"The place is pinned by {', '.join(pins[:3])}: a real place found outranks the declared term. Exits: finish with the place "
+                f"it pins (--country, --city, --latitude/--longitude…), which the declaration does not refuse; the operator says it is "
+                f"generated → photo_session.py finish \"{folder}\" --generated \"operator asked: …\"; a saved file that shows the generation "
+                "(the AI-gallery page with its prompt or model, the sheet confirming the duplicate) → --generated naming that file.")
     score = detector(folder) or {}
     result = {"outcome": "generated", "latitude": None, "longitude": None,
               "generated": {"basis": basis, "score": score.get("p_ai"), "model": score.get("model"), "skipped": score.get("skipped"),
@@ -925,19 +936,33 @@ def _close(folder: Path, metadata: dict, report: str, timestamp: str, names: lis
     destination = folder.parent / (timestamp + "__" + "__".join(names))
     if destination != folder and destination.exists():
         raise ValueError("The final archive already exists; no existing session was changed.")
+    # finish again on a closed session is the correction path: the first close time stays, the replaced answer goes to result_history,
+    # a recorded truth is rescored against the new answer (here, before the rename: a malformed truth record changes nothing)
+    prior = metadata.get("result") if metadata.get("status") == "completed" else None
+    real = current_truth(folder, metadata) if prior and isinstance(metadata.get("truth"), dict) else None
+    body = report.split(FOOTER, 1)[0].rstrip()
+    try:
+        rescored = score_truth(result, real, body) if real else None
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"session.json's truth record cannot be scored ({type(exc).__name__}: {exc}): record it again with photo_session.py "
+                         f"truth \"{folder}\" --latitude … --longitude … [--country …] (or --generated for a generated image), then finish "
+                         "again") from exc
     if destination != folder:
         cwd = Path.cwd()
         if cwd == folder or folder in cwd.parents:
             os.chdir(folder.parent)               # Windows refuses to rename a folder that is this process's cwd
         _rename(folder, destination)
-    # finish again on a closed session is the correction path: the first close time stays, the replaced answer goes to result_history
-    prior = metadata.get("result") if metadata.get("status") == "completed" else None
     stamp = now().isoformat(timespec="microseconds")
     metadata.update({"status": "completed", "completed_at": metadata.get("completed_at") if prior and metadata.get("completed_at") else stamp,
                      "folder": str(destination), "result": result})
+    body = body.replace(str(folder), str(destination))
     if prior:
-        metadata.setdefault("result_history", []).append({"replaced_at": stamp, "result": prior})
-    body = report.split(FOOTER, 1)[0].rstrip().replace(str(folder), str(destination))
+        replaced = {"replaced_at": stamp, "result": prior}
+        if rescored is not None:      # truth metrics always describe the current answer: the replaced one keeps its own
+            replaced["truth_metrics"] = {k: real[k] for k in TRUTH_METRICS if k in real}
+            metadata["truth"] = {**{k: v for k, v in real.items() if k not in TRUTH_METRICS}, **rescored}
+            body = _with_truth_block(body, truth_block(result, metadata["truth"])).rstrip()
+        metadata.setdefault("result_history", []).append(replaced)
     footer = (
         f"\n\n{FOOTER}\n\n"
         f"Analysis started: {metadata['started_at']} ({TZ_NAME})  \n"
@@ -1019,59 +1044,70 @@ def _check_coords(lat: float, lon: float) -> None:
         raise ValueError("Longitude must be a finite number from -180 to 180.")
 
 
-def truth(args: argparse.Namespace) -> dict:
-    real = "generated" if args.generated else "place"
-    if real == "place":
-        _check_coords(args.latitude, args.longitude)
-    folder = args.folder.expanduser().resolve(strict=True)
-    metadata = json.loads((folder / "session.json").read_text(encoding="utf-8-sig"))
-    result = metadata.get("result")
-    if not result:
-        raise ValueError("Finish the session first (photo_session.py finish), then record the truth.")
-    said = outcome(result)
+TRUTH_METRICS = ("error_km", "game_score_estimate", "outcome_hit", "false_stop", "country_hit", "region_hit", "gut_country_hit",
+                 "gut_p_truth", "taken_hit", "taken_error_days", "taken_span_days")   # a truth record's score of the current answer
+
+
+def score_truth(result: dict, real: dict, report: str) -> dict:
+    """The TRUTH_METRICS of a finished result against a truth record's ground-truth fields (outcome, latitude, longitude, country,
+    region, taken): the one scoring code behind truth and a re-finish of a scored session. report: report.md, for the gut call."""
+    said, truth_is = outcome(result), outcome(real)
     # a distance exists only between two places: a generated answer or a generated truth has none
-    distance = haversine_km(result["latitude"], result["longitude"], args.latitude, args.longitude) if said == real == "place" else None
-    report_path = folder / "report.md"
-    report = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+    distance = haversine_km(result["latitude"], result["longitude"], real["latitude"], real["longitude"]) if said == truth_is == "place" else None
+    country = real.get("country")
     gut = gut_call(report)
-    gut_p = next((p for c, p in gut if _same_country(c, args.country)), None) if args.country and gut else None
-    record = {
-        "outcome": real,
-        "latitude": args.latitude, "longitude": args.longitude,
-        "country": args.country or None, "region": args.region or None, "city": args.city or None,
-        "source": args.source or None, "recorded_at": now().isoformat(timespec="microseconds"),
+    gut_p = next((p for c, p in gut if _same_country(c, country)), None) if country and gut else None
+    metrics = {
         "error_km": round(distance, 3) if distance is not None else None,
         "game_score_estimate": int(round(5000 * math.exp(-distance / SCORE_SCALE_KM))) if distance is not None else None,
-        "outcome_hit": said == real,
-        "false_stop": said == "generated" and real == "place",      # the run stopped on a real photo; the reverse is a missed generation
-        "country_hit": _same_country(result.get("country"), args.country),
-        "region_hit": _same(result.get("region"), args.region),
+        "outcome_hit": said == truth_is,
+        "false_stop": said == "generated" and truth_is == "place",      # the run stopped on a real photo; the reverse is a missed generation
+        "country_hit": _same_country(result.get("country"), country),
+        "region_hit": _same(result.get("region"), real.get("region")),
         # gut call (written before tools) vs truth: None when the report has no gut rows or no truth country was given
-        "gut_country_hit": (gut_p is not None) if (args.country and gut) else None,
-        "gut_p_truth": (gut_p if gut_p is not None else 0.0) if (args.country and gut) else None,
+        "gut_country_hit": (gut_p is not None) if (country and gut) else None,
+        "gut_p_truth": (gut_p if gut_p is not None else 0.0) if (country and gut) else None,
     }
-    if args.taken:
-        truth_taken = parse_taken(args.taken)
-        record["taken"] = truth_taken["text"]
-        answered = result.get("taken")
+    if real.get("taken"):
+        truth_taken, answered = parse_taken(real["taken"]), result.get("taken")
         if answered:
             lo, hi = date.fromisoformat(answered["from"]), date.fromisoformat(answered["to"])
             t_lo, t_hi = date.fromisoformat(truth_taken["from"]), date.fromisoformat(truth_taken["to"])
             inside = t_hi >= lo and t_lo <= hi
             gap = 0 if inside else min(abs((t_lo - hi).days), abs((lo - t_hi).days))
-            record["taken_hit"] = inside
-            record["taken_error_days"] = gap
-            record["taken_span_days"] = (hi - lo).days + 1
+            metrics.update(taken_hit=inside, taken_error_days=gap, taken_span_days=(hi - lo).days + 1)
         else:
-            record["taken_hit"] = None
-            record["taken_error_days"] = None
-    metadata["truth"] = record
-    save_json(folder / "session.json", metadata)
-    if TRUTH_START in report:
-        before, rest = report.split(TRUTH_START, 1)
-        report = before.rstrip() + rest.split(TRUTH_END, 1)[-1]
+            metrics.update(taken_hit=None, taken_error_days=None)
+    return metrics
+
+
+def current_truth(folder: Path, metadata: dict) -> dict | None:
+    """session.json's truth record with TRUTH_METRICS that score the current result. A session re-finished after its truth by a
+    version that did not rescore still holds the replaced answer's metrics (the last result_history entry, replaced after the truth
+    was recorded, has no truth_metrics): those are rescored here; a record that cannot be scored loses them rather than show them."""
+    real, result, history = metadata.get("truth"), metadata.get("result"), metadata.get("result_history") or []
+    last = history[-1] if history and isinstance(history[-1], dict) else None
+    if not (isinstance(real, dict) and isinstance(result, dict) and last) or "truth_metrics" in last:
+        return real
+    try:
+        if datetime.fromisoformat(real["recorded_at"]) > datetime.fromisoformat(last["replaced_at"]):
+            return real
+    except (KeyError, TypeError, ValueError):
+        pass                                          # no comparable times: a rescore is right either way
+    ground = {k: v for k, v in real.items() if k not in TRUTH_METRICS}
+    report = folder / "report.md"
+    try:
+        return {**ground, **score_truth(result, real, report.read_text(encoding="utf-8") if report.exists() else "")}
+    except (KeyError, TypeError, ValueError):
+        return ground
+
+
+def truth_block(result: dict, record: dict) -> str:
+    """report.md's '## Ground truth' block: the truth record and its score of result, the current answer."""
+    said, real = outcome(result), outcome(record)
     hit = lambda v: "unknown" if v is None else ("yes" if v else "no")  # noqa: E731
-    parts = [f"Error: {distance:.2f} km; approximate world-map game score {record['game_score_estimate']}"] if distance is not None else []
+    parts = ([f"Error: {record['error_km']:.2f} km; approximate world-map game score {record['game_score_estimate']}"]
+             if record.get("error_km") is not None else [])
     if "generated" in (said, real):
         parts.append("outcome: " + ("generated image confirmed" if said == real else "false stop: answered a generated image, the photo shows a real place"
                                     if said == "generated" else "missed generation: answered a place, the image is generated"))
@@ -1083,16 +1119,47 @@ def truth(args: argparse.Namespace) -> dict:
         parts.append(f"gut call: {hit(record['gut_country_hit'])}" + (f" ({record['gut_p_truth']:g}% on the true country)" if record["gut_p_truth"] is not None else ""))
     if said == "place":
         parts.append(f"stated confidence: {result.get('confidence')}")
-    where = ("Actual: generated image, no real place" if real == "generated" else f"Actual location: {args.latitude:.6f}, {args.longitude:.6f}"
-             + (f" ({', '.join(x for x in (args.city, args.region, args.country) if x)})" if (args.city or args.region or args.country) else ""))
-    block = (f"\n\n{TRUTH_START}\n\n## Ground truth\n\n" + where + (f"; source: {args.source}" if args.source else "") + "  \n"
-             + "; ".join(parts) + f".\n\n{TRUTH_END}\n")
+    names = [x for x in (record.get("city"), record.get("region"), record.get("country")) if x]
+    where = ("Actual: generated image, no real place" if real == "generated" else f"Actual location: {record['latitude']:.6f}, {record['longitude']:.6f}"
+             + (f" ({', '.join(names)})" if names else ""))
+    return (f"\n\n{TRUTH_START}\n\n## Ground truth\n\n" + where + (f"; source: {record['source']}" if record.get("source") else "") + "  \n"
+            + "; ".join(parts) + f".\n\n{TRUTH_END}\n")
+
+
+def _with_truth_block(report: str, block: str) -> str:
+    """report.md with its ground-truth block replaced by block, kept above finish's footer."""
+    if TRUTH_START in report:
+        before, rest = report.split(TRUTH_START, 1)
+        report = before.rstrip() + rest.split(TRUTH_END, 1)[-1]
     if FOOTER in report:
         body, footer = report.split(FOOTER, 1)
-        report = body.rstrip() + block + "\n" + FOOTER + footer
-    else:
-        report = report.rstrip() + block
-    report_path.write_text(report, encoding="utf-8")
+        return body.rstrip() + block + "\n" + FOOTER + footer
+    return report.rstrip() + block
+
+
+def truth(args: argparse.Namespace) -> dict:
+    real = "generated" if args.generated else "place"
+    if real == "place":
+        _check_coords(args.latitude, args.longitude)
+    folder = args.folder.expanduser().resolve(strict=True)
+    metadata = json.loads((folder / "session.json").read_text(encoding="utf-8-sig"))
+    result = metadata.get("result")
+    if not result:
+        raise ValueError("Finish the session first (photo_session.py finish), then record the truth.")
+    report_path = folder / "report.md"
+    report = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+    record = {
+        "outcome": real,
+        "latitude": args.latitude, "longitude": args.longitude,
+        "country": args.country or None, "region": args.region or None, "city": args.city or None,
+        "source": args.source or None, "recorded_at": now().isoformat(timespec="microseconds"),
+    }
+    if args.taken:
+        record["taken"] = parse_taken(args.taken)["text"]
+    record.update(score_truth(result, record, report))
+    metadata["truth"] = record
+    save_json(folder / "session.json", metadata)
+    report_path.write_text(_with_truth_block(report, truth_block(result, record)), encoding="utf-8")
     snapshot(folder)                                   # viewer.html now shows the truth too
     return {**describe(folder, metadata), "truth": record}
 
@@ -1127,7 +1194,7 @@ def scoreboard(args: argparse.Namespace) -> dict:
     root = args.root.expanduser().resolve()
     rows, pairs = [], []
     for folder, m in _sessions(root):
-        t, r = m.get("truth"), m.get("result")
+        t, r = current_truth(folder, m), m.get("result")
         if t and r:
             pairs.append((r, t))
             rows.append({"folder": folder.name, "started_at": m.get("started_at"), "chosen": r.get("city_or_nearest_locality"),
@@ -1187,7 +1254,7 @@ def list_sessions(args: argparse.Namespace) -> dict:
     for folder, m in _sessions(root):
         if args.status and m.get("status") != args.status:
             continue
-        r, t = m.get("result") or {}, m.get("truth") or {}
+        r, t = m.get("result") or {}, current_truth(folder, m) or {}
         rows.append({"folder": str(folder), "status": m.get("status"), "started_at": m.get("started_at"),
                      "result": (GENERATED_LABEL if outcome(r) == "generated" else f"{r.get('city_or_nearest_locality')}, {r.get('country')} ({r.get('confidence')})")
                      if r else None,
@@ -1262,7 +1329,8 @@ def main() -> int:
     complete.add_argument("--skip-check", action="append", metavar="NAME:REASON", help=f"Close although a scene-required check (skyline, street) has no file; repeatable, recorded in the result. Allowed {EARLY_EXIT}.")
     complete.add_argument("--accept-unverified", metavar="REASON", help=f"Close with no verification artifact; the reason is recorded. Allowed {EARLY_EXIT}.")
     complete.add_argument("--generated", metavar="BASIS", help="Close as a generated image with no real place, without any place flag. BASIS is evidence, never a detector score: "
-                          "the DigitalSourceType term meta declares, a saved session file that shows it (the AI-gallery page, the sheet confirming the duplicate), "
+                          "the DigitalSourceType term meta declares (not while a file pins a real place), a saved session file that shows it (the AI-gallery page, "
+                          "the sheet confirming the duplicate), "
                           "or the operator's words starting the basis (\"operator asked: …\").")
     complete.set_defaults(handler=finish)
     not_gen = subparsers.add_parser("not-generated", help="Record the operator's \"it is real, continue\" (session.json generated_override): a declared generation then never refuses a place finish.")

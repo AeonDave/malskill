@@ -253,16 +253,16 @@ def _load_candidates(args) -> tuple[list[dict], list[Image.Image]]:
     first = str(items[0].get("id", ""))                # Google ids (official or user upload) render with gsv, the rest with Baidu
     engine = args.render or ("gsv" if official(first) or first.startswith(USER_UPLOAD_PREFIXES) else "baidu")
     ims = _render_items(items, engine, args.proxy, cache)
-    ok_items, ok_ims = [], []
-    for it, im in zip(items, ims):
-        if im is not None:
-            ok_items.append(it)
-            ok_ims.append(im)
-    if not ok_ims:
-        sys.exit("not a single candidate rendered: check panorama ids, coverage and service availability with doctor.py --network")
-    if len(ok_ims) < len(items):
-        print(f"{len(items) - len(ok_ims)} failed to render, skipped", file=sys.stderr)
-    return ok_items, ok_ims
+    # a renderer's grey placeholder (info["failed"]) is no view: ranked, it would pass an outage off as the street check
+    ok = [(it, im) for it, im in zip(items, ims) if im is not None and not im.info.get("failed")]
+    if len(ok) < len(items):
+        cause = next((im.info["failed"] for im in ims if im is not None and im.info.get("failed")), "renderer error")
+        if not ok:
+            sys.exit(f"every one of the {len(items)} candidates failed to render ({cause}): no ranking written. Check the provider "
+                     f"with `sources_check.py --only {engine}`, or render another set (other ids or area)")
+        print(f"{len(items) - len(ok)}/{len(items)} candidates failed to render (first: {cause}), dropped; ranking the other "
+              f"{len(ok)}", file=sys.stderr)
+    return [it for it, _ in ok], [im for _, im in ok]
 
 
 def _sheet(rows: list[dict], ims: list[Image.Image], out: Path) -> None:

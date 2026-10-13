@@ -641,7 +641,7 @@ def build_state(folder: Path, tiles: str = "esri") -> dict:
     state = {
         "folder": str(folder), "name": folder.name, "title": photos[0]["name"] if photos else folder.name, "photos": photos,
         "status": session.get("status", "pending"), "started_at": session.get("started_at"),
-        "completed_at": session.get("completed_at"), "result": session.get("result"), "truth": session.get("truth"),
+        "completed_at": session.get("completed_at"), "result": session.get("result"), "truth": _ps.current_truth(folder, session),
         "photo_url": photos[0]["url"] if photos else None,
         "stage": stage_of(session, b, artifacts, folder), "stages": STAGES,
         "focus": None if generated else focus_of(session, b, rows) if source == "board" else gut_focus(session, rows),

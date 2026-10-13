@@ -101,11 +101,13 @@ def _ai_host(url: str, site: str) -> str | None:
     return next((h for h in AI_HOSTS if host == h or host.endswith("." + h)), None)
 
 
-def _collect_rev(rev_dir: Path) -> tuple[list[dict], dict, list[dict]]:
-    """Read revimg's .json files: guess/links for each image and engine, the tiered vote count, and the results that sit
-    on an AI-image gallery (every link and similar-image source, not only the ones shown)."""
+def _collect_rev(rev_dir: Path, only: set[str] | None = None) -> tuple[list[dict], dict, list[dict]]:
+    """Read revimg's .json files (only the names in `only`, when given): guess/links for each image and engine, the tiered
+    vote count, and the results that sit on an AI-image gallery (every link and similar-image source, not only the ones shown)."""
     entries, hits, seen = [], [], set()
     for jf in sorted(rev_dir.glob("*.json")):
+        if only is not None and jf.name not in only:
+            continue
         try:
             d = json.loads(jf.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
@@ -222,6 +224,9 @@ def main() -> None:
     entries, votes, hits = [], {"city": {}, "place": {}}, []
     if not args.no_rev:
         rev_dir.mkdir(exist_ok=True)
+        # the report holds only the results this call's searches write (new or rewritten files): a rerun in the same folder,
+        # e.g. --box after a full run, leaves the older results on disk as evidence, outside this report
+        before = {p.name: p.stat().st_mtime_ns for p in rev_dir.glob("*.json")}
         var_files = sorted((out / "variants").glob("*.jpg")) + sorted((out / "variants").glob("*.png"))
         if args.box:                    # boxes share the slots round-robin, each box's crop first
             groups = [sorted(f for f in var_files if f.stem.startswith(f"box{i}_")) for i in range(1, len(args.box) + 1)]
@@ -242,7 +247,8 @@ def main() -> None:
             futs = {eng: ex.submit(timed, f"rev-{eng}", (lambda e=eng: (lambda: rev(e)))()) for eng in [e for e in args.engines.split(",") if e]}
             for eng, f in futs.items():
                 f.result()
-        entries, votes, hits = _collect_rev(rev_dir)
+        written = {p.name for p in rev_dir.glob("*.json") if before.get(p.name) != p.stat().st_mtime_ns}
+        entries, votes, hits = _collect_rev(rev_dir, written)
 
     ocr_items = []
     if (out / "ocr.json").exists():
@@ -339,8 +345,8 @@ def main() -> None:
     L += ["## Output files", "",
           None if args.box else f"- Edge crops: `edges/` ({len(list((out / 'edges').glob('*')))} images; look at the four edges and four corners one by one)",
           f"- Variants: `variants/` ({len(list((out / 'variants').glob('*')))} images)", "- OCR annotated image: `ocr.png`" if not args.no_ocr else "",
-          f"- Image-search screenshots: `rev/` ({len(list(rev_dir.glob('*.png'))) if rev_dir.exists() else 0} images)" if not args.no_rev else "",
-          f"- Baidu similar-image contact sheets: `rev/*_baidu_similar.jpg` ({len(list(rev_dir.glob('*_baidu_similar.jpg'))) if rev_dir.exists() else 0})" if not args.no_rev else "", "",
+          f"- Image-search screenshots: `rev/` ({sum((rev_dir / e['shot']).is_file() for e in entries)} images)" if not args.no_rev else "",
+          f"- Baidu similar-image contact sheets: `rev/*_baidu_similar.jpg` ({sum(bool(e['similar_sheet']) for e in entries)})" if not args.no_rev else "", "",
           "## Status", ""]
     for k, v in status.items():
         L.append(f"- {k}: {v}")

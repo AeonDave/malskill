@@ -13,6 +13,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -113,6 +114,44 @@ class StateTests(unittest.TestCase):
         self.assertEqual(s["focus"]["radius_km"], 0.25)
         self.assertEqual(s["focus"]["heading"], 215)
         self.assertEqual(s["stage"], "Done")
+
+    def test_truth_shown_is_the_current_answers_after_a_refinish(self):
+        def session(*args) -> Path:
+            r = subprocess.run([sys.executable, str(SCRIPTS / "photo_session.py"), *map(str, args)], cwd=self.tmp, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return Path(json.loads(r.stdout)["folder"])
+        (self.folder / "report.md").write_text("# Report\n\n## Gut call (before tools)\n1. Slovakia 80% — sign\n\n## Answer\nPoprad\n\n"
+                                               "## When\nNot determinable.\n", encoding="utf-8")
+        flags = ["--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture"]
+        poprad = session("finish", self.folder, "--country", "Slovakia", "--city", "Poprad", "--latitude", "49.1675", "--longitude", "20.0675",
+                         "--confidence", "medium", *flags)
+        session("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia")
+        self.assertEqual(viewer.build_state(poprad)["truth"]["error_km"], 0.0)
+        paris = session("finish", poprad, "--country", "France", "--city", "Paris", "--latitude", "48.8566", "--longitude", "2.3522",
+                        "--confidence", "high", *flags)
+        s = viewer.build_state(paris)
+        self.assertEqual(s["result"]["city_or_nearest_locality"], "Paris")
+        self.assertAlmostEqual(s["truth"]["error_km"], 1289.5, delta=1.0)                     # the page's distance is Paris's, not Poprad's
+        self.assertFalse(s["truth"]["country_hit"])
+        self.assertEqual((s["truth"]["latitude"], s["truth"]["longitude"]), (49.1675, 20.0675))
+
+    def test_truth_kept_through_an_unrescored_refinish_shows_the_current_answers_score(self):
+        # re-finished after its truth by a version that did not rescore: the stored metrics scored the replaced answer (Poprad, 0 km)
+        state = json.loads((self.folder / "session.json").read_text(encoding="utf-8"))
+        truth = {"latitude": 49.05, "longitude": 20.30, "country": "Slovakia", "recorded_at": "2026-10-13T12:01:00+02:00",
+                 "error_km": 0, "game_score_estimate": 5000, "country_hit": True}
+        state.update(status="completed", truth=truth,
+                     result={"country": "France", "city_or_nearest_locality": "Paris", "latitude": 48.8566, "longitude": 2.3522, "confidence": "high"},
+                     result_history=[{"replaced_at": "2026-10-13T12:02:00+02:00", "result": {"country": "Slovakia", "latitude": 49.05, "longitude": 20.30}}])
+        (self.folder / "session.json").write_text(json.dumps(state), encoding="utf-8")
+        shown = viewer.build_state(self.folder)["truth"]
+        self.assertAlmostEqual(shown["error_km"], viewer._ps.haversine_km(48.8566, 2.3522, 49.05, 20.30), delta=0.01)
+        self.assertFalse(shown["country_hit"])
+        del truth["latitude"]                                                                  # unscorable: no stale figures either
+        (self.folder / "session.json").write_text(json.dumps({**state, "truth": truth}), encoding="utf-8")
+        shown = viewer.build_state(self.folder)["truth"]
+        self.assertEqual((shown.get("error_km"), shown.get("country_hit"), shown["country"]), (None, None, "Slovakia"))
 
     def test_stages_from_artifacts(self):
         self.assertEqual(viewer.build_state(self.folder)["stage"], "Candidates")

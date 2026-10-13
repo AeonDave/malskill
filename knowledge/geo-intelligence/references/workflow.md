@@ -182,9 +182,10 @@ result; `report.md` gets the final path and timestamps appended. Use the printed
 
 Running `finish` again on a completed session is the correction path (an operator's correction, a heading or date found
 later): every gate runs as before, so pass the full flags again. The first `completed_at` stays; the replaced result goes to
-`session.json` `result_history` as `{replaced_at, result}`; the footer gains `Amended: <time>` after `Analysis completed:`;
-the folder name follows the new answer (place or `--generated`, either way). A recorded truth is kept and not rescored: it
-scored the result current when `truth` ran (compare `truth.recorded_at` with `replaced_at`).
+`session.json` `result_history` as `{replaced_at, result}`, plus `truth_metrics` (its own score) when a truth was recorded;
+the footer gains `Amended: <time>` after `Analysis completed:`; the folder name follows the new answer (place or
+`--generated`, either way). The truth is rescored against the new answer, so `truth`, report.md's Ground truth block, the
+scoreboard and the viewer always score the current answer.
 
 `finish "<folder>" --generated "<basis>"` closes a generated image with no real place: no place flag (with one, or
 with `--skip-check`/`--accept-unverified`, it exits 2), folder `<timestamp>__generated-image`, `result.outcome`
@@ -194,9 +195,10 @@ words starting the basis (`operator asked: …`); a detector score, or an aidet.
 refused. While meta declares generation (trainedAlgorithmicMedia or algorithmicMedia as the only source type), a place
 `finish` is refused unless a file pins the place (evidence or match image, `pose.py` output, near fair ranked view: it
 then prints a Note) or `photo_session.py not-generated "<folder>" "operator asked: it is real, continue"` recorded the
-operator's word (`generated_override` in `session.json`; the reason starts with `operator asked:`). Once recorded, the
-declared term alone no longer closes as generated: new operator words or a saved file do. The detector score never
-refuses anything.
+operator's word (`generated_override` in `session.json`; the reason starts with `operator asked:`). Once recorded, or
+while a file pins the place (the same pins as above; a ranked view is tested against the finished answer), the declared
+term alone no longer closes as generated: new operator words or a saved file do. The detector score never refuses
+anything.
 
 ## Answer format
 

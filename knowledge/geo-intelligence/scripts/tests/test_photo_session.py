@@ -644,6 +644,95 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertLess(report.index("## Ground truth"), report.index("<!-- geogussr-archive -->"))
         self.assertLess(report.index("<!-- geogussr-archive -->"), report.index("Amended:"))
 
+    def test_refinish_rescores_the_truth_and_keeps_the_old_metrics(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        poprad = Path(self.finish(folder)["folder"])
+        first = self.command("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia", "--source", "owner")["truth"]
+        self.assertEqual((first["error_km"], first["game_score_estimate"], first["country_hit"]), (0.0, 5000, True))
+        paris = Path(self.command("finish", poprad, "--country", "France", "--city", "Paris", "--latitude", "48.8566", "--longitude", "2.3522",
+                                  "--confidence", "high", "--heading", "unknown", "--taken", "unknown",
+                                  "--accept-unverified", "user stopped: test fixture, no checks")["folder"])
+        meta = json.loads((paris / "session.json").read_text(encoding="utf-8"))
+        km = photo_session.haversine_km(48.8566, 2.3522, 49.1675, 20.0675)
+        t = meta["truth"]
+        self.assertAlmostEqual(t["error_km"], km, delta=0.01)                                  # the metrics describe the current answer
+        self.assertLess(t["game_score_estimate"], 2500)
+        self.assertEqual((t["country_hit"], t["outcome_hit"], t["false_stop"]), (False, True, False))
+        ground = ("outcome", "latitude", "longitude", "country", "region", "city", "source", "recorded_at")
+        self.assertEqual({k: t.get(k) for k in ground}, {k: first.get(k) for k in ground})     # the ground truth itself is unchanged
+        old = meta["result_history"][0]
+        self.assertEqual(old["result"]["city_or_nearest_locality"], "Poprad")
+        self.assertEqual({k: old["truth_metrics"][k] for k in ("error_km", "game_score_estimate", "country_hit")},
+                         {"error_km": 0.0, "game_score_estimate": 5000, "country_hit": True})  # the replaced answer keeps its own score
+        report = (paris / "report.md").read_text(encoding="utf-8")
+        self.assertEqual(report.count("## Ground truth"), 1)
+        self.assertIn(f"Error: {t['error_km']:.2f} km", report)
+        self.assertIn("country hit: no", report)
+        self.assertIn("stated confidence: high", report)
+        board = self.command("scoreboard", "--root", self.root / "archives")
+        row = board["sessions"][0]
+        self.assertEqual((row["chosen"], row["confidence"], row["country_hit"], row["score"]), ("Paris", "high", False, t["game_score_estimate"]))
+        self.assertAlmostEqual(row["error_km"], km, delta=0.01)
+        self.assertEqual((board["by_confidence"]["high"]["n"], board["by_confidence"]["high"]["within_200km"]), (1, 0.0))
+        self.assertEqual((board["by_confidence"]["medium"]["n"], board["country_hit_rate"]), (0, 0.0))
+
+    def stale_truth_session(self, **truth) -> Path:
+        """The review's fixture: Poprad finished and scored (0 km), then re-finished as Paris by a version that kept the truth's
+        metrics as they were and wrote no truth_metrics in result_history."""
+        folder = self.root / "archives" / "session"
+        folder.mkdir(parents=True)
+        state = {"status": "completed", "started_at": "2026-10-13T12:00:00+02:00",
+                 "result": {"country": "France", "city_or_nearest_locality": "Paris", "latitude": 48.8566, "longitude": 2.3522, "confidence": "high"},
+                 "truth": {"latitude": 49.05, "longitude": 20.30, "country": "Slovakia", "recorded_at": "2026-10-13T12:01:00+02:00",
+                           "error_km": 0, "game_score_estimate": 5000, "country_hit": True, **truth},
+                 "result_history": [{"replaced_at": "2026-10-13T12:02:00+02:00",
+                                     "result": {"country": "Slovakia", "city_or_nearest_locality": "Poprad", "latitude": 49.05,
+                                                "longitude": 20.30, "confidence": "medium"}}]}
+        (folder / "session.json").write_text(json.dumps(state), encoding="utf-8")
+        return folder
+
+    def test_truth_kept_through_an_unrescored_refinish_scores_the_current_answer(self):
+        self.stale_truth_session()
+        km = photo_session.haversine_km(48.8566, 2.3522, 49.05, 20.30)
+        board = self.command("scoreboard", "--root", self.root / "archives")
+        row = board["sessions"][0]
+        self.assertEqual((row["chosen"], row["confidence"], row["country_hit"]), ("Paris", "high", False))
+        self.assertAlmostEqual(row["error_km"], km, delta=0.01)
+        self.assertLess(row["score"], 2500)
+        self.assertEqual((board["by_confidence"]["high"]["n"], board["by_confidence"]["high"]["within_200km"]), (1, 0.0))
+        self.assertAlmostEqual(self.command("list", "--root", self.root / "archives")["sessions"][0]["error_km"], km, delta=0.01)
+
+    def test_truth_metrics_recorded_for_the_current_answer_are_read_as_stored(self):
+        # truth recorded after the replacement, or a replacement that kept its own metrics: the stored ones are the current answer's
+        folder = self.stale_truth_session(recorded_at="2026-10-13T12:03:00+02:00", error_km=7.0)
+        self.assertEqual(self.command("scoreboard", "--root", self.root / "archives")["sessions"][0]["error_km"], 7.0)
+        state = json.loads((folder / "session.json").read_text(encoding="utf-8"))
+        state["truth"]["recorded_at"] = "2026-10-13T12:01:00+02:00"
+        state["result_history"][0]["truth_metrics"] = {"error_km": 0}
+        (folder / "session.json").write_text(json.dumps(state), encoding="utf-8")
+        self.assertEqual(self.command("list", "--root", self.root / "archives")["sessions"][0]["error_km"], 7.0)
+
+    def test_refinish_with_an_unreadable_truth_names_the_next_action(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        poprad = Path(self.finish(folder)["folder"])
+        self.command("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia")
+        paris = ("--country", "France", "--city", "Paris", "--latitude", "48.8566", "--longitude", "2.3522", "--confidence", "high",
+                 "--heading", "unknown", "--taken", "unknown", "--accept-unverified", "user stopped: test fixture, no checks")
+        state = json.loads((poprad / "session.json").read_text(encoding="utf-8"))
+        for broken in ({k: v for k, v in state["truth"].items() if k != "latitude"}, {**state["truth"], "latitude": "north"}):
+            with self.subTest(truth=broken.get("latitude")):
+                (poprad / "session.json").write_text(json.dumps({**state, "truth": broken}), encoding="utf-8")
+                err = self.command("finish", poprad, *paris, success=False)
+                self.assertNotIn("Traceback", err)
+                self.assertIn("truth record cannot be scored", err)
+                self.assertIn(f'photo_session.py truth "{poprad}" --latitude', err)                # the exit, with its command
+                self.assertEqual(json.loads((poprad / "session.json").read_text(encoding="utf-8"))["result"]["city_or_nearest_locality"], "Poprad")
+        self.command("truth", poprad, "--latitude", "49.1675", "--longitude", "20.0675", "--country", "Slovakia")
+        self.assertFalse(json.loads((Path(self.command("finish", poprad, *paris)["folder"]) / "session.json").read_text(encoding="utf-8"))
+                         ["truth"]["country_hit"])
+
     def test_scoreboard_and_list(self):
         archives = self.root / "archives"
         for lat, conf in (("49.2", "medium"), ("10.0", "high")):
@@ -851,6 +940,28 @@ class PhotoArchiveTests(unittest.TestCase):
         res = json.loads((renamed / "session.json").read_text(encoding="utf-8"))["result"]
         self.assertEqual(res["generated"]["override"]["reason"], "operator asked: it is real, continue")
 
+    def test_a_pin_outranks_the_declared_term_in_finish_generated(self):
+        folder = self.generated_session(self.DECLARED)
+        (folder / "pose.json").write_text(json.dumps({"camera_ll": [49.1675, 20.0675], "heading": 90.0}), encoding="utf-8")
+        err = self.command("finish", folder, "--generated", "trainedAlgorithmicMedia", success=False)
+        self.assertIn("pose.json", err)                                                        # what outranks the term, named
+        self.assertIn("--latitude", err)                                                       # every exit, with its command
+        self.assertIn('--generated "operator asked: …"', err)
+        self.assertIn("saved file", err)
+        self.assertTrue(folder.is_dir())
+        (folder / "verify").mkdir()
+        (folder / "verify" / "ai gallery page.html").write_text("prompt: …", encoding="utf-8")
+        renamed = self.command("finish", folder, "--generated", "saved page: verify/ai gallery page.html")["folder"]
+        self.assertEqual(json.loads((Path(renamed) / "session.json").read_text(encoding="utf-8"))["result"]["outcome"], "generated")
+        self.command("finish", renamed, "--generated", "operator asked: it is generated")      # the operator's words close too
+        ranked = self.generated_session(self.DECLARED)                                         # a ranked view pins the finished place
+        (ranked / "x_rank.json").write_text(json.dumps([{"rank": 1, "id": "p1", "heading": 90.0, "inliers": 20, "score_global": 0.3,
+                                                         "wgs": [49.1675, 20.0675]}]), encoding="utf-8")
+        place = self.finish(ranked)["folder"]
+        err = self.command("finish", place, "--generated", "trainedAlgorithmicMedia", success=False)
+        self.assertIn("x_rank.json", err)
+        self.assertEqual(json.loads((Path(place) / "session.json").read_text(encoding="utf-8"))["result"]["outcome"], "place")
+
     def test_refinish_switches_outcome_and_keeps_history(self):
         place = self.finish(self.generated_session())
         generated = self.command("finish", place["folder"], "--generated", "operator asked: it is generated")
@@ -929,6 +1040,31 @@ class PhotoArchiveTests(unittest.TestCase):
             self.assertEqual(self.run_cli("truth", confirmed, *extra).returncode, 2, extra)
         old = ({"latitude": 1.0, "longitude": 2.0}, {"latitude": 1.0, "longitude": 2.0, "error_km": 3.0})   # sessions from before outcomes
         self.assertEqual(photo_session.generated_summary([old]), {"called": 0, "confirmed": 0, "false_stops": 0, "missed": 0})
+
+    def test_refinish_rescores_generated_outcomes(self):
+        archives = self.root / "archives"
+        meta = lambda f: json.loads((Path(f) / "session.json").read_text(encoding="utf-8"))   # noqa: E731
+        placed = self.finish(self.generated_session())["folder"]
+        self.command("truth", placed, "--generated", "--source", "owner")                     # a missed generation, until the re-finish
+        called = self.command("finish", placed, "--generated", "operator asked: it is generated")["folder"]
+        m = meta(called)
+        self.assertEqual((m["truth"]["outcome"], m["truth"]["outcome_hit"], m["truth"]["false_stop"]), ("generated", True, False))
+        self.assertEqual((m["result_history"][0]["truth_metrics"]["outcome_hit"], m["result_history"][0]["truth_metrics"]["false_stop"]), (False, False))
+        report = (Path(called) / "report.md").read_text(encoding="utf-8")
+        self.assertIn("generated image confirmed", report)
+        self.assertNotIn("missed generation", report)
+        self.assertEqual(self.command("scoreboard", "--root", archives)["generated"], {"called": 1, "confirmed": 1, "false_stops": 0, "missed": 0})
+        stopped = self.command("finish", self.generated_session(), "--generated", "operator asked: generated")["folder"]
+        self.command("truth", stopped, "--latitude", "49.2", "--longitude", "20.1", "--country", "Slovakia")   # a false stop, until the re-finish
+        back = self.finish(stopped)["folder"]
+        m = meta(back)
+        self.assertEqual((m["truth"]["outcome_hit"], m["truth"]["false_stop"], m["truth"]["country_hit"]), (True, False, True))
+        self.assertAlmostEqual(m["truth"]["error_km"], 4.53, delta=0.3)
+        self.assertEqual((m["result_history"][0]["truth_metrics"]["false_stop"], m["result_history"][0]["truth_metrics"]["error_km"]), (True, None))
+        self.assertNotIn("false stop", (Path(back) / "report.md").read_text(encoding="utf-8"))
+        board = self.command("scoreboard", "--root", archives)
+        self.assertEqual(board["generated"], {"called": 1, "confirmed": 1, "false_stops": 0, "missed": 0})
+        self.assertAlmostEqual(board["median_error_km"], 4.53, delta=0.3)
 
     @unittest.skipUnless(shutil.which("uv"), "bench.py runs through uv: its dependencies are not in this suite's environment")
     def test_bench_sessions_skip_unmeasured_errors(self):

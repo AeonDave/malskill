@@ -76,6 +76,14 @@ UV = os.environ.get("UV") or "uv"
 LEVELS = ["country", "admin1", "admin2", "city", "district", "area", "road", "point"]
 LEVEL_LABEL = {"country": "country", "admin1": "province/state", "admin2": "prefecture/county", "city": "city",
                "district": "district", "area": "area", "road": "road", "point": "point"}
+# Names agents write for the admin tiers; the board stores only the canonical level. Only words with one tier in every country:
+# the tier of a province, county or prefecture depends on the country, so those are refused with both choices
+LEVEL_ALIASES = {"region": "admin1", "state": "admin1"}
+COUNTRY_TIER = {"province": "admin1 for a first-level division (Chinese, Canadian province), admin2 for a second-level one (Italian, Spanish province)",
+                "county": "admin1 for a first-level division (Kenyan, Swedish county), admin2 for a second-level one (US, English county)",
+                "prefecture": "admin1 for a first-level division (Japanese prefecture), admin2 for a second-level one (Chinese prefecture)"}
+LEVELS_HELP = ("/".join(LEVELS) + " (also accepted: " + ", ".join(f"{a} = {c}" for a, c in LEVEL_ALIASES.items())
+               + "; " + ", ".join(COUNTRY_TIER) + ": admin1 or admin2 by country, give the canonical level)")
 # Candidates with extent: exclusion scope must be <= evidence scope. Looking at one point on a road/area and excluding the whole of it is a mistake that recurred twice
 EXTENDED_LEVELS = {"district", "area", "road"}
 COVERS_MIN = 0.5  # --covers must cover at least this fraction of the candidate's extent before the whole candidate can be excluded
@@ -103,6 +111,30 @@ CHEAP_OPS = [
 
 def _norm(s: str) -> str:
     return re.sub(r"[\s（）()]", "", s or "").rstrip("市省区县自治州自治县自治区特别行政区")
+
+
+def _level(value: str) -> str:
+    """argparse type for a board level: canonical name or alias, any case → canonical name."""
+    lv = value.strip().lower()
+    if lv in COUNTRY_TIER:
+        raise argparse.ArgumentTypeError(f"{lv}: {COUNTRY_TIER[lv]}; give admin1 or admin2")
+    lv = LEVEL_ALIASES.get(lv, lv)
+    if lv not in LEVELS:
+        raise argparse.ArgumentTypeError(f"unknown level {value!r}: use one of {LEVELS_HELP}")
+    return lv
+
+
+class _ChildrenLevel(argparse.Action):
+    """children --level: a number is the OSM admin_level to list; a board level name or alias is the level to record them as (--as-level)."""
+
+    def __call__(self, parser, ns, value, option_string=None):
+        if value.strip().isdigit():
+            ns.level = int(value)
+            return
+        try:
+            ns.as_level = _level(value)
+        except argparse.ArgumentTypeError as e:
+            raise argparse.ArgumentError(self, f"{e}; or an OSM admin_level number (--source osm --level 6)") from None
 
 
 def _clue_kind(kind: str) -> str:
@@ -482,8 +514,6 @@ def _read_from(path: Path, radius: float) -> list[tuple[str, dict]]:
 
 def cmd_add(args, p: Path) -> None:
     b = _load(p)
-    if args.level not in LEVELS:
-        sys.exit(f"--level must be one of {LEVELS}")
     if not args.names and not args.from_:
         sys.exit("Give candidate names, or --from a file (poi.py --out, gazetteer.py --out, GeoJSON from osm.py geom)")
     if args.from_:
@@ -593,6 +623,9 @@ def cmd_children(args, p: Path) -> None:
     if c or args.source == "geonames":
         if not c:
             sys.exit(f"{args.parent} is not a country; GeoNames only lists first-level regions of countries. Use --source osm.")
+        if args.as_level not in (None, "admin1"):
+            sys.exit(f"GeoNames lists first-level regions (admin1) only; for {args.as_level} candidates: board.py children \"{args.parent}\" "
+                     f"--source osm --level <OSM admin_level> --as-level {args.as_level}")
         return _children_geonames(b, args, p, c)
     cmd = [UV, "run", str(HERE / "gazetteer.py"), "children", args.parent, "--out", str(p.parent / ".gz_children.json")]
     if args.level:
@@ -1522,7 +1555,7 @@ def main() -> None:
     a.add_argument("names", nargs="*")
     a.add_argument("--from", dest="from_", help="bulk import: JSON from poi.py --out / gazetteer.py --out, or GeoJSON from osm.py geom")
     a.add_argument("--radius", type=float, default=500, help="when --from has only point coordinates, the candidate extent is this many meters around the point (default 500)")
-    a.add_argument("--level", required=True, help=f"{'/'.join(LEVELS)}")
+    a.add_argument("--level", required=True, type=_level, help=LEVELS_HELP)
     a.add_argument("--parent")
     a.add_argument("--bbox", help="s,w,n,e")
     a.add_argument("--prior", type=float, default=1.0)
@@ -1531,9 +1564,9 @@ def main() -> None:
 
     ch = sub.add_parser("children", help="list every subordinate admin area with gazetteer.py and add them as candidates")
     ch.add_argument("parent")
-    ch.add_argument("--level", type=int, help="OSM admin_level (automatic if omitted)")
+    ch.add_argument("--level", action=_ChildrenLevel, help="OSM admin_level number (automatic if omitted); a board level name sets --as-level")
     ch.add_argument("--within")
-    ch.add_argument("--as-level", help=f"level to record the candidates as: {'/'.join(LEVELS)}. Automatic if omitted: parent is a country → admin1, "
+    ch.add_argument("--as-level", type=_level, help=f"level to record the candidates as: {LEVELS_HELP}. Automatic if omitted: parent is a country → admin1, "
                                         "parent already on the candidate board → its next level, otherwise district")
     ch.add_argument("--proxy", default=os.environ.get("GEO_PROXY"), help=PROXY_HELP)
     ch.add_argument("--source", choices=["auto", "geonames", "osm"], default="auto",
