@@ -48,7 +48,7 @@ class CorridorPendingTests(unittest.TestCase):
                        "--status", status, *extra)
 
     def pending(self):
-        return board._corridor_pending(self.read_board())
+        return board._corridor_pending(self.read_board(), self.root)
 
     def test_alias_is_normalized_when_recorded(self):
         self.clue("infrastructure")
@@ -121,7 +121,7 @@ class CorridorPendingTests(unittest.TestCase):
         self.clue()
         self.clue("terrain", "computed", "--file", "scan.json", "--resolves", "K1")
         saved = self.read_board()["clues"]["K2"]["file"]
-        self.assertEqual(Path(saved), self.output.resolve())
+        self.assertEqual(Path(saved), Path("scan.json"))
         self.assertEqual(self.pending(), [])
         result = subprocess.run(
             [sys.executable, str(SCRIPTS / "board.py"), "--board", str(self.path), "next"],
@@ -129,6 +129,84 @@ class CorridorPendingTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("infrastructure clue", result.stdout)
+
+
+class ArchivePathTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.folder = self.root / "session"
+        self.folder.mkdir()
+        self.output = self.folder / "nested" / "scan.json"
+        self.output.parent.mkdir()
+        self.output.write_text('{"hits": []}', encoding="utf-8")
+        self.cli("init")
+        self.cli("clue", "Road geometry", "--kind", "infra", "--status", "observed")
+
+    def cli(self, *args, cwd=None):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "board.py"), "--board", str(self.folder / "board.json"), *args],
+            cwd=cwd or self.root, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result.stdout
+
+    def link(self, output, cwd=None):
+        self.cli("clue", "Measured output", "--kind", "terrain", "--status", "computed",
+                 "--file", str(output), "--resolves", "K1", cwd=cwd)
+
+    def move(self, name):
+        destination = self.root / name
+        self.folder.rename(destination)
+        self.folder = destination
+
+    def saved_file(self):
+        data = json.loads((self.folder / "board.json").read_text(encoding="utf-8"))
+        return data["clues"]["K2"]["file"]
+
+    def assert_link_works(self):
+        self.assertTrue((self.folder / self.saved_file()).is_file())
+        self.assertNotIn("infrastructure clue", self.cli("next"))
+        self.assertNotIn("infrastructure clue", self.cli("next", cwd=self.folder))
+
+    def test_linked_output_survives_repeated_archive_moves(self):
+        self.link(self.output)
+        for name in ("closed", "corrected"):
+            self.move(name)
+            self.assert_link_works()
+
+    def test_external_and_shared_prefix_sibling_outputs_stay_absolute(self):
+        sibling = self.root / "session-sibling"
+        sibling.mkdir()
+        output = sibling / "scan.json"
+        output.write_text("{}", encoding="utf-8")
+        self.link("../session-sibling/scan.json", cwd=self.folder)
+        self.assertEqual(self.saved_file(), str(output.resolve()))
+        self.move("closed")
+        self.assertEqual(self.saved_file(), str(output.resolve()))
+        self.assert_link_works()
+
+    def test_nested_input_from_another_cwd_survives_archive_move(self):
+        self.link("scan.json", cwd=self.output.parent)
+        self.move("closed")
+        self.assert_link_works()
+
+    def test_missing_output_after_archive_move_reopens_clue(self):
+        self.link(self.output)
+        self.move("closed")
+        self.assert_link_works()
+        (self.folder / self.saved_file()).unlink()
+        self.assertIn("infrastructure clue K1", self.cli("next"))
+
+    def test_unlinked_relative_output_and_provenance_stay_unchanged(self):
+        self.cli("clue", str(self.output), "--kind", "terrain", "--status", "computed",
+                 "--file", "nested/scan.json", "--source", str(self.output))
+        before = (self.folder / "board.json").read_bytes()
+        self.move("closed")
+        self.assertEqual((self.folder / "board.json").read_bytes(), before)
+        self.assertEqual(self.saved_file(), "nested/scan.json")
+        self.assertTrue((self.folder / self.saved_file()).is_file())
 
 
 class HierarchyTests(unittest.TestCase):

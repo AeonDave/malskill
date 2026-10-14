@@ -78,6 +78,36 @@ class PhotoArchiveTests(unittest.TestCase):
         self.assertEqual(final["folder"], second["folder"])
         self.assertEqual(Path(second["report"]).read_text(encoding="utf-8").count("<!-- geogussr-archive -->"), 1)
 
+    def test_linked_board_output_survives_finish_and_corrected_archive_name(self):
+        folder = Path(self.start()["folder"])
+        (folder / "report.md").write_text("Best estimate.\n", encoding="utf-8")
+        output = folder / "nested" / "scan.json"
+        output.parent.mkdir()
+        output.write_text('{"hits": []}', encoding="utf-8")
+
+        def board_command(*args):
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT.parent / "board.py"), "--board", str(folder / "board.json"), *args],
+                cwd=self.root, capture_output=True, text=True, encoding="utf-8",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result.stdout
+
+        board_command("clue", "Road geometry", "--kind", "infra", "--status", "observed")
+        board_command("clue", "Measured output", "--kind", "terrain", "--status", "computed",
+                      "--file", str(output), "--resolves", "K1")
+        first = self.finish(folder)
+        folder = Path(first["folder"])
+        self.assertNotIn("infrastructure clue", board_command("next"))
+        corrected = self.finish(folder, "--city", "Corrected")
+        folder = Path(corrected["folder"])
+        self.assertNotEqual(first["folder"], corrected["folder"])
+        self.assertFalse(Path(first["folder"]).exists())
+        data = json.loads((folder / "board.json").read_text(encoding="utf-8"))
+        self.assertTrue((folder / data["clues"]["K2"]["file"]).is_file())
+        self.assertNotIn("infrastructure clue", board_command("next"))
+        self.assertTrue((folder / "viewer.html").is_file())
+
     def test_refinish_keeps_first_close_and_history(self):
         folder = Path(self.start()["folder"])
         (folder / "report.md").write_text("Best estimate.\n\n## When\nNot determinable: no dated clue.\n", encoding="utf-8")

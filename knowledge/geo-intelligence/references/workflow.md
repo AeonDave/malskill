@@ -80,13 +80,14 @@ page re-reads the folder every 2 s and shows, for the user watching:
   the panoramas of every `*.index.json` as the Coverage layer (off by default; switching a layer on flies the view to
   its points, one ring with the count when they are too close to tell apart; Follow returns to the analysis; a dot's
   card shows id, provider, date, road and a link that opens the panorama), and your marks: `viewer.py mark camera` (point +
-  view cone), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
+  view cone; its card opens Google Street View at that position and heading), `mark line` (sight line, skyline bearing), `mark point` (anchor), `mark image <file>` (a found photo
   at its position), `mark area <file.geojson>` (any GeoJSON: Polygon, MultiPolygon, closed or open LineString,
   MultiLineString; the first 500 features, the rest dropped and reported; points skipped and reported; rings with a
   faint fill, lines plain, dashed when level or layer < 0; a name once the feature is large enough to read and does not
   overlap another; `--level L` gives features without a level tag that level; level chips, `all` then each level sorted,
   beside the layer buttons show one level plus the features without a level; display only); buttons toggle the layers, a click opens the marker's card. Images named ridge/fit/overlay/
-  evidence/match/sheet/pose get their own gallery in the panel; `terrain.py fit --sheet` adds a Skyline card (the
+  evidence/match/sheet/pose get their own gallery in the panel. The leading location, answer and located cards link to Google Maps;
+  match cards also open nearby Street View while retaining the saved photo. `terrain.py fit --sheet` adds a Skyline card (the
   top three synthetic skylines stacked over the photo with score, heading and focal, summit names with `--peaks`);
 - the panel: "Now" (the last `viewer.py say` line; under it, before `finish`, one muted line when
   `recon/aidet/aidet.json` p_ai ≥ its threshold: "Detector 0.91 generated-like: a ranking, not a verdict", replaced by

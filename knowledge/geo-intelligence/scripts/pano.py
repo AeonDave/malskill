@@ -276,6 +276,10 @@ def _point_lookup(service: str, bb, spacing, limit, sink=None) -> list[dict]:
                                    "date": _date(getattr(p, "date", None)),
                                    "low": {"kind": "streetlevel", "service": service, "pano": str(p.id), "zoom": zlow, "center": round(center % 360, 2)},
                                    "high": {"kind": "streetlevel", "service": service, "pano": str(p.id), "zoom": zhigh, "center": round(center % 360, 2)}}
+                if service == "kakao" and getattr(p, "image_path", None):
+                    # Historical captures can be downloaded from discovery metadata but cannot be looked up by ID again.
+                    for level in ("low", "high"):
+                        rows[str(p.id)][level]["image_path"] = p.image_path
                 new.append(rows[str(p.id)])
             if sink and new:
                 sink(new)

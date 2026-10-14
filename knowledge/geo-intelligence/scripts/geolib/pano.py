@@ -19,6 +19,7 @@ be missing (the other is used). Image kinds:
   photo        {"url", "hfov": 70}                 an ordinary photo looking along "heading" (only that view exists)
   streetlevel  {"service": "google"|"apple"|"bing"|"yandex"|"naver"|"kakao"|"mapy"|"ja", "pano": id, "zoom": n}
                fetched through the `streetlevel` package (no API keys)
+               Kakao: preserve "image_path" from discovery/history in each level; historical IDs alone may not resolve.
 
 Compass bearings everywhere: 0 = north, 90 = east. Downloads are cached under <cache root>/panos (geolib.paths: GEOINT_CACHE, default
 ~/.cache/geoint/panos) so a city indexed once is reused by every later photo.
@@ -396,8 +397,19 @@ def _streetlevel_view(entry: dict, spec: dict) -> View:
     if svc == "apple":
         return View("equirect", *_apple_equirect(entry, spec))
     mod = _sl({"bing": "streetside"}.get(svc, svc))
+
+    def kakao_metadata():
+        if spec.get("image_path"):
+            return mod.KakaoPanorama(id=int(pid), lat=entry["lat"], lon=entry["lon"],
+                                     heading=math.radians(heading), image_path=spec["image_path"])
+        pano = mod.find_panorama_by_id(int(pid))
+        if pano is None:
+            raise RuntimeError(f"Kakao metadata unavailable by ID for {pid}; historical captures may still exist. "
+                               "Preserve image_path from discovery/history in the manifest's low/high levels and retry.")
+        return pano
+
     finders = {"bing": lambda: mod.find_panorama_by_id(int(pid)), "yandex": lambda: mod.find_panorama_by_id(pid),
-               "naver": lambda: mod.find_panorama_by_id(pid), "kakao": lambda: mod.find_panorama_by_id(int(pid)),
+               "naver": lambda: mod.find_panorama_by_id(pid), "kakao": kakao_metadata,
                "mapy": lambda: mod.find_panorama_by_id(int(pid)), "ja": lambda: mod.find_panorama_by_id(int(pid))}
     if svc not in finders:
         raise ValueError(f"unknown streetlevel service {svc!r}")

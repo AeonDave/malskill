@@ -50,8 +50,8 @@ SOURCES = {
     "google": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",                 # satellite
     "google-hybrid": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",          # satellite + street names
     "google-map": "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",             # road map with labels
-    "esri": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    "esri-street": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    "esri": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false",
+    "esri-street": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}?blankTile=false",
     "bing": "https://ecn.t{s}.tiles.virtualearth.net/tiles/a{q}.jpeg?g=14536",       # Bing aerial (quadkey)
 }
 SOURCE_HELP = ("google | google-hybrid | google-map | esri | esri-street | bing | wayback:<release id or YYYY[-MM]> "
@@ -218,7 +218,7 @@ def load_points(obj) -> dict:
 def _get(url: str, path: Path, proxy: str | None) -> bool:
     if path.exists() and path.stat().st_size > 1000:
         return True
-    cmd = ["curl", "-q", "-s", "-m", "60", "-o", str(path), url]
+    cmd = ["curl", "-q", "-s", "-f", "-m", "60", "-o", str(path), url]
     cmd += curl_args(proxy)
     subprocess.run(cmd, check=False)
     return path.exists() and path.stat().st_size > 1000
@@ -226,7 +226,9 @@ def _get(url: str, path: Path, proxy: str | None) -> bool:
 
 def tile_path(cache: Path, source: str, zoom: int, x: int, y: int) -> Path:
     """Cached tile file; one name per source so sat_scan.py and the sheet/wayback commands share downloads."""
-    return cache / f"{_src_tag(source)}_{zoom}_{x}_{y}.jpg"
+    # Older Esri entries can be HTTP-200 no-data pictures rather than imagery.
+    tag = _src_tag(source) + ("-strict" if source in ("esri", "esri-street") else "")
+    return cache / f"{tag}_{zoom}_{x}_{y}.jpg"
 
 
 def cell_tiles(x0: float, y0: float, size: int) -> list[tuple[int, int]]:
@@ -277,6 +279,8 @@ def fetch(center: tuple[float, float], zoom: int, radius: int, out: Path, source
                 img.paste(Image.open(p), ((x - xs[0]) * 256, (y - ys[0]) * 256))
             except Exception:
                 failed += 1
+    if failed == len(jobs):
+        raise SystemExit(f"No usable tiles from {source} at zoom {zoom}; no mosaic written. Lower --zoom or choose another --source.")
     img.save(out, quality=90)
     meta = {"zoom": zoom, "origin_tile": [xs[0], ys[0]], "center": list(center), "source": source,
             "size": list(img.size), "m_per_px": geo.meters_per_px(zoom, center[0]), "failed_tiles": failed}

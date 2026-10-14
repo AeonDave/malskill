@@ -537,6 +537,31 @@
     return `${f(lat, "N", "S")}  ${f(lon, "E", "W")}`;
   }
 
+  function mapPosition(lat, lon) {
+    return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+      ? `${lat},${lon}` : null;
+  }
+
+  function mapsURL(lat, lon) {
+    const pos = mapPosition(lat, lon);
+    return pos == null ? null : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pos)}`;
+  }
+
+  function streetViewURL(it) {
+    const pos = mapPosition(it.lat, it.lon);
+    if (pos == null) return null;
+    const params = new URLSearchParams({ api: "1", map_action: "pano", viewpoint: pos });
+    if (Number.isFinite(it.heading)) params.set("heading", ((it.heading % 360) + 360) % 360);
+    if (Number.isFinite(it.fov)) params.set("fov", Math.min(100, Math.max(10, it.fov)));
+    return `https://www.google.com/maps/@?${params}`;
+  }
+
+  function setMapLink(id, url) {
+    const a = $(id);
+    a.hidden = !url;
+    if (url) a.href = url; else a.removeAttribute("href");
+  }
+
   function fmtRadius(km) {
     if (km >= 100) return `${Math.round(km)} km`;
     if (km >= 1) return `${km.toFixed(1)} km`;
@@ -675,8 +700,13 @@
       title = it.label || "Point"; meta = fmtCoord(it.lat, it.lon); url = it.url || null;
     }
     $("card-title").textContent = title; $("card-meta").textContent = meta;
+    const street = sel.kind === "camera" || sel.kind === "match";
+    if (street) link = streetViewURL(it);
     const a = $("card-link");
-    if (link) { a.href = link; a.hidden = false; } else { a.hidden = true; a.removeAttribute("href"); }
+    a.textContent = street ? "Street View" : "Open the panorama";
+    a.title = street ? "Nearest Google Street View panorama, using this position and heading" : "Open the source panorama";
+    setMapLink("card-link", link);
+    setMapLink("card-map", mapsURL(it.lat, it.lon));
     if (url) { img.src = url; img.hidden = false; img.onclick = () => openLightbox(url, title); } else { img.hidden = true; img.src = ""; }
     card.hidden = false;
   }
@@ -702,6 +732,7 @@
 
   function renderScope(s) {
     const f = s.focus;
+    setMapLink("scope-map", f && !generated(s) ? mapsURL(f.lat, f.lon) : null);
     const note = $("scope-note");
     if (generated(s)) {                                   // finished with no place: before the no-focus branch, which means "no candidate yet"
       $("scope-level").textContent = "Answer";
@@ -753,6 +784,7 @@
     const box = $("answer");
     const r = s.result;
     const gen = generated(s);
+    setMapLink("answer-map", s.status === "completed" && r && !gen ? mapsURL(r.latitude, r.longitude) : null);
     $("answer-badge").hidden = !gen;                      // red only on a finished generated outcome
     if (gen) {
       const g = r.generated || {};

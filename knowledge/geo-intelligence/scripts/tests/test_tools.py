@@ -618,6 +618,77 @@ class BenchTests(unittest.TestCase):
         self.assertEqual(bench.score_km(0), 5000)
 
 
+class GeometrySanityTests(unittest.TestCase):
+    def test_horizon_sanity_agrees_with_projection(self):
+        import pose
+        import numpy as np
+        import math
+        for pitch, roll in [(20, 0), (-20, 0), (20, 25), (-20, -25), (0, 25)]:
+            with self.subTest(pitch=pitch, roll=roll):
+                p, r = map(math.radians, (pitch, roll))
+                forward = np.array([0, math.cos(p), math.sin(p)])
+                right = np.array([math.cos(r), -math.sin(p)*math.sin(r), math.cos(p)*math.sin(r)])
+                direction = np.cross([0., 0., 1.], right)
+                if direction @ forward < 0:
+                    direction = -direction
+                params = [0, 0, 1.7, 0, pitch, roll, 800]
+                point = direction * 100000 + np.array([0., 0., 1.7])
+                xy, _ = pose.project(np.array(params), np.array([point]), 1000, 600)
+                self.assertAlmostEqual(xy[0, 0], 500)
+                sample = {"_frame": {"image_size": [1000, 600], "lat0": 0, "lon0": 0}, "_params": params}
+                notes = "\n".join(pose.sanity(sample, [], horizon_row=float(xy[0, 1])))
+                self.assertIn(f"row {xy[0, 1]:.0f}", notes.splitlines()[0])
+                self.assertNotIn("contradicts", notes)
+                wrong = "\n".join(pose.sanity(sample, [], horizon_row=float(xy[0, 1])+100))
+                self.assertIn("contradicts", wrong)
+
+    def test_vertical_horizon_does_not_check_a_centre_row(self):
+        import pose
+        sample = {"_frame": {"image_size": [1000, 600], "lat0": 0, "lon0": 0},
+                  "_params": [0, 0, 1.7, 0, 20, 90, 800]}
+        notes = "\n".join(pose.sanity(sample, [], horizon_row=300))
+        self.assertIn("cannot", notes)
+        self.assertNotIn("contradicts", notes)
+
+
+class TileAvailabilityTests(unittest.TestCase):
+    def test_esri_missing_tiles_are_requested_as_http_failures(self):
+        import tiles
+        for source in ("esri", "esri-street"):
+            self.assertIn("blankTile=false", tiles.tile_url(source, 1, 2, 3))
+            self.assertNotEqual(tiles.tile_path(Path("cache"), source, 3, 1, 2), Path("cache") / f"{source}_3_1_2.jpg")
+        self.assertNotIn("blankTile", tiles.tile_url("google", 1, 2, 3))
+        self.assertEqual(tiles.tile_path(Path("cache"), "google", 3, 1, 2), Path("cache/google_3_1_2.jpg"))
+
+    def test_no_tiles_does_not_publish_a_verification_image(self):
+        import tiles
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp, patch.object(tiles, "_get", return_value=False):
+            root = Path(tmp)
+            with self.assertRaisesRegex(SystemExit, "No.*tiles"):
+                tiles.fetch((45, 10), 20, 0, root / "map.jpg", "esri", None, root / "cache")
+            self.assertFalse((root / "map.jpg").exists())
+            self.assertFalse((root / "map.json").exists())
+
+    def test_uniform_valid_tile_and_partial_mosaic_still_work(self):
+        import tiles
+        from unittest.mock import patch
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def get_one(url, path, proxy):
+                if url != wanted:
+                    return False
+                Image.new("RGB", (256, 256), "white").save(path)
+                return True
+            gx, gy = tiles.geo.ll2px(18, 45, 10)
+            wanted = tiles.tile_url("esri", int(gx//256), int(gy//256), 18)
+            with patch.object(tiles, "_get", side_effect=get_one):
+                meta = tiles.fetch((45, 10), 18, 1, root / "map.jpg", "esri", None, root / "cache")
+            self.assertEqual(meta["failed_tiles"], 8)
+            self.assertTrue((root / "map.jpg").exists())
+
+
 class NewToolTests(unittest.TestCase):
     """Offline checks for reveal, opendata, phone patterns, GIBS tiles, motion photos, match sheets, town sheets,
     house-number queries and the weather ranking (network calls are stubbed)."""

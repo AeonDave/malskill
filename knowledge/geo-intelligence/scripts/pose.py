@@ -292,14 +292,20 @@ def sanity(pose: dict, pts: list[dict], horizon_row: float | None = None) -> lis
     and reporting a camera position whose elevation doesn't match the depression angle in the frame (a 4 m height difference with a 7.6° depression angle, off by a factor of four)."""
     W, H = pose["_frame"]["image_size"]
     params = np.array(pose["_params"], dtype=float)
-    e0, n0, h_cam, _yaw, pitch, _roll, f = params
+    e0, n0, h_cam, _yaw, pitch, roll, f = params
     lat0, lon0 = pose["_frame"]["lat0"], pose["_frame"]["lon0"]
     kx, ky = _frame(lat0)
-    out = [(f"Self-check pitch={pitch:.1f}°: the true horizon (sea horizon / distant flat horizon) should fall on row "
-            f"{H / 2 - f * math.tan(math.radians(pitch)):.0f} of the frame ({H} rows, frame center {H // 2}). "
-            f"If the sea horizon in the photo is not near this row, pitch was filled in wrong: the target's depression angle ≠ the camera's pitch.")]
-    if horizon_row is not None:
-        pitch_h = math.degrees(math.atan2(H / 2 - float(horizon_row), f))
+    cos_roll = math.cos(math.radians(roll))
+    row_check = abs(cos_roll) > 1e-6
+    if row_check:
+        horizon = H / 2 + f * math.tan(math.radians(pitch)) / cos_roll
+        out = [(f"Self-check pitch={pitch:.1f}°: the true horizon (sea horizon / distant flat horizon) should fall on row "
+                f"{horizon:.0f} at the centre column ({H} rows, frame center {H // 2}). "
+                f"If the sea horizon in the photo is not near this row, pitch was filled in wrong: the target's depression angle ≠ the camera's pitch.")]
+    else:
+        out = [f"Self-check roll={roll:.1f}°: a centre-column horizon row cannot check pitch at this roll."]
+    if horizon_row is not None and row_check:
+        pitch_h = math.degrees(math.atan2((float(horizon_row) - H / 2) * cos_roll, f))
         d = abs(pitch_h - pitch)
         out.append(f"  Sea horizon in the photo is on row {float(horizon_row):.0f} → pitch should be {pitch_h:.1f}° (current {pitch:.1f}°, off by {d:.1f}°)")
         if d > 2.0:

@@ -1855,6 +1855,75 @@ class GazetteerNameTests(unittest.TestCase):
         self.assertIn('rel(area.p)["int_name"="Nanshan"]["boundary"="administrative"]["admin_level"="6"];', queries[-1])
 
 
+class PanoHistoricalMetadataTests(unittest.TestCase):
+    """A discovered capture can be downloadable even when its ID lookup returns None."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        cache = patch.object(_pano, "CACHE", self.root / "cache")
+        cache.start()
+        self.addCleanup(cache.stop)
+
+    @staticmethod
+    def entry(service="kakao", image_path=None):
+        spec = {"kind": "streetlevel", "service": service, "pano": "101", "zoom": 0, "center": 210.0}
+        if image_path is not None:
+            spec["image_path"] = image_path
+        return {"provider": service, "id": "101", "lat": 37.5, "lon": 127.0, "heading": 30.0, "high": spec}
+
+    def test_discovery_manifest_retains_download_metadata_at_both_levels(self):
+        import pano
+        captured = SimpleNamespace(id=101, lat=37.5, lon=127.0, heading=math.radians(30),
+                                   date="2015-06-01", image_path="/2015/06/capture/unique")
+        fake = SimpleNamespace(find_panoramas=lambda *a, **k: [captured])
+        with patch.object(pano.P, "_sl", return_value=fake), patch.object(pano.time, "sleep"):
+            rows = pano._point_lookup("kakao", (37.499, 126.999, 37.501, 127.001), 300, 0)
+        manifest = self.root / "history.jsonl"
+        _pano.write_manifest(manifest, rows)
+        restored = _pano.read_manifest(manifest)[0]
+        for level in ("low", "high"):
+            self.assertEqual(restored[level]["image_path"], captured.image_path)
+            self.assertEqual(restored[level]["center"], 210.0)
+
+    def test_preserved_history_renders_without_an_id_lookup(self):
+        fetched = []
+
+        def get(p, zoom):
+            fetched.append((p.id, p.image_path, zoom))
+            return Image.new("RGB", (32, 16), "red")
+
+        fake = SimpleNamespace(KakaoPanorama=SimpleNamespace, get_panorama=get,
+                               find_panorama_by_id=lambda pid: self.fail("historical ID must not be looked up again"))
+        row = self.entry(image_path="/2015/06/capture/unique")
+        with patch.object(_pano, "_sl", return_value=fake):
+            view = _pano.load(json.loads(json.dumps(row)), "high")
+            self.assertEqual(view.heading, 210.0)
+            self.assertEqual(view.render(210, 0, 60, 40, 20).size, (40, 20))
+        self.assertEqual(fetched, [(101, "/2015/06/capture/unique", 0)])
+
+    def test_missing_history_metadata_is_not_called_a_missing_panorama(self):
+        fake = SimpleNamespace(find_panorama_by_id=lambda pid: None,
+                               get_panorama=lambda *a, **k: self.fail("cannot download from None"))
+        with patch.object(_pano, "_sl", return_value=fake), self.assertRaisesRegex(RuntimeError, "metadata") as error:
+            _pano.load(self.entry(), "high")
+        self.assertIn("image_path", str(error.exception))
+        self.assertIn("histor", str(error.exception).lower())
+        self.assertNotIn("does not exist", str(error.exception))
+
+    def test_legacy_current_lookup_and_other_provider_path_are_unchanged(self):
+        for service, path in (("kakao", None), ("mapy", "/not/a/kakao/path")):
+            with self.subTest(service=service):
+                calls = []
+                found = object()
+                fake = SimpleNamespace(find_panorama_by_id=lambda pid: calls.append(pid) or found,
+                                       get_panorama=lambda p, zoom: self.assertIs(p, found) or Image.new("RGB", (32, 16)))
+                with patch.object(_pano, "_sl", return_value=fake):
+                    _pano.load(self.entry(service, path), "high")
+                self.assertEqual(calls, [101])
+
+
 class PanoSheetAndKakaoTests(unittest.TestCase):
     """Street-level sheets: pano.py list/sheet selection by capture period, sheets whose cells failed (pano, gsv, baidu),
     and the Kakao render centre."""

@@ -707,7 +707,11 @@ def cmd_clue(args, p: Path) -> None:
             sys.exit(f"Unknown clues in --resolves: {', '.join(unknown)}")
         if not output or not Path(output).is_file():
             sys.exit("--resolves requires --file pointing to an existing computed output file")
-        output = str(Path(output).resolve())
+        resolved = Path(output).resolve()
+        try:
+            output = resolved.relative_to(p.parent.resolve()).as_posix()
+        except ValueError:
+            output = str(resolved)
     kind = _clue_kind(args.kind)
     b["clues"][kid] = {"text": args.text, "kind": kind, "status": args.status, "file": output,
                        "source": args.source or "", "used": False}
@@ -862,18 +866,18 @@ def cmd_rank(args, p: Path) -> None:
         print("No candidates: run `board.py add` or `board.py children` first")
 
 
-def _corridor_pending(b: dict) -> list[str]:
+def _corridor_pending(b: dict, root: Path = Path(".")) -> list[str]:
     """Infrastructure observations without a computed result explicitly addressing them."""
     infra = [k for k, c in b["clues"].items() if _clue_kind(c["kind"]) == "infra" and c["status"] in ("observed", "read")]
     done = {k for c in b["clues"].values()
-            if c["status"] == "computed" and c.get("resolves") and c.get("file") and Path(c["file"]).is_file()
+            if c["status"] == "computed" and c.get("resolves") and c.get("file") and (root / c["file"]).is_file()
             for k in c.get("resolves", [])}
     return [k for k in infra if k not in done]
 
 
 def cmd_next(args, p: Path) -> None:
     b = _load(p)
-    pend = _corridor_pending(b)
+    pend = _corridor_pending(b, p.parent)
     if pend:
         print(f"→ First: infrastructure clue {', '.join(pend)} has no linked corridor result yet. `osm.py geom '<filter>' --bbox <region> --out lines.geojson` → "
               f"`terrain.py scan --lines lines.geojson` (mountains fill the frame: add `--flat-run 0 --min-low-deg 0`) → `terrain.py fit`; "
