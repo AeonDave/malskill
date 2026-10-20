@@ -8,7 +8,7 @@ A theme is a JSON resource, not an extension — it carries no code. Pi ships `s
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/schemas/theme.schema.json",
+  "$schema": "https://pi.dev/schemas/theme.schema.json",
   "name": "my-theme",
   "appearance": "dark",
   "vars": { "primary": "okhsl(250 60% 55%)" },
@@ -57,9 +57,9 @@ Locate the role to change by area:
 
 Optional colors inherit when omitted: `scrollbarTrack`→`muted`, `scrollbarThumb`→`text`, `searchMatchBg`→`selectedBg`, `searchMatchText`→`text`, `thinkingMax`→`thinkingXhigh`. Omitted `export` colors derive from `userMessageBg`.
 
-Copy a [built-in theme](https://github.com/earendil-works/pi/tree/main/packages/coding-agent/src/modes/interactive/theme) for the complete required-color set; the published [schema](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/schemas/theme.schema.json) is the authority on required and optional roles. The file-format snippet omits required colors; do not use it as a complete theme.
+Copy a [built-in theme](https://github.com/earendil-works/pi/tree/main/packages/coding-agent/src/modes/interactive/theme) for the complete required-color set; the published [schema](https://pi.dev/schemas/theme.schema.json) is the authority on required and optional roles. The file-format snippet omits required colors; do not use it as a complete theme.
 
-For a source checkout newer than the 1.1.0 release, use its `schemas/theme.schema.json`: theme loading rejects unknown top-level, `colors`, and `export` properties. Put reusable custom colors under `vars` and remove unsupported metadata. For a released host, validate against that host's schema rather than assuming `main` has the same contract.
+Pi 1.2+ validates themes against its bundled schema both at startup and `/reload`; the `$schema` URL above is the published schema reference, not a runtime fetch. Theme objects are strict: unknown top-level fields, color roles, and `export` keys are rejected. Put reusable custom colors under `vars`; remove unsupported metadata. Validate against the bundled schema for the Pi release you target.
 
 ## Load and select
 

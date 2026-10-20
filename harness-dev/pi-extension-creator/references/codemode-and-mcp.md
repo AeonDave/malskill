@@ -36,9 +36,15 @@ The built-in extensions are `codemode`, `tool-search`, `mcp`, and `llama.cpp`. T
 | `hidden` | never | never | Registered but unreachable. Re-register a tool with `exposure: "hidden"` to withdraw it (tools cannot be unregistered). |
 
 - The active set is the tools declared to the model: `pi.getActiveTools()` / `pi.setActiveTools(names)`. Unknown names are ignored.
-- `pi.getAllTools()` returns each tool's `exposure`, `namespace`, and `annotations`.
-- `namespace: { name, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`; `instructions` is longer guidance that is not listed and is read by scripts with `describeNamespace(name)`.
+- `pi.getAllTools()` returns each tool's `exposure`, `namespace`, `annotations`, and `reachesTools`.
+- `namespace: { name, aliases, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`; `instructions` is longer guidance that is not listed and is read by scripts with `describeNamespace(name)`. `aliases` let scripts look up the namespace by another name; MCP namespaces accept the server name as an alias.
 - `annotations` are unverified MCP-style hints — `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`. Missing hints take MCP defaults (not read-only, possibly destructive, open world). Permission gates can read them from `pi.getAllTools()` to decide which calls to confirm.
+
+### Tools that reach other tools
+
+If a tool's `execute()` calls `ctx.executeTool()`, declare `reachesTools(input)` on its tool definition. It returns `"all"` or a string array: return `"all"` when the call can discover or reach any tool; otherwise return an array of words that can name the tools or namespaces the call may reach. Those words can come from the input or from fixed targets in the implementation. Pi 1.2+ uses this declaration when MCP servers are still connecting: the MCP extension waits for matching servers before the call runs. A replacement for `codemode` or `tool_search` must declare its reach too, or MCP cannot reliably know which servers it needs to wait for. Matching is conservative: a returned word is matched against tool and namespace names it contains.
+
+If a custom tool reads an MCP server name from `input.server`, return an array containing the matching namespace word, such as `["mcp__docs"]`; use `"all"` when the operation searches or enumerates across servers. A tool that always calls a fixed target can return an array containing that tool's name or namespace. Keep the reach calculation aligned with what `execute()` actually does.
 
 ### `prepareLoadout`
 
@@ -72,12 +78,13 @@ Scripts call tools and emit output:
 - Output comes from `text(value)`, `image(dataUrlOrImageContent)`, `console.*`, and a top-level `return value`; `exit()` ends the script early. `image()` accepts base64 data URLs or image blocks, saves each image to a temp file named in the result, and rejects remote URLs. Never print image base64 through `text()`, `console`, or `return`.
 - A first-line `// @options: {"max_output_tokens": 2000, "timeout_ms": 60000}` tunes the run. `max_output_tokens` (default 10000) keeps the output's start and end and writes the full text to a temp file named in the result. `timeout_ms` is a hard deadline, unset by default.
 - `codemode.mode` in settings: `on` (default) keeps declared tools declared with call instructions; `only` hides them from the model and lists them in the `codemode` description.
+- Pi 1.3 codemode workers propagate abort signals and enforce deadlines. Long-running extensions should honor the host's abort signal; avoid duplicating host worker lifecycle and timeout handling.
 
 Tool discovery inside scripts:
 
 - The `codemode` description lists ordinary callable tools as TypeScript declarations grouped by namespace, under a 3000-token budget (`codemode.inlineBudget`). MCP tools are listed by server namespace and description rather than individual declarations. `deferred` tools are omitted from the inline tool list; discover them with `searchTools()` or `tool_search`.
 - `await searchTools(query, { limit, namespace })` ranks tools with BM25; `await describeTool(name)` returns one; filter `ALL_TOOLS` directly.
-- `await describeNamespace(name)` returns a namespace's description, its instructions (an MCP server's instructions), and its tool names. For MCP use `describeNamespace("mcp__<server>")`.
+- `await describeNamespace(name)` returns a namespace's description, its instructions (an MCP server's instructions), and its tool names. For MCP use `describeNamespace("mcp__<server>")` or the server name; aliases also work with `searchTools(query, { namespace: alias })`.
 
 Structured results in scripts:
 
@@ -119,6 +126,8 @@ User servers live in `~/.pi/agent/mcp.json`, project servers in `.pi/mcp.json` (
 - `description` is shown next to the server in the `codemode` and `tool_search` descriptions, so the model knows what to search for.
 
 ### CLI and session commands
+
+In Pi 1.2+, `pi mcp list --json` reports `resources: true` when a server offers resources; it no longer returns resource and template counts. Connecting no longer fetches resource lists eagerly. Use the resource tools when you need to enumerate or read them.
 
 - Shell (no session, no extensions loaded): `pi mcp add|remove|list|login|logout`. `pi mcp add <server> [--env K=V] [--cwd dir] [--exposure mode] [--description text] [-l] -- <command> [args...]` for stdio; `--url`, `--header K=V`, `--bearer-token-env-var NAME`, and `--oauth-*` for HTTP. `pi mcp list` connects to every enabled server and exits 1 on an invalid entry or a failed connection.
 - In session: `/mcp` inspects connections, signs in, reconnects, changes exposure, and enables/disables servers. Run `/reload` after editing `mcp.json` outside the session.

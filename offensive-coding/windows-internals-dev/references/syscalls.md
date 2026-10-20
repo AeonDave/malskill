@@ -145,7 +145,19 @@ This works because the kernel's SSDT (`nt!KiServiceTable`) is populated in the s
 
 **Tradeoff**: no single-function resolution; must enumerate all Zw exports.
 
-### Strategy 5 — HWSyscall / hardware breakpoints
+### Strategy 5 — Exception Directory Gate (.pdata walker)
+
+Uses ntdll's `.pdata` (Exception Directory, `DataDirectory[3]`) instead of sorting exports. The `RUNTIME_FUNCTION` array is already sorted by `BeginAddress` per PE spec. Walk it linearly, match each `BeginAddress` against Zw* exports, and count matches — the count is the SSN.
+
+**Advantage**: hook-immune (reads `.pdata` + `.edata`, never stub bytes), O(n) linear walk with no sort and no dynamic allocation. The `.pdata` format is unchanged from Windows XP through Windows 11.
+
+**Tradeoff**: linear scan per single-target lookup (cache results for repeated use). Reads the export name table for matching, same as FreshyCalls.
+
+See the dedicated deep-dive in [`indirect-syscall/references/strategies.md` §6b](../../indirect-syscall-dev/references/strategies.md) and the validation script `indirect-syscall-dev/scripts/pdata_ssn_resolve.py`.
+
+**Source**: MDSec, "Resolving System Service Numbers using the Exception Directory" (2022).
+
+### Strategy 6 — HWSyscall / hardware breakpoints
 
 Use hardware debug registers (DR0–DR3) to set an execution breakpoint on the `syscall` instruction inside the legitimate ntdll stub. Call the Nt function normally; when execution hits the breakpoint, your VEH handler:
 1. Reads current SSN from RAX (`ExceptionRecord->ContextRecord->Rax`)
@@ -156,6 +168,18 @@ Use hardware debug registers (DR0–DR3) to set an execution breakpoint on the `
 Advantage: the syscall actually executes from ntdll — call stack looks native. EDRs that only hook prologue bytes are bypassed; they never see the modified behavior.
 
 Drawback: DR0–DR3 are **per-thread**, visible in `NtGetContextThread`, and ETW-TI fires on DR modifications starting in recent Windows 11 builds.
+
+### Strategy 7 — Shadow ntdll / KnownDlls resolver
+
+Map a pristine RX view of `\KnownDlls\ntdll.dll` — the section object the loader maintains, untouched by userland hooks. Use this as the sole resolution base: every SSN stub read and every `syscall;ret` gadget comes from the shadow copy.
+
+Bootstrap requires only two calls against the real in-process ntdll: `NtOpenSection` (to open the KnownDlls section object with `SECTION_MAP_READ | SECTION_MAP_EXECUTE`) and `NtMapViewOfSection` (to map the RX view). The section handle is closed once the view exists; the view holds its own reference.
+
+**Advantage**: maximum resilience to in-memory hook tampering. Even EDRs that hook every Nt/Zw stub cannot corrupt the shadow view (it is a separate mapping of the same section object).
+
+**Tradeoff**: slowest init among the strategies; the two bootstrap calls are themselves potentially hooked (though EDRs rarely hook NtOpenSection). Must ensure the `syscall;ret` gadget comes from the **same** shadow base as the SSN reads — mixing bases (shadow SSNs + real-ntdll gadget) makes the gadget land in hooked memory.
+
+See the concrete implementation pattern in [`indirect-syscall/references/implementation-examples.md` §6](../../indirect-syscall-dev/references/implementation-examples.md).
 
 ---
 

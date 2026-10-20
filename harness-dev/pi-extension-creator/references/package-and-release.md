@@ -116,6 +116,8 @@ Runtime packages your extension imports belong in `dependencies`. Do not bundle 
 
 Development-only test/typecheck packages belong in `devDependencies`.
 
+When qualifying against a Pi release, keep development dependencies for the host packages you use on the same release version (for example, both `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` at `1.3.0`). Pi pins its internal package set to exact release versions; mismatched development packages can typecheck against a different host API. Keep host-provided packages as peers in the published package, not runtime dependencies or bundled copies.
+
 To ship a third-party package that itself contributes Pi resources, add it to `dependencies` and `bundledDependencies`, then reference its resources through `node_modules/<pkg>/...` paths in the `pi` manifest:
 
 ```json

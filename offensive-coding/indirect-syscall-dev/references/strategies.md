@@ -1,6 +1,6 @@
 # SSN Resolution Strategies — Detail
 
-Deep dive on each of Hell's / Halo's / Tartarus' / FreshyCalls / RecycledGate. Read on demand; the main SKILL covers the decision tree.
+Deep dive on each of Hell's / Halo's / Tartarus' / FreshyCalls / RecycledGate / Exception Directory Gate. Read on demand; the main SKILL covers the decision tree.
 
 ## Table of Contents
 
@@ -10,6 +10,7 @@ Deep dive on each of Hell's / Halo's / Tartarus' / FreshyCalls / RecycledGate. R
 4. Tartarus' Gate — the multi-pattern
 5. FreshyCalls — the sorted-by-address
 6. Recycled Gate / DWhisper — the hook-immune
+6b. Exception Directory Gate — the .pdata walker
 7. Detection footprint comparison
 8. Migration — swapping strategies
 
@@ -164,6 +165,10 @@ FreshyCalls + systematic obfuscation + gadget-site caching + Zw/Nt dual-alias ha
 
 **e. Module-handle revalidation**. If attack surface includes DLL injection racing (EDR injects hooks after implant runs), record ntdll load-time vs discovery-time timestamps. Stale by > 1s → rescan.
 
+**f. Three-way consensus** (production hardening). A raw sorted-index SSN can be unreliable if Windows introduces export-order gaps or an EDR relocates stubs. The hardened approach validates each SSN through three independent sources: (1) sorted export index, (2) Hell's Gate read from the Nt* stub, (3) Hell's Gate read from the Zw* stub. All three must agree; any disagreement excludes the function and callers fail closed. See `implementation-examples.md §5` for the concrete pattern.
+
+**g. Shadow ntdll base** (optional escalation). Map a pristine `\KnownDlls\ntdll.dll` RX view and use it as the sole resolution base. Every SSN stub read and every `syscall;ret` gadget comes from the shadow copy. Requires only two bootstrap calls against the real in-process ntdll (NtOpenSection + NtMapViewOfSection). See `implementation-examples.md §6` for the concrete pattern.
+
 ### The DWhisper name
 
 "DWhisper" denotes the AMD64-indirect-dispatch variant of the SysWhispers family. The RecycledGate project combines DWhisper (for dispatch) with the FreshyCalls-style sorted table (for SSN lookup). Some repos use the names interchangeably.
@@ -206,19 +211,100 @@ func (r *RecycledGate) Dispatch(apiHash uint64, args ...uintptr) uint32 {
 
 ---
 
+## 6b. Exception Directory Gate — the .pdata walker
+
+**Principle**: ntdll's `.pdata` section (Exception Directory, `DataDirectory[3]`) contains a `RUNTIME_FUNCTION` array sorted by `BeginAddress`. Each entry describes one function. Walk the array, match each `BeginAddress` against Zw* exports; the match count is the SSN.
+
+This is structurally similar to FreshyCalls (index-in-sorted-order = SSN) but exploits a different data source: the `.pdata` array is already sorted by the linker, so no `qsort` is needed. The export table supplies names; `.pdata` supplies the ordering.
+
+**Source**: MDSec, "Resolving System Service Numbers using the Exception Directory" (2022).
+
+### Algorithm
+
+```c
+uint32_t resolve_ssn_pdata(void *ntdll_base, uint32_t target_hash) {
+    // 1. Parse PE headers
+    PIMAGE_NT_HEADERS nt = get_nt_headers(ntdll_base);
+    DWORD pdata_rva  = nt->OptionalHeader.DataDirectory[3].VirtualAddress;
+    DWORD pdata_size = nt->OptionalHeader.DataDirectory[3].Size;
+    PRUNTIME_FUNCTION pdata = (PRUNTIME_FUNCTION)((PBYTE)ntdll_base + pdata_rva);
+    DWORD count = pdata_size / sizeof(RUNTIME_FUNCTION);  // 12 bytes each
+
+    // 2. Parse export directory for name lookups
+    // ... standard ExportDirectory walk → AddressOfNames, AddressOfFunctions,
+    //     AddressOfNameOrdinals arrays
+
+    // 3. Build RVA → (name, export_index) lookup from exports
+    // Key insight: only Zw* exports matter for counting
+
+    // 4. Walk .pdata entries (already sorted by BeginAddress)
+    uint32_t ssn = 0;
+    for (DWORD i = 0; i < count; i++) {
+        DWORD begin_rva = pdata[i].BeginAddress;
+        // Look up this RVA in the export table
+        char *name = export_name_for_rva(begin_rva);
+        if (name == NULL) continue;           // not an exported function
+        if (name[0] != 'Z' || name[1] != 'w') continue;  // not a syscall stub
+
+        if (hash(name) == target_hash)
+            return ssn;
+        ssn++;
+    }
+    return (uint32_t)-1;  // not found
+}
+```
+
+### Why this works
+
+`RUNTIME_FUNCTION` entries are sorted by `BeginAddress` — the PE specification requires this for binary search during unwinding. Ntdll's Zw* stubs are laid out at link time in SSN order. Walking `.pdata` in order and counting Zw* matches reconstructs the SSN sequence without sorting.
+
+### Comparison with FreshyCalls
+
+| Aspect | FreshyCalls | Exception Directory Gate |
+|---|---|---|
+| Data source for ordering | Export RVA (needs sort) | `.pdata` BeginAddress (pre-sorted) |
+| Init cost | O(n log n) — must sort | O(n) — linear walk |
+| Reads stub bytes | No | No |
+| Hook immunity | Yes (reads `.edata`) | Yes (reads `.pdata` + `.edata`) |
+| Dynamic allocation | Yes (sort buffer) | No (single pass, counter only) |
+| Windows version coverage | All x64 builds | All x64 builds (`.pdata` format unchanged since XP) |
+| Can resolve single target early | No (must sort first) | Yes (linear scan stops at match) |
+
+**When to prefer over FreshyCalls/RecycledGate**: constrained environments where dynamic allocation is expensive or forbidden (BOFs, shellcode, early-stage loaders). Also useful as an independent cross-check: if `.pdata`-derived SSNs match export-sorted SSNs, both methods are correct.
+
+### Validation script
+
+`scripts/pdata_ssn_resolve.py` implements the full algorithm in Python for offline analysis. It parses a PE file from disk, walks `.pdata`, and resolves SSNs. Use `--cross-validate` to confirm agreement with the sorted-export method:
+
+```
+python scripts/pdata_ssn_resolve.py --target NtAllocateVirtualMemory
+python scripts/pdata_ssn_resolve.py --cross-validate
+```
+
+### Caveats
+
+- Requires ntdll's `.pdata` to be readable in the current process (or from disk). If an EDR strips or encrypts `.pdata` at load time (no known EDR does this today), the method fails.
+- The linear walk is O(n) per lookup when targeting a single function. For bulk resolution (all SSNs at once), this is optimal; for repeated single lookups, cache the results like RecycledGate does.
+- The name comparison against exports can use hashing (FNV-1a, DJB2) to avoid plaintext strings, same as RecycledGate.
+
+---
+
 ## 7. Detection footprint comparison
 
-| Strategy | Reads stub bytes | Reads export table | Name-hash table | Obfuscated strings |
-|---|---|---|---|---|
-| Hell's Gate | Yes (dispatch time) | No (uses hardcoded offset) | No | No |
-| Halo's Gate | Yes (dispatch time) | No | No | No |
-| Tartarus' Gate | Yes (dispatch time) | No | No | No |
-| FreshyCalls | No | Yes (init only) | Yes | No |
-| RecycledGate | No | Yes (init only) | Yes | Yes |
+| Strategy | Reads stub bytes | Reads export table | Reads .pdata | Name-hash table | Obfuscated strings |
+|---|---|---|---|---|---|
+| Hell's Gate | Yes (dispatch time) | No (uses hardcoded offset) | No | No | No |
+| Halo's Gate | Yes (dispatch time) | No | No | No | No |
+| Tartarus' Gate | Yes (dispatch time) | No | No | No | No |
+| FreshyCalls | No | Yes (init only) | No | Yes | No |
+| RecycledGate | No | Yes (init only) | No | Yes | Yes |
+| Exception Directory Gate | No | Yes (init only) | Yes (init only) | Optional | Optional |
 
 "Reads stub bytes" at dispatch time is the primary behavioral signal. EDRs can instrument reads from their own hooked regions. Strategies that avoid this are structurally stealthier.
 
 "Reads export table" is indistinguishable from normal Windows loader behavior — every process does this constantly.
+
+"Reads .pdata" is similarly benign — any debugger, crash handler, or stack-walking code accesses `.pdata`. Reading it triggers no EDR behavioral hook.
 
 ---
 

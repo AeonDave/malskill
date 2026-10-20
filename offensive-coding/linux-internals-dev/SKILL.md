@@ -37,7 +37,7 @@ If the task is ordinary userland API usage, this skill is overkill. If the task 
 | ELF and dynamic linking | `references/elf-format.md` | Load when parsing ELF or tracing interpreter entry, executable entry, libc startup, initializers, and termination |
 | procfs semantics | `references/procfs.md` | `/proc` layout, ptrace-gated visibility, `maps` and `smaps` races, `hidepid`, mountinfo and pidns interactions |
 | Namespaces and isolation | `references/namespaces.md` | namespace APIs, ownership and capability checks, pid and user namespace rules, lifetime pinning |
-| Syscall dispatch internals | `references/syscall-dispatch-linux.md` | x86-64 syscall ABI details, vDSO-sourced syscall gadgets, fallback chains, errno handling, and telemetry implications |
+| Syscall dispatch internals | `references/syscall-dispatch-linux.md` | x86-64/aarch64 syscall ABI, vDSO gadget extraction (mseal/getrandom changes), dispatch modes (indirect/direct/seccomp-notify/memfd), hooking landscape (LD_PRELOAD/seccomp/eBPF/io_uring with per-version LSM timeline), eBPF rootkit variants (LinkPro/VoidLink/SPiCa/BPFDoor), .eh_frame stack spoofing (open field), kernel hardening per-version table, Landlock progression |
 | eBPF architecture | `references/ebpf.md` | `bpf()` command families, map and program lifecycle, verifier model, helper constraints, attach and pin patterns |
 | LSM model | `references/lsm.md` | LSM stacking and ordering, active module discovery, process attr interfaces, hook surfaces and development implications |
 
@@ -134,6 +134,7 @@ Use this whenever implementing a low-level technique.
 - `references/elf-format.md` for loader/relocation mechanics and a reproducible pre-`main` startup trace
 - `references/procfs.md` for process and memory introspection semantics
 - `references/namespaces.md` for isolation model and transition constraints
-- `references/syscall-dispatch-linux.md` for syscall ABI, dispatch-source tradeoffs, and fallback design
+- `references/syscall-dispatch-linux.md` for syscall ABI, dispatch-source tradeoffs, hooking landscape (LD_PRELOAD / seccomp / eBPF / io_uring), vDSO gadget extraction, .eh_frame comparison with Windows .pdata, and fallback design
 - `references/ebpf.md` for verifier and syscall-level eBPF operations
 - `references/lsm.md` for LSM architecture and policy interaction model
+- `scripts/vdso_gadget_extract.py` for enumerating syscall gadgets from vDSO and libc on a running Linux system (Linux only)

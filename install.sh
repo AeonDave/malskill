@@ -20,6 +20,7 @@ DISCOVERY_EXCLUSIONS=(
     "dist"
     "installed-skills"
     "node_modules"
+    "tmp"
     "__pycache__"
 )
 

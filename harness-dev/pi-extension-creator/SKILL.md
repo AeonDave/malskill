@@ -4,7 +4,7 @@ description: "Create or revise Pi extensions, plugins, and themes. Use for exten
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Pi Extension Creator
@@ -22,7 +22,7 @@ import { Type } from "typebox";
 
 ## Capabilities
 
-Target Pi 1.1 extension contracts. Verify the installed version and the matching `packages/coding-agent/src/core/extensions/types.ts` before coding; a source checkout can contain unreleased changes. Load only the reference for the capability being implemented.
+Target Pi 1.3 extension contracts. Verify the installed version and its matching exported declarations (the installed distribution's `dist/core/extensions/types.d.ts`) before coding. For a source checkout, use the declarations from that same version rather than an unreleased `main` branch. Load only the reference for the capability being implemented.
 
 | Capability | Load | Pi doc |
 |---|---|---|
@@ -125,6 +125,7 @@ Use these defaults:
 - Use `signal` and pass it to subprocesses, fetches, timers, and long work.
 - Stream progress through `onUpdate` only for meaningful state changes.
 - Never rely on closure state alone for session behavior that must survive `/reload`, `/resume`, `/fork`, or restart.
+- `before_agent_start` also runs for idle `pi.sendMessage(..., { triggerTurn: true })` runs; inspect `event.messageType` before using `prompt` or assuming a user prompt.
 - Keep path handling cross-platform with `node:path`, and normalize only at module boundaries.
 - Choose tool `exposure` deliberately: `direct` for tools the model calls, `model-only` for orchestrators, `codemode`/`deferred` for tools reached through scripts or `tool_search`, `hidden` to withdraw one.
 - Return `outputSchema` + `structuredContent` for data tools. Codemode scripts receive structured values; nested extension callers inspect the `ctx.executeTool()` outcome's `isError` and `result`.

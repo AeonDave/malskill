@@ -126,6 +126,7 @@ Skills that support the workflow itself: skill authoring, research helpers, docu
 | Skill | Role |
 |-------|------|
 | `skill-creator` | Create, validate, and package new skills |
+| `skill-app-creator` | Build skills with executable workflows, consistent deliverables, diagnostics, and optional resumable sessions or UI |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
 | `readme-md-creator` | Create and maintain high-signal README files |
 | `mcp-creator` | Design and validate Model Context Protocol servers |
@@ -170,6 +171,7 @@ Cross-cutting behavioral guardrails that shape *how* an agent works: evidence ga
 | `agentic-offensive-orchestration` | Red-team agent-swarm architecture, MCP-based C2, worker containment |
 | `design-before-implementation` | Clarify scope, alternatives, constraints, and success criteria before building |
 | `evidence-before-claims` | Gate security claims on reproducible evidence and honest uncertainty |
+| `handoff` | Portable session handoff document for another harness, repo, operator, or forked task |
 | `humanizer` | Revise formulaic prose while preserving author voice, technical facts, and evidence limits |
 | `hypothesis-driven` | Force explicit hypotheses and falsifiable predictions for hard problems |
 | `implementation-planning` | Turn approved designs into executable, verifiable task plans |

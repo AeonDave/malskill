@@ -27,8 +27,8 @@ class ValidateAllTests(unittest.TestCase):
             )
             outside = root / "outside"
             outside.mkdir()
-            for excluded in (repository / ".import", repository / "vendor", outside):
-                excluded.mkdir(exist_ok=True)
+            for excluded in (repository / ".import", repository / "vendor", skill / "tmp" / "upstream", outside):
+                excluded.mkdir(parents=True, exist_ok=True)
                 (excluded / "SKILL.md").write_text("Invalid fixture.\n", encoding="utf-8")
             result = subprocess.run(
                 [sys.executable, "-B", str(scripts / "validate_all.py"), "--exclude", "vendor"],
@@ -42,7 +42,7 @@ class ValidateAllTests(unittest.TestCase):
             ["ignored-root", "--exclude", "vendor", "--skill-dir", "knowledge/skill-creator"]
         )
         self.assertEqual(root, (Path.cwd() / "ignored-root").resolve())
-        self.assertEqual(excludes, {".import", "vendor"})
+        self.assertEqual(excludes, {".import", "tmp", "vendor"})
         self.assertEqual(skills, [(Path.cwd() / "knowledge/skill-creator").resolve()])
 
 

@@ -11,7 +11,7 @@ Usage:
     python scripts/validate_all.py --skill-dir <path> [--skill-dir <path> ...]
 
     --exclude <dir>     Exclude any skill path whose components include <dir>.
-                        Can be repeated. Defaults to excluding '.import'.
+                        Can be repeated. Defaults to excluding '.import' and 'tmp'.
     --skill-dir <path>  Validate an explicit skill directory instead of
                         discovering under a root. Can be repeated. When any
                         --skill-dir is given, discovery and --exclude are
@@ -70,7 +70,7 @@ def _parse_args(argv: list[str] | None = None) -> tuple[Path, set[str], list[Pat
         action="append",
         default=None,
         metavar="DIR",
-        help="exclude skill paths containing DIR (repeatable; defaults to .import)",
+        help="exclude skill paths containing DIR (repeatable; defaults to .import and tmp)",
     )
     parser.add_argument(
         "--skill-dir",
@@ -81,7 +81,7 @@ def _parse_args(argv: list[str] | None = None) -> tuple[Path, set[str], list[Pat
         help="validate an explicit skill directory instead of discovery (repeatable)",
     )
     args = parser.parse_args(argv)
-    excludes = {".import"} | set(args.exclude or [])
+    excludes = {".import", "tmp"} | set(args.exclude or [])
     return args.repo_root.resolve(), excludes, [path.resolve() for path in args.skill_dir]
 
 

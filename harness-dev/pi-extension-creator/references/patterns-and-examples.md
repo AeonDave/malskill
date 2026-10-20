@@ -129,6 +129,10 @@ State rules:
 
 When concurrent tool calls can corrupt state, set `executionMode: "sequential"` on the tool definition, or use `withFileMutationQueue` for read-modify-write file access.
 
+### Resumable tool selection
+
+For task-specific tool activation, change the current active set instead of resetting a fixed set on every `session_start`. Read the Pi 1.3 replacement and CLI-override semantics in [api-surface.md](api-surface.md#additional-api) before implementing resume behavior.
+
 ## Dynamic Resources
 
 Use `resources_discover` when an extension contributes skills, prompts, or themes based on cwd/config. Return `{ skillPaths?, promptPaths?, themePaths? }` with only paths that exist and are intended for the current project.
@@ -156,6 +160,8 @@ Rules:
 ## Provider Or MCP Bridge
 
 Use provider registration for model/provider integration. Register MCP servers with `pi.registerMcpServer(name, config)` instead of hand-building a tool bridge; the built-in MCP support connects them and routes their tools through the normal pipeline. Load [codemode-and-mcp.md](codemode-and-mcp.md) for the server config shape, exposure model, and lifecycle.
+
+When documenting how users select a provider model, follow the provider-qualified selection guidance in [api-surface.md](api-surface.md#additional-api) if multiple providers expose the same model id.
 
 When the extension exposes external capabilities as its own tools:
 

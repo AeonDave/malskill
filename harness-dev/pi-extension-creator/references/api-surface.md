@@ -153,12 +153,23 @@ Useful event choices:
 Event contracts:
 
 - `pi.on()` returns an unsubscribe function. Handlers added or removed during a dispatch apply to later dispatches, not the one in progress.
-- `before_agent_start` exposes the prompt and its structured `systemPromptOptions`. Prefer changing prompt sections, selected tools, or guidelines so Pi appends a transcript delta; returning `systemPrompt` or setting `forceSystemPrompt` replaces the whole prompt for that run.
+- `before_agent_start` exposes structured `systemPromptOptions` and a discriminated `messageType`. For `"user"`, `prompt` and optional `images` are available; for `"custom"`, `message` is the starting `pi.sendMessage(..., { triggerTurn: true })` message and there is no `prompt`. Narrow on `messageType` before reading either shape. Both kinds can receive a returned `message`; return early for `"custom"` when the handler only applies to user prompts.
+- A run is busy during startup, including compaction checks and `before_agent_start`; `ctx.isIdle()` is false there. `pi.sendMessage()` queues into the starting run instead of starting a competing run. A `pi.sendUserMessage()` issued while a run is starting or active must choose `deliverAs: "steer"` or `"followUp"`. An abort requested during startup takes effect when the run begins.
+- Prefer changing prompt sections, selected tools, or guidelines so Pi appends a transcript delta; returning `systemPrompt` or setting `forceSystemPrompt` replaces the whole prompt for that run.
 - `turn_end` and `agent_before_settle` are the actionable boundaries: a handler can chain proposed `custom`, `custom_message`, `context_edit`, or `compaction` entries and return `continue: true` for exactly one more model request. Guard the continuation condition or it loops. `agent_settled` is final and notification-only; use its `aborted` flag to distinguish cancellation. `agent_end` can precede automatic retries, compaction, or queued work.
 - `tool_execution_end.durationMs` records execution time and is absent when the tool did not run. Do not substitute wall-clock time between lifecycle events.
 - `context` transforms conversation messages without the prompt/tool system messages (Pi restores them after). Use `context_with_system` only when a request-local transform must own the complete transcript, keeping a system message at index zero.
 - `provider_stream_event` fires for each parsed provider event before normalization. Treat `event.data` as read-only; it is notification-only and not persisted.
 - `mcp_servers_change` fires when registered MCP servers change; a replacement MCP extension reads the current set with `pi.getMcpServers()` on `session_start`.
+
+For a handler that applies only to submitted user prompts, narrow the union before accessing `prompt`:
+
+```ts
+pi.on("before_agent_start", async (event) => {
+  if (event.messageType !== "user") return;
+  // event.prompt and event.images exist for this branch.
+});
+```
 
 ## Tools
 
@@ -507,6 +518,10 @@ pi.registerCommand("my-cmd", {
   },
 });
 ```
+
+`setActiveTools()` replaces the active set. Derive changes from `getActiveTools()` when preserving the session's current selection; an unconditional fixed list in `session_start` can overwrite tools restored on resume. Pi 1.3 restores tools activated during the session. CLI `--tools +name` and `--tools -name` modify that restored set; an explicit `--tools` name list, `--no-tools`, or `--no-builtin-tools` selects a set instead.
+
+When a model id exists under multiple providers, recommend provider-qualified selection such as `--model anthropic/claude-sonnet-4-5`. Pi 1.3 prefers a provider with credentials, but a bare id can still be ambiguous. Resolve models with both provider and id. On model switches, Pi filters prior-model thinking blocks from the outgoing model context instead of flattening them to text; extension transforms should preserve structured content and leave model-specific thinking handling to Pi.
 
 ## Errors
 

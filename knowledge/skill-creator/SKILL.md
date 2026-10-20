@@ -15,6 +15,8 @@ Produce a skill that changes how an agent handles a recurring task. Keep only in
 
 Use the request, existing skill, and applicable repository instructions to identify the missing behavior and what completion requires. Inspect only resources relevant to the change. Ask for missing information only when it changes the scope, contract, or authorization.
 
+For a skill-app with executable workflows and consistent deliverables, load [skill-app-creator](../skill-app-creator/SKILL.md) for application contracts, runtime diagnostics, and recovery design.
+
 - Reuse an existing skill when its scope already fits; fix its routing if discovery is the problem.
 - Create a skill only for a distinct recurring capability. Keep one-off inputs in the task prompt and repository-wide conventions in repository instructions.
 - Preserve supported behavior, metadata, user decisions, and authorization boundaries unless their change is part of the request.

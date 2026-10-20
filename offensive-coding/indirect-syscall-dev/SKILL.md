@@ -39,15 +39,17 @@ If the question is "what does `mov r10, rcx` mean" → wrong skill, read `window
 | **Tartarus' Gate** | Yes (multi-pattern match incl. `jmp` hooks) | Yes | Exact | Medium |
 | **FreshyCalls** | Yes (sorts stub addresses, derives SSN from order) | Yes | Exact if no shuffle | Medium (sort entire Zw* list) |
 | **Recycled Gate / DWhisper** | Yes (sorts Zw* exports by address, index = SSN) | Yes | Exact, hook-immune | High (O(n log n) at init, O(1) lookup after) |
+| **Exception Directory Gate** | Yes (walks .pdata, counts Zw* matches) | Yes | Exact, hook-immune | Low (O(n) linear walk, no sort needed) |
 
 ### 2026 resolver expansion (recommended additions)
 
-Keep the five classic strategies above as baseline literacy, then model modern implementations as a resolver stack:
+Keep the six classic strategies above as baseline literacy, then model modern implementations as a resolver stack:
 
 | Resolver family | Core idea | Typical strength | Typical cost |
 |---|---|---|---|
 | **FreshyCalls** | Sort `Zw*` exports by VA; sorted index = SSN | High against inline hooks | Medium init, low lookup |
 | **RecycledGate** | FreshyCalls + clean-stub opcode cross-check + ntdll gadget reuse | Very high practical reliability | Medium init |
+| **Exception Directory Gate** | Walk .pdata `RUNTIME_FUNCTION` array, count Zw* export matches; pre-sorted, no alloc | Very high; no sort, no stub reads, no dynamic allocation | Lowest init (O(n) linear) |
 | **SyscallsFromDisk / KnownDlls** | Resolve SSNs from clean mapped `\\KnownDlls\\ntdll.dll` | Max resilience to in-memory hook tampering | Slowest init |
 | **HWBP resolver (DRx + VEH)** | Extract SSN at runtime via hardware breakpoints | High in heavily tampered stubs | Highest complexity/overhead |
 
@@ -293,4 +295,5 @@ Full code sketches per language in [references/lang-c-rust-go.md](references/lan
 - [references/lang-c-rust-go.md](references/lang-c-rust-go.md) — Per-language dispatcher skeletons: C (mingw-w64 AT&T .s), Rust (`global_asm!`), Go (Plan 9), plus SSN table init patterns and obfuscation hooks
 - [references/strategies.md](references/strategies.md) — In-depth on each SSN resolution strategy, detection footprint per strategy, migration between strategies, hook-pattern reverse engineering
 - [references/implementation-examples.md](references/implementation-examples.md) — Practical C/Rust implementation patterns distilled from real-world projects (mode switching, 4/6/11 arg dispatch, DESYNC composition)
+- [scripts/pdata_ssn_resolve.py](scripts/pdata_ssn_resolve.py) — Offline SSN resolver via Exception Directory (.pdata) walk; use `--cross-validate` to confirm agreement with sorted-export method, `--target <NtFunc>` for single lookup
 - Start with `references/strategies.md`, then pair exactly one implementation path with the chosen strategy before debugging failures.
