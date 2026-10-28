@@ -98,7 +98,7 @@ If you need general idioms and patterns (not measurement), use `golang-patterns`
 
 Load these references on demand:
 
-- `references/profiling.md` — pprof + trace + `goroutineleak` + flight recorder
+- `references/profiling.md` — pprof + trace (HTTP and `go test` capture) + `goroutineleak` + flight recorder
 - `references/benchmarks.md` — stable benchmarks, -benchmem, benchstat, hygiene
 - `references/allocations-gc.md` — allocation patterns, Green Tea GC, slice retention, sync.Pool
 - `references/contention.md` — mutex/block profiles, contention patterns, backpressure

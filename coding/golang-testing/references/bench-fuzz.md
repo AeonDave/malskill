@@ -22,6 +22,9 @@ Guidelines:
 - run long enough to reduce noise (`-benchtime=3s`)
 - compare before/after with `benchstat` when possible
 
+To profile a benchmark, add `-cpuprofile`/`-memprofile`/`-trace` to the `go test` run and open
+the output with `go tool pprof` / `go tool trace` — see `golang-performance` `profiling.md`.
+
 ## Fuzzing
 
 Fuzz tests are great for parsers and validation.

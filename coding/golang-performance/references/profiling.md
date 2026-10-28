@@ -2,6 +2,27 @@
 
 Use this reference when you need concrete commands and a minimal workflow.
 
+## Capture from `go test` / benchmarks
+
+`go test` has profiling built in — no `net/http/pprof` needed. This is the usual dev-loop
+path: run the benchmark for the hotspot, write profiles/trace, open them with the same tools.
+
+```bash
+go test -run=^$ -bench=BenchmarkThing -benchmem \
+  -cpuprofile cpu.out -memprofile mem.out -trace trace.out ./pkg
+
+go tool pprof cpu.out      # or mem.out
+go tool trace trace.out
+```
+
+Also available: `-blockprofile block.out`, `-mutexprofile mutex.out` (set `-blockprofilerate` /
+`-mutexprofilefraction` to control sampling). When any profile flag is set, `go test` leaves
+the compiled `pkg.test` binary in the output dir; keep it beside the profile so `pprof` can
+symbolize — pass it explicitly if symbols are missing: `go tool pprof pkg.test cpu.out`.
+
+The mem profile holds both allocation and in-use samples; `pprof` defaults to `inuse_space`
+(live objects). Use `go tool pprof -sample_index=alloc_space mem.out` for total-allocation view.
+
 ## Enable pprof (HTTP)
 
 ```go
