@@ -22,6 +22,7 @@ Standardize acquisition and preservation decisions so findings remain reproducib
 - Volatile first: memory and active network state.
 - Rotating logs second.
 - Full images and long-tail artifacts after initial stabilization.
+- Live and cloud/API acquisition alters state and is not bit-for-bit repeatable: record the exact method, parameters, and time window, note that collection can create evidence, and hash the resulting export.
 
 ## 4) Minimal-change handling rules
 

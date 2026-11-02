@@ -13,7 +13,9 @@ Correlate Windows artifacts that show what executed, when it likely executed, an
 - [Prefetch interpretation](#prefetch-interpretation)
 - [Windows execution correlation edge cases](#windows-execution-correlation-edge-cases)
 - [Timeline synthesis](#timeline-synthesis)
+- [User logon and session reconstruction](#user-logon-and-session-reconstruction)
 - [SAM `F` LastLogon caveat](#sam-f-lastlogon-caveat)
+- [Timestamp integrity and timestomping detection](#timestamp-integrity-and-timestomping-detection)
 - [Common pitfalls](#common-pitfalls)
 
 ## Core artifact set
@@ -132,6 +134,36 @@ For each suspected execution, produce:
 | Confidence | High/Medium/Low |
 | Explanation | What each artifact supports and what remains uncertain |
 
+## User logon and session reconstruction
+
+Answer "who was logged on, how, and when" from Security EVTX. Pair each session by Logon ID, not by time proximity.
+
+Logon type (Security 4624 `LogonType` field):
+
+| Type | Name | Usage meaning |
+|---|---|---|
+| 2 | Interactive | Console/keyboard logon |
+| 3 | Network | Share/SMB/remote resource access from the network |
+| 4 | Batch | Scheduled-task context |
+| 5 | Service | Service start (SCM) |
+| 7 | Unlock | Existing session unlocked |
+| 8 | NetworkCleartext | Cleartext creds over network (often IIS basic auth) |
+| 9 | NewCredentials | `runas /netonly`; generates no distinct 4624 session — track via 4648 |
+| 10 | RemoteInteractive | RDP / Terminal Services / Remote Assistance |
+| 11 | CachedInteractive | Cached domain creds (offline laptop logon) |
+
+Key events:
+- 4624 logon (carries `LogonType` + Logon ID + source `IpAddress`/`WorkstationName`); 4625 failed logon.
+- 4634 logoff, 4647 user-initiated logoff — pair to the session by the Logon ID from 4624. Logoff records are unreliable and frequently missing, so absence of a logoff does not bound the session.
+- 4648 explicit-credential logon — the pivot for alternate-credential use (type 9 has no distinct session logon).
+- 4778 session reconnect / 4779 session disconnect — RDP session continuity across a type-10 logon.
+
+Build the session timeline:
+1. List 4624 by Logon ID with type, account, source host/IP, and workstation.
+2. Pair 4634/4647 to each Logon ID to bound sessions; mark unbounded sessions explicitly.
+3. Separate interactive usage (types 2/7/10/11) from non-interactive (3/4/5/8) before claiming a user "was using" the host.
+4. Corroborate interactive sessions with profile, UserAssist, or BAM activity in the same window; a 4624 alone proves a logon, not sustained hands-on use.
+
 ## SAM `F` LastLogon caveat
 
 Some Windows builds and registry parsers expose an account LastLogon value from `SAM\Domains\Account\Users\<RID>\F`. Treat it as an account-state timestamp, not as standalone proof of an interactive session or the latest Security 4624 event:
@@ -140,6 +172,16 @@ Some Windows builds and registry parsers expose an account LastLogon value from 
 - Convert the parser's FILETIME-derived value to UTC and preserve the hive/source pointer.
 - Corroborate with profile creation, User Profile Service, Terminal Services, or Security events when the question asks for an interactive login.
 - Do not replace a validated account timestamp with a later service logon merely because it appears later in EVTX record order.
+
+## Timestamp integrity and timestomping detection
+
+Validate timestamp trust before ordering a usage timeline. `$STANDARD_INFORMATION` (`$SI`) times are writable from user space (`SetFileTime`, MITRE ATT&CK T1070.006); `$FILE_NAME` (`$FN`) is not directly user-settable. Work from `$MFT`.
+
+- Compare `$SI` against `$FN`. `$SI` older than `$FN` is a timestomping indicator.
+- Caveat: `$FN` is copied from `$SI` on file rename or volume-local move, so a post-stomp rename launders `$FN` too. A matching `$SI`/`$FN` pair is not proof of integrity.
+- Zeroed sub-second precision (fractional seconds all zero) on an `$SI` time is a manual-manipulation heuristic; native operations usually leave non-zero sub-second values.
+- Corroborate suspect times with sources outside the file's `$SI`: `$FN`, the NTFS `$I30` index, USN `$J`, `$LogFile`, and timestamp-independent artifacts (Prefetch, EVTX, journald) already in the timeline.
+- When `$SI` is untrustworthy, order the event by a corroborating artifact and label the `$SI` time unreliable rather than dropping the event.
 
 ## Common pitfalls
 

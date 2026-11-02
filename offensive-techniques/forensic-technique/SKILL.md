@@ -1,11 +1,11 @@
 ---
 name: forensic-technique
-description: "Incident forensics: preservation, triage, timelines, artifact correlation, reporting across disk (E01/DD/RAW), memory, PCAP."
+description: "Incident forensics: preservation, triage, timelines, artifact correlation, and reporting across disk images, memory, PCAP, and endpoint/SaaS audit logs."
 license: MIT
 compatibility: "Linux/Windows/macOS; E01/RAW/DD/ISO/PCAP/memory evidence."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.4"
   category: forensic
   language: multi
 ---
@@ -17,7 +17,7 @@ Goal: produce **defensible, reproducible findings** from heterogeneous evidence.
 ## When this technique applies
 
 - Potential compromise requiring reconstruction of user/system activity.
-- Evidence includes one or more of: disk image, ISO media, RAM dump, PCAP.
+- Evidence includes disk images, ISO media, RAM dumps, PCAP, endpoint logs, or SaaS audit records.
 - Need to correlate endpoint, filesystem, and network timelines.
 - Need report-ready output for incident response, legal, or internal review.
 
@@ -146,18 +146,23 @@ Use when you have disk + PCAP + memory and need a single chronology.
 
 ### 6. Log-centric and objective-driven investigations
 
-Use when evidence is mostly EVTX, registry hives, MFT snapshots, API trace logs, or objective-driven forensic tasks.
+Use when evidence is mostly EVTX, registry hives, MFT snapshots, API traces, or SaaS audit records, including records inspected through a SIEM UI.
 
 - Build an objective-to-artifact map first (which artifact can answer each objective decisively).
 - Prefer deterministic extraction over broad hunting (exact key, exact event id, exact stream, exact record).
+- Interpret coded values using the provider's documentation for the full field path and applicable schema/version. Do not transfer enum meanings between fields.
+- After each UI row selection or query change, verify the raw record matches the intended event id and the relevant host/user before saving or interpreting it. A cleared loading indicator does not prove the displayed row is the intended record; discard mismatched extracts and reacquire.
 - For Windows log-heavy cases, prioritize: PowerShell ScriptBlock (4104), process creation (4688/Sysmon 1), service/task creation, Defender/AV alerts, and relevant registry keys. When an ETW trace (`.etl`) is provided, treat provider name + event id as the primary pointer (e.g. `Microsoft-Windows-PowerShell`, `Microsoft-Antimalware-Scan-Interface`, `Microsoft-Windows-Kernel-Process`).
 - For Linux hosts, prioritize `journalctl` output from `/var/log/journal/*` (auth, sshd, sudo, systemd unit start/stop) and `/var/log/audit/audit.log` (auditd) for structured process/command evidence.
 - For macOS hosts, use the Unified Log system (`log collect`, `log show --predicate ...`, or an `.logarchive` bundle) for process, network, and security signals; classic `/var/log` text logs are largely deprecated.
+- For "who was logged on / usage timeline" questions, reconstruct sessions from Security 4624 logon types and pair logon/logoff by Logon ID; see [references/windows-execution-indicators.md](references/windows-execution-indicators.md).
 - For API trace cases, reconstruct sequence by API dependency chain (enumeration → allocation/write → execution).
-- Mark each conclusion as: direct artifact fact vs inferred interpretation.
+- Mark each conclusion as direct artifact fact or inferred interpretation. Scenario descriptions and threat intelligence guide hypotheses; they do not establish activity absent from the inspected records.
 
 Primary tool families:
 - `offensive-tools/forensic/chainsaw/` — fast triage across EVTX, `$MFT`, ShimCache, SRUM, and registry hives with Sigma and built-in detection rules; produces multi-source execution timelines
+
+For cloud/SaaS audit records (AWS CloudTrail, Microsoft 365/Entra unified audit log, Google Workspace, Okta), load [references/cloud-saas-audit-logs.md](references/cloud-saas-audit-logs.md) for per-provider record/field semantics and event-time vs ingestion-time handling.
 
 ## Practical quality gates
 
@@ -186,10 +191,11 @@ Primary tool families:
 
 - [references/evidence-preservation.md](references/evidence-preservation.md) — Load for provenance, hashing, read-only workflow, and evidence-handling order.
 - [references/disk-and-iso-analysis.md](references/disk-and-iso-analysis.md) — Load for filesystem/media triage, startup paths, selective extraction, and validation.
-- [references/windows-execution-indicators.md](references/windows-execution-indicators.md) — Load for Prefetch, LNK, Jump Lists, AmCache, ShimCache, SRUM, and related execution artifacts.
+- [references/windows-execution-indicators.md](references/windows-execution-indicators.md) — Load for Prefetch, LNK, Jump Lists, AmCache, ShimCache, SRUM, execution artifacts, user logon/session reconstruction, and timestamp-integrity (timestomping) checks.
 - [references/document-malware-analysis.md](references/document-malware-analysis.md) — Load for Office, PDF, archive, embedded-object, and external-template payload chains.
 - [references/pcap-analysis.md](references/pcap-analysis.md) — Load for protocol triage, session reconstruction, transfer paths, and network chronology.
 - [references/memory-analysis.md](references/memory-analysis.md) — Load for process/module/socket triage, injected regions, transient secrets, and disk/network correlation.
-- [references/timeline-correlation.md](references/timeline-correlation.md) — Load for clock normalization and merging source-local timelines with confidence labels.
+- [references/timeline-correlation.md](references/timeline-correlation.md) — Load for timestamp-field semantics, timestamp-integrity checks, clock normalization, data-reduction/pivot workflow, and merging source-local timelines with confidence labels.
+- [references/cloud-saas-audit-logs.md](references/cloud-saas-audit-logs.md) — Load for AWS CloudTrail, Microsoft 365/Entra, Google Workspace, and Okta audit-record and timestamp-field semantics.
 - [references/lessons-learned-patterns.md](references/lessons-learned-patterns.md) — Load for mixed-artifact heuristics and fast-answer investigation patterns.
 - [scripts/forensic_triage.py](scripts/forensic_triage.py) — Run to classify an evidence file and get the first forensic workflow/tool-family recommendation.
