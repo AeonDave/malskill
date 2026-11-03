@@ -5,6 +5,7 @@
 - [Status legend](#status-legend)
 - [Protocol primitives versus application tools](#protocol-primitives-versus-application-tools)
 - [Tool surface](#tool-surface)
+- [Resources, prompts, and instructions](#resources-prompts-and-instructions)
 - [Catalog pattern](#catalog-pattern)
 - [Router and HTTP policy visibility](#router-and-http-policy-visibility)
 - [Tool contracts and error layers](#tool-contracts-and-error-layers)
@@ -57,6 +58,26 @@ Start with the smallest useful direct surface:
 
 Keep high-risk tools visible with accurate warnings and policy classes. Hiding a tool is not an authorization control.
 
+## Resources, prompts, and instructions
+
+Choose by interaction model and host support, not solely by whether an operation writes data:
+
+| Need | Surface |
+|---|---|
+| Model chooses an operation with arguments, including search or computation | Tool, with accurate side-effect annotations |
+| Host/application fetches identifiable context | Resource or URI template |
+| User selects reusable task framing | Prompt with explicit arguments and message output |
+| A constraint spans several server features | Short server instructions, only for that shared constraint |
+
+- Give resources stable URI semantics, correct text/binary content and MIME types, bounded reads, and authorization on both listing and retrieval. Validate template parameters before resolving paths or remote URLs.
+- Use pagination for list methods that support it; make large content retrievable in bounded pieces rather than dumping it all into context. A linked resource need not appear in `resources/list`; test that the target client can retrieve it.
+- Check whether the host browses resources, resolves templates, or exposes prompts. Return useful tool content when the workflow needs a tool-only host; do not assume resource publication automatically inserts it into model context.
+- Keep prompts focused on reusable framing and required inputs; validate arguments and resource access. Retrieving a prompt must not perform the mutation it describes.
+- Use server instructions for cross-tool ordering, prerequisites, or capability-dependent fallbacks. Put per-operation meaning in the tool/resource description. Instructions do not enforce policy; reject forbidden operations in code.
+- Treat resource, prompt, and upstream content as untrusted task data; preserve the trust boundary in [security.md](security.md).
+
+Contracts: [Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources), [Prompts](https://modelcontextprotocol.io/specification/2026-07-28/server/prompts). For model-facing descriptions and generic schema design, use [tool-schema-design](../../tool-schema-design/SKILL.md).
+
 ## Catalog pattern
 
 Status: Custom Application Pattern  
@@ -66,7 +87,7 @@ A catalog entry should include:
 
 - stable `name`, concise `description`, `family` or phase, and product `domain`;
 - JSON Schema 2020-12 input and output contracts;
-- relevant ToolAnnotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and, when Tasks is implemented, `execution.taskSupport`;
+- relevant ToolAnnotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`);
 - required core capability or extension and fallback behavior;
 - execution class: synchronous, MRTR, Tasks-capable, or custom interactive;
 - confirmation/input behavior;
@@ -76,7 +97,7 @@ A catalog entry should include:
 
 Return deterministic catalog ordering. Reject unknown operation names with safe search suggestions.
 
-Do not make a custom `detach=true` flag the primary asynchronous contract. If the current request advertises Tasks, the server may return `resultType: "task"`. Otherwise return a bounded synchronous result or an actionable unsupported-capability/tool execution error. A custom detach flag may remain only as explicitly labelled compatibility behavior.
+Prefer negotiated Tasks for interoperable asynchronous execution. If the supported SDK or host lacks it, use a bounded synchronous path, an explicit unsupported result, or a documented application job API when the product needs one. Label custom handles and polling as application behavior; do not claim Tasks support or silently start work the client cannot track.
 
 ## Router and HTTP policy visibility
 
@@ -115,44 +136,9 @@ Never mirror secrets, tokens, credentials, PII, queries containing sensitive dat
 
 ## Tool contracts and error layers
 
-Status: MCP Core 2026-07-28 result contract plus Custom Application Pattern envelope
+Use the [protocol result/error contract](protocol-v2.md#results-structured-content-and-errors). Check the SDK's exception-to-result mapping: a domain failure must not accidentally become a protocol error, or vice versa.
 
-Keep these layers separate:
-
-1. JSON-RPC/protocol error for malformed RPCs, unsupported versions, invalid parameters, or protocol failures.
-2. Completed tool result with `isError: true` for actionable execution failure.
-3. Optional application envelope in `structuredContent` for predictable chaining.
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 31,
-  "result": {
-    "resultType": "complete",
-    "content": [
-      {
-        "type": "text",
-        "text": "repository is required; inspect the catalog entry and retry"
-      }
-    ],
-    "structuredContent": {
-      "ok": false,
-      "error_type": "missing_required_input",
-      "error": "repository is required",
-      "fix": "Inspect create_issue and provide repository, title, and body."
-    },
-    "isError": true
-  }
-}
-```
-
-For successful or domain-level structured results, preserve:
-
-```text
-{ok, result, warnings, artifacts, next}
-```
-
-Place the envelope inside `structuredContent`; validate it against `outputSchema` when declared. Provide concise text fallback where client compatibility requires it.
+Declare stable input/output schemas, bound returned data, and use accurate `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` annotations. Hints describe behavior; they do not authorize it. An optional application envelope belongs inside `structuredContent`, only when downstream consumers need it. Do not add empty `warnings`, `artifacts`, or `next` fields to every result by convention.
 
 ## Execution decision tree
 
@@ -177,38 +163,15 @@ Patterns may compose: a Task can enter `input_required`; an interactive process 
 
 ## MRTR pattern
 
-Status: MCP Core 2026-07-28
+Use the [MRTR contract](protocol-v2.md#multi-round-trip-requests) for required supported client input, not a job queue. Request only missing information, give input requests understandable keys, and handle refusal without inventing consent or unsafe defaults.
 
-Use MRTR for missing supported inputs and destructive confirmation:
-
-- assign deterministic, understandable `inputRequests` keys;
-- request only the minimum data required;
-- keep the original method and material arguments stable across retry;
-- use signed/AEAD-protected state or server-side state behind an opaque nonce;
-- bind state to the principal, method, material arguments, requested input IDs, expiry, and replay policy;
-- handle accept, decline, cancel, malformed, missing, expired, and replayed responses;
-- perform no irreversible side effect before required confirmation;
-- make retries and duplicate delivery idempotent where possible;
-- require a new JSON-RPC request ID on every retry.
-
-MRTR is not a job queue. Reissue an `input_required` result when mandatory information remains missing.
+Apply [continuation-state controls](security.md#mrtr-continuation-state) before resuming side effects. If the client cannot supply required input, use an authorized non-interactive path or return an actionable unsupported case.
 
 ## Tasks extension pattern
 
-Status: Official MCP Extension — `io.modelcontextprotocol/tasks`  
-Negotiation: current request capabilities plus server advertisement in `server/discover`
+Use the [Tasks contract](protocol-v2.md#tasks) only when the SDK, server, and client support the extension. Keep the [worker implementation](#background-worker-implementation-pattern) distinct from the wire lifecycle.
 
-- A supported request may return either its ordinary result or `resultType: "task"`.
-- Never return a task to a request that did not advertise Tasks.
-- Persist the Task before returning `taskId`, `ttlMs`, and `pollIntervalMs`.
-- Poll with `tasks/get`; provide outstanding input through `tasks/update`; request cooperative cancellation with `tasks/cancel`.
-- Use only `working`, `input_required`, `completed`, `failed`, and `cancelled` publicly.
-- Keep terminal states immutable and task IDs durable across disconnects/restarts.
-- Scope every read, update, cancel, result, and artifact to the authorized principal.
-- Offer `notifications/tasks` only through opted-in `subscriptions/listen`; polling is the baseline.
-- Do not invent or recommend `tasks/list`.
-
-Publish retention, expiry, cancellation semantics, unsupported-client fallback, and whether cancellation can leave external work running.
+Publish retention, expiry, cancellation semantics, unsupported-client fallback, and whether cancellation can leave external work running. Authorize each Task and inherited result/artifact through [security.md](security.md#explicit-handles-and-tasks).
 
 ## Background worker implementation pattern
 
@@ -305,50 +268,17 @@ These mode names are not MCP-standardized. Fit the response inside an ordinary c
 
 ## Cacheable discovery pattern
 
-Status: MCP Core 2026-07-28 for listed RPCs; Custom Application Pattern for other caches
+Use the [cache contract](protocol-v2.md#cacheable-discovery-lists-and-reads) and [cache isolation controls](security.md#caching); test invalidation and authorization changes.
 
-For `server/discover`, `tools/list`, `prompts/list`, `resources/list`, `resources/read`, and `resources/templates/list`:
-
-- return the required or applicable `ttlMs` and `cacheScope`;
-- use deterministic ordering while content is unchanged;
-- use `private` for authorization-varying data;
-- vary keys by identity, tenant, scopes, protocol version, extensions, and other policy inputs;
-- combine TTL with change notifications where supported;
-- test invalidation, permission changes, and shared-cache leakage.
-
-Caching remote catalog or provider metadata behind application tools is custom. Give it separate freshness and invalidation rules.
+Caching provider metadata or a custom catalog behind application tools is separate application behavior. Define its own freshness and invalidation policy.
 
 ## Subscription pattern
 
-Status: MCP Core 2026-07-28
-
-- Open `subscriptions/listen` with explicit notification filters.
-- Acknowledge the accepted subset before events.
-- Correlate every event with `io.modelcontextprotocol/subscriptionId`.
-- Authorize filters and resource URIs.
-- Bound concurrent streams, event rates, queues, and reconnect behavior.
-- Clean up on cancellation, graceful closure, disconnect, and expiry.
-
-Keep distinct:
-
-- long-lived change notifications on the subscription;
-- request-scoped progress/message notifications on the originating response stream;
-- `tasks/get` polling and optional subscribed Task notifications;
-- custom interactive-process output reads.
+Use the [subscription contract](protocol-v2.md#subscriptions-and-notifications) and authorize each filter. Keep change notifications, request-scoped progress/logs, Tasks status, and custom process-output reads distinct. Add subscriptions only when clients need change delivery; bounded queues and cleanup belong to the implementation.
 
 ## Extension negotiation pattern
 
-Status: MCP Core 2026-07-28 negotiation rules
-
-- Server: advertise supported extensions and settings through `server/discover`.
-- Client: advertise support in every request's capabilities.
-- Default: extension disabled until both sides support and the implementation opts in.
-- Optional feature: fall back to meaningful core behavior.
-- Mandatory feature: reject explicitly with an actionable error.
-- Version/settings: follow the extension's schema and independent evolution policy.
-- Namespace: `io.modelcontextprotocol/*` for official identifiers; publisher-controlled reversed domains for third-party extensions.
-
-Do not infer extension support from an SDK package alone.
+Use the [extension contract](protocol-v2.md#extensions-framework). Check actual SDK/host support, declare required settings, and test the documented fallback or rejection with the extension absent.
 
 ## MCP Apps decision pattern
 

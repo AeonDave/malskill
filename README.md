@@ -117,7 +117,7 @@ Idiomatic code patterns, testing strategies, and performance guidance for the la
 - **Go** - idiomatic patterns, concurrency, performance
 - **Python** - patterns, async, pytest, performance (GIL / free-threading / profilers)
 - **Kotlin / Android** - idiomatic Kotlin (null-safety, coroutines, sealed hierarchies, Java interop), Android testing (JUnit/Robolectric/Compose/screenshot/instrumented), Kotlin performance (Macrobenchmark, Baseline Profiles, R8 full mode, Compose recomposition, Perfetto), Android JNI/NDK bridging (16 KB pages, `@FastNative`/`@CriticalNative`, Rust-on-Android)
-- **Cross-cutting** - TDD, testing reliability, and systematic debugging workflows
+- **Cross-cutting** - [Software architecture](coding/software-architecture/SKILL.md) for small tools through larger systems: boundaries, contracts, state, failure recovery, delivery, and simplification; [software guidelines](coding/software-guidelines/SKILL.md) for complete, scoped repository edits and affected consumers; [TDD](coding/test-driven-development/SKILL.md) for test-first implementation; [testing reliability](coding/testing-reliability/SKILL.md) for trustworthy assertions, doubles, fixtures, and mutation-result triage; [systematic debugging](coding/systematic-debugging/SKILL.md) for failure diagnosis
 
 ### `knowledge/` - Research and meta-skills
 
@@ -129,7 +129,7 @@ Skills that support the workflow itself: skill authoring, research helpers, docu
 | `skill-app-creator` | Build skills with executable workflows, consistent deliverables, diagnostics, and optional resumable sessions or UI |
 | `agent-md-creator` | Bootstrap and maintain `AGENTS.md` files |
 | `readme-md-creator` | Create and maintain high-signal README files |
-| `mcp-creator` | Design and validate Model Context Protocol servers |
+| `mcp-creator` | Build, audit, integrate, and validate MCP servers, including local host setup |
 | `external-feedback-triage` | Verify reviews, scanner findings, PoCs, and model suggestions before acting |
 | `deep-research-generic` | General-purpose deep research |
 | `known-problem-hint-research` | Targeted post-triage research to unblock a known problem signature |

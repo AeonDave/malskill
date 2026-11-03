@@ -164,7 +164,7 @@ Status: MCP Core 2026-07-28
 
 Status: MCP Core 2026-07-28
 
-`server/discover`, `tools/list`, `prompts/list`, `resources/list`, `resources/read`, and `resources/templates/list` use cache metadata. The latter five require `ttlMs` and `cacheScope`:
+Completed results from `server/discover`, `tools/list`, `prompts/list`, `resources/list`, `resources/read`, and `resources/templates/list` require both `ttlMs` and `cacheScope`:
 
 - `ttlMs` is a freshness hint in milliseconds.
 - `cacheScope: "public"` permits shared caching only when the content is not identity- or authorization-dependent.
@@ -172,6 +172,8 @@ Status: MCP Core 2026-07-28
 - Return deterministic ordering while the underlying set is unchanged.
 - Include principal/tenant, scopes, protocol version, negotiated extensions, and other authorization-relevant dimensions in cache variation.
 - `listChanged` notifications complement freshness metadata; they do not replace TTLs or safe cache keys.
+- Interim `input_required` results carry no caching hints. Never cache results of requests carrying `inputResponses` or `requestState`, even when the retry completes.
+- Key by method and result-affecting parameters, including pagination cursors; a private cache must also separate authorization contexts, including different access tokens.
 
 ## Subscriptions and notifications
 
@@ -209,9 +211,10 @@ Negotiation: the client includes the extension in the current request's capabili
 - Persist task state durably before returning `taskId`.
 - The lifecycle uses `tasks/get`, `tasks/update`, and `tasks/cancel`.
 - Statuses are `working`, `input_required`, `completed`, `failed`, and `cancelled`.
+- A completed tool result with `isError: true` still maps to `completed`; reserve `failed` for a JSON-RPC execution error.
 - `completed`, `failed`, and `cancelled` are terminal and immutable.
-- Respect `pollIntervalMs`; task IDs and state survive disconnect and restart.
-- `tasks/update` supplies `inputResponses` for outstanding task input.
+- Respect `pollIntervalMs` when supplied; otherwise use a bounded polling/backoff policy. Task IDs and state survive disconnect and restart.
+- `tasks/update` supplies `inputResponses` for outstanding task input; ignore responses for unknown or already-satisfied keys.
 - `tasks/cancel` is cooperative. Acknowledgment does not prove the underlying work stopped.
 - `notifications/tasks` is optional through an opted-in `subscriptions/listen` stream; polling is the default.
 - There is no official `tasks/list`.
@@ -292,6 +295,7 @@ Status: MCP Core 2026-07-28 plus Deprecated / Legacy isolation
 - [2026-07-28 key changes](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
 - [Base protocol](https://modelcontextprotocol.io/specification/2026-07-28/basic/index)
 - [Discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover)
+- [Caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)
 - [Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
 - [Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
@@ -300,6 +304,7 @@ Status: MCP Core 2026-07-28 plus Deprecated / Legacy isolation
 - [Deprecated features](https://modelcontextprotocol.io/specification/2026-07-28/deprecated)
 - [Extensions overview](https://modelcontextprotocol.io/extensions/overview)
 - [Tasks overview](https://modelcontextprotocol.io/extensions/tasks/overview)
+- [Tasks wire schema](https://github.com/modelcontextprotocol/ext-tasks/blob/main/specification/draft/tasks.md)
 - [MCP Apps overview](https://modelcontextprotocol.io/extensions/apps/overview)
 - [Authorization extensions repository and lifecycle](https://github.com/modelcontextprotocol/ext-auth)
 - [OAuth Client Credentials](https://modelcontextprotocol.io/extensions/auth/oauth-client-credentials)

@@ -1,11 +1,11 @@
 ---
 name: python-testing
-description: "Python testing with pytest: TDD loop, fixtures, parametrization, mocking, test organization, async tests, Hypothesis, ExceptionGroup, free-threaded caveats, coverage, and CI hygiene. Use when writing or reviewing Python tests to improve correctness and reduce flakiness."
+description: "Python testing with pytest: fixtures, parametrization, mocking, test organization, async tests, Hypothesis, ExceptionGroup, free-threaded caveats, coverage, and CI hygiene. Use when writing or reviewing Python tests to improve correctness and reduce flakiness."
 license: MIT
 compatibility: "Python 3.11+ (guidance baseline; current stable CPython 3.14.7). Tools: pytest. Optional: pytest-cov, pytest-asyncio, hypothesis. Free-threaded CI: python3.14t."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Python Testing
@@ -34,9 +34,7 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 ## Recommended triage workflow
 
 **For new code**:
-1. Write a failing test (red).
-2. Implement minimal code to pass (green).
-3. Refactor with tests staying green.
+Use [test-driven-development](../test-driven-development/SKILL.md) when implementing test-first; it owns the loop and the entry points for existing code and refactors. Use this skill for pytest mechanics.
 
 **For flaky/failing tests**:
 1. Check for shared state (mocks, fixtures, filesystem).
@@ -65,7 +63,7 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 
 Load on demand:
 
-- `references/tdd-and-structure.md` — TDD loop, naming, organizing tests
+- `references/tdd-and-structure.md` — load when naming and organizing tests; routes test-first work to the shared workflow
 - `references/fixtures-parametrize.md` — fixtures (scopes, autouse), parametrization patterns
 - `references/mocking.md` — unittest.mock, patching correctly, async mocks
 - `references/async.md` — pytest-asyncio loop scope; cancellation/`ExceptionGroup` pointers

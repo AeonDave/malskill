@@ -2,9 +2,7 @@
 
 ## TDD (red → green → refactor)
 
-1. Write a failing test for one behavior
-2. Implement the minimal change to pass
-3. Refactor with tests staying green
+Load [test-driven-development](../../test-driven-development/SKILL.md) for the shared workflow, including existing implementations and behavior-preserving refactors. Keep pytest setup and organization here.
 
 ## Naming
 
@@ -29,4 +27,3 @@ Common layout:
 ## References
 
 - https://docs.pytest.org/
-- https://en.wikipedia.org/wiki/Test-driven_development

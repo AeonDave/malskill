@@ -103,6 +103,7 @@ Status: MCP Core 2026-07-28 and deployment policy
 - Derive the principal from verified authentication, never self-reported identity metadata.
 - Perform authorization near each handle, Task, artifact, workspace, subscription, and adapter operation.
 - Enforce tenant isolation and least privilege independently of tool discoverability.
+- For stdio, document the launching OS identity and inherited permissions; a host entry, root URI, or tool annotation is not a sandbox or authorization grant. Enforce configured path scope in the server even when legacy clients supply Roots.
 - Audit sensitive allow/deny decisions without logging secrets.
 
 ## Explicit handles and Tasks
@@ -159,6 +160,7 @@ Status: MCP Core 2026-07-28
 - Use `cacheScope: "private"` for identity-, tenant-, scope-, entitlement-, or authorization-dependent content.
 - Use `public` only when shared intermediary caching cannot disclose or confuse protected state.
 - Vary cache keys by principal/tenant where applicable, scopes, protocol version, extensions/settings, locale, and policy-relevant parameters.
+- Follow the [cache eligibility rules](protocol-v2.md#cacheable-discovery-lists-and-reads), including exclusion of MRTR retries and separation of distinct authorization contexts.
 - Do not let deterministic ordering expose filtered or hidden entries.
 - Shorten TTL or invalidate when permissions, revocations, catalog policy, or sensitive resources change.
 - Include artifact metadata, transfer URLs, Task results, and handle-backed resources in the privacy analysis.
@@ -188,6 +190,7 @@ Status: MCP Core 2026-07-28 plus optional authorization extensions
 - When Dynamic Client Registration remains for compatibility, send the appropriate OpenID Connect `application_type`.
 - Validate authorization-server metadata, redirect URIs, and issuer transitions.
 - Validate Protected Resource Metadata plus token resource and audience; never accept a token intended for another MCP resource.
+- Do not pass an MCP client's bearer token through to upstream APIs. Use credentials issued for that upstream resource and bind delegated access to the authorized caller.
 - Never use `clientInfo`, `serverInfo`, display names, or extension metadata as authentication.
 - Apply extension-specific authorization requirements when using OAuth Client Credentials or Enterprise-Managed Authorization.
 
@@ -235,6 +238,8 @@ Status: MCP Core 2026-07-28 guidance
 ## Error handling
 
 Status: MCP Core 2026-07-28 error layers plus Custom Application Pattern taxonomy
+
+Treat upstream text, tool results, resource bodies, and prompt arguments as untrusted data. Do not let embedded instructions change authorization, redirect credentials, or trigger additional privileged calls; apply [untrusted-input-hygiene](../../../behaviours/untrusted-input-hygiene/SKILL.md) where content crosses into agent instructions.
 
 Return enough information for repair without leaking secrets, raw stack traces, internal paths, tokens, existence of another tenant's objects, or credential state.
 

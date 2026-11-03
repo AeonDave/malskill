@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible reading/context guidance for coding, research, forensics, and security work."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Reading Budget Discipline
@@ -14,11 +14,12 @@ Read enough to establish the fact and its relevant context. Keep bulk data in it
 
 ## Choose the smallest useful read
 
-- When locating a fact, use scoped search first, then read the matching window and any context needed to interpret it.
+- Match coverage to the request. Do not skip applicable instructions or required review scope to save context. Check filters, excluded paths, result caps/pagination, and read failures before treating results as complete; keep uncovered areas explicit.
+- When locating a fact, use scoped search first, then read enough of the enclosing paragraph, record, or code path to interpret the match, including relevant conditions or exceptions.
 - For an unfamiliar large artifact, inspect metadata, headings, or a small preview before choosing sections. Read a short relevant file in full when splitting it would cost more calls.
 - Bound the combined output of parallel searches or tool calls, not just each call separately. Return selected fields or excerpts instead of dumping every result.
 - If output is truncated, retrieve the missing relevant portion. Do not rerun the entire oversized read.
-- Retain source paths, offsets, versions, and caveats with the extracted facts so another reader can check them.
+- Retain source paths, offsets, versions, and caveats with the extracted facts so another reader can check them. Refresh affected excerpts and locators after relevant source changes.
 
 ## Logs and changing artifacts
 

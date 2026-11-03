@@ -5,6 +5,9 @@ Regex-based and intentionally limited: it flags suspicious legacy terms and
 common stateless-core omissions. Every finding is a review hint, never proof of
 a bug or conformance. Point it at server code, not this skill's reference docs
 (which discuss deprecated features on purpose).
+SDK-managed wire fields may be absent from application source; client code and
+older-version adapters also produce false positives. Review the emitted wire
+messages before changing code in response to a finding.
 
 Usage:
   python check_mcp_conformance.py <file-or-dir> [--format text|json] [--strict]
@@ -47,8 +50,8 @@ LINE_RULES = [
 SENSITIVE_XHDR = re.compile(
     r"x-mcp-header.{0,80}?(password|secret|token|api[_-]?key|authorization|bearer)",
     re.I | re.S)
-LIST_METHOD = re.compile(
-    r"tools/list|prompts/list|resources/list|resources/read|resources/templates/list")
+CACHEABLE_METHOD = re.compile(
+    r"server/discover|tools/list|prompts/list|resources/list|resources/read|resources/templates/list")
 SERVER_MARKER = re.compile(
     r"tools/(?:call|list)|prompts/(?:get|list)|resources/(?:read|list|templates/list)|server/discover")
 
@@ -79,7 +82,9 @@ def scan_file(path, findings, flags):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
             text = fh.read()
-    except OSError:
+    except OSError as exc:
+        findings.append(Finding(path, 0, "error", "read-error",
+                                f"could not scan input: {exc}"))
         return
     for idx, line in enumerate(text.splitlines(), 1):
         for rule_id, sev, rx, msg in LINE_RULES:
@@ -88,15 +93,16 @@ def scan_file(path, findings, flags):
     if SENSITIVE_XHDR.search(text):
         findings.append(Finding(path, 0, "warn", "sensitive-x-mcp-header",
                         "x-mcp-header near a sensitive field; never mirror secrets/PII into headers"))
-    if LIST_METHOD.search(text):
+    if CACHEABLE_METHOD.search(text):
         missing = [field for field in ("ttlMs", "cacheScope") if field not in text]
         if missing:
             findings.append(Finding(path, 0, "warn", "cache-metadata",
-                            "list/read handler present but missing " +
-                            ", ".join(missing) + " cache metadata"))
+                            "cacheable method mentioned but no " +
+                            ", ".join(missing) +
+                            " found here; check complete wire results and SDK serialization"))
     if "tools/call" in text and "resultType" not in text:
         findings.append(Finding(path, 0, "warn", "result-type",
-                        "tools/call handling present but no resultType; every result must carry resultType"))
+                        "tools/call mentioned but no resultType found here; check wire results or SDK serialization"))
     if SERVER_MARKER.search(text):
         flags["is_server"] = True
     if "server/discover" in text:
@@ -120,7 +126,7 @@ def main(argv=None):
         scan_file(path, findings, flags)
     if flags["is_server"] and not flags["has_discover"]:
         findings.append(Finding(args.path, 0, "warn", "discover-missing",
-                        "server exposes MCP methods but no server/discover found; servers MUST implement it"))
+                        "MCP methods mentioned but no server/discover found; verify SDK or server wire support"))
 
     findings.sort(key=lambda f: (f.path, f.line, f.rule))
     if args.format == "json":

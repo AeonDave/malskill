@@ -4,11 +4,11 @@ Use this reference when converting tool output or research notes into claims.
 
 ## Vulnerability discovery
 
-Confirmed requires at least one of:
+Match the conclusion to what was established:
 
-- manual reproduction against the scoped service
-- source/sink path with reachable input and vulnerable configuration
-- scanner finding plus manual replay or second independent tool
+- A reproduction against the scoped service supports the observed mechanism and impact under the recorded conditions.
+- A verified source/sink path with reachable input and relevant configuration can establish a code defect; deployed exploitability also depends on the target's actual build, configuration, and controls.
+- Scanner agreement alone does not confirm a vulnerability. Inspect the underlying evidence and verify the mechanism and preconditions for the claim through applicable source review or authorized testing.
 
 Downgrade when:
 
@@ -17,15 +17,19 @@ Downgrade when:
 - WAF/proxy behavior may be synthetic
 - the result depends on a lab-only configuration
 
+For automated static findings, apply [OWASP's SAST limitations](https://devguide.owasp.org/en/05-implementation/05-static-analysis/#limitations): review context and account for false positives and coverage gaps.
+
 ## Exploit development
 
-Confirmed requires:
+For a demonstrated exploit effect, preserve:
 
-- controlled crash, primitive, leak, auth bypass, or code execution reproduced from a clean run
-- exact input, offsets, environment, and target build captured
+- evidence of the claimed crash, primitive, leak, auth bypass, or code execution
+- triggering input, initial state, environment, target build, and offsets where needed to reproduce that effect
 - negative control when false positives are plausible
 
-Downgrade when:
+Name the demonstrated effect: a crash is not code execution, and one successful run does not establish exploit reliability.
+
+Narrow exploitability, portability, or reliability claims when:
 
 - exploit only works under debugger without explanation
 - ASLR/PIE/canary state is assumed, not measured
@@ -33,30 +37,26 @@ Downgrade when:
 
 ## Credential and secret validation
 
-Confirmed requires:
+Separate presence, validity, and privileges:
 
-- authorized, read-only authentication check where possible
-- target/service identifier and timestamp/context
-- clear distinction between valid, invalid, expired, and unknown
+- An inspected artifact can establish that it contains secret material; a regex match alone establishes only a candidate.
+- Current credential validity requires an authorized service-specific check, preferably read-only, with the service and timestamp recorded. Distinguish accepted, rejected, expired, and inconclusive according to the response semantics.
+- Successful authentication does not establish unchecked permissions or access to other services.
 
-Downgrade when:
-
-- only regex pattern match exists
-- API returned rate-limit or network error
-- account scope/privileges were not checked
+Rate limits, transport errors, or ambiguous denials do not establish invalid credentials. Report validity as unknown when testing is unavailable; do not expand scope to resolve it.
 
 ## Malware and reverse engineering
 
-Confirmed requires:
+Match the claim to the analysis:
 
-- static evidence tied to function/address/string/resource and behavior hypothesis
-- dynamic trace or emulation when claiming runtime behavior
-- sample hash and tooling/version notes for repeatability
+- Tie static conclusions to inspected code/data locations and explicit execution conditions; strings alone do not establish a capability or reachable path.
+- Claims of observed execution require a trace or experiment from the relevant sample and environment. Code can establish conditional behavior without proving that it ran on a target.
+- Preserve sample hash and relevant tooling/version notes for repeatability.
 
 Downgrade when:
 
-- strings imply capability but no code path is found
 - sandbox output is incomplete or anti-analysis may have altered behavior
+- emulated or sandbox behavior is generalized to an unexamined target
 
 ## Forensics and OSINT
 
@@ -64,11 +64,11 @@ Confirmed requires:
 
 - source URL, acquisition time, hash/screenshot/archive when relevant
 - chain of custody for local artifacts
-- correlation across independent sources for identity or attribution claims
+- evidence linking the specific identity or actor to the artifact/activity; independent corroboration when the linkage is ambiguous
 
 Downgrade when:
 
-- evidence is user-generated and mutable
+- provenance is unclear or mutable content was not captured
 - identity linkage is based on a single weak signal
 - timestamps/time zones are ambiguous
 
@@ -76,16 +76,15 @@ Downgrade when:
 
 Confirmed requires:
 
-- primary artifact inspected with its relevant state and provenance — the model/subagent summary alone is not evidence; a new context alone does not invalidate recorded evidence
-- exact quote/path/offset the model cited, verified to exist and match
-- for delegated work: inspection of diff/artifacts, not the worker's summary
+- cited material inspected in context and supporting the claimed conclusion; verify exact text/bytes for literal quotes, hashes, or byte-level claims, and meaning for paraphrases
+- for delegated findings: inspect the relevant diff/artifacts and check results; use `verification-before-completion` for completion claims
 
 Downgrade when:
 
-- claim rests on paraphrased tool output or a subagent's conclusion
-- cited file/line/CVE/function was not opened and matched byte-for-byte
+- claim rests only on a summary without checking the underlying material
+- cited file/line/CVE/function cannot be located or does not support the claim
 - a screenshot omits the context needed for a text/log claim (inspect the original when available)
-- model output contradicts a fresh command run
+- model output conflicts with applicable primary evidence
 
 ## Cleanup and remediation
 
@@ -93,9 +92,9 @@ Confirmed requires:
 
 - post-action verification from the target state, not just a successful command exit
 - logs/artifacts showing removal, patch application, or control effectiveness
-- rollback notes if the action changed state
+- observed restoration when claiming a rollback succeeded; rollback notes alone do not establish it
 
 Downgrade when:
 
 - verification only checked the local tool state
-- failure paths were not tested
+- unchecked persistence locations, failure paths, or target instances are included in a broad cleanup claim

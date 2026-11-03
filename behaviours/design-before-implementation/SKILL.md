@@ -1,11 +1,11 @@
 ---
 name: design-before-implementation
-description: "Resolve design uncertainty before a substantial change. Use when requirements, interfaces, alternatives, or success criteria are unclear; skip a separate design phase for an already specified local fix."
+description: "Clarify and review designs before substantial changes. Use when requirements, interfaces, alternatives, or success criteria are unclear; skip a separate design phase for an already specified local fix."
 license: MIT
 compatibility: "Agent workflow guidance for coding, skill curation, and authorized security work."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Design Before Implementation
@@ -27,4 +27,6 @@ An implementation request can already authorize routine design decisions and rev
 
 For a substantial design, summarize the outcome, approach, interfaces/artifacts, validation, and unresolved decisions. Omit empty sections. A short explanation may suffice for a local change.
 
-Load [references/design-gates.md](references/design-gates.md) when reviewing a substantial design or resolving contradictory requirements. Use `implementation-planning` when dependencies or a handoff warrant an executable plan.
+Load [references/design-gates.md](references/design-gates.md) when reviewing a substantial design, testing its clarity with an independent reader, or resolving contradictory requirements.
+
+Use `software-architecture` for module boundaries, public contracts, state ownership, and failure tradeoffs; `implementation-planning` when dependencies or a handoff warrant an executable plan; and `verification-before-completion` when reconciling delivered behavior with the design.

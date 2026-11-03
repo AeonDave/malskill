@@ -1,10 +1,15 @@
 # MCP Server Validation Checklist
 
+Select checks for the implemented features, supported revision, and claimed deployment. A local read-only server does not need Tasks, Apps, multi-tenant storage, horizontal scaling, or publication machinery to pass this checklist. For older revisions, use their specification rather than applying the `2026-07-28` wire assertions below.
+
+Test domain logic directly, then cross the real transport with an independent client. Use [local-integration.md](local-integration.md) for host launch and environment failures. SDK-managed behavior must be checked on emitted messages; source-string presence is insufficient.
+
 ## Contents
 
 - [Documentation and spec-claim validation](#documentation-and-spec-claim-validation)
 - [Protocol and discovery tests](#protocol-and-discovery-tests)
 - [Tool, result, schema, and list tests](#tool-result-schema-and-list-tests)
+- [Resource, prompt, and host tests](#resource-prompt-and-host-tests)
 - [Streamable HTTP tests](#streamable-http-tests)
 - [MRTR tests](#mrtr-tests)
 - [Tasks extension tests](#tasks-extension-tests)
@@ -59,6 +64,7 @@ Status: MCP Core 2026-07-28 plus Custom Application Pattern catalog behavior
 - Verify `run_tool` applies the internal operation's policy, risk class, and schema.
 - Verify deterministic tool, prompt, resource, template, and catalog ordering.
 - Verify `ttlMs` and `cacheScope` are present and semantically correct on cacheable results.
+- Verify the [cache eligibility rules](protocol-v2.md#cacheable-discovery-lists-and-reads): discovery is covered, interim MRTR results have no hints, and MRTR retries are not cached. Separate private responses for different access tokens.
 - Compare public/private responses under anonymous, authorized, cross-tenant, revoked, and changed-scope contexts.
 - Verify cache keys vary by authorization, protocol revision, and extension settings.
 - Exercise default JSON Schema 2020-12 features and supported explicit dialects.
@@ -69,6 +75,15 @@ Status: MCP Core 2026-07-28 plus Custom Application Pattern catalog behavior
 - Exercise object, array, scalar, boolean, and null structured content where declared.
 - Verify JSON-RPC/protocol errors are distinct from completed tool results with `isError: true`.
 - Verify successful tool results use `resultType: "complete"`.
+
+## Resource, prompt, and host tests
+
+- List and read static/template resources; validate URI parameters, MIME/content encoding, unknown IDs, denied access, and output bounds.
+- Exercise pagination without losing authorization context; confirm resource links are retrievable even when absent from the static listing.
+- List and retrieve prompts with valid, missing, and invalid arguments. Verify message content and authorized resource inclusion; retrieving a template must not execute its proposed side effects.
+- Test the actual host's resource/prompt exposure and required tool-only fallback. Do not infer host behavior from Inspector success.
+- Verify server instructions describe cross-feature constraints without replacing server-side enforcement.
+- Launch from a different working directory with the intended environment; check stderr, clean stdout, shutdown, and cleanup. Treat a launch-only probe as launch evidence, not an MCP interoperability check.
 
 ## Streamable HTTP tests
 
@@ -118,10 +133,11 @@ Status: Official MCP Extension — `io.modelcontextprotocol/tasks`
 - Include Tasks in current request capabilities and verify the server may return either the normal result or `resultType: "task"`.
 - Omit Tasks from current request capabilities and assert the server never returns a task.
 - Persist the task durably before the Task handle response.
-- Verify unique, non-enumerable `taskId`, `ttlMs`, and `pollIntervalMs`.
-- Poll with `tasks/get` and respect the suggested interval.
+- Verify unique, non-enumerable `taskId` and the declared `ttlMs` retention contract; `pollIntervalMs` is optional.
+- Poll with `tasks/get`; respect a supplied interval and test the bounded fallback when absent.
 - Exercise `working`, `input_required`, `completed`, `failed`, and `cancelled`.
 - Submit accepted, declined, malformed, duplicate, unknown, and late input through `tasks/update`.
+- Assert unknown and already-satisfied input keys are ignored, as required by the Tasks contract; malformed supported input still follows its declared validation rules.
 - Request cancellation with `tasks/cancel`; test honored and not-honored behavior.
 - Verify cooperative acknowledgment is not treated as proof of worker termination.
 - Assert `completed`, `failed`, and `cancelled` never transition.
@@ -273,4 +289,4 @@ Document and verify:
 - when publishing to the [official Registry](https://modelcontextprotocol.io/registry/about): `server.json`, owned namespace/name, package identity, version, transport, and install metadata; keep private-server data and artifacts out of the public metadata registry;
 - known limitations as explicit unsupported cases.
 
-Do not claim readiness until unit, integration, transport, security, cleanup, restart, horizontal-handling, and publication checks pass in the real deployment shape.
+Report the checks run, SDK/client versions, transports, and remaining unsupported or untested targets. Claim readiness only for the features and deployment shape exercised; run publication checks only when distributing.
