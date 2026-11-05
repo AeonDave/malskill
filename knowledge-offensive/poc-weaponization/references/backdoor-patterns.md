@@ -7,7 +7,7 @@ Trace behavior and record file paths or symbols as evidence. Indicators trigger 
 ## Source and build chain
 
 - Compare the artifact with the claimed upstream revision and release. Note forks, unexplained changes, generated files, submodules, or downloaded binaries that are absent from the reviewed source.
-- Inspect manifests, lockfiles, install/build hooks, shell scripts, containers, and CI workflows for undeclared downloads, mutable dependency sources, commands that run during setup, or access to secrets and tokens.
+- Inspect manifests, lockfiles, install/build hooks, shell scripts, containers, and CI workflows for undeclared downloads, mutable dependency sources, commands that run during setup, or access to secrets and tokens. Check resolved transitive packages and platform/optional branches for the proposed runtime; record uninspected artifacts instead of extending the top-level review verdict to them.
 - Check encoded or dynamically assembled content, reflection, dynamic imports/loading, and indirect command execution. Determine what is decoded or invoked from the data flow before classifying it.
 
 ## Runtime behavior
@@ -16,6 +16,7 @@ Trace behavior and record file paths or symbols as evidence. Indicators trigger 
 - Identify reads of credential stores, environment secrets, browser profiles, SSH keys, cloud credentials, and unrelated user files. Record the code path and whether the data is transmitted, logged, or retained.
 - Identify writes, deletion, service/task changes, startup hooks, privilege changes, and process injection. Decide whether each is necessary for the stated test and whether it can change the reviewed host or target.
 - Follow error handlers and cleanup paths. A benign-looking primary path can conceal side effects on failures, retries, or particular platform/version branches.
+- Trace how the artifact decides success: the assertion must distinguish the tested condition from its control. A hardcoded banner, generic HTTP status, timeout or swallowed exception cannot establish the claimed effect.
 
 ## Evidence and limits
 
@@ -23,3 +24,4 @@ Trace behavior and record file paths or symbols as evidence. Indicators trigger 
 - Treat an unexplained callback or sensitive-data access as a finding to explain, not a reason to run the artifact and observe what it does.
 - Hashes identify the reviewed bytes. Signatures and provenance can support origin and build claims when their trust roots and statements are verified; neither demonstrates that the artifact's behavior is benign.
 - State static-review coverage explicitly. Dynamic loading, opaque binaries, environment-specific branches, and unobserved dependencies can leave behavior unresolved.
+- Keep source-defined behavior separate from execution evidence: a CI file can define a hook without any supplied log showing that hook ran.

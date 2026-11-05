@@ -49,7 +49,7 @@ Prefer these tool families when the corresponding signal appears:
 - `aircrack-ng`
 - `kismet`
 - `coding/python-patterns`
-- `coding/systematic-debugging`
+- `coding-behaviours/systematic-debugging`
 
 Tool syntax belongs in the tool skills. This skill decides when a tool family fits and what output should validate progress.
 

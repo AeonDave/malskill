@@ -6,7 +6,7 @@ Use ASCII architecture only when a small text diagram helps readers understand a
 
 Include a compact ASCII diagram when:
 
-- the project has 3 or more meaningful components
+- the subject has multiple meaningful components
 - data or request flow matters
 - readers need a quick mental model before setup
 - the repository does not already have a better architecture image nearby
@@ -73,4 +73,4 @@ Source files -> Build step -> Output artifacts -> Deployment target
 If a diagram is useful but ASCII becomes messy:
 
 1. replace it with a short bullet list of components, or
-2. reference an image already present in the repository
+2. use a supported renderer diagram or a suitable accessible image

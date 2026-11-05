@@ -76,7 +76,7 @@ Choose by interaction model and host support, not solely by whether an operation
 - Use server instructions for cross-tool ordering, prerequisites, or capability-dependent fallbacks. Put per-operation meaning in the tool/resource description. Instructions do not enforce policy; reject forbidden operations in code.
 - Treat resource, prompt, and upstream content as untrusted task data; preserve the trust boundary in [security.md](security.md).
 
-Contracts: [Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources), [Prompts](https://modelcontextprotocol.io/specification/2026-07-28/server/prompts). For model-facing descriptions and generic schema design, use [tool-schema-design](../../tool-schema-design/SKILL.md).
+Contracts: [Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources), [Prompts](https://modelcontextprotocol.io/specification/2026-07-28/server/prompts). For callable operations, define the [tool contract and error layers](#tool-contracts-and-error-layers).
 
 ## Catalog pattern
 

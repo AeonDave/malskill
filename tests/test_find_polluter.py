@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "coding/testing-reliability/scripts/find_polluter.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "coding-behaviours/testing-reliability/scripts/find_polluter.py"
 
 
 class FindPolluterTests(unittest.TestCase):

@@ -4,12 +4,12 @@ description: "Create, audit, or streamline root and nested AGENTS.md files. Use 
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Agent MD Creator
 
-Produce repository instructions that let an agent complete the requested work using verified commands, local constraints, and clear completion criteria. Keep only guidance that changes a real decision or prevents a demonstrated mistake.
+Produce a durable compass for agents analyzing and working in the repository: where to begin, which project-specific constraints matter, and how to verify relevant work. Keep only guidance that changes a real decision or prevents a demonstrated mistake.
 
 ## Find the gap
 
@@ -35,6 +35,8 @@ Include only sections that have concrete content:
 - **Completion:** the required result and relevant evidence. Name checks that establish it; state when broader validation is necessary. Preserve required gates without demanding unrelated tests for every edit.
 - **Authorization:** retain real approval boundaries and current user decisions. Where useful, identify the already-authorized local work the agent should finish without another approval. Do not add blanket gates for research, debugging, dependencies, or routine edits.
 - **Routing:** only the paths that save repeated discovery, with explicit conditions for loading specialized docs. Omit file inventories and duplicated README content.
+
+Capture stable project orientation and operational decisions, not a technical diary of past changes, investigations, or temporary status. Link detailed commands and procedures in their maintained home with a task-specific trigger.
 
 Specify an exact sequence only when order prevents a concrete failure. Let the agent choose the route when several approaches satisfy the outcome. Examples must encode a verified local rule; do not import tool preferences, ignored warnings, or security choices from an unrelated project.
 

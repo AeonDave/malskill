@@ -20,7 +20,7 @@ Keep the requested outcome while changing approaches that no longer yield eviden
 - Record the failed approach, decisive error, and what the next attempt changes. Preserve useful partial results instead of restarting discovery.
 - Give side issues a budget proportionate to their role in the deliverable. Continue independent work when a dependency is unresolved.
 
-Use `hypothesis-driven` when the causal model is uncertain and `known-problem-hint-research` when a precise unresolved question would benefit from external evidence. Do not invent additional work simply to avoid reporting a limitation.
+Use `hypothesis-driven` when the causal model is uncertain and [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md) when external evidence could clarify an unfamiliar problem or reveal the next useful test. Do not invent additional work simply to avoid reporting a limitation.
 
 ## Persistence and stopping
 

@@ -4,30 +4,36 @@ description: "Design and evaluate application prompts that extract, triage, or r
 license: MIT
 metadata:
   author: AeonDave
-  version: "2.0"
+  version: "2.1"
 ---
 
 # Prompt Patterns for Security Artifacts
 
-Use for application prompts that turn security artifacts into structured findings, triage decisions, or reports. For agent definitions, use the matching agent or extension authoring skill; for tool input/output contracts, use `tool-schema-design`.
+Use for application prompts that turn security artifacts into structured findings, triage decisions, or reports. For agent definitions, use the matching agent or extension authoring skill; for MCP tool input/output contracts, use [mcp-creator](../../knowledge/mcp-creator/SKILL.md).
 
 ## Define the contract
 
 Specify the artifact types, task, intended reader, allowed outputs, and how the result will be checked. For extraction or triage, define fields such as:
 
 - artifact identifier and exact evidence locator;
+- asset and observation time or version where available, kept distinct across artifacts even when product names match;
 - observed text or value, separated from normalized interpretation;
 - applicability conditions, status, and confidence with a short evidence-based reason;
-- missing evidence, conflicts, and an explicit `inconclusive` or `not assessed` state;
+- per-artifact missing evidence and conflicts: mark absent task-required fields as `null` or `unknown` with a reason, separately from quoted observations; never borrow another artifact's value;
+- an explicit `inconclusive` or `not assessed` state for unsupported assessments;
 - report language that separates observation, source claim, and inference.
 
 Do not label a finding confirmed solely because a scanner, source, or model returned it. Treat absence of evidence as unknown unless the collection method and coverage support a negative result.
+
+Define separately an empty extraction from a successfully inspected artifact, missing or inaccessible input, and an inconclusive assessment. Do not equate any of them with a negative finding. Require evidence for negative conclusions and define the coverage needed to support them.
 
 ## Keep artifacts as data
 
 Security artifacts may contain attacker-controlled strings, embedded instructions, credentials, personal data, or malicious samples. Pass the minimum relevant excerpt with its source and locator; preserve it as data to classify or quote, not as instructions that can change the task. Use the repository's `untrusted-input-hygiene` guidance for broader input-boundary handling.
 
 Request only the context required for the task. Redact credentials, tokens, personal data, and unrelated host details before sending content to a model. Do not place secrets in examples, traces, or evaluation fixtures.
+
+After redaction or chunking, bind locators to the exact representation supplied to the model. Retain a protected mapping to the original artifact when later verification requires it; do not present transformed offsets as original offsets.
 
 Ask for concise evidence and a short rationale tied to cited fields. Do not request hidden chain-of-thought. If the artifact is malformed, incomplete, conflicting, or outside the defined scope, require the model to state that limitation rather than fill gaps.
 
@@ -54,17 +60,19 @@ Given `A1:12 product=gateway version=5.3` and `A1:13 request timed out`, the res
 
 Host validation must check that each artifact ID was supplied, line ranges exist, and quotes match those lines. Reject unknown fields and invalid enums. A valid locator proves the quoted text exists; assess whether it actually supports the conclusion separately. Keep refused, truncated, transport-failed, and validation-failed responses as distinct failures rather than retrying them into a positive finding.
 
+When supported by the model API, request schema-constrained output, but still validate the received response and handle refusal or incomplete output explicitly. A syntactically valid empty array establishes only that no items were returned; it does not establish that the artifact was complete or that nothing relevant exists.
+
 ## Evaluate before relying on the prompt
 
 Build a held-out fixture set from benign representative artifacts and boundary cases. Include incomplete records, conflicting sources, malformed inputs, unsupported claims, false positives, and artifacts that contain instruction-like text. These are data-boundary tests; they do not need production jailbreak instructions.
 
-Grade field accuracy, locator correctness, unsupported-claim rate, abstention on insufficient evidence, privacy leakage, and output validity. Compare against the previous prompt or a simple baseline on the same fixtures. Review failures and update the prompt, schema, or deterministic checks as appropriate. Keep examples small and representative; do not infer quality from prompt length or a single success.
+Grade required-field coverage and accuracy, locator correctness, unsupported-claim rate, abstention on insufficient evidence, privacy leakage, and output validity. Compare against the previous prompt or a simple baseline on the same fixtures. Review failures and update the prompt, schema, or deterministic checks as appropriate. Keep examples small and representative; do not infer quality from prompt length or a single success.
 
 Version prompts with their output schema and relevant parser. Record the model/runtime configuration used for an evaluation and rerun the affected fixtures when either changes. Report the tested fixture scope and known limitations rather than claiming general reliability.
 
 ## Related skills
 
-- `tool-schema-design` — design the callable tool or machine-readable output contract.
+- [mcp-creator](../../knowledge/mcp-creator/SKILL.md) — design callable MCP tools; define application output schemas using the contract and validation guidance above.
 - `untrusted-input-hygiene` — handle retrieved and user-supplied content as untrusted data.
 - `evidence-before-claims` — qualify findings against their supporting evidence.
 - Agent or extension authoring skills — use when the prompt defines an agent rather than an application task.

@@ -4,9 +4,9 @@ Load when collecting remote evidence or deciding how to preserve it. Tool names 
 
 ## Choose the least intrusive method that answers the question
 
-1. Use an available search tool to locate candidate sources; record the exact query and any time/domain filters that affect coverage.
+1. Read a supplied source or known canonical record directly. Use available connected sources or search tools for unresolved gaps; record queries and time/domain filters that affect coverage.
 2. Fetch the primary source directly when an available tool can return the needed content. Use extraction or browser rendering only when the first method omits material evidence.
-3. Stop when additional retrieval will not change the decision, or when the source is inaccessible, outside scope, or would cross the engagement's traffic boundary. Report the gap.
+3. Stop pursuing a source when it is inaccessible after useful alternate methods, outside scope, or would cross the engagement's traffic boundary. Continue other relevant sources; stop the investigation when further retrieval is unlikely to change the decision or its limit is reached. Report the remaining gap.
 
 Do not assume that a reader proxy, search cache, browser, or MCP endpoint is installed, unauthenticated, complete, or passive. Verify the active tool contract and whether it contacts the assessment target. Do not copy example parameters from another provider's documentation into the active tool call.
 
@@ -29,7 +29,7 @@ excerpt:
 limitations:
 ```
 
-Use SHA-256 or another explicitly named digest for a retained file. Hash the bytes actually analyzed; if content is transformed or cleaned, preserve the original hash and identify the transformation. A hash supports integrity checks for the retained copy; it does not establish who published the source or whether the source is true.
+Use SHA-256 or another explicitly named digest for a retained evidence file. Hash the bytes actually analyzed. If content is transformed or cleaned, identify the transformation and preserve the original hash when those bytes are available; an extraction tool's text is not the original HTTP response. State when original bytes were unavailable. A hash supports integrity checks for that representation, not publisher identity or truth.
 
 Keep a claim-to-source relation rather than an undifferentiated URL list. Mark derivative reports that rely on the same advisory, researcher, or incident report so repetition is not mistaken for independent confirmation. Save only the relevant excerpt and necessary locator; redact secrets and personal data.
 

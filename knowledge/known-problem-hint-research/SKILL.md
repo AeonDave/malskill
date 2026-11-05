@@ -1,151 +1,49 @@
 ---
 name: known-problem-hint-research
-description: "Research a precise unresolved technical symptom after local triage. Use when a known signature, version, or artifact needs an external source to resolve the remaining uncertainty."
+description: "Find a useful research lead when a technical task is stuck, unfamiliar, or has no clear next step. Use for unexplained errors, failed approaches, missing techniques, and uncertainty that docs, issues, papers, or prior work could resolve."
 license: MIT
-compatibility: "AgentSkills-compatible agents with web search/fetch access; uses fetch_content, Tavily when available, and Jina Reader/Search endpoints."
+compatibility: "Uses available source repositories, documentation, search, extraction, or browser tools; external research requires access to those sources."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Known Problem Hint Research
 
-Goal: find the **one missing external hint** for a problem the agent has already triaged locally.
+Use research to turn uncertainty into a concrete next test. Start as soon as an external fact or unfamiliar technique could unblock the task; do not wait for repeated failures, a named attack, a complete fingerprint, or a fixed number of local hypotheses.
 
-This is not broad deep research. It is a narrow, evidence-led spike: paper, blog, article, public writeup, issue, or source discussion that gives the next concrete local test.
+## Identify the missing clue
 
-## Activation gate
+Use the available artifact, error, trace, equation, API, version or observed behavior. Inspect enough local context to avoid searching a misread symptom. Separate observations from guesses and note relevant attempts already made; unknown fields can stay unknown.
 
-Use this skill only after local work has produced a specific problem signature:
+State the question that would change the next action: what the behavior means, which precondition is missing, whether a known issue matches, or which technique can test the clue. If classification is the blocker, research to identify the problem family first. Define a discriminating check when one becomes possible.
 
-- artifact, primitive, or subsystem is identified
-- constraints and observable symptoms are known
-- at least two plausible local hypotheses were tested or rejected
-- a success oracle is defined: recovered key, plaintext, proof, exploit condition, decoded output, or reproduced behavior
+Use [systematic-debugging](../../coding-behaviours/systematic-debugging/SKILL.md) for the local root-cause process. Use [deep-research-generic](../deep-research-generic/SKILL.md) for a broader investigation or comparison. A routine edit with a known solution does not need a research detour.
 
-Do not use it at the beginning of a task, for generic learning, or to search a whole topic. If the problem is not fingerprinted yet, return to local triage or the relevant domain methodology first.
+## Search where the answer is likely to live
 
-## Input bundle to prepare
+1. Check relevant supplied/local docs and available connected sources. For version-specific behavior, search upstream documentation, code, issues, commits and release notes. For a missing construction or bound, seek the original paper, specification or implementation. Technical discussions and writeups can supply leads; follow their evidence.
+2. Build focused queries from distinctive observations. Start with the exact error or symbol plus product/version when known, then try the underlying behavior, synonyms or a suspected mechanism. Do not require the user to know the technical name before research can begin.
+3. Choose an available search provider or site-native search. Tavily is an option when exposed; inspect its current schema. Use supported domain/date filters only when helpful. If results are empty, remove accidental constraints or switch source families instead of repeating the query. Strip secrets and irrelevant private identifiers before sending a query externally.
+4. Read the promising source through a connector, fetch or extraction tool; use browser automation when relevant content is missing or interactive. Check full context, affected version and preconditions. Generated summaries and search snippets alone do not establish the hint.
+5. Follow citations, issue links or fixing commits while they resolve the specific uncertainty. Stop collecting sources once there is a sufficiently grounded next experiment. Avoid a site-wide crawl or literature survey for one blocker.
 
-Before searching, write a compact fingerprint:
+Choose sources by their fit to the problem. A paper is not automatically better evidence than the actual implementation for an API behavior. Old mathematics can remain relevant; old workaround instructions may not fit the installed version. Agreement between copied posts is not independent confirmation.
 
-```text
-Problem shape: crypto primitive / parser / protocol / model / binary / API / build error / runtime behavior / vulnerability class / spec mismatch
-Observed anomaly: exact structural clue, error, equation, parameter relation, or trace
-Known constraints: sizes, versions, bounds, or oracle behavior
-Local attempts: what was tried and why it failed
-Success oracle: what would prove the hint works
-Forbidden broad terms: generic topic words to avoid
-```
+## Turn the hint into progress
 
-The fingerprint is the guardrail that keeps the search sharp.
+Map the source's condition to the local observation, including mismatches and missing prerequisites. Distinguish **source says** from **working inference**. Choose the smallest test whose result would support or reject that inference.
 
-## Search ladder
+When the current task authorizes it and the environment supports it, perform that test and continue the task; do not stop after handing back links or an offer to investigate. A matching error or public solution is a lead until the local result confirms applicability. Inspect external code before using it; load [untrusted-input-hygiene](../../behaviours/untrusted-input-hygiene/SKILL.md) when source content tries to direct unrelated actions.
 
-### 1. Generate a small set of precise queries
+If the test fails, record what it ruled out and use the new observation to choose the next source or local probe. If useful sources are exhausted or unavailable, state the access/evidence gap and the best concrete next check. Do not invent a known solution or search indefinitely.
 
-Derive queries from the fingerprint, not from the whole user prompt.
+## Report briefly
 
-Good query ingredients:
+Give the useful idea, why it fits, its source link or artifact locator, the test performed and result, and the next action if unresolved. Include rejected lookalikes only when they prevent repeated work. One decisive source can be enough; multiple weak links do not make a strong hint. Label an untested idea as such.
 
-- exact attack family or suspected theorem
-- distinctive parameter relationship
-- short error message or implementation phrase
-- source-type term such as `paper`, `implementation`, `issue`, `commit`, `patch`, `spec`, `writeup`, `blog`, or `discussion`
+## Load when needed
 
-Bad query ingredients:
-
-- broad category names alone
-- full task titles or project branding without the technical clue
-- vague phrases like `how to solve crypto problem`
-- every parameter pasted blindly into search
-
-### 2. Discover candidate URLs
-
-Use whichever discovery tools are available in the active host:
-
-1. A native search tool, including Tavily when available, with one narrow query at a time.
-2. Direct site-native search or ordinary web search for gaps.
-
-Do not assume Jina, Tavily, a particular endpoint, or a provider-specific score field exists.
-
-Do not accept Tavily's synthesis as final evidence. Treat it as URL discovery and claim triage, then fetch primary pages.
-
-### 3. Fetch only promising pages
-
-For each candidate URL, use the smallest reliable fetch path:
-
-1. An available direct page fetch for the source's canonical URL.
-2. An available reader or extraction tool when direct content is incomplete.
-3. Browser automation only if the source is highly relevant and available fetches fail.
-
-Stop when the next page is unlikely to change the hint, or when a deliberately chosen page budget is reached.
-
-### 4. One-hop recursion only
-
-Follow outbound links only when they are directly relevant:
-
-- paper cited by a blog
-- code repo linked by a writeup
-- discussion explaining a parameter condition
-- original advisory, spec, or implementation note
-
-Do not crawl a site. This skill is a spear, not a fishing net.
-
-## Source priority
-
-Prefer sources in this order:
-
-1. Peer-reviewed or preprint papers with exact theorem/attack match
-2. Original implementation, upstream issue, commit, or documentation
-3. Detailed technical blog/article with reproducible method
-4. Public solution notes or lab writeups that explain the transferable trick without unsupported hand-waving
-5. Forum/Q&A discussion with concrete equations, code, or citations
-
-Source age matters less than applicability for old math, but version-specific implementation behavior must be current.
-
-## Hint packet output
-
-Return a short packet, not a literature review:
-
-```markdown
-## Hint packet
-
-- **Likely missing idea**: one sentence
-- **Why it fits**: map source clue to local fingerprint
-- **Source trail**: 2-5 URLs with source type and confidence
-- **Next local test**: exact experiment, script, equation, or command to try
-- **Stop condition**: what result confirms or kills this hint
-- **What not to chase**: sources/ideas that looked similar but do not fit
-```
-
-If no strong source appears, say so and return to local triage. Do not keep searching just because the wall is annoying.
-
-## Quality rules
-
-- Every proposed hint must cite at least one fetched source URL.
-- Separate "source says" from "agent infers".
-- Do not outsource reasoning: use external material to choose the next local test, then validate locally.
-- Prefer technical fingerprints over exact task titles to avoid spoiler-only searches.
-- If a public writeup is used, extract the transferable technique, not site-specific narrative.
-- Do not claim a known solution until the local success oracle passes.
-
-## Domain add-ons
-
-Load `references/source-filters.md` when the next question is **where** to search: papers, standards, issue trackers, source-code discussions, security blogs, Q&A, or public writeups.
-
-Load `references/exploit-hint-recipes.md` when the fingerprint is exploit- or vulnerability-shaped and version matters: affected product/version, fixed release, changelog, public patch diff, advisory, bug description, PoC, or reproduction constraint.
-
-Load `references/crypto-query-recipes.md` only when the fingerprint is cryptographic or math-heavy and the local primitive is already classified, such as:
-
-- suspicious RSA parameter relation but no selected attack
-- ECC nonce/curve/order clue that resembles a named paper
-- PRNG outputs that look like a known truncated-state recovery pattern
-- lattice/Coppersmith setup that needs the right bound or construction
-- oracle behavior that matches a known padding/timing/signature case
-
-## Resources
-
-- `references/source-filters.md` — targeted source families, site filters, and Jina/Tavily usage patterns for known-problem hint hunting.
-- `references/exploit-hint-recipes.md` — version-first exploit hint workflow covering changelogs, public diffs, advisories, PoCs, and reproduction constraints.
-- `references/crypto-query-recipes.md` — targeted query templates and source filters for crypto/math-heavy hint hunting.
+- [source-filters.md](references/source-filters.md): when choosing a source family or constructing a site-specific query is the blocker.
+- [exploit-hint-recipes.md](references/exploit-hint-recipes.md): when the clue involves a vulnerability, advisory, version lineage or public patch and its local applicability.
+- [crypto-query-recipes.md](references/crypto-query-recipes.md): when mathematical or cryptographic structure suggests a construction, bound, oracle or recovery technique, even if the attack name is unknown.

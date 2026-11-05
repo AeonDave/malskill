@@ -1,6 +1,6 @@
 # Crypto Hint Research Recipes
 
-Use these only after local analysis has classified the cryptographic primitive and collected concrete evidence. Each query should include one specific anomaly plus one source-type term.
+Use these when an equation, parameter relation, output pattern or oracle suggests a cryptographic or mathematical lead. If the primitive is unclear, search the observed structure to classify it first. These are query seeds, not proof that an attack applies: read the source's bounds and prerequisites before constructing a local test.
 
 ## Query construction pattern
 
@@ -12,7 +12,7 @@ Build each query from:
 
 Source-type terms: `paper`, `eprint`, `implementation`, `writeup`, `blog`, `discussion`, `github`, `sage`, `proof`, `bounds`.
 
-Prefer 3 to 5 narrow queries. If all fail, refine the fingerprint rather than widening to the whole category.
+Start with a focused query. If it fails, remove a speculative attack name or add a better structural clue; do not repeat an unproductive query or expand to the whole category without a specific question.
 
 ## Source filters
 
@@ -26,12 +26,7 @@ site:github.com {attack name} sage implementation
 site:github.io {attack name} writeup {primitive}
 ```
 
-For Jina Search, encode the query and optionally use supported site parameters when useful:
-
-```text
-https://s.jina.ai/{url-encoded-query}
-https://s.jina.ai/{url-encoded-query}?site=eprint.iacr.org&site=crypto.stackexchange.com
-```
+Use the active search tool's supported query and domain filters; do not assume a particular provider endpoint exists.
 
 ## RSA fingerprints
 
@@ -83,17 +78,20 @@ Turn local evidence into attack-shaped searches:
 | Local clue | Query seed |
 |---|---|
 | CBC valid/invalid padding signal | `CBC padding oracle attack implementation timing noise` |
-| PKCS#1 v1.5 validity oracle | `Bleichenbacher Manger RSA padding oracle implementation` |
+| RSAES-PKCS1-v1_5 conformity oracle | `Bleichenbacher RSA PKCS1 v1.5 padding oracle conditions` |
+| RSA-OAEP error distinguishes the leading zero octet | `Manger RSA OAEP leading byte oracle conditions` |
 | GCM nonce reuse | `AES GCM nonce reuse authentication key recovery implementation` |
 | CTR nonce reuse | `CTR nonce reuse many time pad recovery writeup` |
 | ECB chosen plaintext | `ECB byte at a time attack implementation` |
+
+The RSA oracle rows concern different encodings and signals; compare the observed errors with [RFC 8017, sections 7.1.2 and 7.2.2](https://www.rfc-editor.org/rfc/rfc8017.html). A generic decryption failure does not by itself establish either oracle.
 
 ## Stop rules
 
 Stop searching when one of these happens:
 
 - a source gives the exact missing construction and a local test can be run
-- two independent sources agree on the same attack condition
+- the applicability conditions are clear enough to test the local instance
 - every high-signal hit fails the local applicability check
 - the search drifts into broad category learning
 

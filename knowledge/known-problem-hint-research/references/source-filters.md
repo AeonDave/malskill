@@ -1,6 +1,6 @@
 # Targeted Source Filters
 
-Use this reference after the problem fingerprint exists and the next question is **where** a decisive hint is likely to live. Pick one or two lanes; do not sweep every site.
+Use this reference when choosing **where** a useful hint is likely to live. Start with the available clue, even if its technical name is unknown. Pick the most relevant lane; switch when its results do not resolve the question.
 
 ## Query shape
 
@@ -40,7 +40,7 @@ site:csrc.nist.gov {algorithm or standard} {mode or parameter}
 site:oasis-open.org {standard name} {field or behavior}
 ```
 
-Fetch the final spec first, then one-hop to errata, drafts, or implementation notes only if the mismatch remains unclear.
+Check the applicable specification version and relevant errata. Follow drafts or implementation notes when they address the unresolved behavior; do not substitute a draft for the version actually implemented.
 
 ## Source code, commits, and implementation discussions
 
@@ -57,7 +57,7 @@ site:mail.openjdk.org {class or JVM behavior} {exact phrase}
 site:oss-security.openwall.com {CVE or bug class} {project}
 ```
 
-When using GitHub native search, prefer focused scopes such as `repo:owner/name`, `in:issues`, `in:comments`, `in:commits`, or `path:`.
+For [GitHub issue/PR search](https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests), use `repo:owner/name`, `is:issue` or `is:pr`, and `in:title,body,comments` as needed. Select code or commit search separately and use that search type's supported qualifiers; issue-search syntax is not interchangeable with code-search syntax.
 
 ## Issue trackers and advisories
 
@@ -88,7 +88,7 @@ site:gist.github.com {CVE or exact bug phrase}
 site:github.com/projectdiscovery/nuclei-templates {CVE or product}
 ```
 
-Load `references/exploit-hint-recipes.md` for the full version/changelog/diff/PoC workflow.
+Load [exploit-hint-recipes.md](exploit-hint-recipes.md) when the clue needs version, changelog, patch or PoC applicability checks.
 
 ## Security research blogs and technical articles
 

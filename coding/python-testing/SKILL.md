@@ -34,7 +34,7 @@ High-signal guidance for writing tests that are **deterministic**, **readable**,
 ## Recommended triage workflow
 
 **For new code**:
-Use [test-driven-development](../test-driven-development/SKILL.md) when implementing test-first; it owns the loop and the entry points for existing code and refactors. Use this skill for pytest mechanics.
+Use [test-driven-development](../../coding-behaviours/test-driven-development/SKILL.md) when implementing test-first; it owns the loop and the entry points for existing code and refactors. Use this skill for pytest mechanics.
 
 **For flaky/failing tests**:
 1. Check for shared state (mocks, fixtures, filesystem).

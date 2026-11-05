@@ -35,7 +35,7 @@ Stdio limits network exposure but does not sandbox the executable. Restrict its 
 | Tools work but resources/prompts are absent | Server advertisement and listing versus the host's supported UI; do not assume automatic context loading |
 | Call hangs | Trace the request into the handler and upstream operation; inspect deadlines, blocking I/O, and unsupported client input |
 
-Use [systematic-debugging](../../../coding/systematic-debugging/SKILL.md) when the failure boundary remains unclear. Change one supported hypothesis at a time; do not repeatedly reinstall or migrate without evidence.
+Use [systematic-debugging](../../../coding-behaviours/systematic-debugging/SKILL.md) when the failure boundary remains unclear. Change one supported hypothesis at a time; do not repeatedly reinstall or migrate without evidence.
 
 ## Package only the requested deployment
 

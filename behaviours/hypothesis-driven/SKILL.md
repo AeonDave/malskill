@@ -135,4 +135,4 @@ Pair with:
 - `evidence-before-claims` before reporting a cause, vulnerability, or fix as confirmed.
 - `verification-before-completion` before claiming the investigation is done.
 - `design-before-implementation` when the diagnosis triggers a non-trivial change.
-- `known-problem-hint-research` when local hypotheses are exhausted and an external clue is needed.
+- [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md) when external evidence could identify or discriminate hypotheses, including when no useful hypothesis is available yet.

@@ -1,40 +1,42 @@
 ---
 name: readme-md-creator
-description: "Create, audit, or update a repository README. Use when setup, usage, project scope, or documentation links need to match the actual project."
+description: "Create, audit, or update a README for a repository, package, or document folder. Use when readers need accurate orientation, usage, or navigation."
 license: MIT
-compatibility: "Markdown; works for any repository with a README.md"
+compatibility: "Markdown; adapt features to the destination renderer"
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # README MD Creator
 
 Create or update `README.md` files that help a new reader answer three questions fast:
 
-1. What is this project?
-2. How do I run or use it?
+1. What is this project, package, or collection?
+2. How do I use or navigate it?
 3. Where do I go next?
 
 Optimize for scannability, correctness, and restraint.
 
 ## Workflow
 
-### 1. Inspect the real project before drafting
+### 1. Inspect the actual subject before drafting
 
 Before writing anything:
 
-- Read the repository root `README.md` if it exists.
-- Inspect the actual project structure, entry points, package manifests, scripts, and docs.
+- Read the relevant existing `README.md` if it exists.
+- Inspect the actual project, package, or folder and its relevant entry points, manifests, scripts, or documents.
 - Identify the likely primary audience: user, developer, contributor, operator, or mixed.
+- Identify the publication destination, renderer, and language from the request and project conventions; adapt presentation to the reader and host.
 - Extract only verified commands, paths, technologies, and links.
+- For a document collection, explain its purpose, contents, and reading path; include installation or execution only when applicable and verified.
 - If important details already live in dedicated files such as `docs/`, `CONTRIBUTING.md`, `LICENSE`, `SECURITY.md`, or `CHANGELOG.md`, link to them instead of duplicating them.
 
 Do not invent commands, features, badges, architecture, deployment targets, or screenshots.
 
 ### 2. Update or refine an existing README
 
-When the repository already has a `README.md`, treat the existing content as the starting point:
+When the target already has a `README.md`, treat the existing content as the starting point:
 
 - Preserve any verified content that is already clear and useful.
 - Improve structure, wording, or order before replacing entire sections.
@@ -78,7 +80,7 @@ If the README is getting long, trim it and push detail into dedicated docs.
 
 ### 5. Write for scanning, not for applause
 
-The README must be written in English, concise, divided into short sections with descriptive headings, free of repetition across sections, and specific rather than generic.
+Write in the requested language or the project's established language. Keep sections short, headings descriptive, content specific, and presentation visually coherent with the project.
 
 Prefer:
 
@@ -86,13 +88,14 @@ Prefer:
 - bullets for features, prerequisites, and choices
 - numbered steps for setup flows
 - small code blocks only for copy-paste-ready commands
-- relative links for repository files
+- relative links for local files when supported by the destination
 
 Avoid:
 
 - long walls of prose
 - repeating the same value proposition in the header, overview, and features
 - giant badge farms, marketing filler, and to-do dumps
+- changelog entries and exhaustive inventories of features, files, or commands
 
 Write features as concrete outcomes, not technology lists:
 
@@ -106,7 +109,7 @@ Write getting-started steps as imperative copy-paste commands:
 
 ### 6. Structure by project type
 
-Tailor the README to the repository shape.
+Tailor the README to its subject.
 
 #### Libraries and SDKs
 
@@ -124,6 +127,10 @@ Prioritize: what the app does, architecture only if it helps understanding, prer
 
 Prioritize: workspace purpose, high-level directory map, how to choose or run a package/sample, links to per-package docs.
 
+#### Document folders
+
+Prioritize: collection purpose and audience, how to select or read the key documents, and links to them.
+
 ### 7. Add diagrams only when justified
 
 Add architecture only when the system has multiple meaningful parts, non-obvious flow, or integration boundaries that are easier to grasp visually.
@@ -131,8 +138,7 @@ Add architecture only when the system has multiple meaningful parts, non-obvious
 Decision order:
 
 1. No diagram if the architecture is trivial.
-2. Small ASCII diagram if a simple text block explains the flow clearly.
-3. Linked image if the architecture is too complex for compact ASCII.
+2. Choose a compact diagram or image that fits the destination and clarifies the flow. Use a text diagram when portability or plain-text reading matters; use renderer-supported diagrams or an accessible image when they communicate better.
 
 ASCII diagrams must be narrow (~80–100 chars), focused on one flow, accompanied by a short explanation, and based on verified components.
 
@@ -140,9 +146,9 @@ Do not add decorative ASCII art or massive pseudo-enterprise diagrams.
 
 If you need examples or decision rules, load [`./references/ascii-architecture.md`](./references/ascii-architecture.md).
 
-### 8. Use GitHub Markdown features with restraint
+### 8. Match the destination
 
-Use GitHub Flavored Markdown.
+Use Markdown supported by the target renderer. For GitHub Markdown files, a [Mermaid diagram](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams), useful screenshot or logo, and brief alerts can improve comprehension when relevant. For plain-text readers or other hosts, use portable syntax or a readable fallback. Check rendering and links in the intended destination when practical.
 
 Allowed and useful: headings, bullets and numbered lists, fenced code blocks with language tags, relative links, tables only when they improve scanning.
 
@@ -156,13 +162,13 @@ For GitHub alerts / callouts:
 
 Before finishing, check:
 
-- Does the first screen explain what the project is?
-- Can a new reader find the fastest path to run or use it?
+- Does the first screen explain the subject and its purpose?
+- Can a new reader find the fastest path to use or navigate it?
 - Are all commands, filenames, and paths real?
 - Is each section distinct and non-redundant?
 - Is the README still reasonably short for the project size?
 - Are there any sections better replaced by a link?
-- Is the English clear, direct, and technical rather than promotional?
+- Is the language clear, direct, and appropriate for the audience?
 - If architecture is included, does it materially help understanding?
 - If this was an update, did you preserve the useful parts and improve the weak parts instead of blindly rewriting everything?
 

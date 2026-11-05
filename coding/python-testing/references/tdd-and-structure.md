@@ -2,7 +2,7 @@
 
 ## TDD (red → green → refactor)
 
-Load [test-driven-development](../../test-driven-development/SKILL.md) for the shared workflow, including existing implementations and behavior-preserving refactors. Keep pytest setup and organization here.
+Load [test-driven-development](../../../coding-behaviours/test-driven-development/SKILL.md) for the shared workflow, including existing implementations and behavior-preserving refactors. Keep pytest setup and organization here.
 
 ## Naming
 

@@ -4,7 +4,7 @@ description: "Review an existing public proof-of-concept artifact for provenance
 license: MIT
 metadata:
   author: malskill
-  version: "1.1"
+  version: "1.2"
 compatibility: "Static review needs local file access; artifact and source verification may need web access."
 ---
 
@@ -15,12 +15,12 @@ Review a PoC as untrusted code and produce a concrete assessment-preparation dec
 ## Review workflow
 
 1. Identify the exact artifact: canonical source URL, repository and immutable revision or release, file path, retrieval date, claimed CVE/product/version, and SHA-256 digest. If a trusted publisher provides a signature, verify it against a separately trusted key. A matching digest identifies bytes; a signature or provenance statement supports origin/integrity claims. Neither establishes that the code is safe. See [SLSA artifact verification](https://slsa.dev/spec/v1.2/verifying-artifacts) and [NIST SSDF](https://csrc.nist.gov/pubs/sp/800/218/final).
-2. Read source, build files, manifests, lockfiles, helper scripts, and workflow configuration before running anything. Check dependency names, versions, sources, lifecycle/build hooks, subprocesses, filesystem access, and network destinations. Do not install dependencies or invoke setup/build hooks from the public artifact. Stop before execution if the code path needed for the check is opaque, downloads unreviewed code, requires credentials, or has unbounded or unexplained side effects. Record missing lockfiles, mutable references, hidden downloads, or dependencies that cannot be independently identified.
+2. Inspect the intended entry point and relevant source, build files, manifests, lockfiles, helpers and workflow configuration without invoking them. Distinguish declared dependencies from the exact artifacts resolved for the intended runtime/platform, including transitive dependencies and install/build hooks. Record package source, immutable version/digest where available, unresolved ranges, platform-specific branches and uninspected artifacts. A pinned top-level package does not establish the full executed dependency graph. Do not install or invoke public setup/build hooks during static review; treat a needed but opaque execution path as unresolved coverage.
 3. Trace behavior from entry point through subprocess, filesystem, network, and privilege-sensitive operations. Load [PoC review indicators](references/backdoor-patterns.md) for the focused checklist. Distinguish observed code paths from suspicious names or patterns; static review cannot prove benign behavior, especially for opaque binaries, dynamic loading, and behavior dependent on runtime inputs.
 4. Compare the artifact's claimed target and conditions with the authoritative vendor/CNA record and local asset evidence. A public PoC's existence or apparent success message does not establish that the assessed product is vulnerable.
 5. Decide whether a check is useful and bounded. A reviewed, non-destructive diagnostic path may be adapted for portability, bytes handling, library contracts, timeouts, or bounded input validation. Keep the original artifact unchanged; record the adapted file's separate digest and exact changes. Do not construct exploit payloads or add command execution, callbacks, data collection, persistence, or unrelated network access. When adapting would cross these limits, use a separate harmless fixture or vendor-supported check instead.
-6. Execute only the reviewed non-destructive check or separate fixture in a disposable isolated environment with synthetic data, no credentials, no production connectivity, and no route to unrelated hosts. Before running it, record expected observations, a negative/control case, input and time bounds, side effects to monitor, stop conditions, and cleanup. Do not run unreviewed installers, hooks, opaque or unsafe code paths. Stop immediately if observed behavior differs from the declared check, exceeds bounds, or touches undeclared resources.
-7. Report one disposition: `reviewed-static`, `check-confirmed`, `suspicious`, or `insufficient-evidence`. Include expected versus observed results and interpretation limits. A negative result, timeout, unreachable service, or blocked request does not prove that the software is unaffected or the artifact is safe; it may reflect a control, environment mismatch, or a test that did not reach the relevant condition.
+6. When execution is part of the requested work, run only the reviewed non-destructive check or separate fixture in a disposable isolated environment with synthetic data, no credentials, no production connectivity, and no route to unrelated hosts. Before running it, record expected observations, positive and negative/control cases, input and time bounds, side effects to monitor, stop conditions, and cleanup. Do not run unreviewed installers, hooks, opaque or unsafe code paths. Stop if observed behavior differs from the declared check, exceeds bounds, or touches undeclared resources. Record which runtime paths actually ran; a workflow file or hook definition does not establish execution.
+7. Report review stage separately from concerns: `static-only`, `check-planned`, or `check-run`; then describe suspicious behavior, unresolved coverage and the check's result. Call a bounded diagnostic confirmed only when its expected observation and relevant controls support that conclusion. A success banner or a positive result also returned for the negative control is not discriminating evidence. A negative result, timeout, unreachable service or blocked request does not prove the software unaffected or artifact safe. A static review can both identify suspicious behavior and leave other paths unresolved.
 
 ## Review record
 
@@ -31,14 +31,15 @@ Review a PoC as untrusted code and produce a concrete assessment-preparation dec
 - **Inspected:** source files, manifests, lockfiles, build/runtime paths
 - **Observed:** file, process, network, privilege, and data handling behavior
 - **Adaptation:** separate path and digest; exact portability/diagnostic changes, if used
-- **Check:** expected observation and control; observed result; stop/cleanup outcome
-- **Disposition:** reviewed-static | check-confirmed | suspicious | insufficient-evidence
+- **Check:** expected observation and controls; observed result and executed paths; stop/cleanup outcome
+- **Stage:** static-only | check-planned | check-run
+- **Decision:** suitability for the proposed check, suspicious behavior, unresolved coverage, and next action
 - **Interpretation:** what the result supports and what it does not establish
 - **Limitations:** binaries, dynamic behavior, missing dependencies, or untested paths
 ```
 
 ## Limits
 
-- A hash proves byte identity only when compared with a trusted expected digest. A valid signature binds an artifact to a signing key; trust in the key and the signer remains a separate question.
+- A recorded hash fingerprints the reviewed bytes; comparison with a trusted expected digest checks identity against that reference. A valid signature binds an artifact to a signing key; trust in the key and signer remains a separate question.
 - Dependency metadata, SBOMs, signatures, sandbox runs, and static scans each cover different evidence. None alone proves all code paths benign or predicts behavior in every runtime environment.
 - Preserve suspicious artifacts and notes for analysis; do not publish or redistribute them as executable assessment tooling.
