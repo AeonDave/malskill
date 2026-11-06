@@ -24,7 +24,7 @@ Goal: identify, capture, and exploit wireless network credentials or gain direct
 ## Boundary with other skills
 
 - **Handshake / PMKID cracking**: captured material → `cracking-technique` (hashcat mode 2500/22000/16800).
-- **Post-network-access**: use `recon-technique` + `vuln-search-technique` once on network.
+- **Post-network-access**: use `recon-technique` for the service inventory, then [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) for vulnerability hypotheses and validation.
 - **PCAP analysis**: traffic captured during or after attack → `forensic-technique` §3 (PCAP/network forensics) or `network-technique` §Case B.
 - **BLE protocol RE**: deep protocol analysis → `reversing-technique` §6 (protocol reversing).
 

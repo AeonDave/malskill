@@ -39,7 +39,7 @@ Load these only when they directly serve the active security task.
 | [`coding/`](CATALOG.md#coding---language-patterns-and-tooling) | Idiomatic patterns, testing, and performance for security-tooling languages |
 | [`coding-behaviours/`](CATALOG.md#coding-behaviours---engineering-discipline-skills) | Architecture, scoped edits, TDD, testing reliability, systematic debugging |
 | [`knowledge/`](CATALOG.md#knowledge---research-and-meta-skills) | Skill authoring, research helpers, doc automation |
-| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research, CVE inventory, assessment evidence, PoC review, security prompts, multi-agent coordination |
+| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research and assessment coverage, CVE inventory, PoC review, security prompts, multi-agent coordination |
 | [`harness-dev/`](CATALOG.md#harness-dev---agent-harness-development) | Vendor-specific agent and extension authoring |
 | [`behaviours/`](CATALOG.md#behaviours---cognitive-discipline-skills) | Cross-cutting operating stances: evidence gates, loop control, input hygiene |
 | [`ai/`](CATALOG.md#ai---ai-framework-skills) | ML framework patterns for security models and adversarial workflows |
@@ -83,6 +83,8 @@ cp -r offensive-tools/windows/mimikatz ~/.agents/skills/
 The interactive selector uses arrow keys to navigate, Space to (de)select, `A` for the whole subtree, `C` to continue, and `Q`/`Esc` to cancel; `[x]` is fully selected and `[.]` partially. Local installers need Python 3.10+ with PyYAML and PowerShell 7 (`pwsh`).
 
 Skills are plain folders with no build step - copying one into your agent's skills directory activates it. Output **formats**: `folder` (directory), `.skill` (distributable zip), `zip`. Install **layouts**: `flat` (all under root) or `group` (preserve the category tree).
+
+To update installed skills, delete the old malskill folders from the agent's skills directory and reinstall the latest version.
 
 ---
 

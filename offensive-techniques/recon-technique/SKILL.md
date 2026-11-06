@@ -36,7 +36,7 @@ Before enumerating, classify the scope and decide whether passive or active coll
 - **First questions**: what assets are in scope, what can be learned passively first, and what entry-point clusters are most likely to justify active probing?
 - **Immediate actions**: define scope boundaries, run passive collection to build an initial asset map, then promote only the most promising clusters into active validation.
 - **Tool-family direction**: use passive discovery and enrichment first (`subfinder`, `amass`, `theharvester`, `asnmap`, `shodan`, `gau`), then active validation and fingerprinting (`dnsx`, `massdns`, `masscan`, `rustscan`, `nmap`, `httpx`, `eyewitness`, `feroxbuster`, `gobuster`, `katana`, `hakrawler`) once a target package exists.
-- **Escalation rule**: do not start vulnerability scanning until recon has produced a prioritized, validated target list.
+- **Escalation rule**: start a vulnerability check when the selected surface is identified and the check's prerequisites are known; keep unrelated inventory gaps explicit.
 
 ## Agent operating model
 
@@ -53,7 +53,7 @@ Loop:
 Exit when: attack surface is mapped well enough to produce a ranked target list.
 ```
 
-Do not move to vulnerability scanning before you have a clear service inventory and a prioritized entry point list.
+Before selecting a vulnerability check, identify the intended service or endpoint and prioritize the next security question. Resolve identity gaps that would make that check inconclusive.
 
 ---
 
@@ -226,10 +226,10 @@ Stay in passive when:
 ### Active recon → Vulnerability scanning
 
 Move when:
-- Service inventory per host is stable (port + version + web tech known).
-- At least 3-5 prioritized entry points are identified with specific rationale.
-- Content discovery on key web hosts is complete.
-- A target package is ready for vuln-search: exact asset, service, web metadata, auth boundary, candidate scanner, and priority rationale.
+- The chosen service or endpoint is identified well enough for a meaningful check; fingerprint uncertainty is recorded.
+- A prioritized entry point has a specific security question and rationale.
+- Relevant endpoint and authentication context is available; unrelated discovery can continue separately.
+- A target package is ready for vulnerability research: exact asset, relevant service/endpoint metadata, auth boundary, proposed check, priority rationale, and explicit unknowns.
 
 ---
 
@@ -259,7 +259,7 @@ Per high-priority target, specify:
 - Detected service version → relevant CVE search scope
 - Manual investigation areas (e.g., admin panel requires auth bypass testing, file upload requires extension bypass)
 
-Use `references/handoff-to-vuln-search.md` before switching to `vuln-search-technique`; it defines the minimum target package and stop conditions.
+Use [handoff-to-vuln-research.md](references/handoff-to-vuln-research.md) when handing an identified surface to [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md); it defines the target package and unresolved identity questions.
 
 ---
 
@@ -273,7 +273,7 @@ Use `references/handoff-to-vuln-search.md` before switching to `vuln-search-tech
 
 ## Anti-patterns
 
-- Starting vuln scanners before completing service inventory.
+- Scanning an unidentified surface or treating an uncertain fingerprint as established fact.
 - Running content discovery on the entire IP range (pick targets from fingerprinting first).
 - Treating Shodan results as ground truth without active confirmation.
 - Expanding scope during active phase without re-checking authorization.
@@ -286,4 +286,4 @@ Use `references/handoff-to-vuln-search.md` before switching to `vuln-search-tech
 - [references/active-recon.md](references/active-recon.md) — port sweep profiles, DNS brute-force and permutation commands, WAF detection, service enumeration patterns, HTTP fingerprinting workflow, content discovery strategy, URL/parameter harvesting.
 - [references/cloud-recon.md](references/cloud-recon.md) — cloud asset discovery for AWS/Azure/GCP: bucket enumeration, cloud subdomain patterns, metadata SSRF, multi-cloud tooling.
 - [references/api-recon.md](references/api-recon.md) — API inventory, trust-boundary labeling, auth-style mapping, parameter risk profiling, and prioritized test-matrix generation.
-- [references/handoff-to-vuln-search.md](references/handoff-to-vuln-search.md) — readiness gate and target package for scanner/manual vulnerability discovery.
+- [references/handoff-to-vuln-research.md](references/handoff-to-vuln-research.md) — target identity, observations, and open questions for vulnerability research.

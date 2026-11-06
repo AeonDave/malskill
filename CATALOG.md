@@ -45,7 +45,9 @@ About **how to perform a technique in general**, independent of one specific too
 
 Example: `offensive-tools/fuzzing/` gives tool-level guides (flags, command patterns), while `offensive-techniques/fuzzing-technique/` gives the methodology (harnessing mindset, corpus strategy, campaign design, validation logic). The two layers are complementary and intentionally separate.
 
-Covers active-directory, binary-exploitation, cicd, cloud-security, container, cracking, crypto, emulation, forensic, fuzzing, game, hardware, ics, llm, mobile, network, oracle-verification, osint, phishing, post-exploit, recon, report-generation, reversing, social-engineering, source-review, vibe-audit, vuln-exploit, vuln-search, web-exploit, and wireless.
+Covers active-directory, binary-exploitation, cicd, cloud-security, container, cracking, crypto, emulation, forensic, fuzzing, game, hardware, ics, llm, mobile, network, oracle-verification, osint, phishing, post-exploit, recon, report-generation, reversing, social-engineering, source-review, vibe-audit, vuln-exploit, web-exploit, and wireless.
+
+For vulnerability discovery, assessment coverage, and scanner-finding validation, use [vuln-research](knowledge-offensive/vuln-research/SKILL.md) in `knowledge-offensive/`.
 
 ## `offensive-roles/` - Supervisor and operator role skills
 
@@ -130,7 +132,7 @@ Research and development support for authorized security assessments. Use the na
 | Skill | Role |
 |-------|------|
 | `cve-search` | Build bounded vulnerability inventories with source coverage, package/build matching, and explicit unknowns |
-| [`vuln-research`](knowledge-offensive/vuln-research/SKILL.md) | Investigate bug-bounty leads, discover vulnerabilities, and validate root causes, patches, and variants |
+| [`vuln-research`](knowledge-offensive/vuln-research/SKILL.md) | Plan assessment coverage, validate scanner and bug-bounty leads, and investigate root causes, patches, and variants |
 | `deep-research-offensive` | Investigate security hypotheses, attack-path prerequisites, mitigation limits, and detection coverage |
 | `poc-weaponization` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
 | `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
@@ -146,8 +148,6 @@ Vendor-specific agent and extension authoring. Load the skill matching the host 
 | `opencode-agent-creator` | OpenCode agent definitions and delegation |
 | `opencode-plugin-creator` | OpenCode plugins, hooks, and custom tools |
 | `pi-extension-creator` | Pi extensions, tools, renderers, and packages |
-
-Delete the old malskill skill folders and reinstall the latest version.
 
 ## `behaviours/` - Cognitive discipline skills
 

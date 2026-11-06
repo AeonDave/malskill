@@ -34,7 +34,7 @@ Primary methodology to load:
 
 - `web-exploit-technique`
 - `llm-technique`
-- `vuln-search-technique`
+- [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) for vulnerability hypotheses and reproducible findings
 - `reversing-technique`
 - `python-patterns`
 - `python-testing`

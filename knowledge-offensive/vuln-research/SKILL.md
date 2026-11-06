@@ -1,10 +1,10 @@
 ---
 name: vuln-research
-description: "Discover and validate vulnerabilities in source code, binaries, firmware, and applications. Use for bug-bounty investigations, patch-diff and variant analysis, and turning suspicious behavior into a reproducible security finding."
+description: "Discover and validate vulnerabilities in applications, services, source code, binaries, and firmware. Use for assessment coverage and scanner-finding validation, bug-bounty investigations, patch-diff and variant analysis, and reproducible security findings."
 license: MIT
 metadata:
   author: AeonDave
-  version: "2.0"
+  version: "2.1"
 ---
 
 # Vulnerability Research
@@ -48,6 +48,7 @@ Keep **observed impact**, additional plausible impact, and untested prerequisite
 
 | Need | Load |
 |---|---|
+| Plan vulnerability checks from an asset inventory or validate scanner findings | [assessment-coverage.md](references/assessment-coverage.md) |
 | Binary evidence, direct-call harnesses, or emulated results need validation | [binary-experiments.md](references/binary-experiments.md); [reversing-technique](../../offensive-techniques/reversing-technique/SKILL.md) for artifact analysis; [emulation-technique](../../offensive-techniques/emulation-technique/SKILL.md) for execution models |
 | Analyze a patch diff, check a fix in another build, or find related instances | [patch-and-variant-analysis.md](references/patch-and-variant-analysis.md) |
 | Trace source-level data/control flow or run a fuzzing campaign | [source-review-technique](../../offensive-techniques/source-review-technique/SKILL.md) or [fuzzing-technique](../../offensive-techniques/fuzzing-technique/SKILL.md), respectively |
