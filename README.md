@@ -13,6 +13,8 @@ Offensive security comes first. Support areas (`coding/`, `coding-behaviours/`, 
 - A skill's `scripts/` - deterministic helpers for its task. Repository maintenance lives separately in the root `scripts/`.
 - `assets/` - templates or static supporting material.
 
+For coordinated work, use [orchestration](knowledge/orchestration/SKILL.md) and add [offensive-orchestration](knowledge-offensive/offensive-orchestration/SKILL.md) when target state or security evidence spans workers. Give each worker a focused brief and the relevant methodology and tool skills.
+
 ---
 
 ## Categories
@@ -26,7 +28,6 @@ Category details and selected skills live in **[CATALOG.md](CATALOG.md)**. High-
 | [`offensive-tools/`](CATALOG.md#offensive-tools---attack-tool-skills) | One skill per tool by attack phase: flags, scenarios, output parsing, OPSEC |
 | [`offensive-coding/`](CATALOG.md#offensive-coding---offensive-development-skills) | Building offensive tooling: shellcode, loaders, BOFs, syscalls, evasion, OS internals |
 | [`offensive-techniques/`](CATALOG.md#offensive-techniques---methodology-and-tradecraft-skills) | Tool-agnostic methodology, decision flow, and campaign design |
-| [`offensive-roles/`](CATALOG.md#offensive-roles---supervisor-and-operator-role-skills) | Supervisor and vertical-operator roles that compose techniques and tools |
 | [`offensive-ctf/`](CATALOG.md#offensive-ctf---private-offensive-ctf-and-lab-solving-skills) | Flag-style and private-lab solving workflows, routed by artifact |
 | [`offensive-hardware/`](CATALOG.md#offensive-hardware---hardware-focused-assessments) | On-device compromise, firmware extraction, signal reversing |
 
@@ -38,8 +39,8 @@ Load these only when they directly serve the active security task.
 |---|---|
 | [`coding/`](CATALOG.md#coding---language-patterns-and-tooling) | Idiomatic patterns, testing, and performance for security-tooling languages |
 | [`coding-behaviours/`](CATALOG.md#coding-behaviours---engineering-discipline-skills) | Architecture, scoped edits, TDD, testing reliability, systematic debugging |
-| [`knowledge/`](CATALOG.md#knowledge---research-and-meta-skills) | Skill authoring, research helpers, doc automation |
-| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research and assessment coverage, CVE inventory, PoC review, security prompts, multi-agent coordination |
+| [`knowledge/`](CATALOG.md#knowledge---research-and-meta-skills) | Skill authoring, research helpers, agent orchestration, doc automation |
+| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research and assessment coverage, CVE inventory, PoC review, security prompts, coordination of target sessions and evidence |
 | [`harness-dev/`](CATALOG.md#harness-dev---agent-harness-development) | Vendor-specific agent and extension authoring |
 | [`behaviours/`](CATALOG.md#behaviours---cognitive-discipline-skills) | Cross-cutting operating stances: evidence gates, loop control, input hygiene |
 | [`ai/`](CATALOG.md#ai---ai-framework-skills) | ML framework patterns for security models and adversarial workflows |

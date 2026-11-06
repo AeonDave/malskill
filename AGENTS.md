@@ -11,7 +11,7 @@ Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill st
    - **enrich an existing skill** — parent `SKILL.md` is the right place
    - **new reference** — only when the subtask loads independently of the parent's other references
    - **enrich an existing reference** — deep-dive exists but has a real gap
-   - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf/role) is documented once where it is most actionable and cross-referenced from the others, never copied
+   - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf) is documented once where it is most actionable and cross-referenced from the others, never copied
    - **wire new depth into routing** — a new reference or major section is dead weight unless the parent `SKILL.md` points to it with an explicit "load when…" trigger
 4. After the edit, validate the changed skill dir with the repository's `scripts/quick_validate.py` (frontmatter only), `scripts/sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `scripts/check_changed_files.py` — before finishing. Keep README categories and documented commands aligned with the actual tree.
 
@@ -33,12 +33,11 @@ Repository maintenance tools belong in the root `scripts/`: discovery, analysis,
 
 - `offensive-tools/`: Tool-specific usage guides, syntax, and flags.
 - `offensive-techniques/`: Tool-agnostic methodology, tradecraft, and attack paths. Do not turn these into tool manuals.
-- `offensive-roles/`: Supervisor/operator routing. Composes techniques and tools.
 - `offensive-coding/`: Offensive development (BOFs, loaders, EDR evasion, OS internals).
 - `offensive-hardware/`: Hardware-focused assessments (device compromise, firmware extraction).
 - `offensive-ctf/`: Challenge-derived patterns. Use as a support layer for real-world tasks when artifacts or workflows match; avoid platform-specific writeup culture.
 - `knowledge/`: Meta-skills (skill-creator, research helpers, orchestration, doc automation).
-- `knowledge-offensive/`: Assessment research, CVE applicability, public test-artifact review, and prompts for security tooling.
+- `knowledge-offensive/`: Assessment research, CVE applicability, public test-artifact review, security-task orchestration, and prompts for security tooling.
 - `harness-dev/`: Vendor-specific agent and extension authoring for security workflows.
 - `behaviours/`: Cross-cutting discipline skills (evidence gates, hypothesis-driven work, loop control, reading budget, verification, untrusted-input hygiene, operator modes).
 - `coding/`, `ai/`, `hardware/`: Support categories.

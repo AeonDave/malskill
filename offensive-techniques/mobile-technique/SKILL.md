@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Android (APK, AAB), iOS (IPA); physical devices or emulators; Burp Suite / mitmproxy for traffic interception."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: offensive-techniques
   language: multi
 ---

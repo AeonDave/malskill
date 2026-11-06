@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible workflow guidance for code review, security testing, research, forensics, and reporting."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Evidence Before Claims
@@ -76,6 +76,6 @@ For consequential findings, include the following information without requiring 
 
 Load on demand:
 
-- [references/offensive-evidence-gates.md](references/offensive-evidence-gates.md) — load when grading domain-specific research evidence or worker claims.
+- [references/offensive-evidence-gates.md](references/offensive-evidence-gates.md) — load when grading domain-specific research evidence, worker claims, or an engagement's final evidence summary.
 
 Pair with `verification-before-completion` before claiming a task, fix, validation, or report is complete.

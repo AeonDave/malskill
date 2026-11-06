@@ -49,24 +49,6 @@ Covers active-directory, binary-exploitation, cicd, cloud-security, container, c
 
 For vulnerability discovery, assessment coverage, and scanner-finding validation, use [vuln-research](knowledge-offensive/vuln-research/SKILL.md) in `knowledge-offensive/`.
 
-## `offensive-roles/` - Supervisor and operator role skills
-
-Mission-focused role skills for supervising and delegating offensive work across precise vertical operators. Roles compose `*-technique` methodology skills with optimized tool skills; they do not replace either layer.
-
-| Skill | Role |
-|-------|------|
-| `offensive-supervisor-role` | OODA orchestrator. Owns mission, scope, delegation, and strict evidence gates |
-| `offensive-recon-role` | Produces scoped target packages, asset inventory, and external attack-surface discovery |
-| `offensive-osint-role` | Passive, zero-touch public-source, identity, and leaked-credential research |
-| `offensive-web-role` | App-layer operator. API mapping, input tampering, and OWASP-tier vulnerability validation |
-| `offensive-cloud-role` | Cloud/SaaS/IAM operator. Principal identities, metadata endpoints, and blob storage |
-| `offensive-windows-role` | Windows operator. AD enumeration, access tokens, IPC, and OPSEC-aware local escalation |
-| `offensive-linux-role` | Linux operator. Living-off-the-Land execution, host triage, and Unix privilege escalation |
-| `offensive-mobile-role` | Mobile operator. APK/IPA static analysis, traffic interception, and Frida instrumentation |
-| `offensive-reverse-role` | Reverse engineer. Static and dynamic analysis of binaries, malware, and unknown protocols |
-| `offensive-hardware-role` | Hardware operator. Physical device compromise via UART, JTAG, SPI, and embedded extraction |
-| `offensive-forensic-role` | Forensic operator. Credentials and timelines from memory dumps, disk images, and PCAP |
-
 ## `offensive-ctf/` - Private offensive CTF and lab-solving skills
 
 Challenge-solving workflows for flag-style objectives, puzzle-like artifacts, offline target bundles, and private lab scenarios. Intentionally separate from field methodology in `offensive-techniques/`.
@@ -112,12 +94,13 @@ Cross-cutting software-engineering stances that shape *how* code work is done, i
 
 ## `knowledge/` - Research and meta-skills
 
-Skills that support the workflow itself: skill authoring, research helpers, and documentation automation. Load when a task needs them, not as background reading.
+Skills that support the workflow itself: skill authoring, research helpers, agent coordination, and documentation automation. Load when a task needs them, not as background reading.
 
 | Skill | Role |
 |-------|------|
 | `skill-creator` | Create, validate, and package new skills |
 | `skill-app-creator` | Build skills with executable workflows, consistent deliverables, diagnostics, and optional resumable sessions or UI |
+| [`orchestration`](knowledge/orchestration/SKILL.md) | General delegation: choose workers, models and effort, schedule dependencies, and integrate results; optional Claude Code reference |
 | `agent-md-creator` | Maintain durable agent instructions, project constraints, and task-specific documentation routes |
 | `readme-md-creator` | Create clear, destination-aware READMEs for repositories, packages, and document folders |
 | `mcp-creator` | Build, audit, integrate, and validate MCP servers, including local host setup |
@@ -136,7 +119,7 @@ Research and development support for authorized security assessments. Use the na
 | `deep-research-offensive` | Investigate security hypotheses, attack-path prerequisites, mitigation limits, and detection coverage |
 | `poc-weaponization` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
 | `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
-| `agentic-offensive-orchestration` | Coordinate multi-agent security work, job lifecycle, evidence reconciliation, and trust boundaries |
+| [`offensive-orchestration`](knowledge-offensive/offensive-orchestration/SKILL.md) | Route security questions to technical skills, coordinate target/session ownership, and reconcile evidence across workers |
 
 ## `harness-dev/` - Agent harness development
 

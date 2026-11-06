@@ -19,7 +19,6 @@ from typing import Callable, Iterable
 CATEGORY_COLORS = {
     "offensive-tools": 36,
     "offensive-techniques": 33,
-    "offensive-roles": 35,
     "offensive-coding": 31,
     "offensive-hardware": 32,
     "offensive-ctf": 34,

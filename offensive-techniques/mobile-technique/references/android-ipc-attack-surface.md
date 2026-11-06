@@ -323,4 +323,4 @@ objection -g com.victim.app explore
 | `onNewIntent` bypasses `onCreate` validation | `singleTop`/`singleTask` + auth only in `onCreate` | Post-auth state reached with attacker input |
 | Runtime `registerReceiver` without `RECEIVER_NOT_EXPORTED` | Grep dynamic registrations | Any app broadcasts to internal receiver |
 
-Escalate to `mobile-technique` §Traffic interception and `offensive-web-role` once the exposed IPC surfaces a backend API path.
+When exposed IPC surfaces a backend API path, use `mobile-technique` for traffic interception and [vuln-research](../../../knowledge-offensive/vuln-research/SKILL.md) to investigate the backend behavior. Load [web-exploit-technique](../../web-exploit-technique/SKILL.md) when a supported web finding needs impact validation. Keep the mobile and backend evidence linked; a new endpoint alone does not require another worker.

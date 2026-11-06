@@ -98,3 +98,9 @@ Downgrade when:
 
 - verification only checked the local tool state
 - unchecked persistence locations, failure paths, or target instances are included in a broad cleanup claim
+
+## Engagement summary
+
+Before a report spanning workers or targets, reconcile material claims about findings, coverage, current access, and required cleanup. For each, identify the evidence, relevant job or observer, target/build, observation time, and what was actually checked. Distinguish inspected support from an unchecked worker report or missing evidence; do not promote every worker's DONE status into a verified engagement outcome.
+
+Claims that all actions stayed within the agreed boundaries require adequate action records. Incomplete logs leave a gap; absence of a recorded exception is not proof that none occurred. Carry unresolved failures with their original evidence and supported cause, including unknown causes. State outstanding jobs and cleanup obligations rather than presenting partial closure as complete. Inspect existing artifacts when sufficient; a fresh intrusive test is not required merely to prepare the report.
