@@ -1,10 +1,10 @@
 ---
 name: poc-weaponization
-description: "Review an existing public proof-of-concept artifact for provenance, suspicious behavior, dependency risk, and safe assessment use. Use when triaging a PoC referenced by a CVE or received during an authorized security assessment."
+description: "Review an existing public or generated proof-of-concept artifact for provenance, suspicious behavior, dependency risk, and reproducibility. Use when triaging or validating a PoC referenced by a CVE or received during a security assessment."
 license: MIT
 metadata:
   author: malskill
-  version: "1.2"
+  version: "1.3"
 compatibility: "Static review needs local file access; artifact and source verification may need web access."
 ---
 
@@ -12,15 +12,19 @@ compatibility: "Static review needs local file access; artifact and source verif
 
 Review a PoC as untrusted code and produce a concrete assessment-preparation decision. For CVE identity, affected ranges, and asset applicability, use [CVE inventory and triage](../cve-search/SKILL.md).
 
+For a new vulnerability hypothesis, root-cause investigation, or patch interpretation, use [vuln-research](../vuln-research/SKILL.md).
+
 ## Review workflow
 
-1. Identify the exact artifact: canonical source URL, repository and immutable revision or release, file path, retrieval date, claimed CVE/product/version, and SHA-256 digest. If a trusted publisher provides a signature, verify it against a separately trusted key. A matching digest identifies bytes; a signature or provenance statement supports origin/integrity claims. Neither establishes that the code is safe. See [SLSA artifact verification](https://slsa.dev/spec/v1.2/verifying-artifacts) and [NIST SSDF](https://csrc.nist.gov/pubs/sp/800/218/final).
+1. Identify the exact artifact: source URL and immutable revision/release when available, file path, retrieval or creation date, claimed CVE/product/version, and SHA-256 digest. For local/generated code, record its source inputs and creation context; do not invent upstream provenance. If a trusted publisher provides a signature, verify it against a separately trusted key. A matching digest identifies bytes; a signature or provenance statement supports origin/integrity claims. Neither establishes that the code is safe. See [SLSA artifact verification](https://slsa.dev/spec/v1.2/verifying-artifacts) and [NIST SSDF](https://csrc.nist.gov/pubs/sp/800/218/final).
 2. Inspect the intended entry point and relevant source, build files, manifests, lockfiles, helpers and workflow configuration without invoking them. Distinguish declared dependencies from the exact artifacts resolved for the intended runtime/platform, including transitive dependencies and install/build hooks. Record package source, immutable version/digest where available, unresolved ranges, platform-specific branches and uninspected artifacts. A pinned top-level package does not establish the full executed dependency graph. Do not install or invoke public setup/build hooks during static review; treat a needed but opaque execution path as unresolved coverage.
 3. Trace behavior from entry point through subprocess, filesystem, network, and privilege-sensitive operations. Load [PoC review indicators](references/backdoor-patterns.md) for the focused checklist. Distinguish observed code paths from suspicious names or patterns; static review cannot prove benign behavior, especially for opaque binaries, dynamic loading, and behavior dependent on runtime inputs.
 4. Compare the artifact's claimed target and conditions with the authoritative vendor/CNA record and local asset evidence. A public PoC's existence or apparent success message does not establish that the assessed product is vulnerable.
 5. Decide whether a check is useful and bounded. A reviewed, non-destructive diagnostic path may be adapted for portability, bytes handling, library contracts, timeouts, or bounded input validation. Keep the original artifact unchanged; record the adapted file's separate digest and exact changes. Do not construct exploit payloads or add command execution, callbacks, data collection, persistence, or unrelated network access. When adapting would cross these limits, use a separate harmless fixture or vendor-supported check instead.
 6. When execution is part of the requested work, run only the reviewed non-destructive check or separate fixture in a disposable isolated environment with synthetic data, no credentials, no production connectivity, and no route to unrelated hosts. Before running it, record expected observations, positive and negative/control cases, input and time bounds, side effects to monitor, stop conditions, and cleanup. Do not run unreviewed installers, hooks, opaque or unsafe code paths. Stop if observed behavior differs from the declared check, exceeds bounds, or touches undeclared resources. Record which runtime paths actually ran; a workflow file or hook definition does not establish execution.
 7. Report review stage separately from concerns: `static-only`, `check-planned`, or `check-run`; then describe suspicious behavior, unresolved coverage and the check's result. Call a bounded diagnostic confirmed only when its expected observation and relevant controls support that conclusion. A success banner or a positive result also returned for the negative control is not discriminating evidence. A negative result, timeout, unreachable service or blocked request does not prove the software unaffected or artifact safe. A static review can both identify suspicious behavior and leave other paths unresolved.
+
+Before calling a result reproducible, freeze the reviewed artifact and invocation, restore or recreate the recorded initial state, and repeat the check with its controls ([POCSmith replay contract](https://github.com/originsec/pocsmith/blob/3f1f81c8f674c1ec001594832b2a2bbe279be8de/README.md#replay-verification)). Bind fresh observations to that replay; a prior log or caller-supplied status cannot confirm the rerun. Record replay failure or unavailable reset separately from the initial result.
 
 ## Review record
 
@@ -32,6 +36,7 @@ Review a PoC as untrusted code and produce a concrete assessment-preparation dec
 - **Observed:** file, process, network, privilege, and data handling behavior
 - **Adaptation:** separate path and digest; exact portability/diagnostic changes, if used
 - **Check:** expected observation and controls; observed result and executed paths; stop/cleanup outcome
+- **Replay (if performed):** artifact digest and invocation, initial state, fresh evidence, result or blocker
 - **Stage:** static-only | check-planned | check-run
 - **Decision:** suitability for the proposed check, suspicious behavior, unresolved coverage, and next action
 - **Interpretation:** what the result supports and what it does not establish

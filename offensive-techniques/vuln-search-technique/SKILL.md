@@ -28,6 +28,7 @@ Goal: convert a recon-produced asset inventory into a **confirmed, prioritized, 
 - **Output to `web-exploit-technique`**: confirmed web app vulnerabilities (SQLi, SSRF, auth bypass, etc.) with class, surface, and exploitation route.
 - **Not covered**: exploitation — this skill stops at confirmed finding + exploitation route.
 - **Fuzzing**: deep campaigns follow `fuzzing-technique`; integrated here as a bounded probe phase.
+- **Focused original research**: load [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) for a bug-bounty lead, suspicious source/binary behavior, or patch/variant investigation that needs hypothesis testing and root-cause evidence.
 
 ## Initial triage
 

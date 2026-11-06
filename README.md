@@ -39,7 +39,7 @@ Load these only when they directly serve the active security task.
 | [`coding/`](CATALOG.md#coding---language-patterns-and-tooling) | Idiomatic patterns, testing, and performance for security-tooling languages |
 | [`coding-behaviours/`](CATALOG.md#coding-behaviours---engineering-discipline-skills) | Architecture, scoped edits, TDD, testing reliability, systematic debugging |
 | [`knowledge/`](CATALOG.md#knowledge---research-and-meta-skills) | Skill authoring, research helpers, doc automation |
-| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | CVE inventory, assessment research, PoC review, security prompts, multi-agent coordination |
+| [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research, CVE inventory, assessment evidence, PoC review, security prompts, multi-agent coordination |
 | [`harness-dev/`](CATALOG.md#harness-dev---agent-harness-development) | Vendor-specific agent and extension authoring |
 | [`behaviours/`](CATALOG.md#behaviours---cognitive-discipline-skills) | Cross-cutting operating stances: evidence gates, loop control, input hygiene |
 | [`ai/`](CATALOG.md#ai---ai-framework-skills) | ML framework patterns for security models and adversarial workflows |

@@ -274,6 +274,8 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 
 ### 7. Vulnerability hunting
 
+Load [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) to organize hypotheses, root-cause validation, reproductions, and patch/variant investigations. Use this skill for the underlying reverse-engineering work.
+
 **Goal**: Find bugs (buffer overflow, use-after-free, etc.) in closed-source.
 
 **Operator flow:**

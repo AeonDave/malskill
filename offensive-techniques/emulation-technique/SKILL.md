@@ -12,6 +12,8 @@ metadata:
 
 Use emulation to answer a runtime question with the smallest faithful environment that can produce evidence.
 
+When evaluating a suspected vulnerability, pair with [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) for the research decision and its binary-experiment reference for distinguishing target behavior from harness artifacts.
+
 ## When this skill applies
 
 - You have a binary, firmware image, rootfs, kernel, bootloader, shellcode, driver, MCU image, or unknown architecture artifact.

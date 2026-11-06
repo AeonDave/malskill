@@ -24,7 +24,7 @@ One skill per tool, organized by attack phase. Each skill covers how the tool wo
 | `linux/` | linpeas, linux-persistence, mimipenguin, pwncat, ssh-key-scanner |
 | `shells/` | reverse-ssh, revshells, shellerator, weevely3 |
 | `cracking/` | hashcat, hydra, john |
-| `exploits/` | beef, metasploit, pwntools, searchsploit, foundry-cast, vuln-research |
+| `exploits/` | beef, metasploit, pwntools, searchsploit, foundry-cast |
 | `mcp/` | mcpwn, neuromatrix |
 
 ## `offensive-coding/` - Offensive development skills
@@ -130,8 +130,9 @@ Research and development support for authorized security assessments. Use the na
 | Skill | Role |
 |-------|------|
 | `cve-search` | Build bounded vulnerability inventories with source coverage, package/build matching, and explicit unknowns |
+| [`vuln-research`](knowledge-offensive/vuln-research/SKILL.md) | Investigate bug-bounty leads, discover vulnerabilities, and validate root causes, patches, and variants |
 | `deep-research-offensive` | Investigate security hypotheses, attack-path prerequisites, mitigation limits, and detection coverage |
-| `poc-weaponization` | Review public PoC artifacts, dependency risks, and bounded diagnostic checks |
+| `poc-weaponization` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
 | `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
 | `agentic-offensive-orchestration` | Coordinate multi-agent security work, job lifecycle, evidence reconciliation, and trust boundaries |
 

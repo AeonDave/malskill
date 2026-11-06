@@ -17,6 +17,8 @@ State the question, known assets/artifacts and versions, existing engagement con
 
 Use [cve-search](../cve-search/SKILL.md) for vulnerability inventory, record semantics and asset matching; [poc-weaponization](../poc-weaponization/SKILL.md) for an existing artifact's code/dependency review. For one missing idea that could unblock local work, use [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md).
 
+Load [vuln-research](../vuln-research/SKILL.md) when the work turns to discovering or testing a vulnerability in the target itself, including bug-bounty hypotheses and patch/variant investigations.
+
 For a broad investigation, load [deep-research-generic](../../knowledge/deep-research-generic/SKILL.md) for source discovery, counterchecks, available-tool selection and gap-driven passes. Apply the security-specific checks below; do not repeat a general literature survey for a narrow assessment decision.
 
 ## Investigate what could change the finding
