@@ -37,7 +37,7 @@ Call into a `SYSCALL;RET` sequence (`0F 05 C3`) found in `linux-vdso.so.1`. The 
 The vDSO's `.text` contains `syscall; ret` gadgets inside its exported functions (`__vdso_clock_gettime`, `__vdso_gettimeofday`, `__vdso_getrandom` on 6.11+). Using one as an indirect dispatch target makes the `syscall` instruction execute from kernel-mapped memory, not your code section.
 
 **Kernel version notes:**
-- **6.10+**: `mseal()` seals the vDSO mapping — cannot remap/reprotect it to RWX. Gadget extraction from the existing RX mapping is unaffected; injecting custom gadgets into vDSO is blocked.
+- **Separate syscall availability from system policy.** `mseal()` exists from 6.10; the [6.15 kernel documentation](https://docs.kernel.org/6.15/userspace-api/mseal.html) also describes system-mapping sealing through `CONFIG_MSEAL_SYSTEM_MAPPINGS` on supported architectures. A kernel version alone does not establish whether that configuration is enabled; distributor backports can also change version-based assumptions.
 - **6.11+**: `getrandom()` added to vDSO (x86-64); 6.12 adds aarch64/ppc/s390x/loongarch. New exported function = additional gadget source bytes.
 
 ```
@@ -153,7 +153,7 @@ Operations available via io_uring include: `read`, `write`, `openat`, `close`, `
 | 5.10 | `IORING_REGISTER_RESTRICTIONS` — limit which opcodes a ring accepts |
 | 5.16 | SELinux + Smack + audit hooks for io_uring (~5% overhead) |
 | 5.19 | `IORING_OP_URING_CMD` merged **without** LSM hooks (regression) |
-| ~6.0 | LSM hooks added for `uring_cmd` (commits `cdc1404a`, `2a5840124009`) |
+| 6.1 | LSM hook for `uring_cmd` (`security_uring_cmd`, commit `2a5840124009`); the io_uring audit/LSM series (`cdc1404a`) landed in **5.16** |
 | 6.2 | Kernel docs include "Security hooks for io_uring" section |
 
 **Audit gap persists**: no confirmed upstream per-operation audit records for io_uring. Falco, Tetragon (default config), and Microsoft Defender for Linux remain blind to io_uring operations as of mid-2025 (ARMO's Curing PoC). Google disabled io_uring on Android, ChromeOS, and production servers (2023).
@@ -168,7 +168,7 @@ eBPF programs attached to syscall tracepoints or kprobes can monitor all syscall
 - **Pre-LSM argument rewriting**: eBPF programs that rewrite syscall arguments (e.g., pathnames) before LSM checks evaluate them. (LID project, 2026; targets AppArmor.)
 - **Real-world eBPF malware**: BPFDoor (2025 variants) — IPv6 + DNS-port C2 (port 53), rotates through daemon names. Symbiote (2025 variants) — eBPF filter accepts IPv4+IPv6 across TCP/UDP/SCTP on rotating non-standard ports.
 
-**BPF token (kernel 6.9)**: delegates limited eBPF privileges to unprivileged processes via bpffs. A privileged daemon creates a token; the kernel checks permissions against the token, not the caller's capabilities. Enables containers to run BPF inside user namespaces. `kernel.unprivileged_bpf_disabled` defaults to `2` (off) in recent kernels.
+**BPF token (kernel 6.9)**: delegates limited eBPF privileges to unprivileged processes via bpffs. A privileged daemon creates a token; the kernel checks permissions against the token, not the caller's capabilities. Enables containers to run BPF inside user namespaces. `kernel.unprivileged_bpf_disabled` defaults to `2` (off) **only where `CONFIG_BPF_UNPRIV_DEFAULT_OFF=y`** (5.16+, distro choice); upstream default remains 0.
 
 **Detection of eBPF rootkits**: live `bpftool prog list` cannot be trusted on a suspect host. Datadog proposes detecting at load time by flagging programs using the override-return helper. Memory forensics (Volatility with eBPF-aware plugins) or verified boot chains remain the reliable path.
 
@@ -265,12 +265,13 @@ Target monitoring profile:
 
 | Kernel | Feature | Offensive impact |
 |---|---|---|
-| 6.1 | kCFI (forward-edge CFI, Clang) | Indirect call targets must match type signature |
+| 6.2 | kCFI (forward-edge CFI, Clang) — both kCFI and FineIBT landed in 6.2 | Indirect call targets must match type signature |
 | 6.2 | FineIBT (Intel CET IBT + kCFI) | Hardware-enforced indirect branch targets |
-| 6.3 | `memfd_create` noexec (`MFD_NOEXEC_SEAL`) | Blocks fileless execution when `vm.memfd_noexec` ≥ 1 |
+| 6.3 | `memfd_create` noexec (`MFD_NOEXEC_SEAL`) | Adds non-executable memfd policy and sealing flags; interpret the [PID-namespaced policy](https://docs.kernel.org/userspace-api/mfd_noexec.html) separately from syscall availability |
 | 6.7 | Landlock ABI v4 (TCP bind + connect) | Unprivileged network sandboxing |
 | 6.9 | BPF token | Containers can run scoped eBPF without CAP_BPF |
-| 6.10 | `mseal()` syscall | Seals vDSO/vvar/code mappings against remap/reprotect |
+| 6.10 | `mseal()` syscall | Provides mapping sealing; this does not imply automatic sealing of system mappings |
+| Documented by 6.15 | `CONFIG_MSEAL_SYSTEM_MAPPINGS` | Architecture- and configuration-dependent system-mapping protection; see the versioned kernel documentation above |
 | 6.10 | Landlock ABI v5 (device ioctl) | `LANDLOCK_ACCESS_FS_IOCTL_DEV` restricts device ioctls |
 | 6.11 | vDSO `getrandom()` (x86-64) | New vDSO function = additional gadget source |
 | 6.12 | IPE LSM (Integrity Policy Enforcement) | Restricts execution to dm-verity protected binaries |
@@ -302,6 +303,6 @@ Each ABI is backward-compatible. Use `landlock_create_ruleset()` with the highes
 - Assuming `LD_PRELOAD` hooks see all syscalls (Go, static musl, inline asm bypass them)
 - Assuming io_uring bypasses all monitoring (kernel 6.x+ adds LSM/audit hooks for io_uring; container seccomp profiles block `io_uring_setup` by default)
 - Trusting `bpftool` output on a host that may have eBPF rootkits hiding their own programs
-- Using `memfd_create` for fileless execution without checking `vm.memfd_noexec` sysctl (blocks on value ≥ 1)
-- Assuming vDSO can be remapped RWX for gadget injection (blocked by `mseal()` on 6.10+)
+- Treating a `vm.memfd_noexec` value as system-wide without identifying its PID namespace and inherited policy
+- Inferring system-mapping protection from `mseal()` availability alone instead of the actual architecture and kernel configuration
 - Confusing the Linux and Windows problems: Linux doesn't need runtime syscall-number resolution, only dispatch-source selection

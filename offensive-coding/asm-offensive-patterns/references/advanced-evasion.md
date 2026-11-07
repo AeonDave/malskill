@@ -246,10 +246,10 @@ Flips pages RW (encrypt) -> sleep -> RW (decrypt) -> RX (execute).
 | Technique | Encryption | ROP chain | Timer mechanism | Year |
 |---|---|---|---|---|
 | Gargoyle | None (NX only) | Stack trampoline | SetWaitableTimer APC | 2016 |
-| SleepyCrypt | XOR 1-byte | No | Sleep() | ~2020 |
+| SleepyCrypt | XOR (cipher detail field-reported) | No | Sleep() | 2021 ([SolomonSklash](https://github.com/SolomonSklash/SleepyCrypt)) |
 | Foliage | Yes | APC-based | QueueUserAPC | 2022 |
 | Ekko | RC4 (SystemFunction032) | NtContinue CONTEXT | CreateTimerQueueTimer | 2022 |
-| Cronos | RC4 | NtContinue | CreateTimerQueueTimer | 2022 |
+| Cronos | RC4 (SystemFunction032) | NtContinue | Waitable timers (NtCreateTimer/NtSetTimer) | 2022 |
 
 ### 2.7 Thread Stack Spoofing During Sleep
 
@@ -876,7 +876,7 @@ Abuse C++ virtual method dispatch: craft fake objects whose vtable points to vic
 ```
 
 Shadow stack is not violated because every function is called via legitimate `CALL`.
-OffsecBlog (2024) demonstrated calc.exe pop via COOP with CET + CFG enabled.
+OffSec (Aug 2022) demonstrated calc.exe via COOP with CET + CFG enabled ([Bypassing Intel CET with Counterfeit Objects](https://www.offsec.com/blog/bypassing-intel-cet-with-counterfeit-objects)).
 
 ---
 

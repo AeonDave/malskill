@@ -2,17 +2,17 @@
 name: windows-internals-dev
 description: "Auth/lab dev: Windows internals; PE loading and CRT startup, PEB/TEB, PE/COFF, syscalls, unwinding, memory/heap, tokens, kernel objects, ETW/AMSI telemetry."
 license: MIT
-compatibility: "Windows 10 1809 through Windows 11 24H2, x86-64 and ARM64; Kernel structures referenced from Windows 11 22H2/24H2 public debug symbols."
+compatibility: "Windows 10/11 internals. Private structures require evidence for the exact architecture, image, and build. Included survey observations cover x64 only; they do not establish ARM64 or cross-build compatibility."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # windows-internals
 
 Foundational Windows internals for programmatic work: writing implants and loaders, reversing your own binaries, building EDR/AV tooling, or understanding what the kernel actually does under a Win32 call. This is **structural and mechanical** knowledge — if you need tool usage, look in `offensive-tools/`; if you need language-specific patterns, look in `*-patterns` skills.
 
-**What this skill gives you**: the offsets, structures, data flows, and invariants you need to touch Windows at the NTAPI/undocumented/kernel-struct level without guessing. Every claim here is either stable across the supported build range or explicitly flagged as version-dependent.
+Check private layouts and behavior against the exact image and matching symbols. A source example or a diagnostic survey does not establish support across a Windows release family. Use [Microsoft release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information) to identify the release and edition lifecycle; do not infer either from a remembered build label.
 
 **Rule of thumb**: if your code uses any Win32 API that is documented, this skill is not needed. If you are walking a PEB pointer, parsing UNWIND_INFO, resolving SSNs, spoofing a call stack, patching ETW-TI, or touching a kernel object directly — start here.
 
@@ -181,9 +181,9 @@ For `DLL_THREAD_ATTACH`, Microsoft documents that a DLL loaded with `LoadLibrary
 2. Initial context populated from caller params (start address, parameter, stack info)
 3. If `THREAD_CREATE_FLAGS_CREATE_SUSPENDED` set → thread placed in waiting state
 4. Otherwise queued for execution
-5. First user-mode code on thread is `LdrInitializeThunk` (unless `THREAD_CREATE_FLAGS_SKIP_THREAD_ATTACH`) — runs DLL TLS callbacks, `DllMain(DLL_THREAD_ATTACH)` for every loaded DLL, then jumps to start address
+5. First user-mode code on thread is `LdrInitializeThunk` (unless `THREAD_CREATE_FLAGS_SKIP_LOADER_INIT`) — runs DLL TLS callbacks, `DllMain(DLL_THREAD_ATTACH)` for every loaded DLL, then jumps to start address
 
-**Offensive note**: `SKIP_THREAD_ATTACH` skips the entire LdrInit chain — useful for shellcode threads where you do not want `DLL_THREAD_ATTACH` to fire across every loaded DLL (which can alert hooks or crash if a DLL's DllMain mismatches).
+**Offensive note**: `SKIP_LOADER_INIT` (0x20) skips the entire LdrInit chain — useful for shellcode threads that must not run `DLL_THREAD_ATTACH` across every loaded DLL. `SKIP_THREAD_ATTACH` (0x2) skips only the DLL_THREAD_ATTACH notifications, not TLS callbacks or the loader chain.
 
 ### Exception dispatch (user-mode)
 
@@ -227,7 +227,7 @@ When you apply any technique, the following signals are potentially visible. Thi
 **PE parsing invariants**
 - Validate `e_magic == 0x5A4D` ("MZ") and `e_lfanew > 0 && e_lfanew < PE_file_size`
 - Validate `NT_Signature == 0x00004550` ("PE\0\0")
-- On 64-bit PE, `OptionalHeader.Magic == 0x20B`; export directory RVA at `OptionalHeader + 0x70` (DataDirectory[0].VirtualAddress lives at offset 0x88 of OptionalHeader on x64, or offset 0x78 of IMAGE_NT_HEADERS64 if counting from NT base)
+- On 64-bit PE, `OptionalHeader.Magic == 0x20B`; `DataDirectory` starts at `OptionalHeader + 0x70` (= NT_HEADERS64 + 0x88), so the export directory RVA is `OptionalHeader + 0x70`. OptionalHeader + 0x88 is DataDirectory[3] (.pdata), not the export directory
 - Forwarded exports: if an export RVA is **within** `DataDirectory[0]` range, it is a forwarder string `"dll.function"` — recursively resolve
 
 **Manual mapping / reflective DLL invariants**

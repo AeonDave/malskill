@@ -78,10 +78,10 @@ typedef struct _IMAGE_NT_HEADERS64 {
 | 0x24 | FileAlignment | File alignment, usually 0x200 |
 | 0x38 | SizeOfImage | Total mapped size (used by VirtualAlloc) |
 | 0x50 | DllCharacteristics | Mitigation flags (ASLR, NX, CFG, etc.) |
-| 0x88 | NumberOfRvaAndSizes | Usually 16 |
-| 0x8C | DataDirectory[16] | **Array of {RVA, Size} entries** |
+| 0x6C | NumberOfRvaAndSizes | Usually 16 |
+| 0x70 | DataDirectory[16] | **Array of {RVA, Size} entries** |
 
-The DataDirectory array begins at OptionalHeader + 0x70. Offset 0x88 in this table above refers to OptionalHeader + 0x88 which is `DataDirectory[0].VirtualAddress` (Export Directory RVA). Easier mental model:
+Mental model: `DataDirectory` begins at OptionalHeader + 0x70, i.e. NT_HEADERS64 + 0x88. OptionalHeader + 0x88 is `DataDirectory[3]` (Exception/.pdata), **not** the export directory. Easier mental model:
 
 | Index | Directory | Purpose |
 |-------|-----------|---------|
@@ -108,7 +108,7 @@ The DataDirectory array begins at OptionalHeader + 0x70. Offset 0x88 in this tab
 |-----|------|---------|
 | 0x0020 | HIGH_ENTROPY_VA | 64-bit ASLR |
 | 0x0040 | DYNAMIC_BASE | ASLR enabled |
-| 0x0080 | FORCE_INTEGRITY | Required for kernel callbacks registration |
+| 0x0080 | FORCE_INTEGRITY | Strict signing-policy bit (WRP); kernel-callback registration needs a kernel-signed *driver*, unrelated to this flag |
 | 0x0100 | NX_COMPAT | DEP required |
 | 0x0200 | NO_ISOLATION | SxS disabled |
 | 0x0400 | NO_SEH | No SEH handlers |

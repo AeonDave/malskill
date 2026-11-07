@@ -5,7 +5,7 @@ license: MIT
 compatibility: "apktool 2.11+ (smali/baksmali 3.0+), Android build-tools 34.0.0+ (apksigner, zipalign), Java 17+. Optional: uber-apk-signer (multi-scheme signing), jadx-cli / jadx-gui (Java view of DEX), apk-mitm (fast pinning bypass), apksigner v4 for idsig files, apk.sh for split-APK bundling."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Smali / DEX Patching

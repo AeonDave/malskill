@@ -15,14 +15,15 @@
 
 Based on the Shikata Ga Nai idea: key is not static — it evolves via feedback.
 
-### Encryption (build time, reverse order)
+### Encryption (build time — FORWARD order; this scheme is self-synchronizing, so encrypt == decrypt function)
 ```python
 seed = KEY  # single random byte
 ct = bytearray(len(pt))
-for i in range(len(pt) - 1, -1, -1):
+for i in range(len(pt)):
     ct[i] = pt[i] ^ seed
-    seed   = (pt[i] + seed) % 256  # feedback: seed updates from plaintext
+    seed = (pt[i] + seed) % 256  # feedback: seed updates from plaintext
 ```
+Running the loop in reverse breaks the roundtrip (the decoder's seed history is forward-accumulated).
 
 ### Decryption (runtime, forward order)
 ```python
@@ -37,14 +38,14 @@ for i in range(len(ct)):
 ; ADFL decoder — RIP-relative, x64
     mov   bl, KEY             ; 2 bytes: B3 xx
     mov   rcx, LENGTH         ; 7 bytes: 48 C7 C1 xx xx xx xx
-    lea   rsi, [rip + 7]      ; 7 bytes: 48 8D 35 07 00 00 00
+    lea   rsi, [rip + 13]     ; 7 bytes: 48 8D 35 0D 00 00 00  (payload at +29)
 .loop:
     mov   al,  [rsi]          ; 2 bytes: 8A 06
     xor   al,  bl             ; 2 bytes: 32 C3
     mov   [rsi], al           ; 2 bytes: 88 06
     add   bl,  al             ; 2 bytes: 00 C3
     inc   rsi                 ; 3 bytes: 48 FF C6
-    loop  .loop               ; 2 bytes: E2 F2
+    loop  .loop               ; 2 bytes: E2 F3
     ; encoded payload follows immediately
 ```
 
@@ -73,7 +74,7 @@ JZ  target      -> JE target        (alias — same encoding)
 ### Junk instruction insertion
 Insert dead code that does not affect decoder registers:
 ```nasm
-PUSH RAX ; POP RAX          (clobbers flags — only safe between flag-using instructions)
+PUSH RAX ; POP RAX          (no flag effect — safe anywhere; PUSH/POP do not modify EFLAGS)
 MOV R10, R10                (no-op)
 LEA R11, [RSP]              (no flag effect, no useful side-effect)
 ```

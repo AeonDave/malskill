@@ -23,7 +23,7 @@ Per-thread structure, first field is `NT_TIB`. Accessed via `gs:[0]`.
 | 0x60 | ProcessEnvironmentBlock | PPEB | **PEB pointer** — the workhorse |
 | 0x68 | LastErrorValue | ULONG | `GetLastError()` storage |
 | 0x1480 | TlsSlots[64] | PVOID[64] | Static TLS (indices 0..63) |
-| 0x1780 | TlsLinks | LIST_ENTRY | Dynamic TLS chain |
+| 0x1680 | TlsLinks | LIST_ENTRY | Dynamic TLS chain (0x1780 is TlsExpansionSlots) |
 
 **Direct access patterns**
 
@@ -53,21 +53,21 @@ Per-process. Single instance mapped into each process's VA space.
 | 0x00 | InheritedAddressSpace | BOOLEAN | |
 | 0x01 | ReadImageFileExecOptions | BOOLEAN | |
 | 0x02 | **BeingDebugged** | BOOLEAN | Anti-debug check reads this |
-| 0x03 | BitField | UCHAR | Bit 0: ImageUsesLargePages, bit 1: IsProtectedProcess, bit 3: IsLegacyProcess |
+| 0x03 | BitField | UCHAR | Bit 0: ImageUsesLargePages, 1: IsProtectedProcess, 2: IsImageDynamicallyRelocated, 3: SkipPatchingUser32Forwarders, 4: IsPackagedProcess, 5: IsAppContainer |
 | 0x08 | Mutant | HANDLE | |
 | 0x10 | **ImageBaseAddress** | PVOID | Main .exe base |
 | 0x18 | **Ldr** | PPEB_LDR_DATA | Loaded module list |
 | 0x20 | ProcessParameters | PRTL_USER_PROCESS_PARAMETERS | Cmdline, envp, stdio handles |
 | 0x38 | ProcessHeap | PVOID | Default process heap |
 | 0x68 | **ApiSetMap** | PAPI_SET_NAMESPACE | api-ms-win-* resolution table |
-| 0x80 | TlsExpansionCounter | ULONG | |
-| 0x120 | OSMajorVersion | ULONG | e.g., 10 |
-| 0x124 | OSMinorVersion | ULONG | |
-| 0x128 | OSBuildNumber | USHORT | e.g., 26100 (24H2) |
-| 0x2D8 | TlsExpansionBitmap | PVOID | Dynamic TLS index bitmap |
-| 0x320 | HeapTracingEnabled | BIT | Page heap / verifier |
+| 0x70 | TlsExpansionCounter | ULONG | |
+| 0x118 | OSMajorVersion | ULONG | e.g., 10 |
+| 0x11C | OSMinorVersion | ULONG | |
+| 0x120 | OSBuildNumber | USHORT | e.g., 26100 (24H2) |
+| 0x238 | TlsExpansionBitmap | PVOID | Dynamic TLS index bitmap |
+| 0x378 | TracingFlags | ULONG | bit 0: HeapTracingEnabled, bit 1: CritSecTracingEnabled |
 
-Offsets above 0x100 drift across builds more than earlier ones. For anything past 0x120 verify against your target build via WinDbg `dt nt!_PEB`.
+Offsets above 0x100 drift across builds more than earlier ones. Values here follow Windows 11 24H2 x64 symbols ([Vergilius](https://www.vergiliusproject.com/kernels/x64/windows-11/24h2/_PEB)); for anything past 0x110 verify against your target build via WinDbg `dt nt!_PEB`.
 
 **Anti-debug quick check**: `BeingDebugged` flag is the classic IsDebuggerPresent equivalent. Trivial to bypass; trivial to detect the bypass. Never rely on it.
 
@@ -113,20 +113,22 @@ One entry per loaded module. Embedded inside each of the three module lists via 
 | 0x68 | FlagGroup | ULONG | See flags table below |
 | 0x6C | ObsoleteLoadCount | USHORT | |
 | 0x6E | TlsIndex | USHORT | Static TLS index |
-| 0x78 | TimeDateStamp | ULONG | |
+| 0x70 | HashLinks | LIST_ENTRY | LdrpHashTable membership |
+| 0x80 | TimeDateStamp | ULONG | |
 
 ### Important flags (FlagGroup bitfield)
 
 | Bit | Name | Meaning |
 |-----|------|---------|
 | 0x04 | ImageDll | Is a DLL (not the main exe) |
-| 0x100 | LoadNotificationsSent | `PsSetLoadImageNotifyRoutine` callbacks fired |
-| 0x800 | ProcessStaticImport | Loaded as static import (not LoadLibrary'd) |
-| 0x1000 | InLegacyLists | Present in the three LIST_ENTRY chains |
-| 0x2000 | InIndexes | Present in LdrpModuleBaseAddressIndex etc. |
-| 0x80000 | ProcessAttachCalled | `DllMain(DLL_PROCESS_ATTACH)` returned |
-| 0x100000 | ProcessAttachFailed | DllMain returned FALSE — queued for unload |
-| 0x80000000 | (reserved) | |
+| 0x08 | LoadNotificationsSent | `PsSetLoadImageNotifyRoutine` callbacks fired |
+| 0x20 | ProcessStaticImport | Loaded as static import (not LoadLibrary'd) |
+| 0x40 | InLegacyLists | Present in the three LIST_ENTRY chains |
+| 0x80 | InIndexes | Present in LdrpModuleBaseAddressIndex etc. |
+| 0x100000 | ProcessAttachCalled | `DllMain(DLL_PROCESS_ATTACH)` returned |
+| 0x200000 | ProcessAttachFailed | DllMain returned FALSE — queued for unload |
+
+Flag values follow the phnt Win10/11+ bitfield ([ntldr.h](https://github.com/winsiderss/phnt/blob/master/ntldr.h)); 24H2 adds VerifierProvider, ShimEngineCalloutSent, AuxIatCopyPrivate. The Win7-era values (0x100/0x800/0x1000...) often still circulate in old tooling and are wrong on current builds.
 
 **Offensive relevance**: clearing `InLegacyLists` and `InIndexes` hides a module from both the classic walk and the modern index lookup. Does not hide from the VAD-based walk the kernel uses for `PsSetLoadImageNotifyRoutine`.
 

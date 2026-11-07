@@ -68,3 +68,7 @@ Never combine all logic into one opaque script. Separation keeps regressions loc
 - Capstone project/docs: https://github.com/capstone-engine/capstone and https://www.capstone-engine.org/documentation.html
 - Keystone project/docs: https://github.com/keystone-engine/keystone and docs/COMPILE.md
 - Unicorn project/docs: https://github.com/unicorn-engine/unicorn and docs/COMPILE.md
+
+## Tooling notes (2026)
+
+Use the official release notes for version and dependency claims: [pwntools](https://github.com/Gallopsled/pwntools/releases), [Capstone](https://github.com/capstone-engine/capstone/releases), [Unicorn](https://github.com/unicorn-engine/unicorn/releases), and [Keystone](https://github.com/keystone-engine/keystone/releases). Record the installed version and observed import/build result; a published release or an old release date alone does not establish compatibility with the current environment.

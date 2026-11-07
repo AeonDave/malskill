@@ -185,6 +185,17 @@ APK
 
 Key patterns: native `.so` for anti-analysis + crypto, managed layer for Android framework abuse (Accessibility, overlays, SMS).
 
+## Designing a DEX-module host (builder perspective)
+
+Reported APK-agent design; no revision-bound test record is linked here. These claims are not runtime qualification for another host:
+
+- **Always `InMemoryDexClassLoader` with the host classloader as parent** — parent-first delegation means remote DEX resolves host classes; a `DexClassLoader` with a file path both touches disk and loads a second class-space.
+- **Keep the R8/ProGuard keep surface that remote DEX links against**: the host API package the modules import (`-keep class <module-api>.*`) and the native bridge class (`-keep` on native methods + `clinit`). Missing keeps = runtime `NoClassDefFoundError` only after delivery.
+- **Gate modules before staging**: signed envelope (e.g., Ed25519 over `header || dex`, public key compiled into the `.so` via build script), strict size cap, opcode-capability allowlist. Envelope signing range must exclude the signature field itself.
+- **Store encrypted at rest** (`EncryptedFile` AES256-GCM under a Keystore master key) with stage→commit (`Files.move(ATOMIC_MOVE)`) and quarantine of invalid payloads; path-traversal-guard any module-supplied ID.
+- **Module lifecycle leases**: in-flight execution lease and host lease for view modules with exactly-once teardown — the classic execute/unload race is the top crash source of dynamic DEX hosts.
+- Known hardening limit: JVM-side envelope verification is itself hookable; the strong boundary is the native-compiled key material and the AEAD transport.
+
 ### Anatsa / TeaBot (2025 resurgence)
 
 Distributed via trojanized Play Store apps (document readers, cleaners). Malicious code appears only in a delayed update weeks after install.
@@ -201,7 +212,7 @@ Key insight: no native `.so` in many variants — the loader is pure Java reflec
 
 ### Mamont (Kaspersky, 2025 top banker)
 
-Top detected banking trojan family (15.6% of banker detections in 2025 per Securelist). Multiple variants (`da`, `db`, `bc`, `ev`, `ek`, `cb`, `hi`). Primarily targets Russian-speaking users.
+Android banking trojan family discussed in the [Securelist mobile report](https://securelist.com/mobile-threat-report-2025/119076). Multiple variants (`da`, `db`, `bc`, `ev`, `ek`, `cb`, `hi`).
 
 ## Rust `.so` on Android
 

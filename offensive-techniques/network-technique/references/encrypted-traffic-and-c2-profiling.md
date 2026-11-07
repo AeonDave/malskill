@@ -33,6 +33,8 @@ Use fingerprints as clustering pivots, not final proof:
 
 ## 3) Beaconing and jitter analysis
 
+Operator counter-note (2026): uniform `interval ± jitter%` sampling is itself fingerprintable — Varonis' Jitter-Trap analysis (Jun 2025) detects the bounded-uniform inter-arrival distribution. Modern agents sample jitter from a **truncated exponential** (inverse-CDF within the min/max band), preserving the memoryless inter-arrival shape expected of ordinary traffic. Detection implication: rely on KS/chi-square shape tests over multi-window inter-arrivals, not on "jitter exists".
+
 C2 often checks in at configurable intervals with optional jitter. Build an interval table:
 
 | Feature | Suspicious when |

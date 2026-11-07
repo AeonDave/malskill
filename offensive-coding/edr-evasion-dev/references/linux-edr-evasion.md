@@ -30,7 +30,7 @@ cat /sys/kernel/tracing/available_events     # tracepoints available
 
 # Kernel hardening state
 sysctl kernel.unprivileged_bpf_disabled      # 1 = need CAP_BPF for load
-sysctl kernel.unprivileged_userns_clone      # 1 = userns escape feasible
+sysctl kernel.unprivileged_userns_clone      # Debian/Ubuntu-patched; 1 = userns escape primitives feasible
 sysctl kernel.yama.ptrace_scope              # 0=any, 1=parent-only, 2=cap_sys_ptrace, 3=disabled
 sysctl kernel.dmesg_restrict                 # 1 = dmesg admin-only
 zgrep -E 'CFI|IBT|LOCKDOWN|MODULE_SIG_FORCE|BPF_LSM' /boot/config-$(uname -r)
@@ -51,7 +51,7 @@ ps auxef | grep -Ei 'falco|tetragon|tracee|elastic-agent|sentinel|csagent|xdrage
 | No `io_uring_enter` tracepoint / kprobe | io_uring covers openat/read/write/connect blind (§2) |
 | CFI + IBT + `LOCKDOWN_INTEGRITY_MAX` | LKM rootkit path dead; use eBPF-only (§4) or userland |
 | `ptrace_scope >= 2` | ptrace-based injection needs CAP_SYS_PTRACE; prefer `/proc/pid/mem` (§7) |
-| `unprivileged_userns_clone=1` | Container escape + CAP_BPF acquisition viable (§8) |
+| `unprivileged_userns_clone=1` | userns helps escape primitives only (§8) — **never** BPF acquisition |
 
 ---
 
@@ -59,7 +59,7 @@ ps auxef | grep -Ei 'falco|tetragon|tracee|elastic-agent|sentinel|csagent|xdrage
 
 `io_uring_enter` submits a batch of asynchronous operations from an SQ ring. The kernel executes openat/read/write/connect/sendmsg/recvmsg/statx/unlink/rename/mkdirat/close/accept/splice internally without dispatching them as individual syscalls. Sensors that hook `sys_enter_openat`, `sys_enter_connect`, etc. see **nothing**.
 
-**Supported operations (kernel 5.11+)**: `IORING_OP_NOP`, `READV`, `WRITEV`, `FSYNC`, `READ_FIXED`, `WRITE_FIXED`, `POLL_ADD`, `SENDMSG`, `RECVMSG`, `TIMEOUT`, `ACCEPT`, `ASYNC_CANCEL`, `LINK_TIMEOUT`, `CONNECT`, `FALLOCATE`, `OPENAT`, `CLOSE`, `FILES_UPDATE`, `STATX`, `READ`, `WRITE`, `FADVISE`, `MADVISE`, `SEND`, `RECV`, `OPENAT2`, `EPOLL_CTL`, `SPLICE`, `PROVIDE_BUFFERS`, `REMOVE_BUFFERS`, `TEE`, `SHUTDOWN`, `RENAMEAT`, `UNLINKAT`, `MKDIRAT`, `SYMLINKAT`, `LINKAT`.
+**Supported operations**: `IORING_OP_NOP`, `READV`, `WRITEV`, `FSYNC`, `READ_FIXED`, `WRITE_FIXED`, `POLL_ADD`, `SENDMSG`, `RECVMSG`, `TIMEOUT`, `ACCEPT`, `ASYNC_CANCEL`, `LINK_TIMEOUT`, `CONNECT`, `FALLOCATE`, `OPENAT`, `CLOSE`, `FILES_UPDATE`, `STATX`, `READ`, `WRITE`, `FADVISE`, `MADVISE`, `SEND`, `RECV`, `OPENAT2`, `EPOLL_CTL`, `SPLICE`, `PROVIDE_BUFFERS`, `REMOVE_BUFFERS`, `TEE`, `SHUTDOWN`, `RENAMEAT`, `UNLINKAT` (5.11+); `MKDIRAT`, `SYMLINKAT`, `LINKAT` require **5.15+** ([io_uring(7)](https://man7.org/linux/man-pages/man7/io_uring.7.html)).
 
 **Not covered** (must still use standard syscalls): `execve`, `execveat`, `clone`, `fork`, `ptrace`, `bpf`, `finit_module`, `mmap`, most `prctl`. These remain full-signal.
 
@@ -67,16 +67,15 @@ ps auxef | grep -Ei 'falco|tetragon|tracee|elastic-agent|sentinel|csagent|xdrage
 
 | Sensor | Coverage | Notes |
 |---|---|---|
-| Falco < 0.40 | No `io_uring_enter` rule by default | Blind; io_uring for file/net I/O is free |
-| Falco ≥ 0.40 | Tracepoint on `io_uring_enter`, minimal rules | Sees submission count, not per-op semantics |
-| Tetragon (kprobe mode) | Same as Falco | Cannot introspect ring contents from tracepoint |
+| Falco | `io_uring_enter` syscall visible since **0.32.0** (Jun 2022) | Sees the submission syscall, **not per-op semantics** — the gap is per-operation, not the syscall ([Falco 0.32.0](https://falco.org/blog/falco-0-32-0/)) |
+| Tetragon (kprobe mode) | Same submission-level view | Cannot introspect ring contents from a tracepoint |
 | Tetragon (LSM mode) | LSM hooks `security_file_open`, `security_socket_connect` fire from io_uring's kernel path — **not bypassable** | The correct defensive answer; still uncommon in production |
 | Tracee | Adds io_uring event set in recent versions | Verify with `tracee --list \| grep io_uring` |
-| Elastic Defend Linux | Ships io_uring rules 8.13+ | Verify agent version before assuming blindness |
+| Elastic Defend Linux | io_uring abuse guidance + rules exist | Verify the deployed ruleset before assuming blindness ([Sysdig detection guidance](https://www.sysdig.com/blog/detecting-and-mitigating-io-uring-abuse-for-malware-evasion)) |
 
 **Rules**:
 
-- Use io_uring for openat/read/write/connect/sendmsg on hosts where the sensor is Falco < 0.40 or an old Tetragon without LSM mode.
+- [Falco 0.32.0](https://falco.org/blog/falco-0-32-0/) added support for the io_uring syscall family. That release note establishes neither per-operation coverage nor visibility in every current sensor or deployed configuration.
 - Do **not** try io_uring for execve or process creation — no `IORING_OP_EXECVE` exists; those syscalls stay visible.
 - One `io_uring_enter` call can batch dozens of ops; keep count low to avoid completion-event correlation.
 - LSM BPF (`bpftool prog list | grep lsm`) neutralizes this vector entirely because `security_file_open` fires regardless of dispatch path.
@@ -95,7 +94,7 @@ write(fd, elf_bytes, elf_size);                        // or io_uring WRITE_FIXE
 fexecve(fd, argv, envp);                               // execveat(fd, "", argv, envp, AT_EMPTY_PATH)
 ```
 
-**Elastic Defend 9.4.0+ signal**: records `process.Ext.memfd.name`, `.flags`, `.pid`, and correlates `memfd_create` → `write` → `execveat(fd, "", ..., AT_EMPTY_PATH)` within a short window. Rule "Potential Fileless Execution Sequence" fires on that chain.
+**Evidence and configuration**: inspect the deployed rule definition before attributing a multi-event sequence to a named Elastic rule. The [kernel documentation](https://docs.kernel.org/userspace-api/mfd_noexec.html) defines `vm.memfd_noexec` as a PID-namespaced, hierarchical policy; a value observed in one namespace is not automatically a system-wide setting.
 
 **Falco default**: catches `execve` of `/proc/self/fd/<N>` and `memfd:<name>` since v0.35. Blind on empty memfd name only if the rule uses substring match on `memfd:`.
 
@@ -139,13 +138,13 @@ When another BPF program already hooks the same kprobe/tracepoint the sensor use
 
 **Pure userspace BPF map poisoning (no LKM)** works only when the sensor uses BPF maps for allowlists/blocklists **without** `security_bpf_map` LSM enforcement:
 
-- Falco stores syscall monitor flags in an `interesting_sys[]` BPF map. `bpftool map update id <N> key <syscall_nr> value 0` disables monitoring for that syscall for the duration of your operation. Restore before exit.
+- Falco's modern-eBPF driver stores syscall monitor flags in an `interesting_syscalls` BPF map. `bpftool map update id <N> key <syscall_nr> value 0` can disable monitoring for that syscall for the duration of your operation — the sensor may rewrite the map on reconfiguration, so restore before exit and verify the map id live.
 - Verify LSM enforcement first: `bpf(BPF_MAP_UPDATE_ELEM, target_map)` returning `-EPERM` means `security_bpf_map` is denying you.
 
 ### 4b. Signature avoidance for LKM
 
 - `.modinfo` section leaks author, description, license — strip before packaging, or set to plausible values (`license=GPL v2`, `author=Linus Torvalds`) that match common noise.
-- `init_module`/`finit_module` events include the module blob's SHA-256 in Elastic Defend 9.4.0+ — rotate byte-level layout per deployment.
+- `init_module`/`finit_module` events can carry the module blob's SHA-256 in current Elastic Defend builds — rotate byte-level layout per deployment.
 - Modern kernels expose `/proc/kallsyms` (root-only if `kptr_restrict=2`). Do not resolve symbols by name at init — resolve by pattern-matching from a known-address anchor (kallsyms is auditable).
 - ftrace hooks appear in `/sys/kernel/tracing/enabled_functions` when enabled — hide by hooking `ftrace_ops_list_func` to filter your own entries.
 
@@ -201,7 +200,7 @@ Same doctrine as Windows in the parent skill: **passive checks generate zero sys
 
 | Technique | Kernel visibility | Best-fit target |
 |---|---|---|
-| `memfd_create` + `fexecve` (§3) | Elastic 9.4.0+ full chain; Falco `execve` of `memfd:` | Fileless drop, LD_PRELOAD-free |
+| `memfd_create` + `fexecve` (§3) | Elastic memfd-chain rule; Falco `execve` of `memfd:` | Fileless drop, LD_PRELOAD-free; blocked by `vm.memfd_noexec=2` |
 | Interpreter one-liner (perl/awk) | execve of interpreter + argv | Fastest; hides real payload in encoded argv/stdin |
 | `ptrace(PTRACE_ATTACH)` + `PTRACE_POKEDATA` + `PTRACE_SETREGS` | Every ptrace op is audit + eBPF visible | Loud; only if target sensor lacks ptrace hooks |
 | `/proc/<pid>/mem` direct write | 1 open + 1 write, file-integrity dependent | Cheaper than ptrace; requires `ptrace_scope <= 1` or same-uid + `PR_SET_DUMPABLE=1` |
@@ -221,8 +220,8 @@ Same doctrine as Windows in the parent skill: **passive checks generate zero sys
 
 Containers are not a security boundary against modern host-level eBPF EDRs, but they add layers useful for pivoting:
 
-- **Unprivileged userns creation** (`unshare -U`) grants `CAP_BPF` and `CAP_SYS_ADMIN` inside the new namespace when `kernel.unprivileged_userns_clone=1`. Combined with §5-vulnerable BPF map poisoning, that reaches Falco/Tetragon state from a container.
-- **runc/leaky-vessels (CVE-2024-21626)** and PID-namespace leaks (CVE-2025-26324) escape to host via `/proc/<host-pid>/root` traversal.
+- **BPF permissions**: namespace-root identity alone does not establish authority over host BPF objects. A universal rule for every BPF operation on every kernel since 5.8 is unsupported; use the actual kernel's documented permission model and configuration.
+- **runc advisories**: the [v1.2.8 release](https://github.com/opencontainers/runc/releases/tag/v1.2.8) links distinct advisories for CVE-2025-31133, CVE-2025-52565, and CVE-2025-52881. Do not collapse these and CVE-2024-21626 into one mechanism or affected-version range; retain each advisory's own prerequisites and fix information.
 - **Sidecar hiding**: DaemonSet-based sensors (Falco, Tetragon) filter by pod selector; a sibling pod outside the selector is invisible to policy-scoped rules even though the host agent sees all syscalls.
 - **Mount namespace**: mounting `tmpfs` over `/etc` inside a namespace shadows files locally. Host EDR still sees the mount syscall; policy filters that lookup pod-scoped may miss the shadow.
 
@@ -276,7 +275,7 @@ Syscall weights on the same 0–4 scale as `best-practices.md` §2. Aim to keep 
 | `init_module`, `finit_module`, `delete_module` | 3 | Kernel module load/unload |
 | `openat` on `/etc/*`, `/root/*`, `/proc/*/mem` | 3 | File-integrity rules |
 | `openat(/etc/ld.so.preload, O_WRONLY)` | 4 | Rootkit-persistence signature |
-| `memfd_create` (Elastic 9.4.0+) | 2 | Blind on Falco < 0.35 |
+| `memfd_create` (Elastic memfd rule) | 2 | Depends on `vm.memfd_noexec` sysctl |
 | `io_uring_enter` | 2 (1 on Falco < 0.40) | Batch payload not introspected by tracepoint |
 | `process_vm_writev`, `process_vm_readv` | 2 | Rarely rule-covered vs ptrace |
 | `mprotect(PROT_EXEC)` on `PROT_WRITE` region | 2 | RWX-analog; some rules exist |

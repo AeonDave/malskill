@@ -5,7 +5,7 @@ license: MIT
 compatibility: "glibc/libio-focused Linux user-mode exploitability research; Primarily relevant to glibc 2.23 through current post-hook builds."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: exploitation
   language: c,cpp,asm,python
 ---

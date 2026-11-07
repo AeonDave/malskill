@@ -102,7 +102,7 @@ uint32_t draugr_syscall(uint16_t ssn, uintptr_t syscall_gadget,
         "movq   0x40(%%r12), %%r8\n\t"        /* a3                       */
         "movq   0x48(%%r12), %%r9\n\t"        /* a4                       */
         /* (copy a5..a11 onto the trampoline frame stack; omitted for brevity —
-         *  see Draugr repo draugr_spoof_x64.s for full copy loop)        */
+         *  see Draugr repo Stub.s ([NtDallas/Draugr](https://github.com/NtDallas/Draugr)) for full copy loop)        */
         /* Syscall ABI: R10 = RCX */
         "movq   %%rcx, %%r10\n\t"
         /* Set RBX so the gadget's JMP [RBX] lands in our fixup */
@@ -303,7 +303,7 @@ fixup<>:
 - `BYTE $0x90` NOPs: historically needed between instructions the Go assembler "helpfully" reorders or fuses. Modern Go (1.22+) is less aggressive, but keep them around call sites and between conceptually distinct stanzas — cheap insurance.
 - `FP` references the frame-pointer pseudo-register (= argument base on entry); it is stable regardless of RSP manipulation. `errcode+112(FP)` resolves to the return-value slot in the caller's frame.
 - **Goroutine safety**: the Go scheduler can preempt a goroutine on any preemption check (stack growth, GC safe-point). During the time SP is pointing at the fake stack, **do not trigger any Go runtime call** — no `runtime.morestack`, no channel ops, no map access. Keep the trampoline straight-line.
-- Do not touch `GS:0x30` — that's the current thread's `g` pointer; corrupting it deadlocks the scheduler.
+- Do not touch the Go `g` pointer — on windows/amd64 it lives behind TLS (`GS:0x58` ThreadLocalStoragePointer indexed by `_tls_index`); `GS:0x30` is `TEB.NtTib.Self`. Corrupting `g` deadlocks the scheduler.
 
 ---
 
@@ -646,12 +646,12 @@ smFixup<>:
 
 **Go: race detector and `unsafe.Pointer`**: `-race` builds instrument every pointer write. `bufPin` arriving as `unsafe.Pointer` is fine, but do not expose the fake stack addresses to Go code — they look like valid pointers to the race detector and will produce false reports.
 
-**MSVC `_chkstk` injection**: any C function with stack allocation > 1 page (4096 bytes) gets a call to `_chkstk` injected in the prologue. This is a CFG-marked indirect call that generates telemetry. Mitigation: use mingw-w64 instead of MSVC for the trampoline file, or declare a `#pragma check_stack(off)` around the naked function.
+**`_chkstk` injection**: any MSVC C function with stack allocation > 1 page (4096 bytes) gets a **direct** `__chkstk` call in the prologue (prologue telemetry + stack probe inside a naked frame). mingw-w64 does the same (`___chkstk_ms`) — the actual fix is `-mno-stack-arg-probe` (mingw) or `#pragma check_stack(off)`, not a toolchain swap.
 
 **Go: `writeBarrier` during GC**: storing an `unsafe.Pointer`-derived value into a struct field triggers a write barrier in the GC mark phase. In the spoof trampoline, your SpoofContext is not GC-visible; but if you store gadget addresses into a Go-managed struct, ensure it is `unsafe.Pointer` typed (not `uintptr`) only when the GC needs to see it. For stable-address values resolved once at init, `uintptr` is correct.
 
 **C / Rust: PE `.pdata` of the spoofer itself**: your spoofer's ASM trampoline will have its own `.pdata` entry (MSVC/mingw-w64 auto-generate one). Inspectors reversing your binary see a "stub" with no real prologue. Two options:
 1. Emit a fake `.pdata` entry that matches what a legitimate function would have (requires custom linker scripts).
-2. Strip `.pdata` entirely with `-fno-asynchronous-unwind-tables` (GCC) or `/NOPDATA` (MSVC — experimental). This breaks SEH inside the spoofer, which is acceptable because the spoofer cannot catch exceptions anyway.
+2. Strip `.pdata` with `-fno-asynchronous-unwind-tables` (GCC/Clang). MSVC has **no supported flag** to drop unwind info on x64 (the ABI requires it). This breaks SEH inside the spoofer, which is acceptable because the spoofer cannot catch exceptions anyway.
 
 **Go: no reliable `.pdata` suppression**. Go always emits `.pdata` for every function. Mitigation: patch the Go toolchain (aggressive) or accept the entry as a detection signal. For production offensive use, prefer C or Rust for the trampoline and call from Go via CGo only if unavoidable.

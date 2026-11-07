@@ -82,3 +82,9 @@ A payload variant is release-ready only if:
 - memory transition paths (`alloc -> write/decode -> exec`) are deterministic
 - staged path tolerates partial transport behavior
 - static + emulation + runtime tests all pass with same byte blob
+
+## 2025-2026 kernel deltas that break assumptions
+
+- **`mseal()` (Linux 6.10+)**: irreversible sealing of a mapping against `mprotect`/`munmap`/`mremap`. A sealed region can never be flipped to RWX — seal your own exec mappings only *after* the final RX transition, and expect hardened hosts to seal system mappings. No glibc wrapper; direct syscall ([kernel docs](https://docs.kernel.org/userspace-api/mseal.html), [Trail of Bits deep dive](https://blog.trailofbits.com/2024/10/25/a-deep-dive-into-linuxs-new-mseal-syscall)).
+- **System-mapping protection**: [Linux 6.15 documentation](https://docs.kernel.org/6.15/userspace-api/mseal.html) describes `CONFIG_MSEAL_SYSTEM_MAPPINGS` for supported architectures. Record the actual kernel configuration; the version alone does not establish whether system mappings are sealed.
+- **arm64 BTI/PAC userspace**: on BTI-marked images the kernel sets the guarded-page bit — indirect branches in shellcode landing outside `bti` landing pads fault ([Arm PAC/BTI enablement](https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/enabling-pac-and-bti-on-aarch64)). Check `HWCAP_PAC`/`HWCAP_BTI` before assuming free indirect dispatch on aarch64.

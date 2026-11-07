@@ -47,8 +47,10 @@ NtAllocateVirtualMemory:
     jne     short do_wow64_path    ; 75 03
     syscall                        ; 0F 05
     ret                            ; C3
-do_wow64_path:
-    int     0x2E                   ; CD 2E    (legacy path)
+do_int2e_legacy_path:
+    int     0x2E                   ; CD 2E — legacy fallback, selected by
+                                   ; KUSER_SHARED_DATA+0x308 SystemCall == 1
+                                   ; (not a WoW64 path)
     ret                            ; C3
 ```
 
@@ -167,7 +169,7 @@ Use hardware debug registers (DR0–DR3) to set an execution breakpoint on the `
 
 Advantage: the syscall actually executes from ntdll — call stack looks native. EDRs that only hook prologue bytes are bypassed; they never see the modified behavior.
 
-Drawback: DR0–DR3 are **per-thread**, visible in `NtGetContextThread`, and ETW-TI fires on DR modifications starting in recent Windows 11 builds.
+Drawback: DR0–DR3 are **per-thread** and visible in `NtGetContextThread`; a remote `NtSetContextThread` that sets them is telemetered by `EtwTiLogSetContextThread` ([Praetorian symbol dump](https://www.praetorian.com/blog/etw-threat-intelligence-and-hardware-breakpoints)). DR-set replayed through `NtContinue` is not context-write telemetered.
 
 ### Strategy 7 — Shadow ntdll / KnownDlls resolver
 
@@ -202,8 +204,8 @@ MyDirectSyscall:
 
 Call stack at the moment of the syscall:
 ```
-Return address → your_module.text+XXX
-RIP           → your_module.text+YYY (the `syscall` instruction)
+Return address → your_module.text+0x40 (instruction after your CALL)
+RIP           → your_module.text+0x1C (the `syscall` instruction)
 ```
 
 **Detection signal**: the `syscall` instruction executes from a non-ntdll module. `call stack` examination (at `KiSystemCall64` or via ETW-TI call-stack capture) shows a userland frame outside ntdll. This is a high-fidelity IOC.
@@ -360,15 +362,19 @@ Kernel-mode ETW-TI ("Microsoft-Windows-Threat-Intelligence" provider) emits even
 
 | Event | Triggering syscall |
 |---|---|
-| `EtwTiLogAllocExecVm` | `NtAllocateVirtualMemory` with `PAGE_EXECUTE_*` protection |
-| `EtwTiLogProtectExecVm` | `NtProtectVirtualMemory` transitioning to `PAGE_EXECUTE_*` |
-| `EtwTiLogMapExecView` | `NtMapViewOfSection` with `PAGE_EXECUTE_*` |
-| `EtwTiLogWriteVm` | `NtWriteVirtualMemory` cross-process |
-| `EtwTiLogReadWriteVm` | `NtReadVirtualMemory` targeting LSASS (or any PP) |
-| `EtwTiLogSuspendResume` | `NtSuspendThread` / `NtResumeThread` cross-process |
-| `EtwTiLogContextModification` | `NtSetContextThread` cross-process |
-| `EtwTiLogQueueApcThread` | `NtQueueApcThread*` |
-| `EtwTiLogSetSecurityDescriptor` | various |
+Emitter symbols reported in [Praetorian's analysis](https://www.praetorian.com/blog/etw-threat-intelligence-and-hardware-breakpoints). For schema provenance and collection limits, load [kernel telemetry evidence](../../edr-evasion-dev/references/kernel-telemetry.md); it is not a current event-ID catalog:
+
+| Emitter | Triggering syscall |
+|---|---|
+| `EtwTiLogAllocExecVm` | `NtAllocateVirtualMemory` granting `PAGE_EXECUTE_*` |
+| `EtwTiLogProtectExecVm` | `NtProtectVirtualMemory` granting execute |
+| `EtwTiLogReadWriteVm` | Cross-process read **and** write (routes through `MmCopyVirtualMemory`) |
+| `EtwTiLogSuspendResumeThread` / `...Process` | Cross-process suspend/resume |
+| `EtwTiLogSetContextThread` | Remote `NtSetContextThread` (incl. DR writes) |
+| `EtwTiLogInsertQueueUserApc` | `NtQueueApcThread*` |
+| `EtwTiLogDeviceObjectLoadUnload`, `EtwTiLogDriverObjectLoad/UnLoad` | Driver/device load events |
+
+Earlier public write-ups list names like `EtwTiLogWriteVm`, `EtwTiLogContextModification`, `EtwTiLogQueueApcThread` — those symbols do not exist in the dump; treat any emitter name not in the list above as unverified.
 
 **Key point**: ETW-TI fires from the syscall handler in the kernel, **after** your userland indirect/desync dispatch has reached the kernel. Bypass requires either kernel code (patching `nt!EtwTiLog*` functions) or using syscalls that don't trigger ETW-TI at all.
 
@@ -417,14 +423,14 @@ Full catalog at [ntdoc.m417z.com](https://ntdoc.m417z.com).
 
 ## SSN stability table (x64 Windows 11, illustrative)
 
-SSNs drift — these are examples for orientation only. Always resolve at runtime.
+SSNs drift — examples for orientation only ([hfiref0x/SyscallTables](https://github.com/hfiref0x/SyscallTables) has full per-build tables incl. 26100/26200). Always resolve at runtime.
 
 | Function | 22H2 | 24H2 |
 |---|---|---|
 | NtAllocateVirtualMemory | 0x18 | 0x18 |
 | NtWriteVirtualMemory | 0x3A | 0x3A |
 | NtProtectVirtualMemory | 0x50 | 0x50 |
-| NtCreateThreadEx | 0xC9 | 0xC7 |
+| NtCreateThreadEx | 0xC7 | 0xC9 |
 | NtQueueApcThread | 0x45 | 0x45 |
 | NtDelayExecution | 0x34 | 0x34 |
 

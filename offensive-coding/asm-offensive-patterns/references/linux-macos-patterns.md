@@ -18,8 +18,8 @@ Clobbered: RCX, R11
 | 2  | open | file open |
 | 3  | close | fd cleanup |
 | 11 | munmap | unmap |
-| 32 | dup2 | redirect fd |
-| 33 | dup2 (x86) | — |
+| 32 | dup | redirect fd |
+| 33 | dup2 | — |
 | 59 | execve | shell |
 | 60 | exit | exit(0) |
 | 322 | execveat | execute fd |

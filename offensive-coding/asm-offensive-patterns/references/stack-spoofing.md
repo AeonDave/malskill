@@ -147,7 +147,9 @@ If a return address lacks a CALL instruction before it, Eclipse flags it as spoo
 
 ---
 
-## 4. LayeredSyscall — Live VEH Frame Overwrite
+## 4. LayeredSyscall — VEH-built legitimate frame
+
+Real mechanism (WKL-Sec, Jul 2024 — [whiteknightlabs](https://whiteknightlabs.com/2024/07/31/layeredsyscall-abusing-veh-to-bypass-edrs/), [WKL-Sec/LayeredSyscall](https://github.com/WKL-Sec/LayeredSyscall)): Dr0/Dr1 target the `syscall`/`ret` opcodes **inside the Nt* stub**; a deliberate access violation hands control to the VEH, which redirects RIP to a **real benign API** (e.g. MessageBox) so the OS itself constructs a legitimate call stack, then restores the context and points RIP at the `syscall` — the return address on the stack is never hand-written.
 
 ### Concept
 No pre-built heap frame — instead, intercept the thread at the exact moment it enters `NtXxx`

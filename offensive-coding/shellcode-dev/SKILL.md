@@ -2,10 +2,10 @@
 name: shellcode-dev
 description: "Auth/lab dev: shellcode-format engineering; PIC, ABI, syscalls, encoders, memory permissions, reflective-loader labs, emulator validation."
 license: MIT
-compatibility: "Windows 10/11 x64, Linux x64/aarch64, macOS x64/arm64; Architecture-specific syscall and ABI differences are mandatory."
+compatibility: "Windows 11 x64 (Windows 10 EOS Oct 2025), Linux x64/aarch64, macOS arm64 (x64 = sunset target, Tahoe 26 last Intel release); Architecture-specific syscall and ABI differences are mandatory."
 metadata:
   author: malskill
-  version: "1.0"
+  version: "1.1"
   category: offensive-coding
   language: asm,c,cpp,python,rust,go
 ---
@@ -26,7 +26,7 @@ This skill is for **implementation and validation workflow**. It is not a vulner
 - Debugging crashes caused by calling-convention or stack-alignment mistakes
 - Verifying payload behavior with emulator/disassembler tooling before runtime tests
 
-If the task is specifically about BOFs, prefer `bof/c-bof` or `bof/cpp-bof` first. If it is specifically about stack masquerade or syscall gates, combine with `offensive-coding/stack-spoofing` or `offensive-coding/indirect-syscall`.
+If the task is specifically about BOFs, prefer `offensive-coding/bof-dev` first. If it is specifically about stack masquerade or syscall gates, combine with `offensive-coding/stack-spoofing-dev` or `offensive-coding/indirect-syscall-dev`.
 
 ---
 
@@ -77,6 +77,8 @@ If the task is specifically about BOFs, prefer `bof/c-bof` or `bof/cpp-bof` firs
 
 ### macOS x64/arm64
 
+> Apple's [macOS release notes](https://developer.apple.com/documentation/macos-release-notes/macos-26_4-release-notes) identify Tahoe 26 as the last major release supporting Intel Macs. Apple's [26.3 security notes](https://support.apple.com/en-us/126348) list the fix for CVE-2026-20627. These are platform lifecycle and security-update facts, not qualification of the workflows in this skill.
+
 - Syscall tables and calling details differ from Linux; validate against XNU sources/current targets.
 - Treat Mach-O and dyld assumptions as version-sensitive.
 - arm64 stack alignment and calling convention errors fail fast; emulate and runtime-test both.
@@ -118,6 +120,7 @@ If the task is specifically about BOFs, prefer `bof/c-bof` or `bof/cpp-bof` firs
 - [references/platform-workflows.md](references/platform-workflows.md) — concrete Windows/Linux/macOS build and validation flows, including syscall and memory-transition checkpoints
 - [references/tooling-and-labs.md](references/tooling-and-labs.md) — practical usage of pwntools, Capstone, Keystone, Unicorn, debugger loops, and test harness patterns
 - [references/encoders-and-stagers.md](references/encoders-and-stagers.md) — staged payload patterns, bad-byte encoders, polymorphism trade-offs, and failure modes
+- [references/payload-protection-and-shaping.md](references/payload-protection-and-shaping.md) — payload key splitting over ambient state, MBA-obfuscated key material, encrypted container layout, and binary shaping vs static/ML classifiers; load when building or reviewing a loader's payload-protection pipeline
 - [references/evasion-patterns-from-projects.md](references/evasion-patterns-from-projects.md) — transferable shellcode-dev engineering patterns from real implementations (runtime SSN mapping, recycled syscall gates, DESYNC readiness checks, sleep masking pipelines, CFG-aware gadget handling)
 - [references/loader-core-qualification.md](references/loader-core-qualification.md) — load when qualifying, porting, or reviewing a raw PIC loader core (extracted `.text`/`.rdata`) or its wrapper: defect taxonomy (thunk-slot placement, SSE/section alignment, decode-cursor vs ABI conflation, kernel-dependent paths), crash-signature triage on Windows, and the per-backend gate recipe
 - Upstream methodology: `offensive-techniques/binary-exploitation-technique` (where shellcode fits in the chain) and `offensive-ctf/pwn-ctf/references/shellcode-filtering.md` (byte-blacklist recipes).

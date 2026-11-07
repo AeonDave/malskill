@@ -400,7 +400,7 @@ CET enforcement is per-process, triggered by `SET_PROCESS_MITIGATION_POLICY`. Mo
 
 - Kernel-side stack walk at syscall detects only frame-validity issues — if all frames are valid, clean
 - User-mode hooks that capture stack via `CaptureStackBackTrace` → same unwinder path, same result (clean)
-- **ETW-TI callstack events** (kernel provider, Win10 20H1+) capture stack. Elastic / Defender correlate with memory region characteristics
+- **ETW-TI stack capture** (sensor-side, where supported) correlates stacks with memory-region characteristics (field-reported; no public per-event manifest entry for stack captures)
 - **Unbacked memory in call stack** — if any frame's RIP falls in a page without a file backing, flagged. Planted frames point into real modules → no unbacked frame
 - **Pattern match on gadgets** — the addresses of known gadgets (SilentMoonwalk reference gadgets in ntdll) are known. Defenders can hash frequently-used gadget combinations. Use fresh gadget discovery per-process to vary
 - **Abnormal frame sequence** — e.g., a frame inside `memcpy` calling `NtAllocateVirtualMemory` is suspicious even if structurally valid. Frame sequence heuristics are the strongest ML-side detection

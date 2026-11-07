@@ -4,12 +4,12 @@ description: "Auth/lab dev: Windows + Linux detection-resilience research; sysca
 license: MIT
 metadata:
   author: kRustyLoader
-  version: "2.3"
+  version: "2.4"
 ---
 
 # EDR Evasion — Universal Patterns & Constraints
 
-Field-tested principles for Windows and Linux EDR/XDR evasion. Windows content verified against S1, Defender, CrowdStrike (2026). Linux content covers Falco, Tetragon, Tracee, Aqua, Elastic Defend, CrowdStrike Falcon Linux, SentinelOne Linux (2024-2026). Project-agnostic — applies to any loader, implant, or tool runner.
+Windows and Linux EDR/XDR reference material. Product-specific observations require the original artifact, sensor version, configuration, and result; the presence of a technique or citation here does not establish verification against SentinelOne, Defender, CrowdStrike, or another product.
 
 ---
 
@@ -20,10 +20,10 @@ Depth in this `SKILL.md` is Windows. Load references based on the target OS.
 | Target profile | Load |
 |---|---|
 | Windows 10/11 loader, implant, tool | This body §0–§14 + [`references/constraints.md`](references/constraints.md) |
-| Windows 11 24H2+ with CET on ntdll | Same + [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — read §CET before choosing spoof strategy |
+| CET-enforced host process (query `ProcessUserShadowStackPolicy` — user-mode shadow stack is per-image opt-in, not a 24H2 default) | Same + [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — read §CET before choosing spoof strategy |
 | Linux host with Falco / Tetragon / Tracee / Elastic Defend / any eBPF EDR | [`references/linux-edr-evasion.md`](references/linux-edr-evasion.md) — do **not** port Windows patterns |
 | Designing a new loader / auditing an existing one (either OS) | [`references/best-practices.md`](references/best-practices.md) — signal-cost budget, minimalism gate, CI-under-test |
-| Deciding what you can never suppress from userspace | [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — kernel-fired ETW-TI, LSM BPF, auditd |
+| Interpreting kernel telemetry and collection gaps | [`references/kernel-telemetry.md`](references/kernel-telemetry.md) — distinguish provider schemas, deployed configuration, and observed events |
 
 **Golden rule for cross-OS work**: usermode evasion primitives never transfer. Indirect syscalls, ETW patching, SilentMoonwalk, HWBP are Windows-only. LD_PRELOAD, io_uring, memfd, BPF map poisoning are Linux-only. What transfers is the doctrine: evasion minimalism, signal-cost budget, staged loader hygiene, telemetry-first design (see `best-practices.md`).
 
@@ -107,6 +107,7 @@ Load SSN into EAX, jump to `syscall; ret` gadget (`0F 05 C3`) inside ntdll. Retu
 
 - **RecycledGate** (preferred): enumerate all `Zw*` exports from EAT, sort by address → index = SSN. Works with all Nt* stubs hooked.
 - **Hell's Gate** (fallback): parse Nt* stub prologue for `B8 xx xx 00 00`. Fails when EDR inline-hooks.
+- **Cross-validation (robustness)**: verify the sorted-order SSN against the `mov eax, imm32` immediate read from the matching stub (Nt* and Zw* alias the same stub in user-mode, so this is a two-source check, not three); on mismatch (hooked/tampered tree), **fail closed** rather than dispatching a guessed SSN — a wrong SSN on modern kernels is worse than aborting (field-reported pattern).
 
 ### Stack spoofing (NtContinue-based)
 
@@ -131,10 +132,6 @@ Use runtime profile selection instead of one global syscall strategy:
 | 2 | clean `Nt*` function pointers from fresh ntdll mapping | `indirect_syscall*` only for blocked calls | backed EXE where direct stub calls look normal |
 
 Rule: if the binary is disk-backed and has legitimate `.text`, prefer clean/direct `Nt*` calls first. Save indirect spoof-heavy paths for unbacked execution contexts.
-
-### Ghost Hunting (Emerging Kernel Detection)
-
-Some EDR research prototypes correlate kernel handle issuance (pre-NTAPI return) against userland hook telemetry — if a handle exists with no hook observation, HWBP/VEH interception is inferred. Not yet widespread in production S1/CS/Defender (2026); `indirect_syscall` + `tp_spoofed_syscall` remain effective. Monitor threat intel for production rollout.
 
 ---
 
@@ -161,8 +158,6 @@ Flow: `push r12/r13 → lea r12,[continuation] → mov r13,rsp → mov rsp,synth
 | Lock ordering | `E10_LOCK` → `SPOOF_BUF_LOCK` (never reverse). Contention → fallback to `indirect_syscall` |
 | Beacon only | Tool_mode (backed EXE) skips SMW entirely (F9) |
 | Init timing | After `init_stack_spoof_phase1`, before ntdll unhooking |
-| **CET (Windows 11 24H2+)** | `.pdata`-coherent frames pass user-mode unwinding but do **not** populate the shadow stack. On CET-enforced ntdll the terminal `RET` faults `#CP`, or the kernel unwinder's shadow-stack check fails. Query `GetProcessMitigationPolicy(ProcessUserShadowStackPolicy)`; if enforced, disable SMW and route through `NtContinue` spoof (kernel writes both stacks coherently). Detail: [`references/kernel-telemetry.md`](references/kernel-telemetry.md) → CET section |
-| **CS 2025 call-stack rigidity** | CrowdStrike Falcon 8.5+ builds full call stacks per syscall and flags pattern rigidity — 1000s of syscalls with identical synthetic frames trip the ML model. Vary gadget selection across the SMW gadget pool (or skip SMW on backed-EXE tool_mode) |
 
 ---
 
@@ -199,7 +194,7 @@ Flow: `push r12/r13 → lea r12,[continuation] → mov r13,rsp → mov rsp,synth
 
 - `NtCreateSection(PAGE_EXECUTE_READWRITE)` → RW view + RX view on same physical pages
 - W^X: VEH handler redirects writes from RX to RW view transparently
-- **Kernel signal**: pagefile-backed section with X+W max_prot is nearly unique to shellcode loaders. Logged by ETW-TI `SectionCreate`.
+- **Kernel signal**: pagefile-backed section with X+W max_prot is nearly unique to shellcode loaders. Section creation itself is not an ETW-TI task (no SectionCreate event exists) — the exec-granting alloc/protect events and image-load callbacks are what make it observable.
 - Superseded by private RWX for tool_mode (B1). Retained for beacon if module stomp fails.
 
 ### Decision matrix
@@ -227,7 +222,7 @@ XOR: read from RW (has current data) → XOR → write to RW. Never read RX — 
 
 **Technique**: `NtOpenSection(\KnownDlls\ntdll.dll)` → `NtMapViewOfSection(readonly)` → compare .text → overwrite hooked stubs with clean bytes.
 
-**Status**: code exists but **disabled in all modes**. KnownDlls generates 5+ kernel-logged signals (NtOpenSection + NtMapView + NtProtect(RWX on ntdll .text) + bulk write + NtProtect(restore)). The reference beacon evades without unhooking.
+**Status**: code exists but **disabled in all modes**. KnownDlls unhooking is a multi-signal operation: section open + map of a second ntdll view, an exec-granting protect on ntdll .text, a bulk stub rewrite, and a restore protect — each independently observable kernel-side. The reference beacon evades without unhooking.
 
 **Constraint**: if ever re-enabled, V6 ordering applies — sandbox/anti-debug checks MUST run before unhooking to avoid generating signals in sandbox.
 
@@ -352,8 +347,8 @@ S1 detects BOTH total and selective (CLR-only) DR0 suppression. Safe byte-patchi
 | Constraint | Detail |
 |------------|--------|
 | Callee-saved registers | All `indirect_syscall` stubs must push/pop r12/r13/r14. Missing → silent CLR state corruption |
-| AMSI lazy re-resolve | Must NOT be inside hook body (CS SharpBlock signature, 60%→90%) — resolve on TP worker instead |
-| S1 integrity | ntdll .text compared vs KnownDlls at ~100-500ms intervals; any byte mod detected. HWBP is the only safe path |
+| AMSI lazy re-resolve | Must NOT be inside hook body (SharpBlock-era detection; regression measured on VT, re-measure per build) — resolve on TP worker instead |
+| S1 integrity | ntdll .text compared against clean copies on a fast periodic loop (field-reported; exact cadence not public) — any byte mod detected. HWBP is the only zero-modification path |
 
 ---
 
@@ -427,6 +422,14 @@ Treat staging buffers as disposable evidence:
 
 This reduces post-exec memory forensics recovery of original encrypted/plaintext stages.
 
+**Erasure ladder (anti PE-Sieve / Moneta / malfind)** — when the loader itself is unbacked evidence, go beyond buffer scrubbing (pattern verified: AshuraLoader `post_dispatch.rs`):
+
+1. Zero DOS/NT headers + section table, then wipe loader `.text` with **dynamic exclusion of the currently-executing self pages**, then `PAGE_NOACCESS` them.
+2. Wipe remaining sections, gadget arenas, and the RW staging view.
+3. Hand off through a small PIC trampoline on heap RWX that zeroes the parking thread's stack (from `RSP+0x100` down to `StackBase`) and optionally `NtUnmapViewOfSection`s the loader image before `NtTerminateThread`.
+
+Pre-resolve every ntdll pointer **before** the first wipe step — after phase 1 the loader can no longer call out.
+
 ### Beacon mode (dual-view section)
 
 ```
@@ -476,7 +479,7 @@ Compile-time XOR macro (`obfcstr!()`) over byte arrays — decode on stack at ru
 
 ### Why NOT AES
 
-AES is fingerprinted **algorithmically** even without static S-box: GF(2^8) `0x1b` polynomial, ShiftRows byte permutation, MixColumns structure, 14-round key expansion. Replacing zlib+XOR with AES raised VT 4→8/71.
+AES is fingerprinted **algorithmically** even without static S-box: GF(2^8) `0x1b` polynomial, ShiftRows byte permutation, MixColumns structure, 14-round key expansion. Replacing zlib+XOR with AES measurably raised the VT detection count in a project build (field-reported; re-measure per payload).
 
 ### E12 per-page lazy decryption
 
@@ -484,9 +487,9 @@ Decrypt streaming into RW view → XOR re-encrypt per page → NtProtect(PAGE_NO
 
 ### CrowdStrike regressions (confirmed patterns — do not reintroduce)
 
-1. **PE header stomp**: `map → execute → zero first 0x1000` = CS shellcode loader signature (60%→90%)
-2. **AMSI propagation in NtCreateThreadEx hook**: PEB walk + resolve AmsiScanBuffer + SetThreadContext inside hook body = CS SharpBlock signature (60%→90%)
-3. **Removing `panic_abort`**: reintroduces Rust unwinding strings (`attempt to divide by zero`, `library/core/src/...`). Always use `build-std = ["std", "panic_abort"]` + `panic = "immediate-abort"`.
+1. **PE header stomp**: `map → execute → zero first 0x1000` is a known CS shellcode-loader signature (regression measured on VT; re-measure per build)
+2. **AMSI propagation in NtCreateThreadEx hook**: PEB walk + resolve AmsiScanBuffer + SetThreadContext inside a hook body matches the SharpBlock interception shape ([CCob/SharpBlock](https://github.com/CCob/SharpBlock)) — kept qualitative; re-measure per build
+3. **Removing `panic_abort`**: reintroduces Rust unwinding strings (`attempt to divide by zero`, `library/core/src/...`). Use `build-std = ["std", "panic_abort"]` and strip the panic formatting machinery with `-Zbuild-std-features=panic_immediate_abort` (nightly; `panic = "immediate-abort"` is **not** a valid Cargo profile value — the profile value is `panic = "abort"`).
 
 ---
 
@@ -522,11 +525,13 @@ Full detail: [`references/process-injection.md`](references/process-injection.md
 
 **Early Bird APC**: `CreateProcess(CREATE_SUSPENDED)` → alloc RW → write → protect RX → `QueueUserAPC` → `ResumeThread`. Fires before EDR DLL loads. Variant — **Early Cryo Bird**: freeze via `NtSetInformationJobObject(JOBOBJECT_FREEZE_INFORMATION)` to avoid `CREATE_SUSPENDED` indicator.
 
-**Thread hijacking**: `SuspendThread` → `GetThreadContext` → set `ctx.Rip` → `SetThreadContext` → `ResumeThread`. Use indirect syscalls (`NtGetContextThread`/`NtSetContextThread`). **Waiting Thread Hijacking** variant: target thread already in `NtDelayExecution` — no `SuspendThread` needed.
+**Thread hijacking**: `SuspendThread` → `GetThreadContext` → set `ctx.Rip` → `SetThreadContext` → `ResumeThread`. Use indirect syscalls (`NtGetContextThread`/`NtSetContextThread`). **Waiting Thread Hijacking** variant: target thread already parked in a wait — no `SuspendThread`/`NtSetContextThread` needed (return-address overwrite).
 
 **Threadless injection (DLL notification callback / EPI)**: register a DLL notification callback (`LdrRegisterDllNotification`), map payload into a legitimate `SEC_IMAGE` DLL, redirect the DLL entry point — no `NtCreateThreadEx` call, no thread-create kernel callback. Fires on next legitimate `LoadLibrary` in the target process. Detail in [`references/process-injection.md`](references/process-injection.md) → Threadless Injection.
 
-**PPID spoofing**: `STARTUPINFOEX` + `UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)` → child appears spawned from trusted parent **in the PEB**. Kernel `PsSetCreateProcessNotifyRoutineEx` receives the real creator PID from `PspInsertProcess` and Security 4688 records the real parent; EDRs that ingest either detect the mismatch. Mitigate with token impersonation of spoofed parent (limits impact to usermode readers).
+**PPID spoofing**: `STARTUPINFOEX` + `UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS)` → child appears spawned from trusted parent **in the PEB**. Kernel-side process-creation telemetry keeps the actual creating process observable (PS_CREATE_NOTIFY_INFO / ETW event origin), so correlating the attributed parent against the real creator flags the spoof ([WithSecure method](https://github.com/WithSecureLabs/ppid-spoofing); also [Picus](https://www.picussecurity.com/resource/blog/how-to-detect-parent-pid-ppid-spoofing-attacks)). Mitigate with token impersonation of spoofed parent (limits impact to usermode readers).
+
+**2025 injection additions** (full mechanics + sources in `references/process-injection.md`): **Waiting Thread Hijacking** (overwrite the return address of a thread sitting in a wait — zero suspend/context callbacks; Check Point, Apr 2025), **Thread Name-Calling** (stash payload in kernel-managed thread-name memory; Check Point, Jul 2024), **CONTEXT-only/ghost-write** (allocation+write driven entirely through `NtSetThreadContext` + ROP gadgets — zero `NtWriteVirtualMemory`; fndsec, May 2025).
 
 ---
 
@@ -552,7 +557,7 @@ Full detail: [`references/anti-analysis.md`](references/anti-analysis.md).
 
 ## 12. BYOVD — Kernel-Level EDR Kill (Reference Only)
 
-BYOVD loads a signed-but-vulnerable kernel driver → Ring 0 → remove EDR callbacks or terminate EDR processes. As of March 2026: 54 active tools targeting 35+ drivers (RTCore64.sys, rwdrv.sys, NSecKrnl.sys); used by RansomHub, BlackByte, Scattered Spider, Qilin/Warlock.
+BYOVD loads a signed-but-vulnerable kernel driver → Ring 0 → remove EDR callbacks or terminate EDR processes. ESET's in-the-wild survey (March 2026): ~90 EDR killers catalogued, **54 BYOVD-based abusing 35 vulnerable drivers** ([ESET deep dive](https://www.eset.com/us/about/newsroom/research/eset-research-deep-dive-edr-killers-ransomware/)); RansomHub (EDRKillShifter), BlackByte (RTCore64.sys — [Sophos](https://news.sophos.com/en-us/2022/10/18/blackbyte-ransomware-brings-hyprdrive-its-latest-go-back-to-the-driver-store/)), Qilin/Warlock (NSecKrnl.sys, CVE-2025-68947 — [NVD](https://nvd.nist.gov/vuln/detail/CVE-2025-68947)). 2026 evolution: EDR-killer suites no longer require a driver — script-based and driverless killers are catalogued alongside BYOVD ([ESET: beyond the drivers](https://www.welivesecurity.com/en/eset-research/edr-killers-explained-beyond-the-drivers)), and Warlock embeds BYOVD code directly in the ransomware loader, cycling device names across 9+ abused drivers.
 
 **Orthogonality**: §1–§11 operate entirely in usermode. BYOVD removes the EDR; §1–§11 evade it. Combining both in one implant is operationally noisy and unnecessary.
 
@@ -570,7 +575,7 @@ Evasion maximalism is self-defeating. A 1,472-line beacon (zero VEH/HWBP/unhooki
 
 **Confirmed reductions**: private RWX, disable ETW DR0 entirely, eliminate syscall/VEH/HWBP stubs from tool_mode. **Non-reductions**: selective ETW (CLR-only), expanded HWBP targets, gating call sites only (dead code retains signature bytes). **Irreducible remainder**: "Malicious shellcode execution" — private RWX + PEB walk + dynamic API.
 
-Full disproven-assumptions table, CS-specific regressions, and the confirmed-reductions ledger: [`references/constraints.md`](references/constraints.md) → "Disproven Assumptions" and "CrowdStrike-Specific Regressions".
+Reported project observations: [`references/constraints.md`](references/constraints.md) → "Disproven Assumptions" and "CrowdStrike-Specific Regressions". Their verification status depends on the originating evidence.
 
 ---
 
@@ -578,10 +583,10 @@ Full disproven-assumptions table, CS-specific regressions, and the confirmed-red
 
 | File | When to load |
 |------|-------------|
-| [`references/constraints.md`](references/constraints.md) | Hard constraints, failure modes, crash causes, disproven assumptions, and CS-specific regressions. Load when debugging a crash or deciding to add/remove an evasion feature. |
+| [`references/constraints.md`](references/constraints.md) | Reported failure modes and project observations. Load when comparing a failure with an earlier report; verify its provenance and matching conditions before treating it as a constraint. |
 | [`references/etw-patching.md`](references/etw-patching.md) | Detailed ETW byte-patch pattern: why `NtWriteVirtualMemory` on self differs from `VirtualProtect`, required restore window, and patch payload details. |
 | [`references/process-injection.md`](references/process-injection.md) | Full Early Bird APC / Thread Hijacking / PPID Spoofing / Threadless Injection / Poolparty details and decision matrix. |
 | [`references/anti-analysis.md`](references/anti-analysis.md) | Full anti-debug, anti-VM, IAT hygiene, and entropy management tables. |
 | [`references/linux-edr-evasion.md`](references/linux-edr-evasion.md) | Linux tradecraft: sensor fingerprinting, io_uring, memfd + fexecve, LD_PRELOAD hygiene, LKM vs eBPF rootkit tradeoff, LSM BPF ceiling, container/userns escapes, anti-ptrace, persistence signal-cost, C2 hiding. Load for any Linux target. |
-| [`references/kernel-telemetry.md`](references/kernel-telemetry.md) | Signals emitted from kernel context that no usermode patch can suppress. Windows: ETW-TI event set, `PsSetCreate*NotifyRoutine`, `ObRegisterCallbacks`, minifilter IRPs, CET/shadow stack. Linux: LSM BPF hooks, auditd, IMA/EVM. Load when planning a technique and answering "can this ever be quiet?" |
+| [`references/kernel-telemetry.md`](references/kernel-telemetry.md) | Load when interpreting kernel telemetry, mitigation state, or collection gaps. Separate provider schemas, enabled configuration, observed events, and vendor detection claims. |
 | [`references/best-practices.md`](references/best-practices.md) | Cross-platform doctrine: signal-cost budget, evasion minimalism gate, threat modeling, staged loader hygiene, build/CI hygiene, sample rotation, VT hygiene, cleanup lifecycle, anti-patterns ledger. Load when designing a new loader or auditing an existing one. |

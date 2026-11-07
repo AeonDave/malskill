@@ -16,11 +16,11 @@ BITS 64
 
 ; Pre-computed DJB2 hashes (uppercase, case-insensitive)
 ; Compute offline: python3 -c "h=5381; [h:=((h<<5)+h+ord(c.upper()))&0xFFFFFFFF for c in 'KERNEL32.DLL']; print(hex(h))"
-%define HASH_KERNEL32   0xBE2D0337   ; "KERNEL32.DLL"
-%define HASH_NTDLL      0x3CFA685D   ; "NTDLL.DLL"
+%define HASH_KERNEL32   0x6DDB9555   ; DJB2("KERNEL32.DLL") — verify with the hash routine below
+%define HASH_NTDLL      0x1EDAB0ED   ; DJB2("NTDLL.DLL")
 
 ; Target function hash — example: LoadLibraryA
-%define HASH_LOADLIBA   0xEC0E4E8E   ; DJB2("LoadLibraryA")
+%define HASH_LOADLIBA   0x5FBFF0FB   ; DJB2("LoadLibraryA") (0xEC0E4E8E is the ROR13 value — wrong algorithm here)
 
 section .text
 

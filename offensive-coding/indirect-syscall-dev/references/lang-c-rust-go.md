@@ -31,6 +31,7 @@ reCycall:
     mov r11, rdx                 # gadget → R11
     mov rcx, r8                  # shift arg1
     mov rdx, r9                  # shift arg2
+    # NOTE: from here RCX holds arg1 — save the SSN before this point
     mov r10, rcx                 # syscall ABI
     mov  r8, [rsp + 0x28]        # arg3
     mov  r9, [rsp + 0x30]        # arg4
@@ -41,7 +42,8 @@ reCycall:
     mov rax, [rsp + 0x50]        # arg6
     mov [rsp + 0x30], rax
     # ... continue for arg7..arg18 as needed
-    mov eax, ecx                 # restore SSN (R10 move above clobbered nothing, but safe)
+    # (removed) 'mov eax, ecx' here would load arg1's low dword, not the SSN —
+    # RCX was already overwritten with arg1. Load the SSN from its saved slot.
     call r11                     # CALL syscall;ret
     add rsp, 0x10
     ret
@@ -491,7 +493,7 @@ func halosGate(stub uintptr, maxWalk int) (uint32, bool) {
 }
 ```
 
-**Gotcha**: on heavily hooked builds (Defender for Endpoint ≥ 2022 hooks *all* Nt* stubs), `max_walk` becomes unbounded without success. Cap at ~32 and fall through to RecycledGate.
+**Gotcha**: on heavily hooked builds, `max_walk` becomes unbounded without success. Cap at ~32 and fall through to RecycledGate. No product-specific coverage claim is established here.
 
 ### 5.3 Tartarus' Gate
 

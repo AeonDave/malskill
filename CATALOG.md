@@ -31,8 +31,9 @@ One skill per tool, organized by attack phase. Each skill covers how the tool wo
 
 Building offensive tooling from scratch: shellcode, loaders, BOFs, syscall stubs, evasion primitives, and OS internals. For agents doing tool development, not just tool execution.
 
-- **BOF**: `bof-dev/c-bof`, `bof-dev/cpp-bof` - Beacon Object File development workflows.
+- **BOF**: [bof-dev](offensive-coding/bof-dev/SKILL.md) - Beacon Object File development workflows.
 - **Evasion**: `edr-evasion-dev`, `indirect-syscall-dev`, `sleep-masking-dev`, `stack-spoofing-dev` - technique-level development patterns.
+- **Elevation**: `uac-evasion-dev` - in-tool UAC bypass implementation (auto-elevate mechanics, bypass families, BOF integrations, UAC→admin→SYSTEM chain).
 - **Exploit and payload development**: `heap-exploitation-dev`, `rop-development-dev`, `shellcode-dev`, `fsop-dev`, `stack-exploitation-dev`.
 - **Internals**: `windows-internals-dev`, `linux-internals-dev` - OS APIs, structures, memory layout, and native PE/ELF startup. Windows [survey interpretation](offensive-coding/windows-internals-dev/references/build-survey.md) includes a numerical CSV cohort and collection limits; use `reversing-technique` for matching-build source/symbol checks and observed OS/runtime behavior.
 - **Assembly patterns**: `asm-offensive-patterns` - x86-64/ARM64 patterns tuned for shellcode, syscall stubs, and evasion primitives.

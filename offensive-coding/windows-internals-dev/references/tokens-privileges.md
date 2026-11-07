@@ -117,7 +117,7 @@ Integrity levels (authority 16):
 | S-1-16-12288 | High | 0x3000 | 12288 |
 | S-1-16-16384 | System | 0x4000 | 16384 |
 | S-1-16-20480 | Protected Process | 0x5000 | 20480 |
-| S-1-16-28672 | Secure Process | 0x7000 | 28672 |
+| S-1-16-24576 | Secure Process (PPL) | 0x6000 | 24576 |
 
 ## Mandatory integrity control (MIC)
 
@@ -166,7 +166,7 @@ High-value privileges for offensive work:
 | `SeDelegateSessionUserImpersonatePrivilege` | Impersonate across sessions — useful in RDP scenarios |
 | `SeAuditPrivilege` | `ReportEvent` into Security log directly — SYSTEM-only |
 
-LUID values are assigned at boot and are machine-local; never hardcode. Always resolve:
+LUID values for privileges are de-facto constant per build (e.g. `SeDebugPrivilege` = 20 on every system), but the documented contract is to never hardcode — resolve always:
 
 ```c
 LUID luid;
@@ -426,7 +426,7 @@ Pattern: an unprivileged service account holding `SeImpersonatePrivilege` coerce
 | RoguePotato → Juicy2 / SweetPotato / GenericPotato | Various COM+ / DCOM angles | Hit or miss per build |
 | EfsPotato | EFSRPC `EfsRpcEncryptFileSrv` → SYSTEM | Works when EFS RPC enabled |
 | RemotePotato0 | Cross-session DCOM | Depends on RPC/DCOM hardening |
-| GodPotato | RPCSS → any-user when SeImpersonate held | Current as of Win11 24H2 |
+| GodPotato | RPCSS → any-user when SeImpersonate held | No public patch; re-verify per build |
 
 All require `SeImpersonatePrivilege` already. The primitive converts SeImpersonate + coercible service → SYSTEM primary token.
 
@@ -491,7 +491,7 @@ Tokens are the most-watched objects on a Windows host.
 | 4672 | Security | **Special privileges assigned to new logon** — fires when a logon session includes Se*Debug/Tcb/Backup/Restore/etc. Noisy for admin logons but high-signal for lateral-movement tools that wake the token briefly |
 | 4673 | Security | Privileged service was called — `SeDebugPrivilege`, `SeTcbPrivilege` use |
 | 4674 | Security | Privileged object operation — process open, token open, etc. |
-| 4688 | Security | Process creation — includes parent PID, process command line (if enabled), and since 1809, creator/target subject tokens |
+| 4688 | Security | Process creation — parent PID, command line (if enabled), creator/target subject tokens |
 | 4689 | Security | Process termination |
 | 4697 | Security | Service installed (includes service file name + account) |
 | 4698/4699/4700/4701/4702 | Security | Scheduled task created/deleted/enabled/disabled/updated |

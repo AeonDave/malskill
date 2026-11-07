@@ -32,7 +32,7 @@ Beyond 65,536: split code across multiple DEX files (`classes.dex`, `classes2.de
 ## CDEX (Compact DEX)
 
 - Runtime-optimized format produced by `dex2oat` during install/AOT.
-- Lives on-device (`/data/dalvik-cache/.../<apk>.oat` contains embedded CDEX).
+- Lives on-device (since Android 8, app artifacts live under `/data/app/<pkg>/oat/`; the CDEX is embedded in the **`.vdex`**, the `.oat` carries the AOT code).
 - Not in the APK. You don't touch it directly. If you're reversing an OAT/CDEX from a device dump, you need `vdexExtractor` or the AOSP `oatdump` tool.
 - Format is a strict subset of DEX with additional metadata for the ART interpreter; specific data-layout changes across Android versions.
 

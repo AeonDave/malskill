@@ -102,8 +102,8 @@ In-process AMSI bypass must:
 
 ### Hardened AMSI (recent changes)
 
-- **Win11 24H2**: `AmsiScanBuffer` is in a CFG-guarded region; patching still works because patch writes to function prologue, not indirect-call targets — CFG check is on callers.
-- **Defender Mar 2023+**: monitors `AmsiScanBuffer` prologue via a secondary signal; patch within some patterns triggers `AmsiUacBypassModule` detection. Use variants (not the literal stock patch bytes).
+- `AmsiScanBuffer` patching works under CFG because the patch writes to the function prologue, not indirect-call targets — the CFG check is on callers (process-dependent; not a build-level guarantee).
+- Defender reacts to the stock `AmsiScanBuffer` patch bytes on current signatures (field-reported) — use per-build variants, never the literal stock bytes.
 - **PowerShell CLM (Constrained Language Mode)** combined with Applocker/WDAC blocks dynamic invocation of `[Reflection]::GetField` to reach the `amsiContext`, closing the "null-context" classic bypass.
 - **.NET AMSI**: `System.Management.Automation` calls AMSI before compiling. .NET 4.8+ added direct AMSI integration bypassable via patching `System.Management.Automation.AmsiUtils.amsiInitFailed` field (Matt Graeber's original — still works in some .NET versions).
 
@@ -177,22 +177,19 @@ Documented events (`EtwTi*` routines exported by `ntoskrnl.exe`, called from sys
 
 | Event | Fires on |
 |---|---|
-| `EtwTiLogAllocExecVm` | `NtAllocateVirtualMemory(Ex)` with PAGE_EXECUTE_* |
-| `EtwTiLogProtectExecVm` | `NtProtectVirtualMemory` transitioning to executable |
-| `EtwTiLogMapExecView` | `NtMapViewOfSection(Ex)` with execute rights |
-| `EtwTiLogAllocExecVmRemote` | Same as AllocExecVm but target != caller |
-| `EtwTiLogProtectExecVmRemote` | Remote protect-to-exec |
-| `EtwTiLogMapExecViewRemote` | Remote map-exec |
-| `EtwTiLogWriteVm` | `NtWriteVirtualMemory` — local-to-process writes NOT logged; cross-process always |
-| `EtwTiLogReadWriteVm` | Large or unusual read/write patterns |
-| `EtwTiLogSuspendResume` | Cross-process thread/process suspend+resume (classic sleep obfuscation) |
-| `EtwTiLogContextModification` | `NtSetContextThread` cross-process |
-| `EtwTiLogQueueApcThread` | APC queued (pre-Win10 19H1 only for cross-process; later all) |
-| `EtwTiLogQueueUserApc` | Queue user APC (including Special) |
-| `EtwTiLogSetProcessTokenInfo` | Token manipulation |
-| `EtwTiLogDriverObjectLoad` | Driver loaded |
-| `EtwTiLogDriverObjectUnload` | Driver unloaded |
-| `EtwTiLogImpersonateToken` | Thread impersonation |
+Emitter symbols reported in [Praetorian's analysis](https://www.praetorian.com/blog/etw-threat-intelligence-and-hardware-breakpoints). Symbol presence alone does not establish collection or detection coverage; use [kernel telemetry evidence](../../edr-evasion-dev/references/kernel-telemetry.md) when interpreting the source and build limits:
+
+| Emitter | Trigger |
+|---|---|
+| `EtwTiLogAllocExecVm` | `NtAllocateVirtualMemory(Ex)` granting PAGE_EXECUTE_* |
+| `EtwTiLogProtectExecVm` | `NtProtectVirtualMemory` granting execute |
+| `EtwTiLogReadWriteVm` | Cross-process read/write (routes via `MmCopyVirtualMemory`) |
+| `EtwTiLogSuspendResumeThread` / `EtwTiLogSuspendResumeProcess` | Cross-process suspend+resume |
+| `EtwTiLogSetContextThread` | Remote `NtSetContextThread` (incl. DR writes) |
+| `EtwTiLogInsertQueueUserApc` | `NtQueueApcThread*` (incl. Special) |
+| `EtwTiLogDeviceObjectLoadUnload`, `EtwTiLogDriverObjectLoad/UnLoad` | Driver/device load events |
+
+Names like `EtwTiLogWriteVm`, `EtwTiLogContextModification`, `EtwTiLogQueueApcThread`, `EtwTiLogSetProcessTokenInfo`, `EtwTiLogImpersonateToken` appear in older write-ups but not in the symbol dump — treat them as unverified.
 | `EtwTiLogOpenProcess` | `NtOpenProcess` (full or reduced access) |
 | `EtwTiLogOpenThread` | `NtOpenThread` |
 | `EtwTiLogReadWriteVmProtected` | Read/write against protected process |
@@ -252,14 +249,14 @@ Windows integration:
 
 - User-mode Shadow Stack enabled per process via `PROCESS_MITIGATION_USER_SHADOW_STACK_POLICY` (`UpdateProcThreadAttribute` / `NtSetInformationProcess(ProcessDynamicEnforcedCetCompatibleRanges)`).
 - Default in Edge, Teams, parts of explorer; off by default for most user apps unless policy dictates.
-- Shadow stack allocated per thread — `TEB->SSP` accessible via `GetThreadDynamicEnforcedCetCompatibleRanges`.
+- Shadow stack is allocated per thread but the shadow-stack pointer itself is **not user-readable**; `GetThreadDynamicEnforcedCetCompatibleRanges` only manages CET *compatible ranges* (which code regions are exempt), not the SSP.
 - Compatibility mode tolerates non-ENDBR targets in specified ranges; strict mode does not.
 
 **Impact on offensive tooling**:
 
 - ROP on shadow-stack-enabled processes requires corresponding shadow stack manipulation — cannot just pivot RSP.
 - SilentMoonwalk-style call-stack spoofing requires careful SSP treatment: either allocate a matching fake shadow stack (requires `SSPW`/`SAVEPREVSSP` instructions) or target only processes without CET.
-- `NtContinue` is CET-aware on Win11 24H2; the old trick of using it as unchecked call-gate is neutralized when shadow stack is on.
+- `NtContinue` is shadow-stack aware wherever user-mode CET is enforced (long predates 24H2): the kernel writes both stacks coherently on CONTEXT replay, while direct RSP manipulation does not update the shadow stack.
 
 Detection: if process is CET-enabled, injecting normally-positioned ROP and hoping it doesn't land on a `CALL` target won't work — any `RET` through forged frames mismatches shadow stack.
 
@@ -451,7 +448,7 @@ Modern EDR detections:
 | Direct syscall (custom assembly) | Same kernel events | No userland hook hit | — |
 | Process hollowing | `PsSetCreateProcessNotifyRoutineEx2` fires (child spawn), `EtwTiLogWriteVm` (write to suspended) | multiple ntdll hooks | Detected via write-to-suspended-child pattern |
 | Module stomping | No image-load event (writing into existing mapping) | `NtProtectVirtualMemory` to RX → ETW-TI | Quieter than hollowing; still hits ProtectExecVm |
-| Phantom DLL hollowing (TxF) | `PsSetLoadImageNotifyRoutine` shows original file contents; discrepancy detectable | — | Requires transaction support (WoW64 subsystem path); TxF deprecated on recent builds |
+| Phantom DLL hollowing (TxF) | `PsSetLoadImageNotifyRoutine` shows original file contents; discrepancy detectable | — | TxF deprecated (no further development per [Microsoft](https://learn.microsoft.com/en-us/windows/win32/fileio/deprecation-of-txf)) but still functional; see also CVE-2026-45585 (TxF log handling in WinRE recovery) for why hardeners care |
 | Thread hijack + `NtSetContextThread` | `EtwTiLogContextModification` (cross-process) | ntdll hook | Same-process hijack (inside own process) does NOT fire context-mod ETW-TI |
 | Sleep obfuscation | `EtwTiLogProtectExecVm` every encrypt/decrypt cycle | — | Frequency + pattern triggers EDR heuristics; mitigate via timing variance |
 | AMSI patch | — | EDR's internal AMSI integrity check if any | Patch bytes variant, hardware-breakpoint bypass |

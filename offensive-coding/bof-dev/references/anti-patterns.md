@@ -4,7 +4,7 @@
 
 ## 1. Stack Strings over 4096 bytes
 **Anti-Pattern**: `char buffer[8192];`
-**Why it fails**: When you declare variables larger than 4KB, `gcc` implicitly inserts `___chkstk_ms` to probe the stack. This symbol doesn't exist unless you manually link gcc libraries. *The BOF will fail to link or crash.*
+**Why it fails**: When you declare variables larger than 4KB, `gcc` implicitly inserts `__chkstk (i686: ___chkstk_ms)` to probe the stack. This symbol doesn't exist unless you manually link gcc libraries. *The BOF will fail to link or crash.*
 **Fix**: Use `HeapAlloc` / `HeapFree` via `KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, 8192)`.
 
 ## 2. Missing `extern "C"` (C++ Only)

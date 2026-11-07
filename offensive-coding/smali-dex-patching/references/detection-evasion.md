@@ -106,7 +106,7 @@ Accessing hidden method [...] (max target o, reflection, denied)
 Library that lifts the restriction from within your app process:
 
 ```gradle
-implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:4.3'
+implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'
 ```
 
 ```kotlin
@@ -156,7 +156,7 @@ Realistic: Play Integrity gates trivially defeat unauthorized bypass. Focus on t
 
 - `MEETS_DEVICE_INTEGRITY` — hardware-backed, requires unmodified bootloader + Play Protect (Android 13+ uses key attestation).
 - `MEETS_BASIC_INTEGRITY` — recognizable Android + Play Services present.
-- `MEETS_STRONG_INTEGRITY` — hardware key attestation + valid state.
+- `MEETS_STRONG_INTEGRITY` — on Android 13+, requires `MEETS_DEVICE_INTEGRITY` and security updates within the last year for all partitions, including Android OS and vendor partitions. Earlier Android versions use different criteria; consult [Google's verdict definitions](https://developer.android.com/google/play/integrity/setup).
 
 Magisk `PlayIntegrityFix` module bypasses `MEETS_BASIC_INTEGRITY` on rooted devices; does not bypass `MEETS_STRONG_INTEGRITY`.
 
@@ -165,6 +165,15 @@ Magisk `PlayIntegrityFix` module bypasses `MEETS_BASIC_INTEGRITY` on rooted devi
 The pre-Play-Integrity API. No longer functional. If a target APK uses `SafetyNetClient.attest(...)`, the call returns an error. Ideally patch the callsite to short-circuit with a success stub.
 
 ## Anti-Frida detection
+
+### Reported native anti-tamper patterns
+
+The following patterns were reported from an APK agent; no revision-bound test record is linked here. Their presence and behavior in another APK remain unverified:
+
+- **Build-bound signer digest**: the expected signing-cert SHA-256 is injected into the `.so` at build time (garbage env → build panic); the comparison is a **constant-time XOR-fold** performed in native code, latched on first result. Re-signing a patched APK without the original keystore fails the digest — smali patching alone no longer works.
+- **Corroboration over single signals**: TracerPid is checked against the tracer's cmdline (unreadable/empty/self = suspicious); Frida port probes are corroboration only, never the sole verdict.
+- **Fail-soft telemetry ladder** instead of exit: hard-stop only on tamper verdict; debug/emulator/Frida hits degrade (slower cadence) and are reported as EVENT records with reason bits — a patched app that "silently works" may still be reporting to the operator. Neutralize the report channel, not just the check.
+- **Raw syscalls for the checks** (`svc #0` inline in the `.so`): Frida Interceptor cannot hook libc symbols that are never called. Residual exposure: Stalker can still trace the `svc` instruction itself.
 
 Common markers:
 

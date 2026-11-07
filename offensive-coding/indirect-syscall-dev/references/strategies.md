@@ -27,11 +27,11 @@ F6 04 25 08 03 FE 7F 01 test    byte [0x7FFE0308], 1
 75 03                   jnz     short $+5
 0F 05                   syscall
 C3                      ret
-CD 2E                   int     0x2E            ; WoW64 fallback
+CD 2E                   int     0x2E            ; legacy dispatch-method fallback (int 2E)
 C3                      ret
 ```
 
-The "test byte" at byte 8 checks a TEB field that indicates whether this thread is in WoW64 (32-bit emulation). On pure x64 processes, byte[0x7FFE0308] == 0 → the `jnz` is not taken → `syscall` executes.
+The "test byte" at byte 8 reads **KUSER_SHARED_DATA** (page 0x7FFE0000), field `SystemCall` at +0x308 — the dispatch-method selector (bit0=0 → `syscall`, bit0=1 → legacy `int 2E`). It is not a TEB field and has nothing to do with WoW64. On current x64 processes the bit is 0 → `jnz` not taken → `syscall` executes ([Amossys](https://www.amossys.fr/insights/blog-technique/windows10-th2-int2e-mystery)).
 
 **Hook patterns you will see**:
 
@@ -82,7 +82,7 @@ uint32_t GetSSN_Halo(void *base_stub, int max_walk) {
 }
 ```
 
-**Key insight**: SSNs are assigned sequentially by stub order in ntdll. `NtCreateFile` SSN is one less than `NtOpenFile`. If your target is hooked but its neighbor isn't, read the neighbor's SSN and adjust.
+**Key insight**: SSNs are assigned sequentially by stub order in ntdll — neighbors are adjacent within a run of unhooked stubs (verify deltas against [SyscallTables](https://github.com/hfiref0x/SyscallTables) for your build; e.g. on 26100 NtCreateFile=0x55 and NtOpenFile=0x33 are 34 apart, so "minus one" does **not** hold across API families). If your target is hooked but its neighbor isn't, read the neighbor's SSN and adjust by the verified delta.
 
 **Failure mode**: EDRs that hook *all* Nt* stubs (Defender for Endpoint ≥2022) — no neighbor is clean. Halo's degenerates to `(uint32_t)-1`.
 
@@ -145,7 +145,7 @@ void FreshyInit(void *ntdll_base, HashMap *out) {
 **Cost**: O(n log n) at init; O(1) lookup after.
 **Hook immunity**: hooks modify stub BYTES, not the export table. Export table lives in `.rdata`, treated as read-only. FreshyCalls does not read a single stub byte.
 
-**This is the foundation of RecycledGate.** "FreshyCalls" in the wild refers specifically to the `@crummie5` release, which additionally obfuscates API name strings.
+**This is the foundation of the EAT-ordering resolver family.** FreshyCalls (crummie5, Dec 2019) sorts **Nt\*** stubs and contains no string obfuscation; SysWhispers2 (jthuraisamy) is the EAT-ordering origin; klezVirus combined it with gadget recycling (Feb 2022).
 
 ---
 

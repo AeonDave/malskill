@@ -54,11 +54,11 @@ else
 
 **Weakness**: fails immediately if `stub[0] == 0xE9` (JMP hook) or any inline patch.
 
-**Win11 24H2 layout** (verified live, ntdll 26100): the `mov r10,rcx; mov
+**Modern x64 stub layout (Windows 10 TH2 1511+, incl. 24H2/25H2)**: the `mov r10,rcx; mov
 eax,SSN` prologue is unchanged (Hell's Gate SSN read still works), but a
 `F6 04 25 08 03 FE 7F 01 75 03` filter (`test byte ptr
 [0x7FFE0308],1; jne int2E`) sits between the SSN and the
-`syscall;ret`, which now lives at **+0x12**:
+`syscall;ret`, which lives at **+0x12** — standard since Win10 TH2 (1511, 2015), not a 24H2 change ([Amossys](https://www.amossys.fr/insights/blog-technique/windows10-th2-int2e-mystery)):
 
 ```
   +0   4C 8B D1        mov r10, rcx
@@ -70,11 +70,11 @@ eax,SSN` prologue is unchanged (Hell's Gate SSN read still works), but a
 ```
 
 Gadget scans that locate `0F 05 C3` at a fixed offset (e.g. +0x12) keep
-working on 24H2; scans hardcoding the Win10 `syscall` offset (+8) break.
+working on all post-TH2 builds; only scans hardcoding the pre-1511 `syscall` offset (+8) break.
 
 ---
 
-#### 2. Halo's Gate (2021 — Sektor7)
+#### 2. Halo's Gate (2021 — smelly__vx/rezer0dai; Sektor7 published the tutorial)
 
 If the target stub is hooked (`E9` at offset 0), scan neighboring `Zw*` stubs in sorted order.
 Use the neighbor's SSN ± delta to recover the hooked target's SSN.
@@ -113,7 +113,7 @@ the prologue instructions to break brittle byte-scan signatures.
 
 ---
 
-#### 4. FreshyCalls (2022)
+#### 4. FreshyCalls (2019 — crummie5; sorts Nt* stubs)
 
 Pure export-sort approach — never reads stub bytes at all.
 
@@ -194,11 +194,11 @@ In practice every `ZwXxx` stub in ntdll contains this at a fixed offset:
 ZwAllocateVirtualMemory:
     4C 8B D1         mov r10, rcx
     B8 18 00 00 00   mov eax, 0x18
-    0F 05            syscall        <- gadget at stub+8
+    0F 05            syscall        <- gadget at +0x12 (pre-TH2 layouts: +8)
     C3               ret
 ```
 
-For indirect syscall from own code, set `pGadget = &ZwXxx + 8`.
+For indirect syscall from own code, set `pGadget = &ZwXxx + 0x12` on any Win10 TH2+ build.
 
 ---
 

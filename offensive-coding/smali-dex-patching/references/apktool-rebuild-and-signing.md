@@ -298,3 +298,7 @@ adb install patched.apk
 - Missing `--min-sdk-version` on apksigner → uses default (usually 24); signature scheme may not match manifest declaration.
 - Editing `META-INF/*.SF` or `.RSA` files manually → signature invalidated; ignored by apksigner rebuild.
 - Rebuilding without deleting old `dist/` → apktool may cache stale state; `rm -rf dist/` before rebuild.
+
+## apktool 3.0.0 — breaking changes
+
+apktool **3.0.0** removed aapt1 entirely (`--use-aapt1` gone), dropped `-api/--api-level`, made `--only-main-classes` default, removed advanced short flags and 32-bit support. Update any pinned `apktool 2.x` workflow: long options only, aapt2-only ([release post](https://apktool.org/blog/apktool-3.0.0)).

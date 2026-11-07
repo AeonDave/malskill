@@ -5,7 +5,7 @@ license: MIT
 compatibility: "NASM >= 2.15, GAS, Go Plan9 ASM; x86-64 Windows/Linux/macOS, ARM64 macOS/Linux, x86 WoW64."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Offensive Assembly Patterns
@@ -361,14 +361,13 @@ Goal: encrypt/NX payload in memory during idle so in-memory scanners find nothin
 
 | Technique | Year | Mechanism |
 |---|---|---|
-| **Gargoyle** | 2016 | Mark NX during sleep; re-arm via `SetWaitableTimer` APC + ROP → `VirtualProtect(RX)` |
+| **Gargoyle** | [2017](https://github.com/JLospinoso/gargoyle) | Mark NX during sleep; re-arm via `SetWaitableTimer` APC + ROP → `VirtualProtect(RX)` |
 | **Ekko** | 2022 | Chain 6 `NtContinue` CONTEXTs: VirtualProtect(RW) → RC4 encrypt → sleep → decrypt → VirtualProtect(RX) |
 
 ### 8.3 Variants & Detection
 
 - **Cronos**: RC4 full-process encryption via waitable timers
 - **Foliage**: APC-based ROP dispatch + encryption
-- **DeathSleep**: removes all RX memory, restores from encrypted backup
 - **Detection**: CFG bitmap records pages that were *ever* RX. Mitigation: double-map (see advanced-evasion.md §2)
 
 See [references/advanced-evasion.md](references/advanced-evasion.md) §2 for full sleep obfuscation evolution.

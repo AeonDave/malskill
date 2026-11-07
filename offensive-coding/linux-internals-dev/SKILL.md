@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux kernels 5.4 through 6.x on x86-64 and ARM64; Interfaces and struct layouts can vary by kernel version and distro patches, so verify against running kernel docs and headers before production use."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # linux-internals

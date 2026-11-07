@@ -142,7 +142,7 @@ Design benefit:
 
 ## 5) Three-way SSN consensus (Ashura production pattern)
 
-Naive RecycledGate trusts the sorted-export index as the SSN. In practice, Windows export-order gaps or EDR tampering can make a raw sorted-index unreliable. The hardened pattern validates each SSN through three independent sources:
+Naive RecycledGate trusts the sorted-export index as the SSN. In practice, Windows export-order gaps or EDR tampering can make a raw sorted-index unreliable. The hardened pattern validates each SSN through two independent sources (Nt* and Zw* alias the same stub in user-mode — there is no third source):
 
 ```rust
 fn validated_ssn_tuple(sorted_index: Option<u16>, nt_stub: Option<u16>, zw_stub: Option<u16>) -> Option<u16> {
@@ -159,7 +159,7 @@ The three sources:
 - **Nt* stub read**: Hell's Gate extraction from the Nt-prefixed export
 - **Zw* stub read**: Hell's Gate extraction from the Zw-prefixed alias
 
-All three must agree. A disagreement means either the stubs are hooked (EDR changed bytes) or the export ordering is atypical (rare Windows build artifact). Either way, the function is excluded from the dispatcher and callers fail closed.
+Both must agree. A disagreement means either the stubs are hooked (EDR changed bytes) or the export ordering is atypical (rare Windows build artifact). Either way, the function is excluded from the dispatcher and callers fail closed.
 
 **Advantage**: catches corrupted stubs that would pass RecycledGate alone, because RecycledGate never reads stub bytes. Also catches stub-read errors that would pass Hell's Gate alone, because Hell's Gate does not verify against export ordering.
 
@@ -263,7 +263,7 @@ Before merging a new dispatcher:
 2. Validate mode switching does not change wrapper signatures.
 3. Verify gate bytes (`0F 05 C3`) before caching.
 4. Confirm fallback behavior when spoof context is missing.
-5. Validate three-way SSN consensus (sorted index vs Nt stub vs Zw stub).
+5. Validate two-way SSN consensus (sorted index vs stub immediate).
 6. Stress-test with ASLR-enabled repeated runs.
 
 If any check fails, fix architecture first, then add obfuscation/evasion extras.

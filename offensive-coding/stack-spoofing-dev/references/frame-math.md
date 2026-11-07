@@ -203,7 +203,7 @@ int find_jmp_rbx(void *mod, size_t min_frame, int require_eclipse,
 
 ## 5. Win11 22H2+ empirical inventory
 
-Measured on Windows 11 Build 22631.3880 (24H2 equivalent), `kernelbase.dll` 10.0.22621.3880, retail un-patched build.
+Measured on Windows 11 22631 (23H2; 22621 = 22H2; 24H2 = 26100). Treat per-build numbers as field-reported.
 
 | Module | `.text` size | Total `FF 23` | Max frame (pass SAVE_NONVOL) | Max frame (all) | Eclipse candidates |
 |---|---|---|---|---|---|

@@ -228,7 +228,7 @@ UCHAR idx = tIdxRaw ^ ObHeaderCookie ^ ((ULONG_PTR)pHeader >> 8);
 POBJECT_TYPE type = ObTypeIndexTable[idx];
 ```
 
-`ObHeaderCookie` is a single byte exported (kernel-private) at `nt!ObHeaderCookie`. Introduced as anti-abuse on Win10.
+`ObHeaderCookie` is a single byte exported (kernel-private) at `nt!ObHeaderCookie`. Introduced in Windows 8 to obfuscate the TypeIndex.
 
 Common type names (in `\ObjectTypes` namespace): `Process`, `Thread`, `Job`, `Token`, `DebugObject`, `File`, `Directory`, `SymbolicLink`, `Key`, `Event`, `Mutant`, `Semaphore`, `Section`, `Port`, `ALPC Port`, `WaitCompletionPacket`, `IoCompletion`, `Timer`, `IRTimer`, `Desktop`, `WindowStation`, `TpWorkerFactory`, `TmTm`, `TmTx`, `TmRm`, `TmEn`, `RegistryTransaction`, `UserApcReserve`, `IoCompletionReserve`, `ActivityReference`, `PsSiloContextPaged`, `PsSiloContextNonPaged`, `Partition`, `EnergyTracker`, `CoreMessaging`.
 
@@ -246,6 +246,23 @@ Common type names (in `\ObjectTypes` namespace): `Process`, `Thread`, `Job`, `To
 | `OkayToCloseProcedure` | Veto handle close |
 
 Process/Thread objects also carry `CallbackList` head used by `ObRegisterCallbacks`.
+
+## Thread-pool internals (TpWorkerFactory family)
+
+The Windows thread pool is a set of opaque user-mode structures owned by ntdll. Injection tradecraft (PoolParty family) targets them; know the layout before touching callbacks:
+
+| Object | Kernel type | Key fields (user-mode struct) |
+|---|---|---|
+| Worker factory | `TpWorkerFactory` | StartRoutine / StartParameter at fixed offsets — the PoolParty V1 overwrite target |
+| `TP_DIRECT` | — | Callback pointer at offset **0x38** of a 0x48-sized struct; posted via `NtSetIoCompletion` on the pool's IoCompletion port with `KeyContext = TP_DIRECT*` (V7) |
+| `FULL_TP_TIMER` | — | ~0x168-byte object; its `RTL_RB_TREE` link is spliced into the pool timer-tree roots, then woken with `NtSetTimer2` (V8) |
+| `TP_WAIT` / `TP_IO` / `TP_ALPC` | — | Same callback-slot pattern as V2–V6 |
+
+Field notes verified against working implementations (PoolParty offsets used by AshuraLoader `pool_party.rs`):
+
+- **Offsets are build-dependent** (19044/19045 tier-verified; Win11 26200+ shifted layout so blind splicing "arms but never fires" — field-reported from project testing). Production pattern: probe candidate offsets with sanity checks (canonical address, 16-aligned, `Flink`/`Blink` mutual consistency, round-trip through `NtQueryInformationWorkerFactory`), fall back to the more robust variant (V7) when probes fail.
+- `NtSetIoCompletion` requires `IoCompletion` handles obtained via `NtQueryInformationWorkerFactory(WorkerFactoryBasicInformation)` → pool handle chain.
+- TP worker threads have no distinct call-stack signature from other ntdll workers — the payload's own start context is what exposes it.
 
 ## Object namespace
 
@@ -311,7 +328,7 @@ NTSTATUS PsSetCreateThreadNotifyRoutineEx(
 
 Fires in target-process context for BOTH remote and in-process thread creation. Parameters: ProcessId, ThreadId, Create (BOOLEAN).
 
-Does NOT fire for system threads unless `PsCreateThreadNotifySubsystems` variant requested. Limit: 64.
+The legacy registration fires for **all** threads including system threads; it is the `PsSetCreateThreadNotifyRoutineEx(PsCreateThreadNotifyNonSystem)` variant that excludes system threads ([Microsoft Learn](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreatethreadnotifyroutineex)). Limit: 64.
 
 ### Image load
 
@@ -338,7 +355,7 @@ NTSTATUS ObRegisterCallbacks(
 );
 ```
 
-`OB_CALLBACK_REGISTRATION` registers per-type pre/post handle operation callbacks. Only `PsProcessType` and `PsThreadType` are legal targets (plus `IoFileObjectType` on newer builds for DFS and minifilter-adjacent scenarios, but historically blocked).
+`OB_CALLBACK_REGISTRATION` registers per-type pre/post handle operation callbacks. The only legal targets are `PsProcessType`, `PsThreadType` and `ExDesktopObjectType` (Win10+). File objects are **not** supported — handle-strip on files requires a minifilter ([Microsoft Learn](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obregistercallbacks)).
 
 Pre-operation callback receives `OB_PRE_OPERATION_INFORMATION`:
 
@@ -357,7 +374,7 @@ struct _OB_PRE_OPERATION_INFORMATION {
 
 Callback can **strip** access bits from `DesiredAccess`, not grant. This is how Defender/EDR drop `PROCESS_VM_WRITE`/`PROCESS_VM_OPERATION`/`PROCESS_CREATE_THREAD` from handles to LSASS.
 
-Altitude constraints: `ObRegisterCallbacks` requires the driver to be signed and have `IMAGE_DLLCHARACTERISTICS_APPCONTAINER`-era signing level. Breaks on unsigned PoCs unless test-signing enabled.
+Altitude constraint: `ObRegisterCallbacks` requires the driver binary to be **kernel-signed** — an unsigned PoC gets `STATUS_ACCESS_DENIED` unless test-signing is enabled. The altitude value itself is just a registration parameter.
 
 ### Registry callbacks
 
@@ -380,38 +397,12 @@ Used by AV for autostart monitoring, offensive tooling for stealth persistence d
 
 Full FltMgr-based filesystem filtering. Driver registers via `FltRegisterFilter` with an `FLT_REGISTRATION` table listing pre- and post-callbacks per-IRP-major-code (IRP_MJ_CREATE, IRP_MJ_READ, IRP_MJ_WRITE, IRP_MJ_SET_INFORMATION for renames/deletes, IRP_MJ_CLEANUP, IRP_MJ_CLOSE, IRP_MJ_DIRECTORY_CONTROL, IRP_MJ_QUERY_INFORMATION, etc.).
 
-Altitudes (decimal strings 0-429999) enforce load order:
-
-| Range | Class |
-|---|---|
-| 420000-429999 | Filter |
-| 400000-409999 | Anti-virus |
-| 380000-389999 | Replication |
-| 360000-369999 | Continuous Backup |
-| 340000-349999 | Content Screener |
-| 320000-329999 | Quota Management |
-| 300000-309999 | System Recovery |
-| 280000-289999 | Cluster File System |
-| 260000-269999 | HSM |
-| 240000-249999 | Compression |
-| 220000-229999 | Application |
-| 200000-209999 | Encryption |
-| 180000-189999 | Virtualization |
-| 160000-169999 | Physical Quota Management |
-| 140000-149999 | Open File |
-| 120000-129999 | Security Enhancer |
-| 100000-109999 | Copy Protection |
-| 80000-89999 | Bottom |
-| 40000-49999 | System |
-
-Defender runs at altitude `328010` (WdFilter). Enumerate loaded minifilters: `fltmc.exe` or `FilterGetDosName`/`FilterVolumeFindFirst`.
+An altitude is a decimal string that orders filter instances in the I/O stack. Higher values place a minifilter above lower values, farther from the file system; altitude is not a guarantee of callback coverage. Microsoft defines the Anti-Virus range as `320000-329999` and Activity Monitor as `360000-389999`. Use [load-order groups and altitude ranges](https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers) for group boundaries and [allocated altitudes](https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes) for individual assignments; these are different tables.
 
 ### Other callback surfaces
 
 | Registration | Fires on |
 |---|---|
-| `PsSetBoostPriorityFromKernelProcessor` | Priority boosts (rare EDR usage) |
-| `PsSetCreatePartitionNotifyRoutine` | Partition object creation |
 | `KeRegisterBugCheckCallback` / `KeRegisterBugCheckReasonCallback` | BSOD context capture |
 | `IoRegisterShutdownNotification` | Device shutdown |
 | `SeRegisterLogonSessionTerminatedRoutine` | Logon session end |

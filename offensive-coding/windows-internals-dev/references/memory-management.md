@@ -135,7 +135,7 @@ Cross-process access primitives. Require handle with appropriate access rights:
 - Read: `PROCESS_VM_READ`
 - Write: `PROCESS_VM_OPERATION | PROCESS_VM_WRITE`
 
-ETW-TI fires `EtwTiLogWriteVm` on cross-process writes. No fire on same-process writes (`ProcessHandle == -1`).
+ETW-TI fires `EtwTiLogReadWriteVm` on cross-process reads and writes. Same-process writes (`ProcessHandle == -1`) are not emitted.
 
 ### NtFreeVirtualMemory
 
@@ -239,7 +239,7 @@ Uses the deprecated Transactional NTFS (TxF) to create a file you can write to, 
 5. `NtRollbackTransaction` — discards on-disk changes; the mapped section persists
 6. Map the section in a target process
 
-TxF is deprecated but still supported through Win11 24H2. Kernel ETW tracks TxF operations.
+TxF is deprecated — Microsoft states it will not receive further development (official notice: [Alternatives to using Transactional NTFS](https://learn.microsoft.com/en-us/windows/win32/fileio/deprecation-of-txf)) — but the APIs remain present and functional through Win11 24H2; removal has not happened. Kernel ETW tracks TxF operations.
 
 ---
 
@@ -420,7 +420,7 @@ EtwTi `FluctuationMonitor` captures the RX↔RW↔RX pattern on the **same regio
 ## Kernel memory primitives for rootkits (brief)
 
 - `MmGetSystemRoutineAddress("RoutineName")` — resolve kernel symbols (or walk ntoskrnl's export table)
-- `ExAllocatePool2(POOL_FLAG_*, Size, Tag)` — kernel pool allocation (post-Win10 1903)
+- `ExAllocatePool2(POOL_FLAG_*, Size, Tag)` — kernel pool allocation (since Windows 10 2004 / 19041)
 - `MmAllocateContiguousMemorySpecifyCache` — for DMA
 - `MmMapIoSpace` — map physical addresses
 - `MmProbeAndLockPages` — lock pages for DMA

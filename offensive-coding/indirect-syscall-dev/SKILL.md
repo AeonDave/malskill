@@ -2,10 +2,10 @@
 name: indirect-syscall-dev
 description: "Auth/lab dev: Windows syscall-dispatch research; SSN resolution, indirect gates, ntdll stubs, gadget scanning, stack-spoof integration."
 license: MIT
-compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+; ARM64 uses `svc #0` with SSN in `x8` - structurally similar but register conventions differ; treat this skill as x64-only."
+compatibility: "Windows x64. Layout and runtime compatibility require evidence for the exact image and OS build; syscall-number tables alone do not establish either."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: evasion
   language: c,cpp,rust,go,asm
 ---
@@ -38,7 +38,7 @@ If the question is "what does `mov r10, rcx` mean" → wrong skill, read `window
 | **Halo's Gate** | Yes (±N neighbor walk) | Yes | Exact if neighbor unhooked | Low (walk up to 32 neighbors) |
 | **Tartarus' Gate** | Yes (multi-pattern match incl. `jmp` hooks) | Yes | Exact | Medium |
 | **FreshyCalls** | Yes (sorts stub addresses, derives SSN from order) | Yes | Exact if no shuffle | Medium (sort entire Zw* list) |
-| **Recycled Gate / DWhisper** | Yes (sorts Zw* exports by address, index = SSN) | Yes | Exact, hook-immune | High (O(n log n) at init, O(1) lookup after) |
+| **EAT-ordering (SysWhispers2-lineage; 'RecycledGate' family)** | Yes (sorts export RVAs by address, index = SSN — never reads stub bytes) | Yes | Exact, hook-immune | High (O(n log n) at init, O(1) lookup after) |
 | **Exception Directory Gate** | Yes (walks .pdata, counts Zw* matches) | Yes | Exact, hook-immune | Low (O(n) linear walk, no sort needed) |
 
 ### 2026 resolver expansion (recommended additions)
@@ -53,13 +53,15 @@ Keep the six classic strategies above as baseline literacy, then model modern im
 | **SyscallsFromDisk / KnownDlls** | Resolve SSNs from clean mapped `\\KnownDlls\\ntdll.dll` | Max resilience to in-memory hook tampering | Slowest init |
 | **HWBP resolver (DRx + VEH)** | Extract SSN at runtime via hardware breakpoints | High in heavily tampered stubs | Highest complexity/overhead |
 
-For day-to-day development, default to **RecycledGate-style resolution + indirect ntdll gadget invocation** and keep disk/HWBP as explicit fallback routes.
+Also current (2023-2026, all with public implementations): **HellsHall/HellHall** (NUL0x4C — hook-signature fallback + indirect clean syscall, [Maldev-Academy/HellHall](https://github.com/Maldev-Academy/HellHall)), **HWSyscalls** (Dec0ne — DRx+VEH+Halo's with synthetic trampoline, [repo](https://github.com/Dec0ne/HWSyscalls)), **SysWhispers4 `--resolve from_disk`** (KnownDlls-clean resolution + recycled gadget pool, [repo](https://github.com/JoasASantos/SysWhispers4)), **LayeredSyscall** (WKL-Sec — VEH-built legitimate stacks, [repo](https://github.com/WKL-Sec/LayeredSyscall)), and the **GuardCFFunctionTable** as a third sorted ntdll table for SSN derivation ([MDSec](https://www.mdsec.co.uk/2022/04/resolving-system-service-numbers-using-the-exception-directory/)).
 
-**Default choice on modern Windows (build ≥ 19041)**: **Recycled Gate / DWhisper**. It is hook-immune by design (never reads stub bytes), runs once at init with O(n log n) cost, and lookup is O(1) after. The other strategies retain educational value but none offer a production advantage.
+For day-to-day development, default to **EAT-ordering resolution + indirect ntdll gadget invocation** and keep disk/HWBP as explicit fallback routes.
+
+**Default choice on modern Windows (build ≥ 19041)**: **EAT-ordering resolution** (the SysWhispers2 → FreshyCalls lineage; see the canonical-algorithm section below). It is hook-immune by design (never reads stub bytes), runs once at init with O(n log n) cost, and lookup is O(1) after. The other strategies retain educational value but none offer a production advantage.
 
 ### Why the "read the stub" strategies lose on modern EDRs
 
-Hell's Gate reads byte `+4` of the Nt* stub expecting `B8 <ssn:4>`. Modern inline hooks replace the stub with `E9 <jmp>` at byte 0, making byte `+4` garbage. Halo's/Tartarus walk to neighbor stubs hoping they are unhooked — this fails on EDRs that hook *all* Nt* stubs (Defender for Endpoint on Server 2022 does this by default). FreshyCalls sorts stub addresses — fine in theory, but the sort order assumption breaks on Kaspersky-style hooks that relocate stubs.
+Hell's Gate reads byte `+4` of the Nt* stub expecting `B8 <ssn:4>`. Inline hooks replace the stub with `E9 <jmp>` at byte 0, making byte `+4` garbage. Halo's/Tartarus walk to neighbor stubs hoping they are unhooked — this fails if all candidate stubs are hooked. FreshyCalls sorts stub addresses — fine in theory, but treat sort-order fragility as a possibility with nonstandard hooking. No product-wide hook-coverage claim is established here.
 
 RecycledGate sidesteps all of this: it enumerates ntdll's **export table** (a read-only data structure in `.edata`, not modified by stub hooks), extracts only `Zw*` exports, sorts them by address, and derives SSN from position in the sorted list. This is a structural property of how Windows ntdll is built, not of what the stubs look like.
 
@@ -83,6 +85,8 @@ From an EDR's perspective: "syscall from ntdll" is normal. "syscall from nonstan
 
 **Gotcha**: if the target Nt* stub is itself hooked, the 3-byte pattern at `+18` is gone. Scan all Nt/Zw exports, not just one — collect all unhooked `syscall;ret` sites and pick one at random (resilience) or by policy (prefer gadgets from different stubs per call, to vary your callstack signature).
 
+**Gadget variety vs stack-rigidity ML**: a build that always selects the same gadget produces thousands of syscalls with identical synthetic frames. Seed the candidate selection per build (or rotate per campaign) so the chosen `syscall;ret` site differs across samples (evidence: AshuraLoader `GADGET_RAND`); pair with the CS 2025 call-stack rigidity note in `edr-evasion-dev`.
+
 ---
 
 ## Decision matrix
@@ -94,21 +98,24 @@ Target EDR profile:
 │   └── Direct syscall from a CALL inside ntdll is fine. Use RecycledGate
 │       for consistency; SSNs resolve correctly from unhooked stubs.
 │
-├── IAT hook only (legacy AV, Defender early builds)
+├── IAT hook only
 │   └── Hell's Gate works. But use RecycledGate anyway — future-proof.
 │
-├── Inline hook at stub byte 0 (modern Defender, SentinelOne, CrowdStrike)
-│   └── Hell's fails. Use RecycledGate or Tartarus'. Halo's if you need
+├── Inline hook at stub byte 0
+│   └── Hell's fails. Use EAT-ordering or Tartarus'. Halo's if you need
 │       minimal code size (~40 LOC including neighbor walk).
 │
-├── Inline hook + kernel callback mirror (Defender for Endpoint, Server 2022)
+├── Inline hook + kernel callback mirror
 │   └── Indirect syscall alone does NOT evade — callback fires regardless.
 │       Combine with: SilentMoonwalk DESYNC stack spoof + sleep obfuscation.
 │
-└── Nirvana instrumentation callback (research-grade / some HIDS)
-    └── Every syscall trap is intercepted kernel-side regardless of userland
-        technique. Indirect dispatch is irrelevant here; use process-hollow
-        or module-stomp and get out of the user-mode game.
+└── Nirvana/instrumentation callbacks (HIDS-grade)
+    └── Callbacks fire on syscall *return* and can heuristically distinguish
+        even indirect dispatch (RIP/stack shape at return — [xacone](
+        https://xacone.github.io/mitigate-indirect-syscalls.html),
+        [winternl](https://winternl.com/detecting-manual-syscalls-from-user-mode/)).
+        Indirect dispatch narrows the signal but does not erase it: prefer
+        backed/legitimate execution paths where the host telemetry matters.
 
 Additional practical branches (2026):
 
@@ -118,7 +125,9 @@ Additional practical branches (2026):
 
 ---
 
-## RecycledGate / DWhisper — the canonical algorithm
+## EAT-ordering resolution — the canonical algorithm
+
+Naming note: this resolver's public lineage is SysWhispers2 (jthuraisamy, EAT ordering) → klezVirus "SysWhispers is dead" (Feb 2022, EAT order + recycled `syscall;ret` gadget) → FreshyCalls (crummie5, Dec 2019 — sorts **Nt\*** stubs). `thefLink/RecycledGate` is a **different** mechanism (Hell's/Halo's SSN read + recycled gadget). Project-internal implementations of the EAT-ordering resolver exist under various names (e.g. `DWhisper` — field-reported, not public).
 
 ### Init
 
@@ -134,7 +143,7 @@ Additional practical branches (2026):
 
 **Why Zw, not Nt?** Zw* and Nt* exports are aliases in ntdll (same function). Iterating Zw* guarantees one entry per syscall (no duplicates from the renames), and the Zw prefix is stable across builds.
 
-**Why sort by RVA?** Microsoft builds ntdll with stub addresses monotonically assigned per-SSN at link time. The sorted-by-address order reconstructs the SSN table. Verified stable from Windows 7 through Windows 11 24H2.
+**Why sort by RVA?** Microsoft builds ntdll with stub addresses monotonically assigned per-SSN at link time. The sorted-by-address order reconstructs the SSN table. No cross-build qualification record is linked here.
 
 **Name hashing**: SSNs are stored by hash, not by plaintext name. Use a seeded hash (FNV-1a with a random seed at compile time, or SHA-256 truncated to 64 bits) so the resulting table in your binary does not contain readable strings like `"NtAllocateVirtualMemory"`. The seed is a compile-time constant; regenerate per build for per-sample uniqueness.
 
@@ -146,6 +155,8 @@ ssn = SSN_TABLE[hash]     // O(1) hashmap
 gadget = find_syscall_ret_gadget()  // cached at init
 return (ssn, gadget)
 ```
+
+**Cross-validation (fail-closed, production pattern)**: cross-check the sorted-order SSN against the `mov eax, imm32` immediate read from the corresponding stub. In user-mode ntdll the Nt* and Zw* names **alias to the same stub**, so this yields two independent sources (EAT order + stub bytes), not three — any write-up claiming a third source from the "Zw stub" is wrong. On mismatch (hooked stub or tampered EAT) the gate refuses to initialize: a guessed SSN is worse than aborting (field-reported pattern). A cheaper variant accepts sorted-order only if the export table parses cleanly and sampled stub bytes match `4C 8B D1 B8`.
 
 ---
 
@@ -174,7 +185,7 @@ ret
 
 **Frame layout gotcha**: your caller passes `ssn` and `gadget` as the first two args, which consumes RCX/RDX. The actual NT API args shift by two. Every arg-shuffling ASM trampoline has to compensate; the canonical approach is the one above.
 
-**Shadow space**: the gadget is a legitimate Win64 function target, so you **must** reserve 0x20 bytes of shadow space before the CALL. Omitting this causes `STATUS_ACCESS_VIOLATION` inside the kernel's syscall handler on some builds (kernel's unwinder expects shadow).
+**Shadow space**: the gadget is a legitimate Win64 function target, so reserve 0x20 bytes of shadow space before the CALL as ABI hygiene. Omitting it does not fault the kernel (the kernel does not read user shadow space), but any debugger/ETW stack walk of your frame will be malformed.
 
 ---
 
@@ -239,7 +250,7 @@ The Go idiom above uses struct embedding. In Rust: composition with trait delega
 
 **R4. Validate the gadget before caching.** If the stub you picked is itself hooked, `+18` no longer reads `0F 05 C3`. Validate with a 3-byte compare and fall through to the next export. `GetRecyCall` in RecycledGate does this; reimplementations often skip it and then fail mysteriously on specific Defender builds.
 
-**R5. Handle 6+ arg syscalls correctly.** The trampoline's arg-shift-by-2 logic must extend through `[rsp+0x28..0x38..0x40..]`. Most published PoCs handle only 4 args (RCX/RDX/R8/R9) and silently break on `NtCreateThreadEx(11 args)`. Test with `NtQuerySystemInformationEx` (6 args) or `NtCreateThreadEx` (11) before trusting.
+**R5. Handle 6+ arg syscalls correctly.** The trampoline's arg-shift-by-2 logic must extend through `[rsp+0x28..0x38..0x40..]`. Most published PoCs handle only 4 args (RCX/RDX/R8/R9) and silently break on `NtCreateThreadEx(11 args)`. Test with `NtQuerySystemInformationEx` (6 args) or `NtCreateThreadEx` (11) before trusting. Known bug class (documented in a real port, gengar `indirect/mod.rs`): writing stack args to `[rsp+0x28..]` **before** the CALL shifts every slot one position once the return address lands, and leaves the last (11th) slot unwritten — the correct caller-side layout is `[rsp+0x20 .. rsp+0x50]` for args 5..11.
 
 **R6. Emit minimal strings in release.** `"ntdll.dll"`, `"Zw"`, `"Nt"` can all be obfuscated via compile-time XOR or a custom `Xr/Xh` macro. The `RecycledGate` reference codebase uses `obfuscation.Xr(obfuscation.Mr, mNtdll)` where `mNtdll` is a hex-encoded ciphertext. A loader binary that `strings` reveals no NT API names is substantially harder to triage.
 

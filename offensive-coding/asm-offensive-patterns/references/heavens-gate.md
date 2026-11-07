@@ -1,5 +1,7 @@
 # Heaven's Gate — WoW64 32→64 Mode Switching
 
+> **Evidence scope:** the [OSR report](https://community.osr.com/t/windbg-broken-wow64-stack-trace-on-windows-11-24h2-targets/59940) concerns a WoW64 stack-trace failure on a Windows 11 24H2 target. A reported debugger failure does not establish universal technique compatibility or incompatibility. No cross-build runtime qualification is linked here.
+
 ## What is Heaven's Gate?
 
 In WoW64 processes (32-bit executables running on 64-bit Windows), there are **two layers** of hooks:
@@ -100,9 +102,9 @@ BITS 64
 
 ---
 
-## Extended: Returning to 64-bit WoW64 Thunk
+## Extended: Returning to 32-bit
 
-To avoid crashing after 64-bit payload executes, return through the legitimate `Wow64Transition` thunk:
+`Wow64Transition` (`fs:[0xC0]`) is the 32→64 **entry** (`X86SwitchTo64BitMode: jmp far 0033:CpupReturnFromSimulatedCode`), not the return path. The 64→32 return happens inside `CpupReturnFromSimulatedCode` via a far return with selector 0x23:
 
 ```nasm
 BITS 64

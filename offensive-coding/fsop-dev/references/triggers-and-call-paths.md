@@ -110,7 +110,6 @@ Bias toward it when:
 - the target naturally calls `fflush` or flushes on menu boundaries
 - you are attacking `stderr` and want to avoid `stdout` interference from normal application output
 
-In practice, this is one of the cleanest modern dispatch surfaces because many tested layouts are easier to keep stable when the trigger is a quiet `fflush(stderr)` rather than repeated menu `puts()` traffic.
 
 ## Buffer redirection as arbitrary write (read-side, no vtable change)
 

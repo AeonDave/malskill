@@ -31,10 +31,11 @@ NTSTATUS NtCreateThreadEx(
 | THREAD_CREATE_FLAGS_CREATE_SUSPENDED | 0x0001 | Thread starts suspended; resume with NtResumeThread |
 | THREAD_CREATE_FLAGS_SKIP_THREAD_ATTACH | 0x0002 | Skip DLL_THREAD_ATTACH notifications on DllMain chain |
 | THREAD_CREATE_FLAGS_HIDE_FROM_DEBUGGER | 0x0004 | Thread is hidden from `CreateToolhelp32Snapshot` / debugger |
-| THREAD_CREATE_FLAGS_HAS_SECURITY_DESCRIPTOR | 0x0010 | ObjectAttributes carries a SD |
-| THREAD_CREATE_FLAGS_ACCESS_CHECK_IN_TARGET | 0x0020 | Access check performed in target process's context |
-| THREAD_CREATE_FLAGS_SKIP_LOADER_INIT | 0x0080 | **Skip LdrInitializeThunk**; thread jumps straight to StartRoutine |
-| THREAD_CREATE_FLAGS_BYPASS_PROCESS_FREEZE | 0x0100 | Thread can run even if process is frozen (UWP) |
+| THREAD_CREATE_FLAGS_LOADER_WORKER | 0x0010 | Loader worker thread (skip some loader work) |
+| THREAD_CREATE_FLAGS_SKIP_LOADER_INIT | 0x0020 | **Skip LdrInitializeThunk**; thread jumps straight to StartRoutine |
+| THREAD_CREATE_FLAGS_BYPASS_PROCESS_FREEZE | 0x0040 | Thread can run even if process is frozen |
+
+Values per [phnt ntpsapi.h](https://github.com/winsiderss/phnt/blob/master/ntpsapi.h) / [ntdoc](https://ntdoc.m417z.com/ntcreatethreadex); the 0x10/0x20/0x80/0x100 set from old leaks (HAS_SECURITY_DESCRIPTOR, ACCESS_CHECK_IN_TARGET, SKIP_LOADER_INIT=0x80) is stale.
 
 **Offensive use of flags**:
 
@@ -195,11 +196,11 @@ NTSTATUS NtQueueApcThread(
 
 Target thread must be alertable to process.
 
-### NtQueueApcThreadEx (Win10 RS5+)
+### NtQueueApcThreadEx (since 1803 / 17134)
 
 Adds optional "UserApcReserveHandle" parameter. Using `QUEUE_USER_APC_SPECIAL_USER_APC` as the flag (the 0x1 special marker in the handle slot) creates a **Special User APC** — delivers on **user-mode transition**, not requiring alertable state.
 
-### NtQueueApcThreadEx2 (Win11)
+### NtQueueApcThreadEx2 (since 19041 / 2004)
 
 Adds API support for further parameter control. Cleaner replacement for the old `Ex` variant's handle-as-flag hack.
 
@@ -301,7 +302,7 @@ Kernel treats explorer.exe as the parent, so the new process inherits its SID / 
 
 Requires `PROCESS_CREATE_PROCESS` access on the target "parent". With explorer.exe (running as the user), a medium-integrity caller may not have rights. With a higher-privileged parent, you need that privilege.
 
-**Ground truth**: the kernel still tracks the **real** parent in `EPROCESS.InheritedFromUniqueProcessId`. Tools reading EPROCESS directly (ProcessHacker/SystemInformer) see the real lineage.
+For process-creation evidence, distinguish the attributed parent from the creator. Microsoft's [PS_CREATE_NOTIFY_INFO](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_ps_create_notify_info) documents `ParentProcessId` separately from `CreatingThreadId.UniqueProcess`; they need not match. This is a kernel callback structure, not a PEB field. Interpret an event's parent field using that provider's documented semantics rather than assuming every source reports the creator.
 
 ---
 

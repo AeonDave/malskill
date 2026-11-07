@@ -86,6 +86,7 @@ Use explicit schemas at every JSON boundary. Reject unknown operations, missing 
 
 - Agent and service `.axs` files are evaluated by server-side Goja for command metadata and by the Qt client for real UI behavior; listener `.axs` is client-only on the verified baseline. Keep top-level code declarative and place UI effects in `GenerateUI`, `ListenerUI`, or `InitService`.
 - Agent state must be reconstructible by `AgentRestore`. The current server does not retain the callbacks returned by `CreateAgent` when creating a session.
+- **AEAD session counters vs restore**: transport-layer sequence counters are not part of what survives an `AgentRestore`. If an agent plugin keeps a session key and reuses `seq=0` under the same key after a restore, that is an AEAD nonce reuse — catastrophic for the profile's confidentiality. Reconstruct state so a restore forces a key-epoch bump or a fresh session handshake (pattern verified in two extender implementations: on restore without live counter state, invalidate the epoch and require a new HELLO).
 - `BuildPayload` returns artifact bytes and a filename to its caller. The WebSocket path sends/closes the build channel; the synchronous path returns the artifact directly.
 - Listener `Start` can fail while the API call still completes with a stopped instance. Make `Start` restart-safe, `Stop` idempotent, and verify runtime status.
 - Plugin instances are shared. Assume `Call`, `CallRPC`, task handlers, hooks, and build callbacks can overlap.

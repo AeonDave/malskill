@@ -1,8 +1,8 @@
-# Kernel-Visible Signals (Usermode Cannot Patch)
+# Kernel Telemetry Evidence
 
-Load when deciding **which detections you cannot avoid at all** and must instead make indistinguishable from legitimate behavior. This is the ceiling on any userland-only evasion strategy.
+Load when interpreting kernel-sourced telemetry and distinguishing provider capabilities from collected evidence.
 
-Rule: every technique in the parent `SKILL.md` (indirect syscalls, ETW byte-patch, HWBP, sleep obfuscation, module stomp, LD_PRELOAD, io_uring) suppresses **usermode** telemetry. Signals emitted from **kernel context** — before the syscall returns to userland — bypass all of them. Design around them, don't try to hide them.
+Record the OS build, provider, sensor version, enabled policy, and collection result. Kernel instrumentation, event delivery, and a product's detection decision are separate facts; evidence for one does not establish the others.
 
 ---
 
@@ -18,48 +18,39 @@ EDRs register callbacks with these APIs; the callback fires inside the kernel, *
 | `PsSetCreateThreadNotifyRoutine` | Every thread create (local or remote) | Owning process, start address, target process |
 | `PsSetLoadImageNotifyRoutine` | Every image load (DLL/EXE, including `SEC_IMAGE` remaps) | Image base, size, path, load reason |
 | `CmRegisterCallbackEx` | Registry pre/post op | Full key path, operation, access mask, caller PID |
-| `ObRegisterCallbacks` (pre-op / post-op) | Handle open on `PsProcessType`, `PsThreadType`, `IoFileObjectType` | Requested access — kernel **reduces the mask** before usermode sees the handle |
+| `ObRegisterCallbacks` (pre-op / post-op) | Handle open on `PsProcessType`, `PsThreadType`, `ExDesktopObjectType` (the only legal types — file objects need a minifilter) | Requested access — kernel **reduces the mask** before usermode sees the handle |
 | `FltRegisterFilter` (minifilter) | Every file I/O op via IRP_MJ_* | File path, operation, buffer, caller PID |
-| Kernel ETW-TI providers (`Microsoft-Windows-Threat-Intelligence`) | Injection, RWX transitions, protected-process access, KUSER_SHARED_DATA reads | Emits from kernel; **not** suppressed by usermode patch of `EtwEventWrite` |
+| Kernel ETW-TI providers (`Microsoft-Windows-Threat-Intelligence`) | Injection-shaped kernel operations (cross-process VM ops, exec grants, APCs, context writes) | Emits from kernel; **not** suppressed by usermode patch of `EtwEventWrite` |
 
 ### What each callback prevents
 
-- **`PsSetCreateThreadNotifyRoutine`** fires on APC-injected thread starts, thread-hijack `SetContext`, and `NtCreateThreadEx`. **Waiting Thread Hijacking** avoids `SuspendThread`, not the thread-create notification for the eventual RIP redirect target — target-thread rewrite via `SetContextThread` on an existing thread does not itself trip create-notify, but any new-thread creation does.
+- **`PsSetCreateThreadNotifyRoutine`** fires on every new thread (`NtCreateThreadEx`, APC-injected starts). Re-writing RIP of an *existing* thread (`SetContextThread`-style hijack) does **not** trip create-notify — but does fire `EtwTiLogSetContextThread` when the context write is remote (see ETW-TI below).
 - **`ObRegisterCallbacks` pre-op on `PsProcessType`** reduces `PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD` off returned handles when the caller is not on the EDR's allowlist. **Usermode cannot re-elevate the mask**; a duplicated handle inherits the reduced mask. This is why classic `OpenProcess(target, PROCESS_ALL_ACCESS)` for cross-process injection frequently returns a handle without VM_WRITE even from an elevated context.
-- **Kernel PPID recording**: `PsSetCreateProcessNotifyRoutineEx` receives the **real** creating process ID from `PspInsertProcess`. `PROC_THREAD_ATTRIBUTE_PARENT_PROCESS` sets the PEB `InheritedFromUniqueProcessId` — but the kernel notify routine sees the **actual** creator. EDRs correlate: if PEB PPID ≠ notify PID → "PPID spoofing" flag. Skill §13 already noted this; this reference is where the reason lives.
+- **Parent and creator identity**: preserve their distinction when interpreting process telemetry. See [the canonical process-creation field guidance](../../windows-internals-dev/references/threads-apcs.md) and the documented `PS_CREATE_NOTIFY_INFO` fields; do not attribute a parent-ID field to the PEB.
 
-### ETW-TI event set (kernel provider, unpatchable)
+### ETW-TI schema and collection evidence
 
-The `Microsoft-Windows-Threat-Intelligence` provider is registered by kernel and emits from kernel context. Usermode `NtWriteVirtualMemory` on `ntdll!EtwEventWrite` does **not** affect it. Key events:
+The cited [ETW-TI manifest](https://github.com/repnz/etw-providers-docs/blob/master/Manifests-Win10-18990/Microsoft-Windows-Threat-Intelligence.xml) is a historical Windows 10 build 18990 snapshot. A manifest establishes names and IDs for that snapshot; it does not establish runtime emission conditions, enabled keywords, delivered events, or current vendor coverage.
 
-| Event | Emitted by | Meaning for evasion |
-|---|---|---|
-| `AllocExecuteVirtualMemory` (24) | `NtAllocateVirtualMemory` / `NtProtectVirtualMemory` when granting `PAGE_EXECUTE_*` | Any RWX or W→X transition on private memory logs here. Module-stomp writes stay under RX, so no event. |
-| `ProtectVirtualMemory` (25) | `NtProtectVirtualMemory` | Permission change on any region. Byte-patch ETW (§5) via `NtWriteVirtualMemory` avoids this because it never calls Protect. |
-| `WriteVirtualMemory` (26) | `NtWriteVirtualMemory` cross-process | Fires for **cross-process** writes; self-writes (`HANDLE = -1`) log with self as target — routine-looking. |
-| `CreateThread` (27) | `NtCreateThreadEx` | Thread start address logged; unbacked-memory start = high signal. |
-| `CreateProcess` (28) | `NtCreateProcessEx` and family | Full parent chain, real PPID. |
-| `MapView` (37) | `NtMapViewOfSection` with `SEC_IMAGE` | Every image remap logs. AP3 unmap/remap cycle in sleep fires this at each cycle. |
-| `ReadProcessMemory` (18) | `NtReadVirtualMemory` cross-process | Credential-dumping analog; noise for benign SDK use. |
-
-**Design consequence**:
-
-- **RWX private allocation** always emits event 24. Tool_mode accepts it (short lifetime). Beacon mode avoids it by using module-stomp (image-backed, `PAGE_EXECUTE_READ` only, no exec-alloc event).
-- **AP3 unmap/remap sleep cycle** (SKILL.md §3c) emits event 37 twice per sleep. Long-running beacons should jitter sleep intervals so the pattern doesn't repeat identically.
-- **NtWriteVirtualMemory self-target** (§5 byte-patch) is quieter than `NtProtectVirtualMemory` because event 26 with target=self blends with legitimate copy-on-write behavior; event 25 with `ntdll .text` as target is anomalous.
+For event interpretation, retain the provider GUID, event ID/version, schema source, OS build, collection configuration, and observed payload. Resolve identifiers against the matching schema rather than treating this older manifest as a current event catalog. Missing events can reflect collection or configuration gaps; they do not establish that the operation is unobservable.
 
 ### Kernel process-audit (independent of ETW-TI)
 
-Windows Security Event Log (Sysmon-equivalent) records process creates with `NewProcessId`, `SubjectUserSid`, `TokenElevationType`, and the **real** parent from `EPROCESS.InheritedFromUniqueProcessId`. Kernel-side, not usermode. Sysmon EID 1 and Security 4688 record the same. PPID spoofing does not affect Security 4688.
+Security 4688, Sysmon event 1, and process-creation callbacks are distinct evidence sources. Preserve the provider, schema version, and field names; do not assume their parent fields all identify the actual creating process. The callback's parent/creator distinction is documented in [PS_CREATE_NOTIFY_INFO](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_ps_create_notify_info).
 
-### CET / shadow stack (Windows 11 24H2+)
+### CET / shadow stack
 
-Hardware-enforced backward-edge protection. Every `RET` verifies the return address against the shadow stack. Kernel unwinders (ETW-TI stack captures) additionally verify shadow stack consistency.
+Hardware-enforced backward-edge protection: every `RET` verifies the return address against the shadow stack. Two distinct surfaces — do not conflate them:
 
-- `.pdata`-coherent stack spoofing (SilentMoonwalk) constructs frames that pass user-mode unwinding but **do not populate the shadow stack**. On CET-enabled ntdll, the syscall's return-side `RET` finds a mismatch → `#CP (Control Protection)` fault. On CET-observing kernel path (ETW-TI stack capture), the shadow-stack chain is examined and a mismatch is reported even if the CPU didn't fault.
-- `NtContinue`-based spoof (SKILL.md §1) is kernel-safe because the kernel writes both stacks coherently when replaying the CONTEXT.
-- **Rule**: on CET-enforced targets, disable SilentMoonwalk (SKILL.md §1b) and prefer `NtContinue` spoof + real (unspoofed) return path for backed EXE tool mode.
-- Detection state: verify via `GetProcessMitigationPolicy(ProcessUserShadowStackPolicy)` before choosing spoof strategy.
+- **Kernel-mode shadow stack**: distinct from user-mode protection. [Microsoft's feature documentation](https://learn.microsoft.com/en-us/windows-server/security/kernel-mode-hardware-stack-protection) requires supported hardware, VBS, and HVCI. Record the actual feature state; VBS being enabled or a Windows release label alone does not prove that kernel stack protection is active.
+- **User-mode shadow stack**: **opt-in per image** — binaries compiled with `/CETCOMPAT` or processes with the Exploit Protection shadow-stack policy. It is not a blanket 24H2 default. Query it per-process at init: `GetProcessMitigationPolicy(ProcessUserShadowStackPolicy)`.
+
+For user-mode spoofing the governing question is whether the **host process** is CET-enforced:
+
+- `.pdata`-coherent stack spoofing (SilentMoonwalk) constructs frames that pass user-mode unwinding but **do not populate the shadow stack**. In a CET-enforced process the syscall's return-side `RET` finds a mismatch → `#CP (Control Protection)` fault.
+- `NtContinue`-based spoof (SKILL.md §1) is CET-safe because the kernel writes both stacks coherently when replaying the CONTEXT.
+- **Rule**: on CET-enforced hosts, disable SilentMoonwalk (SKILL.md §1b) and prefer `NtContinue` spoof + real (unspoofed) return path for backed EXE tool mode.
+- Sensor-side provenance: [CrowdStrike's feature announcement](https://www.crowdstrike.com/en-us/blog/introducing-falcon-hardware-enhanced-exploit-detection/) describes Intel PT for supported, enabled configurations. It does not establish the previously asserted use of CET shadow-stack contents or a universal syscall-return-address detection rule.
 
 ### PPL / Protected Processes
 
@@ -118,9 +109,9 @@ Even without an EDR, tracepoints in the exec path (`sched_process_exec`, `sched_
 
 Concrete constraints, not restatements of general doctrine.
 
-1. **Kernel PPID is real.** PPID spoofing (`SKILL.md` §13) only fools usermode readers that trust the PEB. Any EDR ingesting Security 4688 or `PsSetCreateProcessNotifyRoutineEx` sees the true parent.
+1. **Parent attribution and creator identity differ.** Interpret each provider's documented fields; a parent-ID field alone is insufficient to establish the creator.
 2. **Reduced access mask cannot be re-elevated.** If `ObRegisterCallbacks` reduces the mask, no usermode `DuplicateHandle` gets it back. Cross-process injection needs an allowlisted caller or a kernel-mode primitive (BYOVD).
-3. **CET / shadow stack breaks user-side unwind spoofing.** SilentMoonwalk on 24H2+ is a fault, not "reduced effectiveness". Verify mitigation status; select spoof strategy accordingly (see `constraints.md` → Syscall Dispatch).
+3. **CET state is configuration-specific.** A Windows release label does not establish the process's mitigation state or the outcome of an untested execution path.
 4. **LSM BPF is the Linux ceiling.** With `bpf` LSM enabled and active policies, userspace evasion (io_uring, LD_PRELOAD, memfd, BPF map poisoning) is neutralized. Confirm LSM state before designing the operation.
 5. **auditd is orthogonal to eBPF sensors.** Sensor-only evasion leaves auditd untouched. Enumerate `auditctl -l` on every Linux target.
 6. **IMA / lockdown determine LKM path viability.** With `MODULE_SIG_FORCE=y` + `LOCKDOWN_INTEGRITY_MAX`, LKM is dead; fall back to eBPF-only means the LSM ceiling above applies harder.

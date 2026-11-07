@@ -23,13 +23,18 @@ The loader maps sections into memory and links it at runtime. It has no OS loade
 ## Framework Constraints (Mingw-w64)
 
 ```bash
-# Compilation for C
-x86_64-w64-mingw32-gcc -c bof.c -o bof.o -Os -Wl,--exclude-libs,msvcrt.a
+# Compilation for C — -mno-stack-arg-probe removes the __chkstk import,
+# -fno-asynchronous-unwind-tables removes SEH unwind data
+x86_64-w64-mingw32-gcc -c bof.c -o bof.o -Os \
+  -mno-stack-arg-probe -fno-asynchronous-unwind-tables \
+  -Wl,--exclude-libs,msvcrt.a
 
 # Compilation for C++
-x86_64-w64-mingw32-g++ -c bof.cpp -o bof.o -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics
+x86_64-w64-mingw32-g++ -c bof.cpp -o bof.o -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics \
+  -mno-stack-arg-probe -fno-asynchronous-unwind-tables
 ```
 
 ## References
 - [references/dfr-strategies.md](references/dfr-strategies.md) — Load when building Win32 API calls manually or fighting linker errors like `__imp_`.
 - [references/anti-patterns.md](references/anti-patterns.md) — Load when troubleshooting BOF crashes or unexplained C2 disconnects.
+- [references/coff-loader-hardening.md](references/coff-loader-hardening.md) — Load when building or auditing a custom COFF loader: GOT dedup, thunk pages, VEH crash isolation, demand paging, idle masking, COFF obfuscation.

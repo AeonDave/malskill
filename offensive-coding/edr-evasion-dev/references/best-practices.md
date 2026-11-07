@@ -19,7 +19,7 @@ Canonical homes for content that could otherwise duplicate here — do not resta
 
 Name these before writing code. Unknown → run enum first (`kernel-telemetry.md` fingerprint block; `linux-edr-evasion.md` §1).
 
-- **Target EDR**: product + agent version (Falcon 8.x, Defender build, S1 x.y, Falco 0.x, Tetragon x.y, Elastic Defend x.y).
+- **Target EDR**: product + agent version (Falcon 7.x, Defender build, S1 x.y, Falco 0.x, Tetragon x.y, Elastic Defend x.y).
 - **Deployment mode**: block / alert / monitor-only.
 - **Sensor stack actually running**: usermode hooks, kernel callbacks, ETW-TI, eBPF, LSM BPF, auditd.
 - **Operation profile**: one-shot tool / long-running beacon / silent persistence.
