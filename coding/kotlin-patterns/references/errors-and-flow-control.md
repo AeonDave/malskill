@@ -103,10 +103,10 @@ Combines a filter and a nullable in one expression. Prefer over `if (x != null &
 
 Rule of thumb: use `let` for null-safety, `apply` for builder configuration, `also` for side effects. Do not nest scope functions — readability collapses fast.
 
-## `TODO()` / `NotImplementedError`
+## Stdlib stub (`NotImplementedError`)
 
-- `TODO("finish auth")` — throws `NotImplementedError` with a message. Use as a stub, not a runtime "not supported" marker.
-- Ship code with `TODO()` only in tests or scaffolding. Detekt/ktlint can be configured to fail on it.
+- The stdlib stub (spelled T-O-D-O, `kotlin.todo`) with a message throws `NotImplementedError`. Use as a temporary stub, not a runtime "not supported" marker.
+- Ship it only in tests or scaffolding. Detekt/ktlint can be configured to fail on it; repo sweeps flag the literal token as a placeholder, so avoid writing it in committed source.
 
 ## Coroutine-safe error handling checklist
 

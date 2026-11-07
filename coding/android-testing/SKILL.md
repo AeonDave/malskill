@@ -2,7 +2,7 @@
 name: android-testing
 description: "Android testing patterns for unit tests, instrumented tests, Compose UI tests, screenshot tests, and end-to-end journeys. Use when setting up JUnit4/JUnit5 + Robolectric, wiring Hilt/Koin for tests, choosing between Espresso and Compose Test APIs, adding Roborazzi/Paparazzi/Dropshots screenshot tests, or diagnosing flaky Android tests."
 license: MIT
-compatibility: "AGP 8.5+ (guidance covers up to AGP 9.x), Kotlin 2.0+. Baseline: JUnit4, Robolectric 4.13+, AndroidX Test 1.6+, Espresso 3.6+, Compose 1.7+. Optional: Hilt, Koin, Roborazzi, Paparazzi, Dropshots, MockK, Turbine, UI Automator."
+compatibility: "AGP 8.5+ (guidance covers up to AGP 9.x; AGP 9.0 is breaking — see AGP 9 notes), Kotlin 2.0+. Baseline: JUnit4, Robolectric 4.15+ (4.16+ for SDK 36, needs JDK 21), AndroidX Test 1.6+, Espresso 3.6+, Compose 1.7+. Optional: Hilt, Koin, Roborazzi, Paparazzi, Dropshots, MockK, Turbine, UI Automator."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -52,8 +52,8 @@ Optional based on need:
 - **UI Automator** (`androidx.test.uiautomator:uiautomator`) — for cross-app end-to-end.
 - Screenshot testing: pick **one** primary local framework:
   - **Roborazzi** (`io.github.takahirom.roborazzi:roborazzi`) — Robolectric-based, cross-platform PNG diff, fast.
-  - **Paparazzi** (`app.cash.paparazzi:paparazzi`) — LayoutLib-based, no Robolectric, no emulator.
-  - **Compose Preview Screenshot Testing** (AGP 8.5+ experimental) — renders `@Preview` composables to PNG via Gradle task.
+  - **Paparazzi** (`app.cash.paparazzi:paparazzi`) — LayoutLib-based, no Robolectric, no emulator. Versions ≤ 2.0.0-alpha04 have known issues with AGP 9.
+  - **Compose Preview Screenshot Testing** — AGP-version split: AGP 9.5.0-alpha03+ configures it natively via `testOptions { screenshotTests { create(...) } }` (test suites); older AGP needs the legacy standalone plugin `com.android.compose.screenshot`, which is deprecated. Never mix both setups in one module.
   - **Dropshots** (`com.dropbox.dropshots:dropshots`) — on-device screenshots for scenarios that require real system UI.
 
 Add the AndroidX test instrumentation runner to the module `build.gradle.kts`:
@@ -72,6 +72,16 @@ android {
 ```
 
 ---
+
+## AGP 9 notes (breaking, Jan 2026)
+
+AGP 9.0 changes defaults and DSL in ways that touch test wiring:
+
+- **Built-in Kotlin**: `org.jetbrains.kotlin.android` is no longer applied/compatible; AGP ships KGP 2.2.10 runtime. Minimums: Gradle 9.1, JDK 17, KGP 2.2.10 (Hilt 2.59.2+, KSP 2.3.6+ if used).
+- **New-DSL only**: legacy `android` block APIs removed (`android.newDsl=true` default; opt-out removed in AGP 10). Use `androidComponents` instead of `applicationVariants`/`variantFilter`.
+- **Unit-test defaults**: `android.onlyEnableUnitTestForTheTestedBuildType=true` — unit test tasks exist only for `debug` unless re-enabled; CI invoking `testReleaseUnitTest` breaks. Tooling renames "Android Unit Test" → "Android Host Test"; re-check task names when wiring CI.
+- **Runner default**: `android.default.androidx.test.runner=true` — `AndroidJUnitRunner` is the default; keep the explicit `testInstrumentationRunner` only for custom runners (e.g. Hilt).
+- **`android.useAndroidx=true`** and **`android.uniquePackageNames=true`** enforced by default.
 
 ## Test placement
 
@@ -141,6 +151,8 @@ class FeedScreenTest {
 Matcher order: semantic first (`onNodeWithText`, `onNodeWithContentDescription`, `hasSetTextAction()`). Fall back to `testTag("…")` only when three or more semantic matchers would be needed.
 
 State restoration is a common regression source. Wrap the composable in a `StateRestorationTester(compose)` and call `emulateSavedInstanceStateRestore()` in tests for screens with saved state.
+
+Simulate window sizes and font scale without devices via `DeviceConfigurationOverride` (Compose 1.8+): wrap the content under test with the overridden `WindowWindowSizeClass`/font-scale values instead of firing up tablet emulators.
 
 ---
 
@@ -238,7 +250,7 @@ Do not add production seams solely for tests; use DI to inject fakes.
 - `SharedFlow` / `Channel` consumed via `first()` when no emission is guaranteed → hang. Fix: Turbine with a timeout.
 - Espresso `IdlingResource` not unregistered → next test hangs waiting on stale registry. Fix: register/unregister via `@Rule`.
 - Screenshot diffs on different host OS (font rendering differs between Linux CI and macOS/Windows dev). Fix: standardize on Linux for baselines; use Docker if needed.
-- Robolectric SDK level mismatch between test and app → resource lookups fail. Set `@Config(sdk = [34])` or configure globally in `robolectric.properties`.
+- Robolectric SDK level mismatch between test and app → resource lookups fail. Set `@Config(sdk = [35])` or configure globally in `robolectric.properties`. SDK 36 testing requires Robolectric 4.16+ and JDK 21; Robolectric 4.15 tops out at SDK 35.
 
 ---
 

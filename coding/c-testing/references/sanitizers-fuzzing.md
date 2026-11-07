@@ -66,7 +66,7 @@ mkdir -p corpus_min
 - No persistent global state between runs.
 - Avoid heavy logging in target loop.
 - Join spawned threads before returning.
-- Reject structurally irrelevant inputs with `return -1` only when intentional.
+- The target's return value is ignored by libFuzzer — signal interest via crash (`abort()` on a violated invariant) or coverage, not via `return -1`.
 
 Minimal harness shape:
 - accept `data,size`

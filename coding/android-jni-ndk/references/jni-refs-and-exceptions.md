@@ -10,11 +10,13 @@ Load when writing or debugging JNI code: reference lifetimes, exception propagat
 | **Global** | `NewGlobalRef(local)` | Until explicit delete or process exit | `DeleteGlobalRef` |
 | **Weak Global** | `NewWeakGlobalRef(local)` | Until GC decides / explicit delete | `DeleteWeakGlobalRef` |
 
-Local references default table size is **512 entries per frame** in Android's implementation (larger than the JNI spec's 16-entry minimum). Overflow aborts with:
+Local reference table capacity is implementation-defined: **512 entries** historically (larger than the JNI spec's 16-entry minimum); newer ART grows the table, up to ~8192. Overflow aborts with:
 
 ```
 JNI ERROR (app bug): local reference table overflow (max=512)
 ```
+
+Read the actual `max=` from the abort message — it varies by Android version.
 
 Symptoms: a loop that creates many locals without freeing.
 

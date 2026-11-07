@@ -27,7 +27,7 @@ adb shell dumpsys meminfo com.example.app -d
 
 ## LeakCanary
 
-- Now natively integrated into Android Studio Otter (2025.12+) Profiler as a "LeakCanary task" — the IDE runs the same detector against the target process.
+- Now natively integrated into Android Studio Otter (2025.2+) Profiler as a "LeakCanary task" — the IDE runs the same detector against the target process.
 - Standalone library still preferred for continuous dev-build detection.
 
 Setup:

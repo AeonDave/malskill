@@ -82,7 +82,8 @@ STNP    q0, q1, [x0]              ; 256-bit NT store (2×128 NEON)
 STNP    x2, x3, [x0, #16]        ; 128-bit NT store (2×64 GP)
 
 ; DC ZVA — zero a full cache line without read-for-ownership
-DC      ZVA, x0                    ; zero 64 bytes at [x0], no cache fill
+DC      ZVA, x0                    ; zero one cache line at [x0] — 64 bytes on most
+                                    ; cores, 128 on Apple M-series (query CTR_EL0)
 ```
 
 ### Source-level
@@ -213,7 +214,7 @@ FMUL    v4.4s, v0.4s, v2.4s      ; compute iteration 0
     LDR     q1, [x0], #16         ; load iteration N+3
     STR     q4, [x1], #16         ; store iteration N+1
     FMUL    v4.4s, v0.4s, v2.4s   ; compute iteration N+2
-    SUBS    x3, x3, #4
+    SUBS    x3, x3, #2              ; two 4-float chunks per body (x3 = chunks left)
     B.GT    .loop
 
 ; Epilogue: drain remaining
@@ -251,7 +252,7 @@ Always:
 2. Use NEON (128-bit fixed) — always available on AArch64
 ```
 
-SVE advantage: same binary runs on 128-bit (Graviton3), 256-bit (Graviton4), or 512-bit implementations without recompilation.
+SVE advantage: same binary runs on 128-bit (Cortex-A520/A725 SVE2), 256-bit (Graviton3/Graviton4), or 512-bit (Fujitsu A64FX) implementations without recompilation.
 
 ---
 

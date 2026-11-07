@@ -14,6 +14,18 @@
 
 ### Safe add/mul helpers
 
+C23 standardizes checked arithmetic in `<stdckdint.h>` (GCC 14+, Clang 18+; MSVC does not ship it yet — use the fallback below or a shim):
+
+```c
+#include <stdckdint.h>
+
+size_t total;
+if (ckd_mul(&total, count, size)) return -1;   /* 1 = overflow */
+if (ckd_add(&total, total, header)) return -1;
+```
+
+Fallback for pre-C23 toolchains — hand-rolled helpers:
+
 ```c
 static int add_overflow_size(size_t a, size_t b, size_t *out) {
 	if (a > SIZE_MAX - b) return 1;

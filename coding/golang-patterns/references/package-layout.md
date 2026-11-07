@@ -7,7 +7,7 @@ Keep package boundaries aligned with ownership and responsibilities.
 Example:
 
 - `cmd/<app>/` — entry points
-- `internal/` — private packages
+- `internal/` — private packages (usable at **any** level: `internal/` under a subpackage is importable only within that subtree — not just repo-root-wide)
 - `pkg/` — public packages (only if you truly have a public API)
 
 ## Package naming

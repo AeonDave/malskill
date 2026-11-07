@@ -414,7 +414,8 @@ frida -p <pid> -l hook.js
 
 ```javascript
 // hook.js — log args and return value for any function
-Interceptor.attach(Module.findExportByName("ntdll.dll", "NtAllocateVirtualMemory"), {
+// Frida 17+: resolve the module instance first (static Module.findExportByName removed)
+Interceptor.attach(Process.getModuleByName("ntdll.dll").getExportByName("NtAllocateVirtualMemory"), {
   onEnter(args) {
     console.log("ProcessHandle=" + args[0]);
     console.log("BaseAddress=" + args[1].readPointer());

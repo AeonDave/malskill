@@ -27,7 +27,7 @@ cargo install cargo-show-asm
 cargo asm --release --rust <crate> <module>::<function>
 
 # LLVM IR + ASM side by side
-cargo asm --release --llvm-ir <crate> <function>
+cargo asm --release --llvm <crate> <function>
 
 # Filter to specific basic block
 cargo asm --release <crate> <function> | grep -A30 '<label>:'
@@ -85,8 +85,9 @@ perf stat -M TopdownL2 ./bench
 ### toplev (pmu-tools, deeper analysis)
 
 ```bash
-# Install
-pip install pmu-tools
+# Install — canonical: git clone (pip package exists but is experimental)
+git clone https://github.com/andikleen/pmu-tools
+PATH="$PATH:$(pwd)/pmu-tools"
 # Level 1–3 analysis
 toplev --core S0-C0 -l3 -v --no-desc taskset -c 0 ./bench
 ```

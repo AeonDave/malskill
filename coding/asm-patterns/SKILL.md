@@ -353,7 +353,8 @@ ud2                          ; x86-64: guaranteed #UD
 mov  rax, [fs:0x28]          ; prologue: load canary
 mov  [rsp + FRAME_SIZE - 8], rax
 ; ... function body ...
-cmp  rax, [fs:0x28]          ; epilogue: verify
+mov  rax, [rsp + FRAME_SIZE - 8]  ; epilogue: reload STORED copy
+cmp  rax, [fs:0x28]               ; verify against current value
 jne  __stack_chk_fail
 ```
 

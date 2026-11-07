@@ -2,7 +2,7 @@
 name: android-jni-ndk
 description: "Kotlin/Java ↔ native (C/C++/Rust) bridging on Android: NDK setup, JNI mechanics, `System.loadLibrary`, `RegisterNatives`, `@FastNative`/`@CriticalNative`, reference hygiene, exception propagation, 16 KB page-size compliance, native crash triage. Use when building or debugging a native module, embedding a `.so` library, decoding a native ANR or SIGSEGV, or reverse-engineering an APK's native code paths."
 license: MIT
-compatibility: "Android SDK 26+ (guidance covers up to SDK 36; Android 15 mandates 16 KB page alignment for API 35+ from Nov 2025). NDK r27+ (r28 recommended for 16 KB page-size). CMake 3.22+ or ndk-build. Optional: Rust with cargo-ndk + jni-rs; async-profiler for native profiling; addr2line + ndk-stack for crash symbolication."
+compatibility: "Android SDK 26+ (guidance covers up to SDK 36; Play requires 16 KB page alignment for apps targeting API 35+ since Nov 2025). NDK r28+ compiles 16 KB-aligned by default (AGP 9.0 default: r28c `28.2.13676358`); current LTS is r30 (`30.0.16248370`), r27 the prior LTS. CMake 3.22+ or ndk-build. Optional: Rust with cargo-ndk + jni-rs; async-profiler for native profiling; addr2line + ndk-stack for crash symbolication."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -70,7 +70,7 @@ On Android 12+ the compiled managed→native call for `@CriticalNative` is nearl
                }
            }
        }
-       ndkVersion = "27.2.12479018"
+       ndkVersion = "28.2.13676358"   // r28c (AGP 9 default) — 16 KB alignment on by default
    }
    ```
 2. **Declare native methods in Kotlin**:
@@ -117,7 +117,7 @@ On Android 12+ the compiled managed→native call for `@CriticalNative` is nearl
 |-----|-----|
 | `arm64-v8a` | Modern Android devices (2019+). **Required.** |
 | `armeabi-v7a` | Older 32-bit ARM. Still ~10% of Play install base as of 2025. |
-| `x86_64` | Emulators, Chromebooks, some Windows Subsystem for Android. Include for dev. |
+| `x86_64` | Emulators, Chromebooks. Include for dev. |
 | `x86` | Effectively dead; skip unless supporting legacy emulator paths. |
 
 App Bundle (AAB) splits per-ABI automatically. `abiFilters` in the module controls what's built and shipped.
@@ -126,7 +126,7 @@ App Bundle (AAB) splits per-ABI automatically. `abiFilters` in the module contro
 
 - Android 15+ devices can boot with 16 KB kernel pages for improved performance.
 - All `.so` files for `arm64-v8a` and `x86_64` (the 64-bit ABIs) must have LOAD segments aligned to 16 KB.
-- NDK r27+ / AGP 8.3+ / CMake 3.22+ handle this automatically. NDK r26 and older need manual linker flags:
+- AGP 8.5.1+ with NDK r28+ handles ELF and zip alignment automatically (AGP 9.0 defaults to NDK r28c, `28.2.13676358`). Older combos (AGP 8.3–8.5, NDK r26–r27) compile aligned `.so` but may misalign the APK zip entries — see `references/16kb-page-size.md` for the version matrix. NDK r26 and older need manual linker flags:
   ```cmake
   # CMakeLists.txt for older toolchains
   target_link_options(mylib PRIVATE
@@ -158,7 +158,7 @@ Full workflow with automation tools: `references/16kb-page-size.md`.
 
 ## JNI reference hygiene (top failure source)
 
-- **Local refs** — automatically freed at JNI method return. Table default size 512 entries; exceed and JVM aborts with `LocalReferenceTable overflow`.
+- **Local refs** — automatically freed at JNI method return. Table starts at 512 entries (newer ART grows it, up to 8192); when full the JVM aborts with `LocalReferenceTable overflow` — the abort message prints the actual `max=`.
   - Explicitly `env->DeleteLocalRef(obj)` inside long loops.
   - Use `PushLocalFrame(capacity)` / `PopLocalFrame(nullptr)` for scoped batches.
 - **Global refs** — survive across JNI calls. Free with `env->DeleteGlobalRef(g)`. **Every** global ref must be paired with a delete or it leaks until process exit.
@@ -203,7 +203,7 @@ $NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-addr2line -Cfe libnative_cry
 
 Rules:
 
-- Ship `libmylib.so.debug` (via AGP `packagingOptions { doNotStrip("**/lib*.so") }` for local, or upload debug symbols to Play Console for production).
+- Ship `libmylib.so.debug` (via AGP `packaging { jniLibs { keepDebugSymbols += "**/lib*.so" } }` for local, or upload debug symbols to Play Console for production).
 - Set CMake to `Release` with debug info: `-DCMAKE_BUILD_TYPE=RelWithDebInfo`. Strip separately for shipping.
 - Enable Address Sanitizer on debug builds:
   ```cmake

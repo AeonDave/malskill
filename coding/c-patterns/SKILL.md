@@ -2,7 +2,7 @@
 name: c-patterns
 description: "C language patterns and best practices for safe, maintainable C: ownership, API contracts, error handling, integer safety, portability, and concurrency boundaries. Use when writing or reviewing C code (C11+), designing module interfaces, refactoring legacy C, or hardening low-level code paths."
 license: MIT
-compatibility: "C11 baseline. Toolchains: Clang, GCC, MSVC (C mode), MinGW-w64. Build: CMake or Make. Binary inspection: objdump/nm (MinGW/Linux), dumpbin (MSVC), readelf/ldd/strace (Linux)."
+compatibility: "C11 baseline (C23 notes included: GCC 14+/Clang 18+ ship most of C23; MSVC via /std:clatest). Toolchains: Clang, GCC, MSVC (C mode), MinGW-w64. Build: CMake or Make. Binary inspection: objdump/nm (MinGW/Linux), dumpbin (MSVC), readelf/ldd/strace (Linux)."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -220,6 +220,8 @@ for (int i = 0; i < n; i++) out[i] = in[i] * stride;
     idiv    rcx                     ; 20-40 cycle latency
 ; GOOD:
     sar     rax, 3                  ; divide by 8 (signed) — 1 cycle
+                                    ; only valid when dividend >= 0 or a
+                                    ; multiple of 8: sar rounds toward -inf
 
 ; BAD: imul for small constant multiply
     imul    rdi, 9

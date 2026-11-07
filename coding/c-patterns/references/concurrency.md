@@ -50,7 +50,8 @@ Prefer atomics for simple counters over full mutexes.
 ```c
 #include <stdatomic.h>
 
-atomic_int counter = ATOMIC_VAR_INIT(0);
+/* plain initialization — ATOMIC_VAR_INIT is deprecated (C17) and removed (C23) */
+atomic_int counter = 0;
 
 // Thread-safe increment (sequentially consistent)
 atomic_fetch_add(&counter, 1);
@@ -114,7 +115,7 @@ Never acquire a lock left of one you already hold.
 
 - **Linux**: `clang -fsanitize=thread` (TSan)
 - **Linux**: `helgrind` (Valgrind tool): `valgrind --tool=helgrind ./foo`
-- **Windows (MSVC)**: Thread Sanitizer via `/fsanitize=address` is incomplete for races; use WinDbg or VS Concurrency Visualizer.
+- **Windows**: MSVC has no TSan (only `/fsanitize=address`; `/fsanitize=thread` is still a feature request) — use clang-cl with `-fsanitize=thread` (immature on Windows) or run race detection on Linux CI.
 
 ## Quick checklist
 

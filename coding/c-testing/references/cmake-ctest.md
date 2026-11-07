@@ -58,7 +58,6 @@ ctest -L unit -V
 ctest --test-dir build -V          # verbose output
 ctest -R test_parse                # run by name regex
 ctest -L unit                      # run by label
-ctest --rerun-failed               # only re-run failures
 ctest -j4                          # parallel test execution
 ctest --output-on-failure          # print stdout on failure only
 ctest --rerun-failed               # rerun only previously failed tests

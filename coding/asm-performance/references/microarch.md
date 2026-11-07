@@ -112,7 +112,7 @@ The store buffer holds pending writes before they commit to cache. It enables st
 
 ## Cache Line Effects
 
-- **Cache line**: 64 bytes on x86-64 and ARM64
+- **Cache line**: 64 bytes on x86-64 and most ARM64 (Graviton, Cortex); **128 bytes on Apple M-series** — size padding to `max(linesize)` when porting
 - A single cache line miss costs ~4 cycles (L1), ~12 cycles (L2), ~40 cycles (L3), ~100–300 cycles (DRAM)
 - Accessing elements across cache line boundaries (false sharing, scattered access) destroys performance
 

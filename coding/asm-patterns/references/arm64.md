@@ -16,7 +16,7 @@
 | `sp` | Stack pointer | Must remain 16-byte aligned at all times |
 | `d0`–`d7` | Float args / return | `v0`–`v7` for NEON (128-bit) |
 | `d8`–`d15` | Callee-saved float | `s8`–`s15` (32-bit), `d8`–`d15` (64-bit) |
-| `v16`–`v31` | Caller-saved NEON | Only lower 64 bits callee-saved on AAPCS64 |
+| `v16`–`v31` | Caller-saved NEON | Fully caller-saved; callee-saved lower 64 bits apply only to `v8`–`v15` (`d8`–`d15`) |
 
 ---
 
@@ -58,7 +58,7 @@ nonleaf_fn:
 
 ## Conditional Execution
 
-ARM64 has no predicated instructions (unlike ARM32). Use `csel`, `csinc`, `csinv` for branchless code:
+ARM64 has no general predicated execution (unlike ARM32 `IT` blocks) — only the conditional-select family (`csel`, `cset`, `csinc`, `csinv`, `cneg`, `ccmp`) is predicated. Use it for branchless code:
 
 ```asm
 // x0 = (x0 < x1) ? x0 : x1  →  min
@@ -178,7 +178,7 @@ SVE (Scalable Vector Extension) uses vector-length-agnostic programming. Vector 
 ```asm
 // Add two float arrays: dst[i] = a[i] + b[i], VL-agnostic
 vec_add:
-    mov     x3, #0               // byte offset
+    mov     x3, #0               // element offset (x2 = element count; incw steps by VL)
     whilelt p0.s, x3, x2         // p0 = predicate: which lanes active
     b.none  .done
 .loop:

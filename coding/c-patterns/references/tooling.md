@@ -51,6 +51,8 @@ References:
 clang-tidy foo.c -- -std=c11 -Wall
 # cppcheck
 cppcheck --enable=all --std=c11 src/
+# GCC built-in analyzer (GCC 10+, dataflow-based)
+gcc -fanalyzer -c foo.c
 # MSVC built-in (/analyze)
 cl /analyze foo.c
 ```
@@ -83,8 +85,6 @@ strings foo.exe | grep -i key
 objdump -p foo.exe | grep -A20 'Import'
 # Strip debug info for production
 strip --strip-debug foo.exe
-# Inspect resource sections (Windows RC data)
-windres --verbose (for round-trip)
 # Show all relocations
 objdump -r foo.o
 # Show PE headers (binutils)

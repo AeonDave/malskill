@@ -86,7 +86,7 @@ Write a thin C driver that calls the ASM function and asserts results.
 /* test_hot_fn.c */
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <inttypes.h>
 
 extern int64_t hot_fn(int64_t a, int64_t b);
 
@@ -104,7 +104,7 @@ int main(void) {
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         int64_t got = hot_fn(cases[i].a, cases[i].b);
         if (got != cases[i].expected) {
-            fprintf(stderr, "FAIL case %zu: hot_fn(%ld, %ld) = %ld, want %ld\n",
+            fprintf(stderr, "FAIL case %zu: hot_fn(%" PRId64 ", %" PRId64 ") = %" PRId64 ", want %" PRId64 "\n",
                     i, cases[i].a, cases[i].b, got, cases[i].expected);
             failed++;
         }

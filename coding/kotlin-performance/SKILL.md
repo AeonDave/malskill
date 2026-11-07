@@ -75,9 +75,18 @@ If the target is a pure JVM library or CLI, most guidance transfers — skip the
 
 ---
 
+## ANR triage
+
+ANRs are main-thread availability failures, not crashes. Trace-driven attribution:
+
+- **Prove the executing thread and prove the call blocks** before attributing a candidate ANR cause — stack lines alone mislead when dispatchers or proxies are involved.
+- Attribute in the trace as **APP_DEFECT** (fix the app), **APP_RESOURCE_OVERLOAD** (fix resource use), or **EXTERNAL_BOTTLENECK** (binder/system contention — do not "fix" with app changes).
+- **Sync Barrier Leak**: posting to a `View` from a non-main thread while it is attached can leak the main Looper's sync barrier — every subsequent frame/measure pass queues behind it and the app ANRs with no obvious blocker on the main thread. Audit off-main mutations of attached Views; check for an unremoved `SyncBarrier` in the trace's Looper state.
+- Common main-thread blockers to look for in the dump: binder calls held across lock acquisition, `SharedPreferences` first-load, layout inflation of deep hierarchies, synchronous I/O in `BroadcastReceiver`.
+
 ## Android release-build knobs (measure each in isolation)
 
-- **R8 full mode**: `android.enableR8.fullMode=true` in `gradle.properties` **and** switch `proguardFiles` from `proguard-android.txt` to `proguard-android-optimize.txt`. Typical: 5–15% smaller APK + faster startup. Full mode enables horizontal class merging, vertical class merging, and interface-method rewriting — will break some reflection-heavy libraries. Verify at runtime, not just compile.
+- **R8 full mode**: default on AGP 9 (no `android.enableR8.fullMode=true` needed; the `false` opt-out is gone in AGP 10). On AGP 8.x: enable via `gradle.properties` **and** use `proguard-android-optimize.txt` (`proguard-android.txt` is rejected by AGP 9). Typical: 5–15% smaller APK + faster startup. Full mode enables horizontal class merging, vertical class merging, and interface-method rewriting — will break some reflection-heavy libraries. Verify at runtime, not just compile. AGP 9.3+ adds the `optimization {}` DSL and the `analyzeReleaseR8Config` Configuration Analyzer task (report in `build/reports/r8/`) to audit keep rules.
 - **`shrinkResources = true`** (paired with `minifyEnabled = true`) — required to strip unused resources. AGP 8.7+ supports **optimized resource shrinking** for ~30% resource file reduction.
 - **Baseline Profile**: `androidx.baselineprofile` Gradle plugin generates `baseline-prof.txt` from a Macrobenchmark journey run on a `nonMinified` build. R8 rewrites the rules to match the minified release (introduced in Baseline Profile 8.2+; ~30% method coverage improvement).
 - **Startup Profile**: same generator, `includeInStartupProfile = true`. Rearranges DEX layout so critical startup classes land in `classes.dex` — measurable startup win on top of Baseline Profile.
@@ -121,7 +130,7 @@ Enable together only after each has been measured separately.
 
 ## Memory & leaks
 
-- **LeakCanary** is now natively integrated into Android Studio Otter (2025.12+) Profiler as a "LeakCanary task"; still install the library on debug builds for continuous detection. In CI/dev, keep `LeakCanary.config = LeakCanary.config.copy(retainedVisibleThreshold = 1)` for aggressive detection.
+- **LeakCanary** is now natively integrated into Android Studio Otter (2025.2+) Profiler as a "LeakCanary task"; still install the library on debug builds for continuous detection. In CI/dev, keep `LeakCanary.config = LeakCanary.config.copy(retainedVisibleThreshold = 1)` for aggressive detection.
 - Typical Android leak sources:
   - `Context`/`Activity`/`View` held in singletons, static fields, or `object` bodies.
   - `Fragment` view listeners bound to `Fragment.lifecycleOwner` instead of `viewLifecycleOwner`.

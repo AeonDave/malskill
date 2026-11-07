@@ -229,7 +229,9 @@ Interceptor.attach(ptr("0x<trampoline_addr>"), {
 ### Dump memory region after allocation
 
 ```javascript
-Interceptor.attach(Module.findExportByName("ntdll.dll", "NtAllocateVirtualMemory"), {
+// Frida 17+: static Module.findExportByName was removed — resolve the module
+// instance first (Frida <=16 syntax: Module.findExportByName("ntdll.dll", ...))
+Interceptor.attach(Process.getModuleByName("ntdll.dll").getExportByName("NtAllocateVirtualMemory"), {
     onEnter(args) {
         this.basePtr = args[1];
         this.sizePtr = args[3];

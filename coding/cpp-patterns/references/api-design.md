@@ -23,7 +23,7 @@ Pick one approach per layer:
 - Exceptions (common for library boundaries)
 - Status code + out-params
 - `std::optional` for absence
-- `std::expected`-style return (if available in your toolchain) or a local equivalent
+- `std::expected` (C++23; GCC 12+/Clang 16+/MSVC 19.33+) or a local equivalent on older toolchains
 
 Avoid mixing styles within a single API.
 
