@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 
@@ -89,7 +89,7 @@ Load [known-problem-hint-research](../../knowledge/known-problem-hint-research/S
 - [references/advanced-math.md](references/advanced-math.md) — Isogenies and CSIDH, Pohlig-Hellman algorithm, LLL lattice reduction, Coppersmith small-roots method, Clock group DLP, Babai nearest-plane algorithm, CVP/SVP solvers, GF(2) linear algebra, generalized birthday attacks, sparse polynomial systems.
 
 ### Lattice & LWE
-- [references/lattice-and-lwe.md](references/lattice-and-lwe.md) — Lattice problems (SVP, CVP, HNP), LWE attacks (Gaussian elimination, BKZ reduction), hidden number problem, ECDSA partial-nonce recovery via lattice, LWE parameter tweaking, NTRU attacks.
+- [references/lattice-and-lwe.md](references/lattice-and-lwe.md) — Load for lattice/LWE equations, partial-nonce recovery, or ML-KEM/NTRU artifacts: parameter and representation checks, reduction methods and candidate validation.
 
 ### Classic Ciphers
 - [references/classic-ciphers.md](references/classic-ciphers.md) — Vigenere cipher frequency analysis, Atbash simple substitution, Polybius square attacks, substitution cipher key recovery, XOR-based cipher analysis, pattern matching and constraint solving.

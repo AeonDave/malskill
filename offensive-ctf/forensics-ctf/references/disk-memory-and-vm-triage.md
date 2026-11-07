@@ -487,3 +487,7 @@ md5sum target1.pdf target2.pdf    # identical
 
 - [advanced-disk-and-memory.md](advanced-disk-and-memory.md) - Advanced disk and memory techniques
 - [filesystem-and-archive-recovery.md](filesystem-and-archive-recovery.md) - Disk recovery and extraction patterns
+
+## BitLocker volume triage
+
+Identify the encrypted partition and its offset before selecting a volume parser. Look for supplied recovery material and match its recovery-key ID to the volume. A BitLocker recovery password has 48 digits in eight groups of six; see [Microsoft's recovery-key documentation](https://learn.microsoft.com/en-us/intune/user-help/security/collect-recovery-key-windows). Keep the original image read-only and verify any recovered filesystem against the partition metadata.

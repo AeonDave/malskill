@@ -183,3 +183,9 @@ r2 -A game.exe   # works on Linux via r2's PE parser
 # Debug symbols: if binary is not stripped, nm/r2 afl shows real names
 # If stripped: look for vtable patterns, constructor chains, string xrefs
 ```
+
+## Unreal Engine workflow
+
+Recognition: `*.pak` archives, `.uasset`/`.umap` files, `UE4Game`/`<Game>-Win64-Shipping.exe` naming.
+
+Inspect both `.pak` and `.utoc`/`.ucas` containers where present. [FModel](https://fmodel.app/) can browse supported archives and export assets; engine version and encryption may constrain parsing. Inspect available data tables and class defaults, then corroborate any proposed game condition against the actual logic.

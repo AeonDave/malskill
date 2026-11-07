@@ -49,7 +49,7 @@ _CTF_PATTERNS = [
 # vectors like V:N, register names). Requires a username after the
 # home-dir prefix and a word boundary.
 _WORKSTATION_PATH_RE = re.compile(
-    r"[A-Za-z]:[/\\]Users[/\\]\w+"
+    r"(?i:[A-Za-z]:[/\\]Users[/\\](?:All Users(?=[/\\\r\n]|$)|\w+))"
     r"|/home/[a-z][a-z0-9_-]{2,}(?![a-z0-9_-])"
     r"|/Users/[A-Z][a-z0-9_-]{2,}(?![a-z0-9_-])"
 )
@@ -59,6 +59,11 @@ _WORKSTATION_PATH_RE = re.compile(
 _WORKSTATION_PATH_ALLOWLIST = {
     # HP JetDirect / PJL default user account
     "/home/default",
+    # PaperCut print-management service account (papercut privesc writeups)
+    "/home/papercut",
+    # Generic CTF example accounts
+    "/home/ctf",
+    "/home/user",
     # Windows built-in profiles
     r"c:\users\public",
     r"c:\users\default",

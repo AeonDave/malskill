@@ -77,6 +77,16 @@ Use this reference when `hardware-ctf` is active and the task needs a deeper, ar
 4. Test a simple leakage model before complex machine learning.
 5. Validate recovered material by decrypting, hashing, or replaying against an independent oracle.
 
+## Fault-injection evidence
+
+Load when the challenge supplies glitch logs, instrument captures or a fault-injection experiment. Distinguish passive side-channel measurements from deliberately induced clock or voltage faults.
+
+- Record the board, firmware, instrument version, trigger reference and the documented units for offset, width and repeat settings. Numeric settings are not portable between instruments or targets.
+- Separate normal responses, resets, timeouts and the specific claimed fault effect. A crash or one anomalous response is not proof of the challenge objective.
+- Compare against an unaffected baseline and preserve repeated observations of both the response and relevant target state. Keep inconclusive runs separate from successful ones.
+
+See [NewAE's voltage-glitching lab](https://github.com/newaetech/chipwhisperer-tutorials/blob/master/courses_fault101_SOLN_Fault%202_1%20-%20Introduction%20to%20Voltage%20Glitching-OPENADC-CWLITEARM.rst) for instrument-specific semantics and distinct success/reset measurements.
+
 ## CAD, G-code, and 3D-printing workflow
 
 - Inspect comments, slicer metadata, thumbnails, custom sections, and compressed blocks.

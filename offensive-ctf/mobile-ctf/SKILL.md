@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux/macOS; APK/IPA/AB artifacts; jadx, apktool, Python 3, optional frida/objection for dynamic tasks."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 
@@ -286,4 +286,5 @@ objection -g <package_name> explore
 
 - [references/android-backup-forensics.md](references/android-backup-forensics.md) — Full .ab extraction workflow, header format variants, SQLite triage, photo inspection patterns.
 - [references/apk-crypto-patterns.md](references/apk-crypto-patterns.md) — byte-exact key/IV derivation, provider-sensitive AES modes, hardcoded-key patterns, and Python validation templates.
+- [references/modern-app-frameworks.md](references/modern-app-frameworks.md) — Load for Flutter/Dart AOT or React Native/Hermes artifacts and app-data triage.
 - [references/ios-ipa-triage.md](references/ios-ipa-triage.md) — Load for IPA/`.app`/Mach-O artifacts: bundle structure, plist/keychain/SQLite extraction, Mach-O static analysis, FairPlay decryption, and Frida/objection dynamic recovery.

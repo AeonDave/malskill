@@ -89,3 +89,9 @@ Use the token only inside authorized lab scope. Decode token claims to identify 
 - older version proves deleted or rotated data recovery
 - role assignment explains why a pivot is possible
 - managed-identity token maps to a principal with the required scope
+
+## Entra ID / Microsoft Graph abuse
+
+- A signed-in Azure CLI context can request a Graph token with `az account get-access-token --resource https://graph.microsoft.com`, subject to its identity and tenant configuration. Inspect claims locally; do not submit tokens to third-party decoders.
+- Distinguish delegated permissions and the signed-in user's access from application permissions. Check the actual endpoint's permission requirements and tenant policy rather than assuming token claims alone grant an action.
+- Application and service-principal credential metadata does not reveal existing password values: `secretText` is returned only when a password is initially created. See [Microsoft Graph passwordCredential](https://learn.microsoft.com/en-us/graph/api/resources/passwordcredential?view=graph-rest-1.0).

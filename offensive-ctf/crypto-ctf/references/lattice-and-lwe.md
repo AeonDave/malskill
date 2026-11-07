@@ -522,3 +522,13 @@ Then:
 - If the instance is polynomial-based, did I first flatten it into coefficient vectors?
 
 If most answers are "yes", the challenge is very likely meant to be solved with lattice reduction.
+
+## Post-quantum KEMs: ML-KEM/Kyber and NTRU as challenge families
+
+- **Identify the scheme and representation.** ML-KEM uses `q = 3329`, `n = 256`, and `R_q = Z_q[X]/(X^256 + 1)`; standardized module ranks are `k = 2, 3, 4`. Distinguish coefficient-domain values from NTT-domain encodings before constructing equations. Kyber and standardized ML-KEM are related, not interchangeable specifications.
+- **Preserve the coupled equations.** Expanding ring multiplication into coefficient vectors does not remove the error or make matrix columns independent. A toy `k = 1` instance still has ring structure; it is not automatically an easy plain-LWE instance.
+- **Separate normal design from a demonstrated defect.** Public matrices, repeated use of an encapsulation key, and compression are expected. Identify the precise extra observation or implementation deviation before proposing key recovery. ML-KEM implicit rejection returns a replacement shared secret; a validity oracle requires a separately observed leak, not merely malformed ciphertext input.
+- **Identify the NTRU variant.** Derive the public-key relation from its key-generation code, including inverses, scaling and polynomial modulus. Small `p`, sparse coefficients or composite `q` alone are not defects: NTRU-HPS/HRSS parameter sets use `p = 3` and power-of-two `q`.
+- **Validate a candidate.** Record the actual parameter set, sampling distribution and available observations. Check recovered values against the original modular equations and the supplied encryption/decapsulation behavior; a short lattice vector alone does not prove recovery.
+
+Sources: [NIST FIPS 203, sections 2, 7 and 8](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf), [NTRU specification, parameter sets and key generation](https://ntru.org/f/ntru-20190330.pdf).

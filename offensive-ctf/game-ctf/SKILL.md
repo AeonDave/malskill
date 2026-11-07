@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Linux/Windows; Unity (Mono/IL2CPP), native ELF/PE; tools: dnSpy, Il2CppDumper, Ghidra, UABE, Cheat Engine, Python."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 

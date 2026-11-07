@@ -711,7 +711,7 @@ for (int i = 0; i < 4; i++) {
 
 ## userfaultfd Race Stabilization
 
-`userfaultfd` (uffd) makes kernel race conditions deterministic by pausing execution at page faults.
+`userfaultfd` can block a registered missing-page access until its handler resolves the fault. Availability, permissions and fault type must match the intended observation; see [configuration checks](#kernel-configuration-and-evidence-checks).
 
 **How it works:**
 1. `mmap()` a region with `MAP_PRIVATE` (no physical pages allocated)
@@ -1385,4 +1385,12 @@ base64 -d exploit.b64 | gunzip > /tmp/exploit && chmod +x /tmp/exploit
 upx -best exploit
 ```
 
-**Common pitfall:** If the exploit uses `setxattr()` with a file path, ensure the file exists in the remote environment. Local path (`/tmp/exploit`) may differ from remote path (`/home/user/exploit`).
+**Common pitfall:** If the exploit uses `setxattr()` with a file path, ensure the file exists in the remote environment. Local path (`/tmp/exploit`) may differ from remote path (`/home/ctf/exploit`).
+
+## Kernel configuration and evidence checks
+
+- Record the exact kernel image, architecture, configuration and module build. A structure name or allocation size alone does not establish object reuse, controllable fields or an arbitrary read/write primitive.
+- Distinguish a vulnerability's affected-build range from a reusable kernel interface. A named exploit family is not evidence that the supplied kernel has its required bug.
+- For `userfaultfd(2)`, `vm.unprivileged_userfaultfd=0` restricts unprivileged handling of kernel-originated faults; it does not disable user-mode-only handling. Record the API, flags, permissions and returned error before concluding that the feature is unavailable. See [kernel userfaultfd documentation](https://docs.kernel.org/admin-guide/mm/userfaultfd.html).
+- Do not assume FUSE is available or equivalent to userfaultfd. Check the challenge image's filesystem support, mount permissions and actual I/O path; cached reads need not reach a userspace daemon. See [FUSE documentation](https://docs.kernel.org/filesystems/fuse/fuse.html).
+- KCFI checks a type identifier at instrumented indirect calls. It does not establish general memory integrity or check every data write. Record compiler/configuration evidence and the actual diagnostic instead of inferring protection from an Android or Linux version label. See [LLVM KCFI semantics](https://llvm.org/docs/LangRef.html#kcfi-operand-bundles).

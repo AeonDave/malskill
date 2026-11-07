@@ -70,7 +70,6 @@ with evtx.Evtx("Security.evtx") as log:
             print(f"User created: {data.get('TargetUserName')}")
 ```
 
-
 ## IIS W3C Access Logs and UTC Anchoring
 
 IIS W3C extended-log `date`/`time` fields are UTC even though the line has no
@@ -81,7 +80,6 @@ then retain the peer artifact's fractional seconds and the raw IIS line.
 Record any timezone/precision assumption explicitly. Separate earlier internal,
 health-check, or background traffic from the first interaction attributable to
 an external actor when the question asks for an actor timeline.
-
 
 ## AD CS and DCSync Event Correlation
 
@@ -363,7 +361,6 @@ for entry in fs.open_dir("/"):
 # - Attribute 0x10 ($STANDARD_INFORMATION): Contains SI timestamps (modifiable)
 ```
 
-
 ## Resident MFT Data and USA Fixup
 
 Small files can store their `$DATA` resident inside the MFT record. Before
@@ -373,7 +370,6 @@ sequence value with the corresponding original two bytes from the USA array,
 then parse attributes. A failed fixup can make valid resident text appear
 truncated or corrupt. USA fixup is separate from the USN journal's Update
 Sequence Number.
-
 
 ## Windows Data Deduplication Recovery
 
@@ -428,7 +424,6 @@ registration, and management-transaction completion separately; use the task's
 wording or a bounded explicit oracle to select among them. For a weekly scheduled
 task, advance the start boundary to the next matching weekday after acquisition,
 preserving its wall-clock time and documenting the timezone assumption.
-
 
 ## Reused or Deleted MFT Records via USN and `$LogFile`
 
@@ -718,7 +713,6 @@ grep -i 'EFSTMPWP' mft.csv
 - Switch focus to alternate persistence paths: `$Recycle.Bin` contents, NTFS journal ($LogFile / $UsnJrnl), Volume Shadow Copies, and MFT resident data.
 - Check `Event Log` (`Security.evtx`, `Microsoft-Windows-Application-Experience%4Program-Inventory.evtx`) for `cipher.exe` execution timestamps — they anchor the anti-forensics timeline.
 
-**Key insight:** Secure-erase tools leave their own filesystem fingerprints. `cipher.exe /w` creates `EFSTMPWP`; `sdelete` creates files named after the wiped target with a `.ZZZ`-style extension; BleachBit leaves `~BleachBit*.tmp`. Grep for these artifact names before launching any recovery job — they tell you whether recovery is even worth attempting.
 
 -
 
@@ -768,3 +762,15 @@ vol.py -f dump.vmem -profile=Win7SP1x64 dlllist -p PID
 ```
 
 **Key insight:** Don't hunt with `strings` alone. The Volatility plugin suite has a plugin for every artifact: clipboard, mimikatz (plaintext), hashdump (hashes), printkey (registry), memdump (per-process memory), netscan (sockets), pstree (process hierarchy), dlllist (loaded modules). Run them in order from cheapest to most expensive.
+
+## Volatility 3 on modern Windows builds
+
+Volatility 2 commands above are not interchangeable with Volatility 3. Start with `windows.info` and inspect the installed plugin list and help for exact names and arguments. Volatility 3 normally retrieves and caches missing Windows symbols automatically; when a requirement fails, inspect the diagnostic for both the memory layer and matching symbols, including symbol-server availability. See the [Volatility 3 symbol instructions](https://github.com/volatilityfoundation/volatility3#symbol-tables).
+
+Chrome introduced [App-Bound Encryption on Windows](https://security.googleblog.com/2024/07/improving-security-of-chrome-cookies-on.html) beginning with cookies in Chrome 127. Record the browser version, platform and policy before interpreting encrypted browser artifacts; a DPAPI-only workflow may not apply.
+
+## LNK, Prefetch, and SRUM
+
+- **LNK and Jump Lists**: distinguish individual `.lnk` files from `.automaticDestinations-ms` and `.customDestinations-ms` containers. Parse targets, arguments, working directories and stored metadata; use a container-aware parser such as [JLECmd](https://github.com/EricZimmerman/JLECmd) for Jump Lists. A stored link is not by itself proof of execution.
+- **Prefetch** (`C:\Windows\Prefetch\*.pf`): parse available executable names, run times and counts; correlate with other execution evidence and account for retention and configuration.
+- **SRUM** (`C:\Windows\System32\SRU\SRUDB.dat`, ESE database): correlate application resource and network usage with other evidence; usage alone does not establish the contents or purpose of a transfer.

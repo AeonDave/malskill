@@ -632,3 +632,19 @@ See [games-and-vms-4.md](games-and-vms-4.md) for 2018-era additions (XSLT VM, JS
 See also: [games-and-vms.md](games-and-vms.md) for WASM patching, Roblox place file reversing, PyInstaller extraction, marshal analysis, Python env RCE, Z3 constraint solving, K8s RBAC bypass, floating-point precision exploitation, and custom assembly language sandbox escape.
 
 See also: [games-and-vms-2.md](games-and-vms-2.md) for cookie checkpoint brute-forcing, Flask cookie game state leakage, WebSocket game manipulation, server time-only validation bypass, De Bruijn sequences, Brainfuck instrumentation, and WASM memory manipulation.
+
+## JavaScript sandbox escape (vm / vm2 / isolated-vm)
+
+Record the package version, Node/V8 version, context construction, exposed host APIs and resource limits before attributing a result to the sandbox library.
+
+- **Node `vm`**: the [Node documentation](https://nodejs.org/api/vm.html) explicitly says it is not a security mechanism. That warning does not make a particular constructor-chain expression work in every context configuration.
+- **`vm2`**: match the installed version and `VM`/`NodeVM` options to the [maintainer's advisories](https://github.com/patriksimek/vm2/security/advisories). Record the advisory's preconditions; a year label or a historical payload is not proof of applicability.
+- **`isolated-vm`**: inspect the host bridge as well as the isolate. The [maintainer's security guidance](https://github.com/laverdet/isolated-vm#security) warns that exposed library references and integration mistakes can undermine isolation; the library name alone is not evidence of a safe boundary.
+- Distinguish ordinary in-context evaluation, a host exception, resource exhaustion and demonstrated host access. Preserve the smallest observation establishing which boundary was crossed.
+
+## Quantum challenge patterns (Q#/Qiskit)
+
+- **Qiskit simulation**: identify state preparation, gates, measurement/reset operations and classical control. Use `qiskit.quantum_info.Statevector` for compatible state evolution, or [qiskit_aer.AerSimulator](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.AerSimulator.html) for sampled measurement results. Aer is a separate package; `qiskit.Aer` is not the current import. Check bit ordering before comparing counts with challenge strings.
+- **BB84/QKD**: sift by matching bases, then compute disagreement on the disclosed comparison subset. The expected 25% QBER applies to ideal full intercept-resend with random bases, not every finite/noisy transcript. Load [the BB84 reference](../../crypto-ctf/references/exotic-crypto.md#bb-84-quantum-key-distribution-mitm-attack) for protocol details.
+- **Oracle circuits**: inspect the input width, reversible function and success predicate before choosing a classical enumeration or quantum-algorithm simulation. A function oracle alone does not establish that Grover is intended.
+- **Q#**: [DumpMachine or dump_machine](https://learn.microsoft.com/en-us/azure/quantum/testing-debugging) exposes simulator state where supported. Resource estimation answers resource-cost questions, not the output amplitudes or measurement results.

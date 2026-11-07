@@ -218,3 +218,17 @@ Before full RCE, check smaller adjacent wins:
 
 - `sql-injection.md` — dedicated SQLi reference
 - `server-execution.md` — code-exec, deserialization, upload-to-RCE, advanced framework chains
+
+## HTTP request smuggling
+
+Desync between front-end and back-end on how request boundaries are computed. Families:
+
+- **CL.TE / TE.CL** — front-end and back-end disagree on `Content-Length` versus `Transfer-Encoding`; connection reuse may expose a following request to the smuggled prefix.
+- **HTTP/2 downgrade** — discrepancies can arise when a front-end translates HTTP/2 requests to HTTP/1.1; the exact parser and validation behavior matters.
+- **CL.0** — a back-end treats a request as bodyless despite a declared body, potentially interpreting remaining bytes as another request.
+
+Use controlled differential tests and confirm the parsing discrepancy with an isolated self-poisoning request. See [PortSwigger request smuggling](https://portswigger.net/web-security/request-smuggling).
+
+## SSRF → cloud metadata credential chain
+
+Determine the SSRF primitive's supported methods, headers, response visibility and network reachability before drawing conclusions. AWS IMDSv2 requires a token obtained by PUT and supplied on subsequent metadata GETs; a 307 preserves the original method and cannot turn a GET into a PUT. Service availability, instance configuration and any intermediary restrictions also matter. See [AWS IMDSv2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html) and [HTTP 307](https://www.rfc-editor.org/rfc/rfc9110.html#name-307-temporary-redirect).

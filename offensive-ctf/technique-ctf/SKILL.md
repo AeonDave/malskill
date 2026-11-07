@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 
@@ -84,7 +84,7 @@ Independent work should run concurrently, not serially.
 
 ## Quick pivots
 
-- **Encrypted HTB bundle:** use `hacktheblue` for Sherlock archives and `hackthebox` for other challenge archives. Prefer the known platform password over brute forcing or trusting a downloader's stale default.
+- **Encrypted challenge bundle (zip/7z):** check the challenge brief, download page and platform instructions for the supplied archive password before attempting recovery. Do not infer a password from an account email, team name or a downloader's default.
 - **Timeout on connect:** the service wants input first — send the minimal frame/request, then read.
 - **"Invalid" on a unit you believe is valid:** an encoding assumption is wrong (raw byte vs. ASCII string, endianness, off-by-one length, CRC seed). Try the alternate encoding before rebuilding everything.
 - **Errors reference a counter/sequence/state:** the target is a state machine — advance every counter it tracks in lockstep; reconnect to reset when you lose sync.

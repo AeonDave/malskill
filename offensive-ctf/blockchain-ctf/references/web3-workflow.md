@@ -101,3 +101,16 @@ Collect these before deciding exploit path:
 - Ignoring gas and value constraints that differ between local tests and the target chain.
 - Running Slither/Mythril without matching compiler setup and then trusting false positives or false negatives.
 - Broadcasting exploratory transactions instead of proving locally first.
+
+## Flashloan-powered single-transaction combos
+
+Trace the lender's actual callback and repayment rules. For [ERC-3156](https://eips.ethereum.org/EIPS/eip-3156), `flashLoan` calls the receiver's `onFlashLoan` and pulls principal plus fee after the callback. Test temporary balance, pricing, and fee assumptions locally. A reverted transaction rolls back its state changes but an on-chain attempt still consumes gas.
+
+## solc 0.8.x arithmetic edge patterns
+
+Checked arithmetic is the 0.8 default — the residual bug families:
+
+- **`unchecked { }` blocks**: audited math deliberately un-guarded — find the block where the invariant the rest of the contract relies on is *not* re-checked after the block.
+- **Explicit downcasts**: `uint128(wideValue)` truncates high bits; implicit narrowing assignments are disallowed. Check range before casts and trace stored values.
+- **Rounding**: check integer division and share/asset conversions independently of overflow checks.
+- **Signed/unsigned boundary**: inspect explicit conversions and range checks; Solidity 0.8 restricts conversions that change multiple properties at once. See [Solidity conversions](https://docs.soliditylang.org/en/latest/types.html#conversions-between-elementary-types) and [0.8 breaking changes](https://docs.soliditylang.org/en/latest/080-breaking-changes.html).

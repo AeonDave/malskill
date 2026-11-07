@@ -1026,3 +1026,9 @@ payload += cache_qword(0x34, 1)                  # buf -> print_uncomp_fsz
 ```
 
 **Key insight:** When OOB writes are QWORD-aligned but the target function sits only `N*0x10` bytes from an existing pointer, look for a process-local counter in the same struct that is incremented by a known stride. Treating that counter as an arithmetic shim turns an aligned-write primitive into a byte-precise pointer increment, bypassing PIE without ever leaking a code address.
+
+## Largebin applicability
+
+Load [heap-exploitation-dev](../../../offensive-coding/heap-exploitation-dev/SKILL.md) when allocator implementation details become the task. Record the supplied libc build and matching allocator source before using version-specific metadata assumptions. A repository-wide how2heap link does not establish which check changed in a particular glibc release.
+
+Keep the observed write destination and written value separate in the evidence record; a metadata write does not by itself establish arbitrary-value control. Do not generalize one reproduced allocator state to every `glibc >= X` build.

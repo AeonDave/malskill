@@ -51,7 +51,7 @@ Common web CTF failures:
 Focus on mismatches between identity check and object/action execution.
 
 Patterns:
-- unauthenticated WIP or debug endpoints
+- unauthenticated staging/internal or debug endpoints
 - IDOR/BOLA on numeric IDs, UUIDs, slugs, exports, or job-result paths
 - route mismatches in Express / proxy / middleware normalization
 - method-based bypasses like `TRACE`, verb overrides, or alternate content types

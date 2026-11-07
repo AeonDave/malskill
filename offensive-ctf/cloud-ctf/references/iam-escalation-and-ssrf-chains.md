@@ -229,3 +229,11 @@ cb.start_build(projectName="pwn",
 - Forgetting `--with-decryption` on SSM parameter reads.
 - Assuming `list-*` allowed means `get-*` allowed — always test both.
 - Overlooking env vars in Lambda configurations as a flag vector.
+
+## CI/CD OIDC workload-identity federation
+
+Compare the token issuer, audience and subject with the cloud trust policy and the actual workflow trigger and permissions. GitHub's default subject varies with environment, pull-request, branch or tag context and can be customized; do not infer that a fork matches a trust without checking its actual claims and workflow controls. GitLab jobs use configured `id_tokens`; `CI_JOB_JWT_V2` was removed in GitLab 17.0. See [GitHub OIDC claims](https://docs.github.com/en/actions/reference/security/oidc) and [GitLab cloud services](https://docs.gitlab.com/ci/cloud_services/).
+
+## Kubernetes pod-identity escalation (EKS/GKE)
+
+Inspect the pod's actual service account, mounted credentials, RBAC and cloud identity bindings. `kubectl auth can-i --list` can summarize permissions, but pod creation, secret access or exec alone do not establish a specific escalation: admission policy, available resources and token configuration also matter. EKS IRSA and GKE Workload Identity are distinct mechanisms; verify the cluster's configured binding.

@@ -170,3 +170,9 @@ When JS execution is fully blocked (strict CSP, Trusted Types, sanitizer coverag
 ## See also
 
 - `web-vulnerabilities-and-cves.md` — browser and framework CVEs
+
+## Web cache poisoning and deception (workflow)
+
+Compare responses to controlled inputs and repeat requests to distinguish origin behavior from cache reuse. Confirm that a changed input reaches the response while the cache reuses that response for a request lacking the input. For deception, check whether a shared cache stores an authenticated response when cache and origin interpret a path differently. Inspect cache headers and cookie handling; reflection alone does not prove cross-user impact.
+
+`Vary` is a response header naming request headers used to select a stored response; a conforming cache distinguishes those request values. Test the deployed cache's behavior rather than assuming a shared variant. See [RFC 9111 section 4.1](https://www.rfc-editor.org/rfc/rfc9111.html#section-4.1).

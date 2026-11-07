@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 
@@ -72,6 +72,6 @@ Load these as needed:
 
 ## Resources
 
-- [references/hardware-artifact-workflow.md](references/hardware-artifact-workflow.md) — detailed triage and workflows for captures, buses, firmware, RF, side-channel, and CAD/G-code.
+- [references/hardware-artifact-workflow.md](references/hardware-artifact-workflow.md) — Load for capture, bus, firmware, RF, side-channel, fault-injection evidence or CAD/G-code triage.
 - [references/debug-ports-and-firmware-extraction.md](references/debug-ports-and-firmware-extraction.md) — load for UART/JTAG/SWD/SPI/eMMC pivots, bootloader access, flash dumping, and recovery-first extraction.
 - [references/rf-and-sdr-decoding.md](references/rf-and-sdr-decoding.md) — load for IQ captures, SDR demodulation, BLE hopping analysis, and physical-layer validation before payload interpretation.

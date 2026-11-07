@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
   category: ctf-solving
 ---
 
@@ -75,15 +75,15 @@ Tool syntax belongs in the tool skills. This skill decides when a tool family fi
 
 ## Resources
 
-- [references/bashjails.md](references/bashjails.md) — preserved, debrandized imported technique material.
+- [references/bashjails.md](references/bashjails.md) — Load for restricted-shell challenges involving character filters, expansion rules or constrained command syntax.
 - [references/ctfd-navigation.md](references/ctfd-navigation.md) — preserved, debrandized imported technique material.
 - [references/dns.md](references/dns.md) — preserved, debrandized imported technique material.
 - [references/encodings-advanced.md](references/encodings-advanced.md) — preserved, debrandized imported technique material.
 - [references/encodings.md](references/encodings.md) — preserved, debrandized imported technique material.
 - [references/games-and-vms-2.md](references/games-and-vms-2.md) — preserved, debrandized imported technique material.
-- [references/games-and-vms-3.md](references/games-and-vms-3.md) — preserved, debrandized imported technique material.
+- [references/games-and-vms-3.md](references/games-and-vms-3.md) — Load for the documented game/runtime patterns, JavaScript sandbox boundaries or Qiskit/Q# circuit artifacts.
 - [references/games-and-vms-4.md](references/games-and-vms-4.md) — preserved, debrandized imported technique material. Load when the artifact is a retro console VRAM/ROM dump, tile-based graphics, CHR banks, or custom pixel-font encoding.
 - [references/games-and-vms.md](references/games-and-vms.md) — preserved, debrandized imported technique material.
-- [references/linux-privesc.md](references/linux-privesc.md) — preserved, debrandized imported technique material.
+- [references/linux-privesc.md](references/linux-privesc.md) — Load when a Linux lab challenge centers on local privilege boundaries, service configuration or filesystem permissions.
 - [references/pyjails.md](references/pyjails.md) — preserved, debrandized imported technique material.
 - [references/rf-sdr.md](references/rf-sdr.md) — preserved, debrandized imported technique material.

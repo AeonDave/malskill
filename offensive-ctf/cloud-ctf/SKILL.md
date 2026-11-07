@@ -5,7 +5,7 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; authorized training and lab environments; aws-cli, gcloud, gsutil required."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
   category: ctf-solving
 ---
 # Cloud CTF
