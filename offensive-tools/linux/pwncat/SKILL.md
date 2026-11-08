@@ -174,7 +174,6 @@ pwncat-cs -m windows -lp 4444
 |---|---|
 | `linpeas` | Deep Linux enumeration outside pwncat modules |
 | `linux-persistence` | Persistence tradeoffs and hardening-aware patterns |
-| `ssh-key-scanner` | Key discovery and lateral movement planning |
 
 ## Known Pitfalls
 

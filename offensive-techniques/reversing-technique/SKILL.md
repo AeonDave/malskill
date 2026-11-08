@@ -40,7 +40,7 @@ Before diving deep, classify the artifact and the operator objective so the work
 - **Starting state**: is the target malware, protected software, firmware, a managed assembly, a protocol artifact, a crash primitive, or an unknown binary?
 - **First questions**: what do you need to learn first, what architecture/runtime/packing signals are present, and is static or dynamic evidence the fastest way to reduce uncertainty?
 - **Immediate actions**: perform fast format/entropy/import/string triage, assign the objective workflow, and only then choose the decompiler/debugger/tooling mix.
-- **Tool-family direction**: start with CLI/static triage families (`radare2`, `objdump`, `readelf`, `strings`, `capa`, `binwalk`) and escalate to heavy decompilation/debugging (`ghidra`, `binaryninja`, `gdb`, `x64dbg`, `windbg`, `dnspy`, `frida`) once the goal is defined.
+- **Tool-family direction**: start with CLI/static triage families (`radare2`, `objdump`, `readelf`, `strings`, `capa`, `binwalk`) and escalate to heavy decompilation/debugging (`ghidra`, `binaryninja`, `gdb`, `x64dbg`, `windbg`, `dnSpyEx`, `frida`) once the goal is defined.
 - **Escalation rule**: objective first, tool second; do not decompile everything before deciding what question you are answering.
 
 ## Core methodology
@@ -104,7 +104,7 @@ Prefer CLI/scriptable tooling for triage, batch work, and repeatable evidence. M
 | Linux dynamic behavior | `strace`, `ltrace`, `gdb` | Ghidra debugger only if needed |
 | Windows crash/debug | `windbg`/`cdb` for dump triage | `x64dbg` for interactive patch/trace |
 | Firmware extraction | `binwalk` CLI first | Ghidra/radare2 per extracted binary |
-| .NET | `de4dot`/CLI metadata first | `dnspy` for decompile/debug/patch |
+| .NET | `de4dot`/CLI metadata first | dnSpyEx for decompile/debug/patch |
 
 Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, `offensive-tools/rev/frida/`, `offensive-tools/rev/binwalk/`, `offensive-tools/rev/ghidra/`, `offensive-tools/rev/binaryninja/`, `offensive-tools/rev/dnspy/`, `offensive-tools/rev/windbg/`, `offensive-tools/rev/x64dbg/`, plus `offensive-tools/forensic/capa/` for capability triage.
 
@@ -163,7 +163,7 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 
 **Key tricks:** Cross-ref error strings to validation functions; NOP/invert the final comparison; watch for CRC re-checks after patching.
 
-**Key tools:** `ghidra` (decompile validation), `x64dbg` (patch jumps), `frida` (hook online activation), `dnspy` (.NET).
+**Key tools:** `ghidra` (decompile validation), `x64dbg` (patch jumps), `frida` (hook online activation), dnSpyEx (.NET).
 
 → Unpacking details: `references/anti-analysis.md §unpacking`. Binary diffing: `references/binary-diffing.md`.
 
@@ -224,11 +224,11 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 
 1. Detect obfuscator: `de4dot --detect sample.exe`
 2. Deobfuscate: `de4dot sample.exe -o clean.exe`
-3. Analyze in `dnspy` — start at Entry Point (Ctrl+Shift+K); set breakpoints on decryption/config load
+3. Analyze in dnSpyEx — start at Entry Point (Ctrl+Shift+K); set breakpoints on decryption/config load
 4. Watch for multi-stage loaders: `Assembly.Load()` + `GetManifestResourceStream` call sites
 5. Network isolation is mandatory before dynamic debugging stealers/RATs
 
-**Key tools:** `dnspy` (decompiler/debugger/patcher), `de4dot` (deobfuscation), `ghidra` (fallback).
+**Key tools:** dnSpyEx (decompiler/debugger/patcher), `de4dot` (deobfuscation), `ghidra` (fallback).
 
 → Full deobfuscation table, ConfuserEx/Reactor flags, config extraction: `references/dotnet-rev.md`.
 
@@ -423,7 +423,7 @@ Load [vuln-research](../../knowledge-offensive/vuln-research/SKILL.md) to organi
 | CRC/integrity | Checks code section hashes | Patch check or suspend thread | `x64dbg` breakpoint |
 | VM detection | Detects VirtualBox/VMware | Use real hardware or hide with VM detection bypass | `ScyllaHide` |
 | Anti-dump | Prevents memory dumping | Use `Scylla` for IAT fix | `x64dbg` + Scylla |
-| Obfuscation (.NET) | Renames, control flow, constants | Use `de4dot`, `dnSpy` decompile | `dnspy` |
+| Obfuscation (.NET) | Renames, control flow, constants | Use `de4dot`, dnSpyEx decompile | `dnspy` |
 
 ### Unpacking workflow
 
@@ -466,10 +466,10 @@ Each objective workflow in §1–9 plus §7b contains a full step-by-step flow. 
 |-----------|------------------------------------------|------------|
 | Malware (Windows) | `ghidra`, `x64dbg`, `frida`, `capa` | Windows VM |
 | Malware (Linux) | `ghidra`, `gdb`+`pwndbg`, `radare2`, `capa` | Linux VM/WSL |
-| Software protection (Windows) | `ghidra`, `x64dbg`, `dnspy` (.NET) | Windows |
+| Software protection (Windows) | `ghidra`, `x64dbg`, dnSpyEx (.NET) | Windows |
 | Patch diffing | `ghidra` (Version Tracking), `radare2` (`radiff2`) | Cross-platform |
 | Firmware | `binwalk`, `ghidra`, `radare2` | Linux |
-| .NET reversing | `dnspy`, `de4dot` | Windows |
+| .NET reversing | dnSpyEx, `de4dot` | Windows |
 | Protocol RE | `ghidra`, `frida`, `mitmproxy` | Depends |
 | Vulnerability hunting | `ghidra`/`binaryninja`, `gdb`, AFL++ | Linux/Windows |
 | Exploitability triage (→ `binary-exploitation-technique`) | `gdb`+`pwndbg`/`gef`, `x64dbg`, `windbg`, `checksec` | Linux/Windows |

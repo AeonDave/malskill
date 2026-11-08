@@ -2,7 +2,7 @@
 name: impacket
 description: "Auth/lab ref: Python toolkit for SMB/Kerberos/NTLM/LDAP protocol testing in Active Directory."
 license: Apache-2.0
-compatibility: "Linux/macOS/Windows; Python 3.8+."
+compatibility: "Linux/macOS/Windows; Impacket 0.13.1 declares Python 3.9–3.13 classifiers. Match dependencies to the installed release."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -16,14 +16,14 @@ Python AD/Windows attack toolkit — credentials, relay, lateral movement, Kerbe
 
 ```bash
 pipx install impacket
-# or from source (latest)
+# Development source, not the latest stable release
 git clone https://github.com/fortra/impacket && pip install -e impacket/
 
 # Scripts location (Kali)
 ls /usr/share/doc/python3-impacket/examples/
 ```
 
-## Authentication Syntax (shared across all scripts)
+## Common authentication forms (check each script's help)
 
 ```bash
 # Cleartext password

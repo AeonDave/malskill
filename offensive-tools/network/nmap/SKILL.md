@@ -54,7 +54,7 @@ nmap -F -T4 <target>
 ```bash
 -oN file.txt          # normal (human-readable)
 -oX file.xml          # XML (parseable)
--oG file.gnmap        # grepable
+-oG file.gnmap        # grepable (deprecated; prefer XML)
 -oA basename          # all three formats
 ```
 

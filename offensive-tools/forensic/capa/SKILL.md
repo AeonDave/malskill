@@ -18,7 +18,7 @@ Static capability detection for binaries — maps code behavior to ATT&CK/MBC wi
 # Standalone binary (recommended — no Python deps)
 # Download from: https://github.com/mandiant/capa/releases
 # Linux
-wget https://github.com/mandiant/capa/releases/latest/download/capa-v7.x.x-linux.zip
+# Download the Linux archive for your architecture from the release page.
 unzip capa-*.zip && chmod +x capa
 
 # Windows: download capa.exe from releases

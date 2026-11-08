@@ -10,7 +10,7 @@ metadata:
 
 # Feroxbuster
 
-Recursive, fast content discovery — handles JavaScript-rendered apps and auto-recurses into found dirs.
+Recursive content discovery that auto-recurses into found directories.
 
 ## Quick Start
 

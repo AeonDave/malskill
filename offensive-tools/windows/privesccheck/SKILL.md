@@ -93,7 +93,7 @@ Invoke-PrivescCheck -Extended -Report privesc_report -Format HTML
 | Skill | Best use |
 |---|---|
 | `winpeas` | Broad, aggressive Windows privesc enumeration |
-| `watson` | Patch/CVE-focused post-exploitation triage |
+| `watson` | Fixed patch checks for supported legacy Windows builds only |
 | `powerview` | AD privilege and domain attack-path discovery |
 
 ## Resources

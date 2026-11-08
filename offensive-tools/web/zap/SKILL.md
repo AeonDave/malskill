@@ -2,7 +2,7 @@
 name: zap
 description: "Auth/lab ref: OWASP ZAP: free open-source web application scanner and intercepting proxy."
 license: Apache-2.0
-compatibility: "Linux / macOS / Windows; Java 11+."
+compatibility: "Linux / macOS / Windows; Java 17+ (required since 2.16)."
 metadata:
   author: AeonDave
   version: "1.1"

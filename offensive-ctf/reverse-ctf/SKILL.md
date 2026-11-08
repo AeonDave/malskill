@@ -46,7 +46,7 @@ Prefer these tool families when the corresponding signal appears:
 - `gdb`
 - `x64dbg`
 - `frida`
-- `dnspy`
+- `dnSpyEx` (skill ID: `dnspy`)
 - `apktool`
 - `jadx`
 - `binwalk`

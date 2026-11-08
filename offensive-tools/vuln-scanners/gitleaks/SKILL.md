@@ -74,7 +74,7 @@ gitleaks git . --log-opts="-n 500"
 gitleaks git . --log-opts="feature-branch"
 
 # Since a date
-gitleaks git . --log-opts="--since='6 months ago'"
+gitleaks git . --log-opts="--since=2026-01-01"
 
 # CI: scan only new commits in PR
 gitleaks git . --log-opts="${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}"
@@ -131,7 +131,7 @@ repos:
 ```bash
 # Manual hook in .git/hooks/pre-commit:
 #!/bin/bash
-gitleaks protect --staged --verbose
+gitleaks git --pre-commit --staged --verbose
 exit $?
 
 # Bypass hook when needed (e.g., legitimate test data)

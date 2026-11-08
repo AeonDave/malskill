@@ -1,84 +1,28 @@
 ---
 name: trevorspray
-description: "Auth/lab ref: Threaded password spraying tool targeting Microsoft 365, Azure AD, ADFS, and on-prem Active Directory."
+description: "Review TREVORspray's installed CLI, module compatibility, and authentication-test results; distinguish failures, lockouts, and inconclusive responses."
 license: GPL-3.0
-compatibility: "Linux, macOS."
+compatibility: "Python; the upstream trevorspray-v2 branch has a modular CLI. Check the installed revision and module help."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # TREVORspray
 
-Modular, threaded password spraying tool for Microsoft/Azure/AD targets.
-
-## Quick Start
+Match documentation to the installed revision before interpreting a run. [Upstream v2](https://github.com/blacklanternsecurity/TREVORspray/tree/trevorspray-v2) retains modules; it does not replace them with endpoint auto-detection.
 
 ```bash
-# Spray M365 with a single password
-trevorspray -u users.txt -p "Summer2024!" --module msol
-
-# Spray on-prem AD via ADFS
-trevorspray -u users.txt -p "Password123" --module adfs -t https://adfs.target.com
-
-# Enumerate valid users only (no password)
-trevorspray -u users.txt --module msol --enum
+trevorspray --help
 ```
 
-## Core Flags
+## CLI and result checks
 
-| Flag | Description |
-|------|-------------|
-| `-u <file>` | Username file (or single username) |
-| `-p <pass>` | Password to spray |
-| `-P <file>` | Password list (spray each, with delay) |
-| `--module <mod>` | Target module |
-| `-t <url>` | Target URL (for ADFS/OWA modules) |
-| `--threads <n>` | Threads (default 1) |
-| `--delay <s>` | Delay between requests (seconds) |
-| `--jitter <s>` | Random jitter added to delay |
-| `--lockout-delay <s>` | Wait after potential lockout |
-| `--enum` | Username enumeration only |
-| `-o <file>` | Output file |
-| `--reauth` | Re-authenticate after delay (for expired tokens) |
-| `--proxy <url>` | Proxy |
+- Confirm the actual module and its supported authentication flow. Changing the URL does not make one module suitable for another protocol or identity provider.
+- Do not reuse examples that label `-e` as an email-list argument or `-u` as a URL: they contradict the upstream v2 CLI.
+- Verify the input, module, and installed-version contract before interpreting output; do not infer success from an HTTP status alone.
+- Separate valid authentication, MFA or conditional-access requirements, lockouts, invalid credentials, rate limiting, and transport errors.
+- A delay or jitter setting does not guarantee lockout avoidance or invisibility. Account policy, concurrent attempts, and provider controls affect the result.
+- Preserve the revision, module, timestamps, and redacted raw responses. Report inconclusive cases separately from valid and invalid authentication results.
 
-## Modules
-
-| Module | Target |
-|--------|--------|
-| `msol` | Microsoft Online / Office 365 |
-| `adfs` | Active Directory Federation Services |
-| `owa` | Outlook Web Access |
-| `lync` | Skype for Business |
-| `okta` | Okta SSO |
-
-## Common Workflows
-
-```bash
-# Safe M365 spray — 1 attempt per 30 min to avoid lockouts
-trevorspray -u users.txt -p "Spring2024!" --module msol --delay 1800 --jitter 60
-
-# Enumerate valid M365 users (no lockout risk)
-trevorspray -u users.txt --module msol --enum -o valid_users.txt
-
-# ADFS spray with proxy
-trevorspray -u users.txt -p "Password1" --module adfs -t https://sts.target.com \
-  --delay 60 --jitter 30 --proxy http://127.0.0.1:8080
-
-# Multi-password spray with controlled delay
-trevorspray -u valid_users.txt -P passwords.txt --module msol --delay 3600
-```
-
-## Lockout Awareness
-
-- Check password policy before spraying: `crackmapexec smb <dc> --pass-pol`
-- Use `--delay 3600` (1 hour) for environments with 1-attempt/hour lockout policies
-- Prefer `--enum` first to reduce invalid user noise
-- Jitter prevents pattern detection: `--delay 1800 --jitter 300`
-
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/lockout-policy.md` | Lockout policy detection, safe timing calculations, user enumeration techniques |
+Source: [upstream usage and module definitions](https://github.com/blacklanternsecurity/TREVORspray).

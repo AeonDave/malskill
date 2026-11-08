@@ -92,7 +92,7 @@ httpx -l hosts.txt -nf -sc -title -silent
 httpx -u https://target.com -favicon
 
 # Screenshot all live hosts
-httpx -l hosts.txt -screenshot -output screenshots/
+httpx -l hosts.txt -screenshot
 ```
 
 ## Filter Results
@@ -108,7 +108,7 @@ httpx -l hosts.txt -silent -fc 301,302 -filter-string "cloudflare"
 httpx -l hosts.txt -match-string "password" -silent
 
 # Match by response size
-httpx -l hosts.txt -ms 1024 -silent
+httpx -l hosts.txt -ml 1024 -silent
 ```
 
 ## Resources

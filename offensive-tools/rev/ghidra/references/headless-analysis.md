@@ -1,5 +1,7 @@
 # Ghidra — Headless Analysis & Batch Processing
 
+For the CPython scripts in this reference, launch Ghidra 12.2 with `<GhidraInstallDir>/support/pyghidraRun -H` (Windows: `pyghidraRun.bat -H`) in place of `analyzeHeadless`. It accepts the same headless arguments; the launcher may prompt to install PyGhidra. Plain `analyzeHeadless` is appropriate for Java scripts or explicitly selected Jython scripts, not these CPython examples. See the [PyGhidra setup](https://github.com/NationalSecurityAgency/ghidra/blob/Ghidra_12.2_build/Ghidra/Features/PyGhidra/src/main/py/README.md).
+
 ## analyzeHeadless Syntax
 
 ```bash
@@ -19,7 +21,7 @@ analyzeHeadless /tmp/ghidra_projects MyProject \
 # Import + analyze + run a post-script
 analyzeHeadless /tmp/ghidra_projects MyProject \
     -import /path/to/malware.exe \
-    -postScript MyAnalysisScript.py
+    -postScript MyAnalysisScript.java
 
 # Import batch (whole directory)
 analyzeHeadless /tmp/ghidra_projects MyProject \
@@ -29,12 +31,12 @@ analyzeHeadless /tmp/ghidra_projects MyProject \
 # Analyze existing project (no import)
 analyzeHeadless /tmp/ghidra_projects ExistingProject \
     -process \
-    -postScript ExtractReport.py
+    -postScript ExtractReport.java
 
 # Delete project after (clean temp projects)
 analyzeHeadless /tmp/ghidra_projects TempProject \
     -import /path/to/binary \
-    -postScript MyScript.py \
+    -postScript MyScript.java \
     -deleteProject
 ```
 
@@ -123,7 +125,7 @@ run()
 
 ```bash
 # Run on batch
-analyzeHeadless /tmp/proj BatchScan \
+pyghidraRun -H /tmp/proj BatchScan \
     -import /samples/ \
     -recursive \
     -postScript MalwareTriage.py \
@@ -158,34 +160,12 @@ def run():
 run()
 ```
 
-## Config File for Headless Analysis
-
-```properties
-# $GHIDRA_HOME/support/analyzeHeadless.properties (create if missing)
-# These set default analysis options
-
-ANALYSIS_ENABLED=true
-FUNCTION_START_SEARCH=true
-STACK_ANALYSIS=true
-DECOMPILER_PARAMETER_ID=true
-```
-
 ## Tips for Headless Speed
 
 ```bash
-# Skip decompiler analysis (faster, but no decompiled output)
-analyzeHeadless /tmp/proj MyProj -import sample.exe \
-    -analyzeHeadless.properties \
-    -postScript FastTriage.py
-
-# Disable specific analyzers (via pre-script)
-# In pre-script:
-# options = state.getTool().getOptions("Analyzers")
-# options.setBoolean("Decompiler Switch Analysis.Enable", False)
-
 # Parallel batch (process N files at once)
 for f in /samples/*.exe; do
-    analyzeHeadless /tmp/proj/$(basename $f) $(basename $f .exe) \
+    pyghidraRun -H /tmp/proj/$(basename $f) $(basename $f .exe) \
         -import "$f" -postScript MalwareTriage.py -deleteProject &
 done
 wait
@@ -200,7 +180,7 @@ cat capa_results.json | jq '.rules | keys[]'
 # Outputs: "inject shellcode", "enumerate system processes", etc.
 
 # Combined workflow:
-analyzeHeadless /tmp/proj Scan -import malware.exe \
+pyghidraRun -H /tmp/proj Scan -import malware.exe \
     -postScript ExtractFunctions.py -deleteProject
 capa malware.exe -o json | jq '.rules | to_entries[] | {cap: .key, score: .value.meta.scam}'
 ```
@@ -212,7 +192,6 @@ capa malware.exe -o json | jq '.rules | to_entries[] | {cap: .key, score: .value
 | **Sekiryu** | Full headless pipeline toolkit (ghidra + scripts + reporting) — `github.com/20urc3/Sekiryu` |
 | **ghidriff** | Headless binary diff engine; generates markdown diff reports — `github.com/clearbluejar/ghidriff` |
 | **CERT Kaiju** | CMU malware analysis extensions for Ghidra (fn2hash, fn2yara, etc.) |
-| **Ghidrathon** | Python 3 scripting support (replaces Jython 2.7) — needed for modern libs |
 | **AskJOE** | Runs CAPA + imports results as Ghidra symbols/comments automatically |
 
 ```bash
@@ -246,7 +225,7 @@ for dt in dtm.getAllDataTypes():
 #!/bin/bash
 # Batch analyze samples and collect reports
 
-GHIDRA="/opt/ghidra/support/analyzeHeadless"
+GHIDRA="/opt/ghidra/support/pyghidraRun"
 SCRIPTS="$HOME/ghidra_scripts"
 SAMPLES="$1"
 OUT="/tmp/malware_reports"
@@ -258,7 +237,7 @@ for sample in "$SAMPLES"/*.{exe,dll,bin}; do
     proj_name="${name//[^a-zA-Z0-9]/_}"
     echo "[*] Analyzing $name..."
 
-    "$GHIDRA" "$OUT/projects" "$proj_name" \
+    "$GHIDRA" -H "$OUT/projects" "$proj_name" \
         -import "$sample" \
         -postScript MalwareTriage.py \
         -scriptPath "$SCRIPTS" \

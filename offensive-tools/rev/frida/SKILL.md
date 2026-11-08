@@ -10,6 +10,8 @@ metadata:
 
 # Frida
 
+> **Frida 17+ API**: Resolve exports via module instances (`Process.getModuleByName(name).getExportByName(sym)`) or `Module.getGlobalExportByName(sym)`; use NativePointer methods (`ptr.readByteArray()`, `ptr.writeByteArray()`).
+
 Dynamic instrumentation — inject JavaScript into running processes to hook, trace, and modify behavior at runtime.
 
 ## Installation
@@ -56,7 +58,7 @@ frida-trace -i "open*" -f ./binary
 
 ```javascript
 // Hook a native function
-Interceptor.attach(Module.getExportByName(null, 'connect'), {
+Interceptor.attach(Module.getGlobalExportByName('connect'), {
     onEnter(args) {
         const sockaddr = args[1];
         const family = sockaddr.readU16();
@@ -79,7 +81,7 @@ Interceptor.attach(Module.getExportByName(null, 'connect'), {
 
 ```javascript
 // Force IsDebuggerPresent to return 0 (Windows anti-debug bypass)
-Interceptor.attach(Module.getExportByName('kernel32.dll', 'IsDebuggerPresent'), {
+Interceptor.attach(Process.getModuleByName('kernel32.dll').getExportByName('IsDebuggerPresent'), {
     onLeave(retval) {
         retval.replace(ptr(0));
     }
@@ -95,11 +97,11 @@ Process.enumerateModules().forEach(m => {
 });
 
 // Find export
-const addr = Module.getExportByName('libc.so', 'open');
+const addr = Process.getModuleByName('libc.so').getExportByName('open');
 
 // Read/write memory
-const buf = Memory.readByteArray(ptr(0x401000), 64);
-Memory.writeByteArray(ptr(0x401000), [0x90, 0x90, 0x90]);
+const buf = ptr(0x401000).readByteArray(64);
+ptr(0x401000).writeByteArray([0x90, 0x90, 0x90]);
 
 // Scan memory for pattern
 Memory.scan(module.base, module.size, 'MZ', {
@@ -128,7 +130,7 @@ Stalker.follow(Process.getCurrentThreadId(), {
 
 ```javascript
 ['connect', 'send', 'sendto', 'recv', 'recvfrom'].forEach(fn => {
-    const p = Module.getExportByName(null, fn);
+    const p = Module.findGlobalExportByName(fn);
     if (p) {
         Interceptor.attach(p, {
             onEnter(args) {
@@ -145,7 +147,7 @@ Stalker.follow(Process.getCurrentThreadId(), {
 ### Malware — intercept crypto (Windows)
 
 ```javascript
-Interceptor.attach(Module.getExportByName('bcrypt.dll', 'BCryptEncrypt'), {
+Interceptor.attach(Process.getModuleByName('bcrypt.dll').getExportByName('BCryptEncrypt'), {
     onEnter(args) {
         this.plaintext = args[1];
         this.len = args[2].toInt32();
@@ -198,7 +200,7 @@ Java.perform(() => {
 const apis = ['VirtualAlloc', 'VirtualProtect', 'CreateRemoteThread',
               'WriteProcessMemory', 'CreateProcessW'];
 apis.forEach(api => {
-    const p = Module.getExportByName('kernel32.dll', api);
+    const p = Process.getModuleByName('kernel32.dll').getExportByName(api);
     if (p) {
         Interceptor.attach(p, {
             onEnter(args) {
@@ -241,7 +243,7 @@ def on_message(message, data):
 device = frida.get_local_device()
 session = device.attach("target_process")
 script = session.create_script("""
-    Interceptor.attach(Module.getExportByName(null, 'connect'), {
+    Interceptor.attach(Module.getGlobalExportByName('connect'), {
         onEnter(args) { send('connect called'); }
     });
 """)
@@ -255,7 +257,6 @@ session.detach()
 
 | File | When to load |
 |------|--------------|
-| [references/hooks-catalog.md](references/hooks-catalog.md) | Ready-made hook scripts for common scenarios |
 | [references/android-ios.md](references/android-ios.md) | Mobile-specific instrumentation: SSL bypass, root bypass, Gadget embedding, JNI/native hooking, anti-Frida evasion |
 
 ## See Also

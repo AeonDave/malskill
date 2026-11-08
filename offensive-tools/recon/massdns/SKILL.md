@@ -33,14 +33,13 @@ cd massdns && make
 | `-t TYPE` | DNS type (A/AAAA/MX/NS/CNAME) |
 | `-o FORMAT` | Output format (S=simple, J=JSON, L=list) |
 | `-w FILE` | Write output to file |
-| `-s N` | Concurrent resolvers (default: 500) |
-| `--root` | Use root server for NS lookups |
-| `--verify-ip` | Verify A record IPs |
-| `--flush` | Flush DNS cache per request |
+| `-s N` | Concurrent lookups (default: 10000) |
+| `--root` | Do not drop privileges when running as root (not recommended) |
+| `--verify-ip` | Verify source IP addresses of incoming replies |
+| `--flush` | Flush output file after each response |
 | `-q` | Quiet mode |
 | `--status-format <fmt>` | Status line format |
-| `--retry N` | Retry failed lookups |
-| `--resolvers-rnd` | Shuffle resolver list |
+| `--retry` | Specify unacceptable DNS response codes to retry |
 
 ## Output Formats
 
@@ -88,17 +87,7 @@ massdns -r lists/resolvers.txt -t MX domains.txt -o S 2>/dev/null | \
   grep " MX " | sort -u
 ```
 
-**Wildcard detection:**
-```bash
-# Check if domain has wildcard DNS
-python3 scripts/wildcard.py target.com lists/resolvers.txt
-# massdns includes wildcard detection scripts in scripts/
-```
-
-**Rate-limited run (avoid resolver bans):**
-```bash
-massdns -r lists/resolvers.txt -t A subs.txt -o S -s 100 --resolvers-rnd 2>/dev/null
-```
+`-s` limits concurrent lookups, not requests per second. Choose resolvers and concurrency appropriate for the authorized workload.
 
 ## Resources
 

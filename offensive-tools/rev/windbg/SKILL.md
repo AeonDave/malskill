@@ -2,7 +2,7 @@
 name: windbg
 description: "Auth/lab ref: Microsoft's debugger for user-mode and kernel-mode Windows debugging, crash dump analysis, driver reversing, and rootkit analysis."
 license: MIT
-compatibility: "Windows; Microsoft Store (WinDbg Preview) or Windows SDK; supports x86/x64/ARM64."
+compatibility: "Windows; Microsoft Store (WinDbg) or Windows SDK; supports x86/x64/ARM64."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -15,7 +15,7 @@ Microsoft's debugger — kernel-mode debugging, crash dump analysis, driver reve
 ## Installation
 
 ```powershell
-# WinDbg Preview (recommended — modern UI, TTD support)
+# WinDbg (recommended — modern UI, TTD support)
 winget install --id Microsoft.WinDbg --accept-source-agreements
 
 # Classic WinDbg (part of Windows SDK)
@@ -212,7 +212,7 @@ bp ws2_32!connect "dd @rdx L4; gc"
 ## Time Travel Debugging (TTD)
 
 ```
-# Record execution (WinDbg Preview)
+# Record execution (WinDbg)
 File -> Launch Executable (Advanced) -> check "Record with Time Travel Debugging"
 
 # After recording — navigate backwards:

@@ -25,7 +25,7 @@ Category details and selected skills live in **[CATALOG.md](CATALOG.md)**. High-
 
 | Category | What it covers |
 |---|---|
-| [`offensive-tools/`](CATALOG.md#offensive-tools---attack-tool-skills) | One skill per tool by attack phase: flags, scenarios, output parsing, OPSEC |
+| [`offensive-tools/`](CATALOG.md#offensive-tools---attack-tool-skills) | Tool usage by attack phase: version-aware commands, output interpretation, failure modes |
 | [`offensive-coding/`](CATALOG.md#offensive-coding---offensive-development-skills) | Building offensive tooling: shellcode, loaders, BOFs, syscalls, evasion, OS internals |
 | [`offensive-techniques/`](CATALOG.md#offensive-techniques---methodology-and-tradecraft-skills) | Tool-agnostic methodology, decision flow, and campaign design |
 | [`offensive-ctf/`](CATALOG.md#offensive-ctf---private-offensive-ctf-and-lab-solving-skills) | Flag-style and private-lab solving workflows, routed by artifact |

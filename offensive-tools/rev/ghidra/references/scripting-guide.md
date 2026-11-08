@@ -5,7 +5,9 @@
 ### GUI: Script Manager
 `Window → Script Manager` (or `Ctrl+Alt+S`) → New → choose language (Java/Python)
 
-### Python (Jython 2.7 — built-in)
+### Python (PyGhidra / CPython 3)
+For Ghidra 12.2 launch `support/pyghidraRun` or `pyghidraRun.bat` first. The scripts below target PyGhidra; legacy Jython scripts must explicitly select `# @runtime Jython` and use Python 2-compatible syntax.
+
 Available globals in scripts:
 ```python
 currentProgram      # Program object
@@ -373,17 +375,4 @@ for func in currentProgram.getFunctionManager().getFunctions(True):
 # - Compare malware variants across campaigns
 # - Find new capabilities added in updated sample
 # - Track C2 address changes between builds
-```
-
-## Python 3 Support (Ghidrathon)
-
-Built-in scripting uses Jython (Python 2.7 EOL). For Python 3:
-
-```bash
-# Install Ghidrathon extension:
-# https://github.com/mandiant/ghidrathon
-# File → Install Extensions → select Ghidrathon .zip
-# Restart Ghidra → Script Manager shows "Python 3" language option
-#
-# Benefit: modern libraries (capstone, yara, pycryptodome) in scripts
 ```

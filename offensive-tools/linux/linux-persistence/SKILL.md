@@ -492,7 +492,6 @@ disown
 |---|---|
 | **pwncat** | Auto-adds SSH key + cron backdoor |
 | **LinPEAS** | Identifies persistence opportunities (writable cron, sudoers) |
-| **ssh-key-scanner** | Finds existing SSH keys for pivoting |
 | **linux-exploit-suggester** | Finds kernel exploits for privilege escalation (prerequisite) |
 
 ---

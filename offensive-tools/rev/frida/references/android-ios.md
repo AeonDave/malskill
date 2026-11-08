@@ -1,29 +1,5 @@
 # Frida — Android & iOS Instrumentation
 
-## Android Setup
-
-```bash
-# Download frida-server matching device arch
-# https://github.com/frida/frida/releases
-# Architectures: arm, arm64, x86, x86_64
-
-# Push and start
-adb push frida-server-<ver>-android-arm64 /data/local/tmp/frida-server
-adb shell chmod 755 /data/local/tmp/frida-server
-adb shell /data/local/tmp/frida-server &
-
-# List apps
-frida-ps -Ua              # USB, applications only
-frida-ps -Uai             # With bundle identifiers
-
-# Attach to app
-frida -U -n "com.example.app"
-frida -U -f com.example.app --no-pause    # Spawn + attach
-
-# Run script
-frida -U -f com.example.app -l hook.js --no-pause
-```
-
 ## SSL Pinning Bypass (Android)
 
 ### Universal bypass (Frida CodeShare)
@@ -67,15 +43,6 @@ Java.perform(() => {
             .implementation = function() { return true; };
     } catch(e) {}
 });
-```
-
-### Root certificate store bypass
-
-```bash
-# Use frida-cert-pinning-bypass (all-in-one):
-frida -U -f com.example.app \
-    --codeshare pcipolloni/universal-android-ssl-pinning-bypass-with-frida \
-    --no-pause
 ```
 
 ## Java Method Hooking
@@ -206,33 +173,6 @@ Java.perform(() => {
 
 ## JNI and Native Library Hooking
 
-### Hook JNI_OnLoad
-
-```javascript
-Interceptor.attach(Module.getExportByName('libsecure.so', 'JNI_OnLoad'), {
-    onEnter(args) {
-        console.log('[JNI_OnLoad] native lib initializing');
-    },
-    onLeave(retval) {
-        console.log('[JNI_OnLoad] done, hooking native methods');
-        hookNativeMethods();
-    }
-});
-
-function hookNativeMethods() {
-    const lib = 'libsecure.so';
-    Interceptor.attach(Module.getExportByName(lib, 'Java_com_example_NativeLib_decrypt'), {
-        onEnter(args) {
-            // args[0]=JNIEnv, args[1]=jobj, args[2...]=actual params
-            console.log(`[JNI decrypt] input: ${args[2]}`);
-        },
-        onLeave(retval) {
-            console.log(`[JNI decrypt] output: ${retval}`);
-        }
-    });
-}
-```
-
 ### Intercept RegisterNatives (dynamic JNI registration)
 
 Apps that use `RegisterNatives` in `JNI_OnLoad` don't export `Java_com_...` symbols — `nm` and `strings` won't find them. Hook `RegisterNatives` itself to discover them.
@@ -263,39 +203,6 @@ Java.perform(() => {
                             console.log(`[native] ${namePtr.readCString()} called`);
                         }
                     });
-                }
-            }
-        });
-    }
-});
-```
-
-### Monitor dlopen for late-loaded `.so`
-
-Malware and packers often load `.so` files after initial startup. Hook `dlopen`/`android_dlopen_ext` to catch them.
-
-```javascript
-['dlopen', 'android_dlopen_ext'].forEach(fn => {
-    const addr = Module.findExportByName(null, fn);
-    if (addr) {
-        Interceptor.attach(addr, {
-            onEnter(args) {
-                const path = args[0].readCString();
-                if (path) console.log(`[${fn}] loading: ${path}`);
-                this.path = path;
-            },
-            onLeave(retval) {
-                if (this.path && !retval.isNull()) {
-                    console.log(`[${fn}] loaded at ${retval}: ${this.path}`);
-                    // Now you can hook exports from the freshly loaded lib:
-                    const mod = Process.getModuleByName(this.path.split('/').pop());
-                    if (mod) {
-                        mod.enumerateExports().forEach(e => {
-                            if (e.name.includes('JNI_OnLoad') || e.name.startsWith('Java_')) {
-                                console.log(`  export: ${e.name} @ ${e.address}`);
-                            }
-                        });
-                    }
                 }
             }
         });
@@ -493,69 +400,6 @@ Java.perform(() => {
 });
 ```
 
-## Modern SSL Pinning (OkHttp4 / gRPC / Cronet / Flutter)
-
-When the basic TrustManager/OkHttp3 bypass doesn't work, the app may use a newer stack.
-
-```javascript
-Java.perform(() => {
-    // --- OkHttp4 CertificatePinner (internal API changed) ---
-    try {
-        const Pinner = Java.use('okhttp3.CertificatePinner');
-        Pinner.check.overload('java.lang.String', 'java.util.List').implementation = function() {};
-        try { Pinner['check$okhttp'].implementation = function() {}; } catch(e) {}
-        console.log('[bypass] OkHttp4 CertificatePinner disabled');
-    } catch(e) {}
-
-    // --- Cronet / gRPC BoringSSL ---
-    try {
-        const CronetB = Java.use('org.chromium.net.CronetEngine$Builder');
-        CronetB.enablePublicKeyPinningBypassForLocalTrustAnchors
-            .overload('boolean').implementation = function() { return this; };
-    } catch(e) {}
-
-    // --- Conscrypt (Android 7+ default TLS provider) ---
-    try {
-        const TMI = Java.use('com.android.org.conscrypt.TrustManagerImpl');
-        TMI.verifyChain.implementation = function(untrustedChain) {
-            console.log('[bypass] Conscrypt verifyChain bypassed');
-            return untrustedChain;
-        };
-    } catch(e) {}
-
-    // --- WebView SSL errors ---
-    try {
-        const WebViewClient = Java.use('android.webkit.WebViewClient');
-        WebViewClient.onReceivedSslError.implementation = function(view, handler, error) {
-            handler.proceed();
-        };
-    } catch(e) {}
-});
-```
-
-For **Flutter** apps: Flutter uses BoringSSL compiled into `libflutter.so` — Java hooks don't apply. Patch at the native level:
-
-```javascript
-// Flutter SSL bypass — hook ssl_crypto_x509_session_verify_cert_chain in libflutter.so
-const flutter = Process.getModuleByName('libflutter.so');
-// Pattern for ssl_verify_peer_cert (varies by Flutter version)
-// Find via: strings libflutter.so | grep ssl_client
-const verifyFunc = Module.findExportByName('libflutter.so', 'ssl_verify_peer_cert');
-if (verifyFunc) {
-    Interceptor.replace(verifyFunc, new NativeCallback(() => 0, 'int', ['pointer', 'pointer']));
-    console.log('[bypass] Flutter SSL verify patched');
-} else {
-    // Fallback: pattern scan for the verify function
-    Memory.scan(flutter.base, flutter.size, '08 40 B9 ?? ?? ?? 94 28 00 80 52', {
-        onMatch(addr) {
-            console.log('[bypass] Flutter SSL pattern at ' + addr);
-            // NOP the branch or replace return
-        },
-        onComplete() {}
-    });
-}
-```
-
 ## iOS Setup
 
 ```bash
@@ -592,32 +436,6 @@ Interceptor.attach(hook.implementation, {
         retval.replace(ptr(1)); // Modify return value
     }
 });
-```
-
-### iOS SSL pinning bypass
-
-```javascript
-// Hook SecTrustEvaluate (common SSL pinning method)
-const SecTrustEvaluate = Module.findExportByName('Security', 'SecTrustEvaluate');
-if (SecTrustEvaluate) {
-    Interceptor.attach(SecTrustEvaluate, {
-        onLeave(retval) {
-            // errSecSuccess = 0
-            retval.replace(ptr(0));
-            console.log('[bypass] SecTrustEvaluate → success');
-        }
-    });
-}
-
-// Also hook SecTrustEvaluateWithError (iOS 12+)
-const SecTrustEvaluateWithError = Module.findExportByName('Security', 'SecTrustEvaluateWithError');
-if (SecTrustEvaluateWithError) {
-    Interceptor.attach(SecTrustEvaluateWithError, {
-        onLeave(retval) {
-            retval.replace(ptr(1)); // Returns bool: true = trusted
-        }
-    });
-}
 ```
 
 ### Enumerate ObjC classes
@@ -671,28 +489,6 @@ Apps detect Frida through several vectors. Returning `-1` on `/proc/self/maps` o
 | Memory scan | Byte patterns `FRIDA`, `GUM_`, frida-agent magic in `rwxp` pages |
 | D-Bus probe | Send `AUTH\r\n` to open ports, check for frida-server D-Bus response |
 
-### Operational evasion (before hooking)
-
-```bash
-# 1. Rename frida-server binary
-cp frida-server /data/local/tmp/fs-16.5.2
-
-# 2. Change default port
-/data/local/tmp/fs-16.5.2 -l 127.0.0.1:31337 &
-frida -H 127.0.0.1:31337 -f com.example.app
-
-# 3. Use spawn mode (attach before detection code runs)
-frida -U -f com.example.app -l bypass.js --no-pause
-
-# 4. Gadget mode (no frida-server process at all)
-# See "Frida Gadget Embedding" section above
-
-# 5. Community anti-detection frida-server builds (e.g. hluwa's strongR-frida-android)
-# Patch Frida artifacts: rename threads, strip in-memory magic bytes ("frida:rpc", "GUM_"),
-# rename modules (linjector, gum-js-loop). Search GitHub for the current maintained fork —
-# specific repos and forks come and go; verify signatures before use.
-```
-
 ### Filter /proc/self/maps (rewrite, don't block)
 
 ```javascript
@@ -714,71 +510,4 @@ Java.perform(() => {
         return line;
     };
 });
-```
-
-### Native-level evasion (libc hooks)
-
-```javascript
-// Filter /proc/self/maps at the C level (catches native detection too)
-const openPtr = Module.findExportByName('libc.so', 'open');
-const readPtr = Module.findExportByName('libc.so', 'read');
-
-Interceptor.attach(openPtr, {
-    onEnter(args) {
-        const path = args[0].readCString();
-        this.isMaps = path && (path.includes('/proc/self/maps') || path.includes('/proc/self/status'));
-    },
-    onLeave(retval) {
-        if (this.isMaps) this.fd = retval.toInt32();
-    }
-});
-
-// Hook pthread_setname_np to hide Frida thread names
-const setname = Module.findExportByName('libc.so', 'pthread_setname_np');
-if (setname) {
-    Interceptor.attach(setname, {
-        onEnter(args) {
-            const name = args[1].readCString();
-            if (name && /gum-js|gmain|gdbus|pool-frida|linjector/.test(name)) {
-                args[1].writeUtf8String('binder:' + Process.id);
-            }
-        }
-    });
-}
-
-// Block connect() to detection probe ports
-const connectPtr = Module.findExportByName('libc.so', 'connect');
-Interceptor.attach(connectPtr, {
-    onEnter(args) {
-        const sockaddr = args[1];
-        const family = sockaddr.readU16();
-        if (family === 2) { // AF_INET
-            const port = (sockaddr.add(2).readU8() << 8) | sockaddr.add(3).readU8();
-            if (port === 27042 || port === 27043) {
-                console.log('[anti-detect] blocking connect to port ' + port);
-                args[0] = ptr(-1); // invalid fd
-            }
-        }
-    }
-});
-
-// Neuter ptrace-based anti-debug
-const ptrace = Module.findExportByName('libc.so', 'ptrace');
-if (ptrace) {
-    Interceptor.replace(ptrace, new NativeCallback(function(req, pid, addr, data) {
-        if (req === 0) { // PTRACE_TRACEME
-            console.log('[anti-debug] ptrace(TRACEME) → 0');
-            return 0;
-        }
-        return -1;
-    }, 'long', ['int', 'int', 'pointer', 'pointer']));
-}
-```
-
-### Combined anti-detection script invocation
-
-```bash
-# Rename server + custom port + spawn with bypass:
-/data/local/tmp/fs-server -l 127.0.0.1:31337 &
-frida -H 127.0.0.1:31337 -f com.example.app -l anti-detect.js --no-pause
 ```

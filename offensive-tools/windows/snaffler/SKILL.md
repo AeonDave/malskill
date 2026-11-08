@@ -1,93 +1,54 @@
 ---
 name: snaffler
-description: "Auth/lab ref: Snaffler AD share audit; accessible shares, sensitive file patterns, secret-risk indicators, evidence reporting."
+description: "Audit accessible Windows shares and file exposure with Snaffler; choose discovery boundaries, rule configuration, and structured evidence output."
 license: MIT
-compatibility: "Windows .NET; domain SMB access required."
+compatibility: "Windows .NET; access is evaluated using the running identity."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Snaffler
 
-.NET tool for credential and secret hunting across Active Directory network shares.
+Separate share visibility from file-content findings. A rule match is a review candidate, not proof of a valid credential or a severity rating.
 
-## Quick Start
+## Workflow
+
+1. Record the executable version and identity. Use [upstream releases](https://github.com/SnaffCon/Snaffler/releases) and the matching option definitions.
+2. Choose host discovery, an explicit host list, or a local directory. Start with share listing when file contents are unnecessary.
+3. Keep the results and effective rules together. Review matches before assigning impact.
 
 ```powershell
-# Basic scan — enumerate all shares and find interesting files
-.\Snaffler.exe -s -d domain.local -o snaffler.log -v data
+# Share listing only for explicit hosts
+.\Snaffler.exe -s -n fileserver1,fileserver2 -a -o shares.log
 
-# Output to console + file with verbosity
-.\Snaffler.exe -s -d domain.local -o results.log -v data
+# Audit a local fixture without computer/share discovery
+.\Snaffler.exe -s -i C:\audit-fixture -o findings.log -v data
+
+# TSV is a switch; -o supplies the filename
+.\Snaffler.exe -s -n fileserver1 -a -y -o shares.tsv
+
+# Generate the configurable rule/options template
+.\Snaffler.exe -z generate
 ```
 
-## Core Usage
+## Options that are easy to confuse
 
-### Basic enumeration
-```powershell
-# Enumerate shares in current domain
-.\Snaffler.exe -s -d <domain>
+| Option | Meaning |
+|---|---|
+| `-n` | Explicit hosts or a host-list file; disables computer discovery |
+| `-i` | Directory input; disables computer/share discovery |
+| `-a` | Share listing only; skips file enumeration |
+| `-o` / `-s` | Output file / stdout |
+| `-t JSON` / `-y` | JSON log format / TSV formatting; select one output format |
+| `-r N` | Maximum file size in bytes for content searching |
+| `-m DIR` / `-l N` | Copy matched files to DIR / maximum copy size; listing does not require copying |
+| `-x N` | Thread count, not exclusions; upstream warns against values below four |
+| `-z FILE` | TOML configuration, including rules |
 
-# Specify output file and verbosity
-# -v options: info, data (show matched content), trace, debug
-.\Snaffler.exe -s -d domain.local -o snaffler.log -v data
+- The color labels reflect rule triage priorities; validate the actual content and exposure.
+- Host restriction does not substitute for share/file exclusion rules. Inspect the generated configuration for that job.
+- File reads and SMB access are observable; results depend on ACLs, availability, and traversal errors.
+- Logs can include matched content. Redact values in reports while preserving path, rule, identity, and evidence location.
 
-# Target specific hosts
-.\Snaffler.exe -s -n host1,host2,host3 -o results.log -v data
-```
-
-### Filtering and targeting
-```powershell
-# Only scan specific shares
-.\Snaffler.exe -s -d domain.local -a sharename
-
-# Exclude specific shares
-.\Snaffler.exe -s -d domain.local -x "NETLOGON,SYSVOL"
-
-# Only scan writable shares
-.\Snaffler.exe -s -d domain.local -y
-
-# Limit file size scanned (default 500KB)
-.\Snaffler.exe -s -d domain.local -l 1048576
-```
-
-### Output interpretation
-Snaffler classifies findings by severity:
-- **Black** — highest value: credentials, private keys, password managers
-- **Red** — high value: config files with connection strings, scripts with creds
-- **Yellow** — medium value: interesting files that may contain secrets
-- **Green** — low value: potentially interesting but needs review
-
-### What Snaffler finds
-- Passwords in scripts (`.ps1`, `.bat`, `.vbs`, `.py`)
-- Configuration files with connection strings (`web.config`, `appsettings.json`)
-- Private keys (`.pfx`, `.pem`, `.key`, `id_rsa`)
-- KeePass databases (`.kdbx`)
-- Password manager exports
-- GPP passwords (`Groups.xml`, `Registry.xml`)
-- Autologon credentials in registry policy files
-- SSH keys and configs
-- Cloud credential files (AWS, Azure, GCP)
-- Database backups (`.bak`, `.mdf`)
-
-### Integration with AD attack workflow
-```powershell
-# After initial foothold, run Snaffler to find stored credentials
-.\Snaffler.exe -s -d domain.local -o snaffler_$(Get-Date -Format 'yyyyMMdd').log -v data
-
-# Parse results for immediate wins
-Select-String -Path snaffler.log -Pattern "(password|credential|secret)" -CaseSensitive:$false
-```
-
-## OPSEC considerations
-- Generates significant SMB traffic (share enumeration + file reads)
-- Noise level: MODERATE to LOUD depending on domain size
-- Consider targeting specific hosts rather than full domain scan
-- Run during business hours to blend with normal file access patterns
-- Event IDs: 5140 (share access), 5145 (file access check)
-
-## Alternatives
-- Manual: `Find-DomainShare -CheckShareAccess` + manual inspection (slower)
-- CrackMapExec spider_plus module: `cme smb <target> -M spider_plus`
-- SharpShares: lightweight share enumeration (no content analysis)
+Source: [SnaffCon usage and configuration](https://github.com/SnaffCon/Snaffler).

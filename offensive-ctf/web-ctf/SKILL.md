@@ -50,7 +50,6 @@ Prefer these tool families when the corresponding signal appears:
 - `sqlmap`
 - `sstimap`
 - `ssrfmap`
-- `nosqlmap`
 - `dalfox`
 - `nuclei`
 - `ffuf`

@@ -49,7 +49,7 @@ cat subs.txt | dnsx -a -resp
 | `-silent` | Print results only |
 | `-o <file>` | Output file |
 | `-json` | JSON output |
-| `-wildcard` | Filter wildcard subdomains |
+| `-auto-wildcard` | Filter wildcard subdomains |
 | `-cdn` | Show CDN name for resolved IPs |
 | `-asn` | Show ASN info for resolved IPs |
 | `-recon` | Query all record types at once |
@@ -72,7 +72,7 @@ cat subs.txt | dnsx -a -cname -mx -txt -resp -o dns_records.json -json
 cat domains.txt | dnsx -a -resp-only | sort -u
 
 # Filter wildcard results
-cat subs.txt | dnsx -wildcard -d target.com -silent
+cat subs.txt | dnsx -auto-wildcard -silent
 
 # Reverse DNS (PTR) on IPs
 cat ips.txt | dnsx -ptr -resp-only
@@ -89,7 +89,7 @@ dnsx -d target.com -mx -txt -resp -silent
 dnsx -d target.com -w subdomains.txt -r resolvers.txt -rl 500
 
 # Wildcard detection + filter
-dnsx -d target.com -w wordlist.txt -wildcard -wt 3 -silent
+dnsx -d target.com -w wordlist.txt -auto-wildcard -wt 3 -silent
 
 # Extract CNAMEs (find dangling/takeovers)
 cat subs.txt | dnsx -cname -resp -silent | grep -v "target.com"

@@ -2,7 +2,7 @@
 name: wpscan
 description: "Auth/lab ref: WordPress vulnerability and enumeration scanner."
 license: WPScan License (free non-commercial)
-compatibility: "Linux / macOS / Windows; Ruby 2.5+."
+compatibility: "WPScan 4.2.0 requires Ruby 3.3+ and native gem dependencies; use a supported package or container for the host OS."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -27,11 +27,10 @@ wpscan --url https://target.com -U admin -P /usr/share/wordlists/rockyou.txt
 | `--url <url>` | Target WordPress URL |
 | `--enumerate <items>` | u=users, p=plugins, t=themes, vp=vuln plugins, vt=vuln themes, ap=all plugins, at=all themes, tt=timthumbs, cb=config backups, dbe=db exports, m=media ids |
 | `--api-token <token>` | WPScan API token (required for CVE data) |
-| `--plugins-detection` | `aggressive` / `passive` / `mixed` |
-| `--themes-detection` | `aggressive` / `passive` / `mixed` |
 | `-U <user>` | Username (or file) for brute-force |
 | `-P <wordlist>` | Password wordlist |
 | `--password-attack` | `xmlrpc` / `xmlrpc-multicall` / `wp-login` |
+| `--plugins-detection` / `--themes-detection` | `aggressive` / `passive` / `mixed` |
 | `--usernames <list>` | Usernames to brute-force (comma-sep or file) |
 | `--proxy <proxy>` | HTTP proxy (e.g., `http://127.0.0.1:8080`) |
 | `--cookie <str>` | Cookie for authenticated scans |
@@ -61,10 +60,9 @@ wpscan --url https://target.com --enumerate u
 # Vulnerable plugins only (most impactful)
 wpscan --url https://target.com --enumerate vp --api-token $TOKEN
 
-# Full aggressive enum
+# Enumerate selected component categories
 wpscan --url https://target.com \
     --enumerate ap,at,u,tt,cb,dbe \
-    --plugins-detection aggressive \
     --api-token $TOKEN
 
 # Config backups (wp-config.php.bak, wp-config.php~, etc.)
@@ -102,11 +100,10 @@ wpscan --url https://target.com -U found_users.txt -P passwords.txt
 wpscan --url https://target.com \
     --cookie "wordpress_logged_in_xxx=admin%7C..."
 
-# With admin credentials (finds more plugins/themes)
+# With an existing authenticated session
 wpscan --url https://target.com \
     --enumerate ap \
-    --username admin --password 'AdminPass123!' \
-    --plugins-detection aggressive
+    --cookie 'wordpress_logged_in_example=SESSION_VALUE'
 ```
 
 ## Common Findings

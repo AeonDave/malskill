@@ -146,7 +146,7 @@ Use credential-validation and lateral enumeration workflow.
 - Use spray carefully: lockout policies are common in AD environments.
 
 Tool families:
-- `offensive-tools/windows/crackmapexec/` — SMB/WinRM/LDAP credential validation, share enumeration, command execution, hash spraying
+- `offensive-tools/windows/netexec/` — scoped SMB/WinRM/LDAP service checks using NetExec
 
 ### Case G: “Wireless/RF traffic capture or network presence on 802.11/BLE”
 

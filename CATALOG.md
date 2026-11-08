@@ -6,22 +6,22 @@ Category guide with selected skills and tool examples. Browse the category direc
 
 ## `offensive-tools/` - Attack tool skills
 
-One skill per tool, organized by attack phase. Each skill covers how the tool works, key flags, target scenarios, output parsing, and OPSEC notes. This area is about **how to use a specific tool** to reach an objective.
+One skill per tool, organized by attack phase: version-aware setup, useful commands, output interpretation, and failure modes. Check the installed release before using version-specific flags; retain legacy tools only for a distinct supported use.
 
 | Subcategory | Examples |
 |------------|---------|
-| `windows/` | bloodhound, certipy, crackmapexec, impacket, mimikatz, rubeus |
-| `vuln-scanners/` | burpsuite, dalfox, nuclei, sqlmap, testssl, trivy |
+| `windows/` | bloodhound, certipy, enum4linux-ng, impacket, ldaprelayscan, netexec, sharphound |
+| `vuln-scanners/` | burpsuite, dalfox, nuclei, osv-scanner, sqlmap, titus, trivy |
 | `recon/` | dnsx, feroxbuster, gobuster, httpx, massdns, shodan |
 | `network/` | chisel, masscan, mitmproxy, nmap, responder, wireshark |
 | `cryptography/` | rsactftool, sagemath, cyberchef |
-| `web/` | commix, corsy, jwt-tool, smuggler, xsstrike, zap |
+| `web/` | commix, jwt-tool, waymore, xsstrike, zap |
 | `fuzzing/` | aflplusplus, arjun, boofuzz, dotdotpwn, ffuf, restler |
 | `osint/` | amass, ghunt, maigret, phoneinfoga, spiderfoot, theharvester |
-| `forensic/` | capa, tcpdump, volatility3, yara, zeek |
+| `forensic/` | capa, hayabusa, tcpdump, volatility3, yara, zeek |
 | `rev/` | binaryninja, frida, gdb, ghidra, radare2, windbg |
 | `wireless/` | aircrack-ng, kismet, lswifi, sparrow-wifi, wifite |
-| `linux/` | linpeas, linux-persistence, mimipenguin, pwncat, ssh-key-scanner |
+| `linux/` | linpeas, linux-persistence, mimipenguin, pspy, pwncat |
 | `shells/` | reverse-ssh, revshells, shellerator, weevely3 |
 | `cracking/` | hashcat, hydra, john |
 | `exploits/` | beef, metasploit, pwntools, searchsploit, foundry-cast |

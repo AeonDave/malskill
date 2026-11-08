@@ -35,7 +35,7 @@ nuclei -l urls.txt -exclude-severity info -stats
 | `-t <path>` | Template file/directory/URL |
 | `-tags <tags>` | Run templates by tag (e.g., `cve,rce,lfi`) |
 | `-as` | Automatic technology-mapped scan |
-| `-ni` | Disable interactsh/OAST requests |
+| `-ni` | Disable interactsh and exclude OAST-based templates |
 | `-id <id>` | Run specific template by ID |
 | `-severity <s>` | Filter by severity: `info,low,medium,high,critical` |
 | `-exclude-severity <s>` | Exclude severity levels (alias: `-es`) |
@@ -51,8 +51,8 @@ nuclei -l urls.txt -exclude-severity info -stats
 | `-retries <n>` | Retries on timeout |
 | `-proxy <url>` | HTTP/SOCKS5 proxy |
 | `-o <file>` | Output file |
-| `-json` | JSON output |
 | `-jsonl`, `-j` | JSON Lines output |
+| `-json-export <file>` | Export JSON results |
 | `-silent` | Print findings only |
 | `-v` | Verbose |
 | `-stats` | Show real-time stats |
@@ -93,7 +93,7 @@ nuclei -l hosts.txt -tags cve -severity critical,high -o cve_findings.jsonl -jso
 # Agent-safe controlled baseline
 nuclei -l targets.txt -as -severity critical,high -rl 50 -c 20 -bs 20 -timeout 10 -retries 1 -silent -j -o nuclei.jsonl
 
-# Deterministic scan without OAST/interactsh traffic
+# Exclude OAST-based templates and interactsh traffic; coverage changes
 nuclei -l targets.txt -as -severity critical,high -ni -stats -rl 30 -c 10 -bs 10 -timeout 10 -retries 1 -j -o nuclei_no_oast.jsonl
 
 # Exposed panels + default creds

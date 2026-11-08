@@ -49,7 +49,7 @@ wfuzz -c -w payloads.txt "https://target/search?q=FUZZ"
 
 ## Practical Tricks
 
-- Use `-Z` scan mode when enumerating unstable hostnames/services; then filter `XXX` errors explicitly.
+- Use `-Z` scan mode when enumerating unstable hostnames/services; review transport errors separately from HTTP responses.
 - When brute forcing behind proxies, tune `--conn-delay` and `--req-delay` to avoid false noise.
 - Use `--field` / `--efield` to emit pipeline-friendly output into other tools.
 

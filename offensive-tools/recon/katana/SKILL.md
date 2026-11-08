@@ -34,11 +34,11 @@ katana -list urls.txt -jc -o all_endpoints.txt
 ## Crawling scope
 
 ```bash
-# Limit to same domain (default behavior — no external crawl)
+# Default scope follows the registrable domain; review it against authorization
 katana -u https://target.com -jc
 
-# Include subdomains
-katana -u https://target.com -jc -cs target.com
+# Restrict to the input host
+katana -u https://target.com -jc -fs fqdn
 
 # Depth control
 katana -u https://target.com -jc -d 5          # max depth 5 (default: 3)
@@ -58,8 +58,8 @@ katana -u https://target.com -d 3 -jc -kf robotstxt -c 10 -p 10 -rl 50 -timeout 
 Katana's JS crawling (`-jc`) uses JSLuice and regex patterns to extract endpoints from JavaScript files. This is the primary value over generic crawlers.
 
 ```bash
-# JS crawl + XHR/fetch call tracing
-katana -u https://target.com -jc -xhr
+# JS crawl + XHR extraction in JSONL (headless mode)
+katana -u https://target.com -hl -jc -xhr -j
 
 # Deeper JS parsing (memory intensive)
 katana -u https://target.com -d 5 -jc -jsl -kf all -c 10 -p 10 -rl 50 -o katana_urls.txt
@@ -82,8 +82,8 @@ Standard crawler misses dynamically rendered content. Use headless for apps that
 # Headless Chrome/Chromium required
 katana -u https://target.com -hl -jc -d 3
 
-# Headless with wait (allow JS to execute before capture)
-katana -u https://target.com -hl -jc -nos
+# Headless with DOM wait
+katana -u https://target.com -hl -jc -pls domcontentloaded -dwt 5
 
 # Headless with system Chrome and XHR extraction
 katana -u https://target.com -hl -sc -nos -xhr -j -o katana_headless.jsonl
@@ -101,9 +101,6 @@ katana -u https://api.target.com -H "Authorization: Bearer <token>" -jc
 # Multiple headers
 katana -u https://target.com -H "X-Api-Key: abc123" -H "Accept: application/json" -jc
 
-# POST requests (for apps requiring login state)
-katana -u https://target.com -X POST -H "Content-Type: application/json" \
-  -body '{"email":"test@test.com","password":"test"}' -jc
 ```
 
 ## Pipeline integration
@@ -114,7 +111,7 @@ Katana integrates with the ProjectDiscovery ecosystem:
 # httpx → katana: crawl all live web hosts
 httpx -l live_hosts.txt -silent | katana -jc -o all_endpoints.txt
 
-# subfinder → httpx → katana: full passive-to-crawl pipeline
+# subfinder → httpx → katana pipeline
 subfinder -d target.com -silent | httpx -silent | katana -jc -o endpoints.txt
 
 # Feed into nuclei for vuln scanning
@@ -134,9 +131,6 @@ katana -u https://target.com -kf all -d 3 -silent
 # Filter by extension (exclude static assets)
 katana -u https://target.com -jc -ef png,jpg,jpeg,gif,svg,css,woff,woff2,ttf,eot,map
 
-# Filter by response code
-katana -u https://target.com -jc -fsc 200,301,302
-
 # Show only unique paths (deduplicate)
 katana -u https://target.com -jc | sort -u > unique_endpoints.txt
 
@@ -149,7 +143,7 @@ katana -u https://target.com -jc | grep "?" | cut -d"?" -f2 | tr "&" "\n" | cut 
 - Standard mode: one request per link — low noise but misses JS-rendered content.
 - Headless mode: launches a real browser — higher resource use, slightly more detectable.
 - Use `-rl` rate limiting on sensitive or production scopes.
-- Respect `robots.txt` boundaries unless explicitly authorized to ignore them: `-cr` to crawl despite robots.
+- `-kf robotstxt` adds known-file crawling; it does not enforce robots.txt rules. It requires crawl depth of at least 3.
 
 ## When to use vs. other crawlers
 

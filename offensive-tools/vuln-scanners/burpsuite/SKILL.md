@@ -2,7 +2,7 @@
 name: burpsuite
 description: "Auth/lab ref: Burp Suite: integrated web application security testing platform with proxy, scanner, intruder, and repeater."
 license: Commercial (Pro) / Free (Community)
-compatibility: "Windows / macOS / Linux; Java 11+."
+compatibility: "Windows / macOS / Linux; native installers bundle Java. Running the JAR requires Java 21+."
 metadata:
   author: AeonDave
   version: "1.1"

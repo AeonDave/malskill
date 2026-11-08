@@ -2,7 +2,7 @@
 name: eyewitness
 description: "Auth/lab ref: Web screenshotting and reporting tool that captures screenshots of web services and generates an HTML report."
 license: Apache-2.0
-compatibility: "Linux, macOS (limited)."
+compatibility: "Current upstream source supports Linux, macOS and Windows with Chromium; older releases differ."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -32,8 +32,6 @@ eyewitness -f urls.txt --web -d output/eyewitness
 | `-f <file>` | Input file with URLs/hosts |
 | `-x <xml>` | Nmap XML output file |
 | `--web` | HTTP screenshotting (default) |
-| `--rdp` | RDP screenshots |
-| `--vnc` | VNC screenshots |
 | `-d <dir>` | Output directory |
 | `--no-prompt` | Skip interactive prompts |
 | `--timeout <n>` | Per-target timeout (default 7s) |
@@ -42,11 +40,8 @@ eyewitness -f urls.txt --web -d output/eyewitness
 | `--proxy-ip <ip>` | Proxy IP |
 | `--proxy-port <port>` | Proxy port |
 | `--resolve` | Resolve IP addresses |
-| `--add-http-headers <h>` | Add custom headers |
 | `--user-agent <ua>` | Custom user agent |
-| `--prepend-https` | Prepend https:// to input |
-| `--prepend-http` | Prepend http:// to input |
-| `--active-scan` | Active fingerprinting |
+| `--prepend-https` | Prepend both HTTP and HTTPS to schemeless input |
 | `--jitter <n>` | Jitter between screenshots |
 
 ## Common Workflows
@@ -61,10 +56,7 @@ nmap -sV -p 80,443,8080,8443 -oX scan.xml 192.168.1.0/24
 eyewitness -x scan.xml --web -d web_report/ --no-prompt
 
 # With both HTTP and HTTPS
-eyewitness -f hosts.txt --prepend-http --prepend-https --web -d out/
-
-# RDP screenshot of internal network
-eyewitness -f hosts.txt --rdp -d rdp_report/
+eyewitness -f hosts.txt --prepend-https --web -d out/
 ```
 
 ## Output
@@ -73,7 +65,7 @@ EyeWitness produces:
 - `report.html` — categorized screenshots with HTTP headers, page titles, response codes
 - `Matches/` — signature-based categories (login pages, Cisco, Citrix, VMware, etc.)
 - `Screenshots/` — raw screenshot images (PNG)
-- `Eyewitness.db` — SQLite database with all results
+- `ew.db` — SQLite database with results
 
 ## Pipeline Integration
 

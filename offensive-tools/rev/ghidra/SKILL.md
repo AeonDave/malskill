@@ -2,7 +2,7 @@
 name: ghidra
 description: "Auth/lab ref: NSA's open-source reverse engineering suite with disassembler, decompiler, P-Code IL, and Ghidra/Python scripting."
 license: MIT
-compatibility: "Java 17+; Linux/macOS/Windows; GUI + headless."
+compatibility: "Ghidra 12.2: 64-bit JDK 25; Linux/macOS/Windows. PyGhidra: CPython 3.9–3.15; debugger support has a narrower range."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -16,11 +16,13 @@ NSA open-source RE suite — disassembler + decompiler + scripting for static an
 
 ```bash
 # Download from https://github.com/NationalSecurityAgency/ghidra/releases
-# Requires JDK 17+ (21 recommended)
+# Ghidra 12.2 requires 64-bit JDK 25
 # Extract and run:
 ./ghidraRun           # Linux/macOS
 ghidraRun.bat         # Windows
 ```
+
+The ordinary launcher starts the GUI; use the PyGhidra launcher below for CPython scripts. The 12.2 [setup guide](https://github.com/NationalSecurityAgency/ghidra/blob/Ghidra_12.2_build/GhidraDocs/GettingStarted.md#minimum-requirements) lists Python 3.9–3.15 for PyGhidra and 3.7–3.14 for debugger support; full source builds have separate requirements.
 
 ## Quick Start
 
@@ -58,13 +60,13 @@ ghidraRun.bat         # Windows
 
 ## Scripting
 
-### Ghidra Python (Jython — built-in)
+### Ghidra Python (PyGhidra, CPython 3)
+
+For Python scripts, start the GUI with `support/pyghidraRun` (Windows: `pyghidraRun.bat`); the launcher offers to install PyGhidra if needed. Ghidra 12 defaults Python scripts to PyGhidra. Select Jython explicitly with `# @runtime Jython` for compatible legacy scripts. See the [12.2 setup guide](https://github.com/NationalSecurityAgency/ghidra/blob/Ghidra_12.2_build/GhidraDocs/GettingStarted.md#pyghidra-mode).
 
 ```python
 # Script Manager → New → Python
 # Available globals: currentProgram, currentAddress, monitor, state
-
-from ghidra.program.model.symbol import SourceType
 
 # List all functions
 fm = currentProgram.getFunctionManager()
@@ -100,37 +102,17 @@ while addr is not None:
     addr = mem.findBytes(addr.add(1), aes_sbox, None, True, monitor)
 ```
 
-### Rename functions by pattern
-
-```python
-# Auto-rename functions that call specific APIs
-for func in currentProgram.getFunctionManager().getFunctions(True):
-    body = func.getBody()
-    calls = getReferencesFrom(func.getEntryPoint())
-    for block in body:
-        pass
-    # Simpler: check decompiled output
-    decomp = ghidra.app.decompiler.DecompInterface()
-    decomp.openProgram(currentProgram)
-    result = decomp.decompileFunction(func, 30, monitor)
-    if result and result.getDecompiledFunction():
-        code = result.getDecompiledFunction().getC()
-        if 'VirtualAlloc' in code and 'WriteProcessMemory' in code:
-            func.setName("likely_injector_" + str(func.getEntryPoint()),
-                         SourceType.USER_DEFINED)
-```
-
 ## Headless Analysis
 
 ```bash
 # Run analysis without GUI
-analyzeHeadless /path/to/project ProjectName \
+pyghidraRun -H /path/to/project ProjectName \
     -import /path/to/binary \
     -postScript MyScript.py \
     -scriptPath /path/to/scripts
 
 # Batch process multiple binaries
-analyzeHeadless /path/to/project ProjectName \
+pyghidraRun -H /path/to/project ProjectName \
     -import /path/to/samples/ \
     -recursive \
     -postScript ExtractStrings.py
@@ -181,16 +163,19 @@ analyzeHeadless /path/to/project ProjectName \
 ```python
 # P-Code is Ghidra's intermediate representation
 # Useful for architecture-independent analysis
-decomp = ghidra.app.decompiler.DecompInterface()
+from ghidra.app.decompiler import DecompInterface
+decomp = DecompInterface()
 decomp.openProgram(currentProgram)
 func = getFunctionAt(currentAddress)
-result = decomp.decompileFunction(func, 30, monitor)
-hf = result.getHighFunction()
-for block in hf.getBasicBlocks():
-    it = block.getIterator()
-    while it.hasNext():
-        op = it.next()
-        print(f"  {op.getSeqnum().getTarget()}: {op.getMnemonic()} {op}")
+if func:
+    result = decomp.decompileFunction(func, 30, monitor)
+    if result.decompileCompleted() and result.getHighFunction():
+        for block in result.getHighFunction().getBasicBlocks():
+            it = block.getIterator()
+            while it.hasNext():
+                op = it.next()
+                print(f"  {op.getSeqnum().getTarget()}: {op.getMnemonic()} {op}")
+decomp.dispose()
 ```
 
 ## Resources

@@ -1,211 +1,40 @@
 ---
 name: powerview
-description: "Auth/lab ref: PowerView AD reconnaissance; users/groups/computers, ACL/delegation paths, policy checks, domain evidence workflow."
+description: "Use PowerView's PowerShell functions for AD object, group, trust, and ACL inspection. Resolve command-version differences before querying."
 license: BSD-3-Clause
-compatibility: "Windows PowerShell 3.0+; domain context or supplied auth material."
+compatibility: "Windows PowerShell; use the requirements of the selected PowerSploit revision."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PowerView
 
-PowerShell Active Directory enumeration toolkit — maps domain structure, ACLs, groups, and privilege escalation paths.
+Keep the script revision with the results. [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) is archived; this skill covers its PowerShell implementation. Python projects such as [powerview.py](https://github.com/aniqfakhrul/powerview.py) and [pywerview](https://github.com/the-useless-one/pywerview) have separate interfaces and dependencies.
 
-## Quick Start
+## Query workflow
 
-```powershell
-# Load the script
-. .\PowerView.ps1
-
-# Enumerate domain users
-Get-NetUser
-
-# Find domain admins
-Get-NetGroupMember -GroupName "Domain Admins"
-
-# Enumerate computers
-Get-NetComputer
-
-# Find interesting shares
-Invoke-ShareFinder -Verbose
-
-# Map domain structure
-Get-NetDomain
-```
-
-## Core Functions
-
-### User Enumeration
-
-| Function | Purpose |
-|---|---|
-| `Get-NetUser` | List all domain users |
-| `Get-NetUser -AdminCount` | Find users with admin status |
-| `Get-NetUser -SPN` | Find users with Service Principal Names (Kerberoastable) |
-| `Get-NetUser -Properties pwdlastset` | Last password change |
-| `Get-NetUser -Credential` | Enumerate as different user |
-
-### Group Enumeration
-
-| Function | Purpose |
-|---|---|
-| `Get-NetGroup` | List all domain groups |
-| `Get-NetGroupMember -GroupName "Domain Admins"` | Members of a group |
-| `Get-NetGroup -MemberIdentity <user>` | Groups a user belongs to |
-| `Get-NetLocalGroup -ComputerName <host>` | Local groups on remote machine |
-
-### Computer Enumeration
-
-| Function | Purpose |
-|---|---|
-| `Get-NetComputer` | List all domain computers |
-| `Get-NetComputer -Unconstrained` | Find unconstrained delegation machines |
-| `Get-NetComputer -TrustedToAuth` | Constrained delegation targets |
-| `Get-NetComputer -OperatingSystem "*2016*"` | Filter by OS |
-| `Get-NetComputer -Properties operatingsystem,lastlogontimestamp` | Detail view |
-
-### ACL & Permission Enumeration
-
-| Function | Purpose |
-|---|---|
-| `Get-ObjectAcl -Identity <user\|group>` | ACLs on object |
-| `Get-ObjectAcl -ResolvGUIDs` | Resolve GUID to readable names |
-| `Invoke-ACLScanner` | Scan for weak ACLs (noisy!) |
-
-### Forest & Domain Info
-
-| Function | Purpose |
-|---|---|
-| `Get-NetDomain` | Current domain info |
-| `Get-NetForest` | Forest structure |
-| `Get-NetForestDomain` | All domains in forest |
-| `Get-NetDomainTrust` | Domain trusts (inter-domain paths) |
-| `Get-NetDomainController` | Find domain controllers |
-
-### Share & File Enumeration
-
-| Function | Purpose |
-|---|---|
-| `Invoke-ShareFinder` | Find accessible network shares |
-| `Invoke-FileFinder` | Search for sensitive files on shares |
-| `Get-NetFileServer` | Find file servers |
-| `Get-NetLoggedOnUser <host>` | Users logged in to remote machine |
-| `Get-NetSession <host>` | Active sessions on remote host |
-
-### Privilege Escalation Discovery
-
-| Function | Purpose |
-|---|---|
-| `Find-LocalAdminAccess` | Computers where current user is admin (slow!) |
-| `Find-DomainUserLocation` | Find where specific users are logged in |
-| `Get-NetComputer -Unconstrained` | Unconstrained delegation targets |
-| `Get-NetComputer -TrustedToAuth` | Constrained delegation abuse targets |
-
-## Common Workflows
-
-### Full domain mapping
+1. Load a reviewed local copy and inspect the functions actually available.
+2. Query a specific object or filter, requesting only the properties needed.
+3. Preserve raw objects until selecting an export shape. Formatting commands produce display objects unsuitable for further analysis.
+4. Record the queried domain/controller and identity. Access failures and missing attributes are not proof that an object or relationship does not exist.
 
 ```powershell
 . .\PowerView.ps1
+Get-Command Get-Domain* -CommandType Function
+Get-Help Get-DomainUser -Full
 
-# 1. Domain structure
-Get-NetDomain
-Get-NetForestDomain
-Get-NetDomainTrust
-
-# 2. User inventory
-Get-NetUser | Select name, mail, pwdlastset
-Get-NetUser -AdminCount | Select name
-
-# 3. Kerberoastable accounts (crackable)
-Get-NetUser -SPN | Select name, serviceprincipalname
-
-# 4. Computers & delegation
-Get-NetComputer -Properties name, operatingsystem
-Get-NetComputer -Unconstrained | Select name
-
-# 5. Share enumeration
-Invoke-ShareFinder
-
-# 6. Privilege paths to Domain Admin
-Get-ObjectAcl -Identity "Domain Admins" -ResolveGUIDs
+Get-Domain
+Get-DomainUser -Identity audit-user -Properties samaccountname,distinguishedname
+Get-DomainGroupMember -Identity 'Audit Readers'
 ```
 
-### Find privileged users with logged-on sessions
+## Version and interpretation traps
 
-```powershell
-# 1. Get domain admins
-$admins = Get-NetGroupMember -GroupName "Domain Admins" | Select -ExpandProperty membername
+- The archived source uses `Get-Domain*` names and supplies some `Get-Net*` aliases. An alias does not guarantee that an old example's parameters still exist.
+- Check `Get-Help` for the loaded function before using filters, credentials, controller selection, or recursion options.
+- Direct membership, nested membership, and effective authorization are different results. State which was queried.
+- An ACL entry is evidence to interpret with object type, inheritance, and effective rights; it is not an automatically viable attack path.
+- Retain this tool when its PowerShell object pipeline fits the task. Do not assume a Python port is a drop-in replacement.
 
-# 2. Find where they're logged in
-foreach ($admin in $admins) {
-    Find-DomainUserLocation -UserIdentity $admin
-}
-
-# 3. Pivot to their machines
-```
-
-### Unconstrained delegation exploitation preparation
-
-```powershell
-# Find unconstrained delegation machines
-$unconstrained = Get-NetComputer -Unconstrained | Select name
-
-# These machines can capture TGTs from users
-# → Use Rubeus to monitor and capture → forge Golden Ticket
-
-# Review who logs in to these machines
-foreach ($comp in $unconstrained.name) {
-    Get-NetLoggedOnUser $comp
-}
-```
-
-### Trust enumeration (forest/cross-domain)
-
-```powershell
-# Forest structure
-Get-NetForest
-
-# Inter-domain trusts
-Get-NetDomainTrust -Domain corp.local
-
-# Trust direction can enable lateral domain movement
-```
-
-## Output Formatting
-
-Filter and export:
-
-```powershell
-# Export users to CSV
-Get-NetUser | Export-Csv users.csv
-
-# Find specific attributes
-Get-NetUser | Select name, mail, department, manager
-
-# Count by property
-Get-NetComputer | Group-Object -Property operatingsystem | Select name, count
-```
-
-## Integration with Other Tools
-
-| Tool | Use Case |
-|---|---|
-| **BloodHound** | PowerView enumerates raw data; SharpHound automates + imports to BloodHound GUI |
-| **Rubeus** | PowerView identifies targets (unconstrained, Kerberoastable); Rubeus exploits them |
-| **Certify** | PowerView finds CA info; Certify performs AD CS abuse |
-| **CrackMapExec/NetExec** | PowerView for detailed recon; NetExec for automated spray/execution |
-
-## Performance Notes
-
-- `Find-LocalAdminAccess` → Very slow (queries every computer); use with caution
-- `Invoke-ACLScanner` → Noisy; may trigger alerts
-- Add `-Verbose` for detailed output
-- Use `-PageSize 1000` to speed up large queries
-
-## Resources
-
-| File | When to load |
-|---|---|
-| `references/` | Advanced ACL abuse, Kerberoasting targets, BloodHound query equivalents |
+Source: [PowerView source and embedded help](https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1). For graph analysis, load [BloodHound](../bloodhound/SKILL.md).

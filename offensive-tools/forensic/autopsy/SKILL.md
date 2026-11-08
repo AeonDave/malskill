@@ -18,7 +18,7 @@ GUI disk forensics over The Sleuth Kit — deleted files, browser artifacts, reg
 # Windows: download MSI installer from autopsy.com (recommended)
 
 # Linux (Kali)
-sudo apt install autopsy    # CLI-only version (browser-based at localhost:9999)
+sudo apt install autopsy  # Check package version: distributions may provide legacy Autopsy 2.
 
 # Linux GUI: requires Java + dependencies
 # https://www.autopsy.com/download/

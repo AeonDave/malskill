@@ -34,10 +34,10 @@ subfinder -d example.com -silent
 | `-o <file>` | Output file |
 | `-oJ` | JSON output |
 | `-silent` | Print subdomains only |
-| `-t <n>` | Threads (default 10) |
+| `-t <n>` | Concurrent resolvers with `-active` (default 10) |
 | `-timeout <n>` | Timeout per source (seconds) |
 | `-all` | Use all sources (slower, more results) |
-| `-recursive` | Enumerate recursively |
+| `-recursive` | Use only sources that support subdomain inputs |
 | `-active` | Active DNS verification of results |
 | `-v` | Verbose output |
 
@@ -64,7 +64,7 @@ Without API keys, subfinder still uses free sources (crt.sh, hackertarget, etc.)
 # Enumerate + pipe to httpx for live host check
 subfinder -d example.com -silent | httpx -silent
 
-# Recursive enumeration
+# Restrict to sources that support subdomain inputs
 subfinder -d example.com -recursive -silent -o all_subs.txt
 
 # Multiple domains from file

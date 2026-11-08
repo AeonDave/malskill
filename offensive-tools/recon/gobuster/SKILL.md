@@ -68,7 +68,7 @@ gobuster vhost -u http://example.com -w /usr/share/wordlists/subdomains.txt
 | `-r <resolver>` | Custom DNS resolver |
 | `--wildcard` | Force continue on wildcard DNS |
 | `--show-ips` | Show IPs with results |
-| `--show-cname` | Show CNAME records |
+| `--check-cname` | Show CNAME records |
 
 ## Vhost Mode Flags
 
@@ -115,8 +115,4 @@ gobuster fuzz -u https://target.com/FUZZ -w wordlist.txt -b 404
 - `SecLists/Discovery/Web-Content/raft-medium-directories.txt` — raft lists
 - `SecLists/Discovery/DNS/subdomains-top1million-5000.txt` — DNS
 
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/wordlists.md` | Recommended wordlists per mode and target type |
+Review [upstream documentation](https://github.com/OJ/gobuster) and the installed mode's `--help`: flag names vary by release.

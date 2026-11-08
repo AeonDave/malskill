@@ -36,7 +36,6 @@ trivy repo https://github.com/org/project
 | `trivy config <path>` | IaC / config files (Terraform, k8s, Dockerfile) |
 | `trivy sbom <file>` | Analyze SBOM file |
 | `trivy k8s` | Kubernetes cluster scan |
-| `trivy aws` | AWS account misconfiguration scan |
 | `trivy vm <path>` | Virtual machine image scan |
 
 ## Core Flags
@@ -108,10 +107,6 @@ trivy sbom sbom.json
 # Kubernetes cluster scan
 trivy k8s --severity HIGH,CRITICAL --report summary cluster
 
-# AWS account misconfiguration scan
-trivy aws --severity HIGH,CRITICAL --region us-east-1
-trivy aws --service s3,iam,ec2 --severity CRITICAL  # specific services
-
 # Compliance benchmarks (CIS, etc.)
 trivy image --compliance docker-cis-1.6.0 nginx:latest
 trivy k8s --compliance k8s-cis-1.23 cluster
@@ -137,7 +132,7 @@ trivy image --scanners vuln nginx:latest
 trivy fs --scanners secret .
 
 # Misconfiguration scanning
-trivy config --scanners misconfig ./k8s/
+trivy fs --scanners misconfig ./k8s/
 
 # All scanners combined
 trivy fs --scanners vuln,secret,misconfig,license .
@@ -185,7 +180,7 @@ trivy fs --secret-config custom-secret-config.yaml --scanners secret .
 
 trivy config --severity HIGH,CRITICAL ./terraform/
 trivy config ./k8s/
-trivy config Dockerfile
+trivy config .
 ```
 
 ## Output Parsing

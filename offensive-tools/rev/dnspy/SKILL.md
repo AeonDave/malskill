@@ -1,29 +1,29 @@
 ---
 name: dnspy
-description: "Auth/lab ref:NET assembly decompiler, debugger, and editor for reverse engineering managed binaries."
+description: "Use dnSpyEx to decompile and debug .NET and Unity assemblies on Windows."
 license: MIT
-compatibility: "Windows; NET Framework/.NET Core."
+compatibility: "Windows; dnSpyEx v6.6.0 (current upstream release checked 2026-11-08)."
 metadata:
   author: AeonDave
   version: "1.1"
 ---
 
-# dnSpy
+# dnSpyEx
 
-.NET decompiler + debugger + editor — the primary tool for reversing managed (.NET) binaries.
+.NET and Unity assembly decompiler, debugger, and editor for Windows.
 
 ## Installation
 
 ```
-# dnSpyEx (actively maintained fork)
+# Current upstream release: v6.6.0
 # Download from https://github.com/dnSpyEx/dnSpy/releases
-# Extract and run dnSpy.exe (no installation needed)
+# Extract and launch dnSpy.exe
 
 # Alternative CLI decompiler (cross-platform)
 dotnet tool install --global ilspycmd
 ```
 
-> **Note:** The original dnSpy by 0xd4d is archived. Use **dnSpyEx** — the active community fork.
+The original dnSpy project by 0xd4d is archived; this skill covers the maintained dnSpyEx fork. Check the [official releases](https://github.com/dnSpyEx/dnSpy/releases) for updates.
 
 ## Quick Start
 

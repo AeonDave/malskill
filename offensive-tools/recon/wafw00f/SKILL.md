@@ -27,8 +27,8 @@ wafw00f -a https://target.com
 wafw00f -i targets.txt
 
 # Output formats
-wafw00f https://target.com -o json -f output.json
-wafw00f https://target.com -o csv -f output.csv
+wafw00f https://target.com -o output.json
+wafw00f https://target.com -o output.csv
 
 # Verbose (show probe details)
 wafw00f -v https://target.com

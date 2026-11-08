@@ -1,6 +1,6 @@
 ---
 name: maigret
-description: "Auth/lab ref: Build a dossier on a person from a single username: searches 2800+ sites, extracts profile data (name, bio, location, linked accounts), and generates HTML/PDF/CSV reports."
+description: "Auth/lab ref: Build a dossier on a person from a single username: searches 5,900 sites (default run: top-500 by traffic), extracts profile data (name, bio, location, linked accounts), and generates HTML/PDF/CSV reports."
 license: MIT
 compatibility: "Python 3.8+; Linux/macOS/Windows."
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # Maigret
 
-Username dossier builder — 2800+ sites, profile data extraction, identity correlation.
+Username dossier builder — 5,900 sites (default run: top-500 by traffic), profile data extraction, identity correlation.
 
 ## Quick Start
 
@@ -34,17 +34,16 @@ maigret username1 username2
 
 | Flag | Purpose |
 |------|---------|
-| `--top-sites <n>` | Search only top N sites by Alexa rank |
+| `--top-sites <n>` | Search only top N sites by traffic rank |
 | `--html` | Generate HTML report |
 | `--pdf` | Generate PDF report |
 | `--csv` | CSV output |
-| `--json` | JSON output |
+| `--json <type>` | Generate a JSON report in the selected format |
 | `--timeout <n>` | Per-site timeout (default: 30s) |
 | `--retries <n>` | Retries per site |
 | `--proxy <url>` | Use proxy |
 | `--tor` | Route via Tor |
 | `-a` | All sites (no limit) |
-| `--parse-url <url>` | Extract username from profile URL |
 | `--self-check` | Test site database integrity |
 | `--tags <tags>` | Filter by site tags (e.g. `social`, `dating`, `gaming`) |
 
@@ -73,12 +72,6 @@ maigret johndoe --tags dating
 maigret johndoe --tags gaming
 ```
 
-**Extract username from a known profile URL:**
-```bash
-maigret --parse-url https://twitter.com/johndoe
-# Auto-extracts "johndoe", runs full search
-```
-
 **Via Tor (opsec):**
 ```bash
 # Start tor first
@@ -97,27 +90,15 @@ done
 
 | | maigret | sherlock |
 |--|---------|---------|
-| Sites | 2800+ | 400 |
+| Sites | 5,900 (default top 500) | 400+ |
 | Profile data | Extracts name/bio/location | URL only |
 | Linked accounts | Detects aliases | No |
-| Reports | HTML/PDF/CSV | TXT/JSON/CSV |
+| Reports | HTML/PDF/CSV | TXT/CSV/XLSX |
 | Speed | Slower | Fast |
 | Best for | Deep investigation | Fast initial sweep |
 
 **Recommended workflow:** sherlock for fast sweep → maigret on confirmed usernames.
 
-## Parse JSON Output
+Treat matches as candidates; independently corroborate account ownership before linking profiles to a person.
 
-```bash
-# Accounts found (from JSON report)
-cat maigret_johndoe.json | jq '.sites | to_entries[] | select(.value.status == "Claimed") | {site: .key, url: .value.url}'
-
-# Extracted personal data
-cat maigret_johndoe.json | jq '.sites | to_entries[] | select(.value.extracted_data != null) | {site: .key, data: .value.extracted_data}'
-```
-
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/dossier.md` | Report interpretation, linked account correlation, data extraction patterns |
+See [upstream](https://github.com/soxoj/maigret) for report formats and current options.

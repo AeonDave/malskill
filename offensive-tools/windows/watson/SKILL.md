@@ -1,174 +1,24 @@
 ---
 name: watson
-description: "Auth/lab ref: Windows patch vulnerability analyzer that identifies missing KB patches and maps to known exploitable CVEs."
+description: "Interpret Watson's legacy Windows missing-patch checks for reproducible older-build labs. Use current patch inventories for newer systems."
 license: BSD-3-Clause
-compatibility: "Windows x86/x64."
+compatibility: "Legacy .NET Windows tool; upstream lists Windows 10 1507–2004 and Server 2016/2019."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Watson
 
-Windows patch vulnerability scanner — identifies missing KBs and maps to exploitable CVEs.
-
-## Quick Start
-
-```cmd
-# Basic patch check
-Watson.exe
-
-# Verbose output
-Watson.exe -v
-
-# Export to file
-Watson.exe > watson_output.txt
-```
-
-## Core Functionality
-
-Watson automatically:
-1. Detects Windows version & build
-2. Enumerates installed patches (KB numbers)
-3. Maps missing patches to known CVEs
-4. Prioritizes by exploitability & severity
-5. Shows if public exploit/PoC is available
-
-## What Watson Checks For
-
-| Category | Examples |
-|---|---|
-| **Kernel Exploits** | DirtyCOW, Dirty Pipe, OverlayFS (CVE variants) |
-| **Privilege Escalation** | ElevatedPotato, PrintNightmare, PetitPotam |
-| **Credential Dumping** | LSASS dumping CVEs |
-| **Authentication Bypass** | Zero-click admin elevation bugs |
-| **Information Disclosure** | Kernel pointer leaks, memory disclosure |
-
-## Output Interpretation
-
-Watson displays:
-- **CVE ID** — Official CVE identifier
-- **Affected versions** — Which Windows versions are vulnerable
-- **Severity** — Critical / High / Medium / Low
-- **Exploit availability** — "PoC exists", "Public exploit available", "No known PoC"
-- **Status** — "VULNERABLE" if patch missing
-
-Example output:
-```
-[!] CVE-2016-3309 — Windows Kernel Elevation of Privilege
-    Affected: Windows 7 SP1, Windows Server 2008 R2 SP1
-    Severity: Critical
-    Status: VULNERABLE (KB missing)
-    PoC: Available (github.com/abysssol/CVE-2016-3309)
-```
-
-## Workflow
-
-### 1. Initial Assessment
-
-```cmd
-# Run Watson on target
-Watson.exe > patching_status.txt
-
-# Review output for CRITICAL + VULNERABLE
-# Identify exploits with public PoC
-```
-
-### 2. Prioritize Exploits
-
-Focus on:
-- **CRITICAL** + PoC available
-- **HIGH** + commonly exploited (PrintNightmare, etc)
-- Exploit matches target's running services (e.g., PrintSpooler for PrintNightmare)
-
-### 3. Determine Mitigation Status
-
-```cmd
-# Check if services are running
-sc query spooler              # Print Spooler
-sc query WinRM               # Windows Remote Management
-tasklist | findstr service   # Check for running services
-```
-
-### 4. Exploit Selection
-
-```cmd
-# Example: PrintNightmare (CVE-2021-34527)
-# 1. Watson shows "VULNERABLE" + PoC available
-# 2. Check if Print Spooler is running
-#    → sc query spooler
-# 3. If running + vulnerable, exploit
-
-# Example: ElevatedPotato
-# 1. Watson shows kernel CVE exploitable
-# 2. Compile/obtain ElevatedPotato
-# 3. Run → SYSTEM shell
-```
-
-## Comparison with WinPEAS
-
-| Tool | Focus |
-|---|---|
-| **Watson** | Kernel patches + public CVE mapping |
-| **WinPEAS** | Configuration misconfigurations (services, SUID, perms) |
-| **Together** | Complete privilege escalation surface → patch + misconfig vectors |
-
-Use Watson first (fast, specific), then WinPEAS for broader enumeration.
-
-## Common Vulnerable Patterns
-
-### Old Windows Versions (7, 2008 R2)
-
-```cmd
-Watson.exe
-# Usually many CRITICAL vulnerabilities
-# High likelihood of working PoC
-```
-
-### Modern Windows (10, 2019+) Unpatched
-
-```cmd
-Watson.exe
-# Fewer vulnerabilities, but newer patches often take time to roll out
-# Check monthly security updates status
-```
-
-### Windows with Disabled Windows Update
-
-```cmd
-Watson.exe
-# May show many gaps; check last Windows Update date
-# Can be indicator of other misconfigurations
-```
-
-## Manual Patch Verification
-
-If Watson output is unclear:
+Use only when reproducing a build covered by its fixed checks. [Upstream](https://github.com/rasta-mouse/Watson) was archived in September 2021; it is not a current vulnerability feed.
 
 ```powershell
-# Get all installed patches
-Get-HotFix | Select HotFixID
-
-# Check specific KB
-Get-HotFix | Select HotFixID | Select-String "KB2999226"
-# Returns nothing → patch NOT installed → VULNERABLE
-
-# Get Windows version
-[System.Environment]::OSVersion.Version
-# or
-Get-WmiObject -Class Win32_OperatingSystem | Select Caption, BuildNumber
+.\Watson.exe > watson-output.txt
 ```
 
-## Integration with Other Tools
+1. Record the OS edition, build, architecture, and Watson source revision.
+2. Check that the build and CVE are present in that revision's code. Unsupported builds are **not assessed**.
+3. Treat `VULNERABLE` as a patch-based candidate. Verify the affected component and superseding cumulative updates against the vendor advisory.
+4. Preserve the output and applicability conclusion. A missing KB identifier alone does not establish vulnerability.
 
-| Tool | Use |
-|---|---|
-| **WinPEAS** | Run first for full enum, Watson confirms kernel vulns |
-| **Exploit frameworks** | SearchSploit / Metasploit to find working exploits |
-| **Custom exploit repos** | GitHub has PoCs for most Watson-identified CVEs |
-
-## Resources
-
-| File | When to load |
-|---|---|
-| `references/` | Kernel exploit compilation, CVE remediation, safe testing practices |
+For newer systems, use an updated patch-inventory workflow such as [WES-NG](https://github.com/bitsadmin/wesng) and verify its suggestions against [Microsoft's update guide](https://msrc.microsoft.com/update-guide). Configuration checks belong in [PrivescCheck](../privesccheck/SKILL.md).

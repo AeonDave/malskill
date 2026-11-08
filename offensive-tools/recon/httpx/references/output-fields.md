@@ -55,7 +55,7 @@ httpx -l hosts.txt \
 -fc 301,302,404,403     # exclude
 
 # Match by response size
--ms 1024               # exact size
+-ml 1024               # match content length
 -mls 100               # min size (lines)
 -mws 10                # min words
 
@@ -108,7 +108,7 @@ httpx -l live_hosts.txt -favicon -silent -json | \
 
 ```bash
 # httpx built-in (requires chromium)
-httpx -l hosts.txt -screenshot -o screenshots/
+httpx -l hosts.txt -screenshot
 
 # or pipe to eyewitness
 cat live_hosts.txt | httpx -silent | xargs -I{} echo {} > urls.txt

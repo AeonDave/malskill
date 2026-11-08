@@ -28,7 +28,7 @@ Goal: move from **domain foothold or low-privilege credential to domain dominanc
 - **Input from `network-technique` §Case E**: NTLM relay setup (Responder + ntlmrelayx).
 - **Recon phase**: use `recon-technique` for initial attack surface mapping; this skill assumes you are inside the domain.
 - **Cracking**: NTLM/Kerberos hashes from this skill → `cracking-technique` for offline cracking.
-- **Lateral movement tooling**: `network-technique` §Case D/H for proxychains, crackmapexec basics.
+- **Lateral movement tooling**: `network-technique` §Case D/H for proxychains and NetExec.
 
 ## Initial triage
 
@@ -37,7 +37,7 @@ Before taking action, classify the starting point and choose the shortest low-no
 - **Starting state**: do you have a shell on a domain host, a low-priv domain credential, relayed auth, or only network reachability?
 - **First questions**: what domain are you in, what are the lockout rules, is SMB signing enforced, is AD CS present, and what high-value principals or paths already exist?
 - **Immediate actions**: confirm domain context, collect the minimum graph/evidence needed to rank attack paths, then choose one path at a time.
-- **Tool-family direction**: start with AD graph/enumeration skills (`bloodhound`, `sharphound`, `powerview`, `enum4linux`); switch to credential attacks (`kerbrute`, `rubeus`, `impacket`) only after a path is justified; use lateral-movement tool skills (`crackmapexec`, `evil-winrm`, `impacket`) after a target and credential type are known.
+- **Tool-family direction**: start with AD graph/enumeration skills (`bloodhound`, `sharphound`, `powerview`, `enum4linux-ng`); use lateral-movement tools such as NetExec and Impacket only for scoped, authorized checks.
 - **Escalation rule**: prefer the shortest confirmed privilege path over broad spraying or host-by-host movement.
 
 ## Agent operating model
@@ -145,7 +145,7 @@ enum4linux-ng -A -u <user> -p <pass> <dc_ip>
 enum4linux-ng -U -G -S -P -u <user> -p <pass> <dc_ip>
 ```
 
-See `offensive-tools/windows/enum4linux/`.
+See `offensive-tools/windows/enum4linux-ng/`.
 
 → Full enumeration patterns: `references/ad-enumeration.md`.
 
@@ -465,7 +465,7 @@ BloodHound Cypher query for SQL admin paths:
 MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group)) MATCH p2=(u1)-[:SQLAdmin*1..]->(c:Computer) RETURN p2
 ```
 
-See `offensive-tools/windows/crackmapexec/`, `offensive-tools/windows/evil-winrm/`, `offensive-tools/windows/impacket/`.
+See `offensive-tools/windows/netexec/`, `offensive-tools/windows/evil-winrm/`, `offensive-tools/windows/impacket/`.
 
 → Full lateral movement patterns: `references/lateral-movement-ad.md`.
 

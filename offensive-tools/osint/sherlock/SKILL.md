@@ -26,8 +26,8 @@ sherlock user1 user2 user3
 # Output to file
 sherlock username --output results.txt
 
-# JSON output
-sherlock username --json
+# CSV output
+sherlock username --csv
 ```
 
 ## Core Flags
@@ -38,10 +38,10 @@ sherlock username --json
 | `--print-found` | Only show found accounts |
 | `--print-all` | Show all (including not found) |
 | `--output FILE` | Save results |
-| `--json` | JSON format |
+| `--json FILE` | Load a site database, not JSON results |
 | `--site NAME` | Search specific site only |
 | `--csv` | CSV output |
-| `-x XLSX` | Excel output |
+| `--xlsx` | Excel output |
 
 ## Common Workflows
 
@@ -79,15 +79,11 @@ Add: year of birth, numbers 1/2/_, common suffixes (_real, _official)
 
 | | sherlock | maigret |
 |--|---------|---------|
-| Sites | ~400 | 2800+ |
+| Sites | ~400 | 5,900 (default top-500) |
 | Output | URL list | Full dossier (scraped data) |
 | Speed | Fast | Slower |
 | Best for | Quick platform sweep | Deep profile building |
 
 Use sherlock for fast sweep, maigret for deep investigation.
 
-## Resources
-
-| File | When to load |
-|------|--------------|
-| `references/username-techniques.md` | Username generation, variation tools, pivot strategies, platform-specific tips |
+Matches are candidates, not identity proof. Inspect each profile and corroborate attribution independently. See [upstream](https://github.com/sherlock-project/sherlock) for current options.
