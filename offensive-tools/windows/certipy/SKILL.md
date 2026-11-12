@@ -146,10 +146,14 @@ certipy template -u user@DOMAIN -p pass -template TEMPLATE_NAME -configuration T
 CA has flag set that allows SAN in ALL requests regardless of template settings.
 
 ```bash
-# Any template becomes exploitable — just add -upn (+ -sid if the SID extension is on, see below)
+# Request SAN identities; strong-enforcement requirements are described below
 certipy req -u user@DOMAIN -p pass -ca CA-NAME -template User -upn administrator@DOMAIN -sid S-1-5-21-...-500 -dc-ip DC
 certipy auth -pfx administrator.pfx -dc-ip DC
 ```
+
+On a KDC enforcing strong mapping, ESC6 alone is insufficient: the target SID in the SAN URL must be
+used with the normal SID security extension absent (ESC9 or ESC16). A UPN-only SAN works only where
+the target KDC still accepts weak mappings. See [KB5014754](https://support.microsoft.com/en-us/servicing/os/windows-server/2022/05/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers) and [Certipy's ESC6/ESC9 guidance](https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc6-ca-allows-san-specification-via-request-attributes).
 
 ---
 
@@ -176,10 +180,12 @@ certipy auth -pfx administrator.pfx -dc-ip DC
 > **CertSvc restart**, and the issuer needs `Certificate Service DCOM Access` too. A gMSA CA-admin can
 > `sc.exe stop/start certsvc` even without local admin. Full flow + COM-API ESC6/ESC16: `certificate-abuse.md`.
 
-**`certipy auth` → `Object SID mismatch between certificate and user`.** The cert lacks the requester
-SID (or has yours) while the target has one. Fix: re-request embedding the target SID
-(`certipy req ... -sid <victim-SID>`), or exploit ESC16 (CA-wide SID extension disabled) so no SID is
-expected, or use `impacket-getTGT -cert-pem ... -key-pem ...` for raw PKINIT (skips the SID check).
+**`certipy auth` → `Object SID mismatch between certificate and user`.** This is Certipy's local
+preflight, not evidence that the KDC will accept the certificate. Another PKINIT client may bypass
+that preflight but cannot bypass KDC strong-mapping enforcement. ESC16 alone does not disable KDC
+enforcement; for the documented enforced-mode chain, Certipy requires ESC6 SAN control plus ESC9 or
+ESC16 to omit the SID extension and supply the target SID in a SAN URL. See [Microsoft KB5014754](https://support.microsoft.com/en-us/servicing/os/windows-server/2022/05/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers)
+and the [Certipy ESC9 guide](https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc9-no-security-extension-on-certificate-template).
 
 > `certipy account update -upn` needs write on the target's `userPrincipalName`; a self-write ACE does
 > not always cover it (`doesn't have permission to update these attributes`) — confirm with `bloodyAD get writable` first.
@@ -211,7 +217,7 @@ secretsdump.py -hashes :DC_NTHASH DOMAIN/DC$@DC_IP
 
 ### ESC9 — No Security Extension (CT_FLAG_NO_SECURITY_EXTENSION)
 
-Template does not embed security extension — certificate mapping can be abused if account UPN is controllable.
+Template omits the SID security extension. The UPN-only flow below is PKINIT and works only if the target KDC still accepts weak mappings (for example, an unpatched KDC or one still honoring Compatibility mode); the ESC9 flag alone does not prove exploitability. KB5014754 says unconfigured DCs moved to Enforcement with the February 2025 update and `StrongCertificateBindingEnforcement` is unsupported after the September 9, 2025 update. Certipy documents a separate enforced-mode PKINIT chain using ESC6 SAN control plus ESC9/ESC16 to place the target SID in a SAN URL. Sources: [KB5014754](https://support.microsoft.com/en-us/servicing/os/windows-server/2022/05/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers) and [Certipy ESC9](https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc9-no-security-extension-on-certificate-template).
 
 ```bash
 # Requires GenericWrite on a target account
@@ -227,6 +233,11 @@ certipy account -u attacker@DOMAIN -p pass -user targetuser -upn targetuser@DOMA
 # 4. Auth with cert — maps to administrator
 certipy auth -pfx administrator.pfx -dc-ip DC
 ```
+
+### ESC10 — Weak Certificate Mapping (protocol-specific)
+
+- **KDC / PKINIT:** `StrongCertificateBindingEnforcement=0` is a legacy weak-mapping configuration, not a current general prerequisite. The setting is unsupported after the September 9, 2025 KB5014754 update; assess the target KDC's patch level and effective mode.
+- **Schannel / TLS:** `CertificateMappingMethods` is configured on the server handling client-certificate TLS (e.g. the DC for LDAPS). Bit `0x04` enables weak UPN mapping; Microsoft lists it as disabled by default and `0x18` as the current default. Certipy's Schannel/LDAPS path is `certipy auth -pfx <cert.pfx> -ldap-shell`; plain `certipy auth` performs PKINIT and does not test this mapping. Check the actual endpoint configuration and enrollment/UPN prerequisites. Sources: [KB5014754](https://support.microsoft.com/en-us/servicing/os/windows-server/2022/05/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers) and [Certipy ESC10](https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc10-weak-certificate-mapping-for-schannel-authentication).
 
 ---
 

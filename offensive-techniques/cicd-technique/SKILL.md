@@ -34,6 +34,10 @@ Review the pipeline configuration files (`.github/workflows/*.yml`, `.gitlab-ci.
 - Identify if the pipeline builds the production Docker image or binaries.
 - If you can push code or control dependencies (e.g., typosquatting `package.json`), you can implant backdoors natively into the production deployment cycle.
 
+#### Resolver and cache checks
+- **Python/pip**: `--extra-index-url` is not a lower-priority fallback: pip checks all configured locations and selects the best matching version. Audit installs for private names also exposed to public indexes; use a controlled source for those names. [pip install: finding packages](https://pip.pypa.io/en/stable/cli/pip_install/#finding-packages).
+- **GitHub Actions cache**: Trace cached paths, `key`/`restore-keys`, and privileged consumers. Fork-PR workflows can restore base-branch caches, while caches they create are merge-ref scoped; low-trust default-branch triggers are read-only by default unless a write-capable `cache-mode` override is set. Check whether privileged workflows execute restored contents. [GitHub cache restrictions and low-trust triggers](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers).
+
 ## Quality Gates
 - **Beware of Production Impact**: Do not blindly merge poisoned Pull Requests into main. Injecting a backdoor into a build pipeline will trigger incident response or deploy malware to live customers. Keep proofs restricted to harmless `env | grep` outputs (secrets are log-masked; base64/hex-encode before exfil) sent to an out-of-band (OAST) collector.
 - **Avoid Credential Rolling**: Only read CI/CD secrets. Do NOT rotate or regenerate them, as it will break the production pipeline completely.
