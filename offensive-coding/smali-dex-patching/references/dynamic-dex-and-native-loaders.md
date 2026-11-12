@@ -119,12 +119,14 @@ if (addr) {
 
 ## Recovery pattern after loader capture
 
-Once the loader is identified, dump the exact second-stage asset and then inspect it as a new DEX or native module:
+Choose the capture source from the loader path; a load event alone does not prove that payload bytes were collected:
 
-- dump the decrypted buffer to `/sdcard/`
-- pull it with `adb pull`
-- run `dex2jar`, `jadx`, or `baksmali` on it
-- export any native libs and analyze with Ghidra / `llvm-nm`
+- If the package DEX already contains the relevant logic, analyze it before runtime dumping.
+- AOSP [`DexClassLoader`](https://android.googlesource.com/platform/libcore/+/refs/heads/main/dalvik/src/main/java/dalvik/system/DexClassLoader.java) loads classes from JAR/APK files with a `classes.dex` entry; preserve the observed archive and inspect its DEX entries.
+- AOSP [`InMemoryDexClassLoader`](https://android.googlesource.com/platform/libcore/+/refs/heads/main/dalvik/src/main/java/dalvik/system/InMemoryDexClassLoader.java) takes DEX bytes from each supplied `ByteBuffer` slice between `position()` and `limit()`; capture those exact slices, not buffer capacity.
+- If the payload is only reached at runtime, exercise the relevant app path and capture the loader's actual input. A loader hook or successful dumper exit alone is not evidence of a complete recovery.
+- Parse the artifact with a DEX-aware tool and confirm expected app classes plus relevant concrete method implementations. The [DEX format](https://source.android.com/docs/core/runtime/dex-format) permits `code_off == 0` for abstract/native methods; missing code in relevant concrete methods means the capture may be partial or a stub.
+- Export any native libs separately and analyze them with Ghidra / `llvm-nm`.
 
 ## In-the-wild examples (2025–2026)
 

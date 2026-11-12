@@ -1,6 +1,6 @@
 ---
 name: report-generation-technique
-description: "Assessment reporting: exec summaries, CVSS findings, evidence chains, MITRE ATT&CK mapping, remediation, review-ready structure."
+description: "Assessment and bug-bounty reporting: executive summaries, single-finding submissions, CVSS, evidence chains, MITRE ATT&CK mapping, remediation, and review-ready structure."
 license: MIT
 compatibility: "Markdown, PDF, DOCX output; PTES, OWASP, and SANS reporting standards."
 metadata:
@@ -19,6 +19,7 @@ Goal: produce professional penetration test reports that meet industry standards
 - Need to compile pentest findings into a structured report.
 - Writing executive summaries or detailed technical findings.
 - Creating attack narratives or remediation guidance.
+- Preparing a single-finding submission under a bug-bounty or VDP program.
 
 ## Initial triage
 
@@ -29,6 +30,11 @@ Before writing, classify the deliverable and the evidence maturity so the report
 - **Immediate actions**: sort findings by severity and confidence, identify missing proof or remediation details, and build the report skeleton before prose.
 - **Tool-family direction**: this technique mostly coordinates evidence and structure; pull from the relevant technique/tool outputs rather than inventing new tooling here.
 - **Escalation rule**: do not polish narrative before confirming evidence quality, scope statements, and remediation ownership.
+
+## Bug-bounty / VDP intake and submission
+
+- Before target activity, consult the selected program's current official policy and submission portal. Record program and asset eligibility, relevant exclusions or testing restrictions, disclosure route, and required fields; do not infer platform defaults or carry rules across programs.
+- For a validated finding, populate the current required fields and category, check applicable duplicate and disclosure rules, and submit only through the designated channel. Track the report ID and status; answer triage follow-ups with requested clarifications and stay within the program's disclosure terms.
 
 ## Boundary with other skills
 
@@ -87,7 +93,7 @@ Each finding:
 
 **Severity**: Critical | High | Medium | Low | Informational
 **CVSS**: X.X (v4.0 or v3.1 vector, e.g. CVSS:4.0/AV:X/AC:X/AT:X/PR:X/UI:X/VC:X/VI:X/VA:X/SC:X/SI:X/SA:X or CVSS:3.1/AV:X/AC:X/PR:X/UI:X/S:X/C:X/I:X/A:X)
-**CWE**: CWE-XXX -- Name
+**CWE**: CWE identifier and name, when applicable.
 **Affected Systems**: [IP/hostname/URL list]
 **MITRE ATT&CK**: TXXXX -- Technique Name
 
@@ -111,7 +117,7 @@ How to confirm the fix was applied correctly.
 
 #### References
 - CVE-XXXX-XXXXX
-- CWE-XXX
+- Relevant CWE identifier, if applicable
 ```
 
 ### 6. Attack narrative (optional)

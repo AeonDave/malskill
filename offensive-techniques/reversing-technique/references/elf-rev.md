@@ -316,7 +316,11 @@ Unpacking workflow:
 3. Trace memory allocation, writes, decompression/decryption, and permission changes.
 4. Dump the executable mapping after the OEP or stable payload entry is reached.
 5. Rebuild enough ELF metadata for tooling, but keep the dump and original separate.
-6. Rerun triage and validate behavior against runtime traces.
+6. Validate with `readelf -W -h -l -d <dump>`:
+   - Check class/architecture and `PT_LOAD` bounds: `p_offset + p_filesz` must fit the file and `p_filesz <= p_memsz`.
+   - For a dynamically linked object, require a parseable `PT_DYNAMIC`/`DT_*` table; compare segment offsets/addresses with the process mappings.
+   - A single mapped range does not prove a complete ELF; label it a segment dump until the ELF headers and required segments are present.
+7. Rerun triage and validate behavior against runtime traces.
 
 ### In-memory ELF loading
 
@@ -388,6 +392,7 @@ Conceptual pwn pivots to recognize during RE:
 
 ## Research trail
 
+- [System V ABI program headers](https://refspecs.linuxfoundation.org/elf/gabi4%2B/ch5.pheader.html) — `PT_LOAD` file/memory sizes, offsets/addresses, and segment semantics.
 - [Linux Foundation ELF dynamic linking reference](https://refspecs.linuxfoundation.org/ELF/zSeries/lzsabi0_zSeries/x2251.html) — GOT/PLT, `DT_PLTGOT`, `DT_JMPREL`, lazy binding, and `LD_BIND_NOW` fundamentals.
 - [MaskRay, All about Global Offset Table](https://maskray.me/blog/2021-08-29-all-about-global-offset-table) — `.got` vs `.got.plt`, relocation families, RELRO interaction, and GOT entry semantics.
 - [MaskRay, All about Procedure Linkage Table](https://maskray.me/blog/2021-09-19-all-about-procedure-linkage-table) — PLT stubs, lazy/eager binding, `_dl_fixup`, `-fno-plt`, and `.plt.sec`.

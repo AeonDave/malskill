@@ -25,6 +25,7 @@ Goal: systematically identify security weaknesses in Android and iOS application
 - **CTF mobile tasks**: flag-extraction from APK/IPA/backup → `mobile-ctf` (faster, CTF-specific patterns including .ab, Unity/IL2CPP, asset stego).
 - **Input from `web-exploit-technique`**: API-level findings from mobile app traffic.
 - **Deep binary analysis**: `reversing-technique` for obfuscated native libraries and IL2CPP binaries.
+- **Flutter/Dart AOT or React Native/Hermes**: load [mobile framework artifact notes](../../offensive-ctf/mobile-ctf/references/modern-app-frameworks.md) for framework cues and tool-version limits; use only the relevant reversing guidance outside CTF work.
 - **Tool skills**: `offensive-tools/rev/jadx/`, `offensive-tools/rev/apktool/`, `offensive-tools/rev/dex2jar/`, `offensive-tools/rev/androguard/`, `offensive-tools/rev/frida/`.
 
 ## Initial triage
