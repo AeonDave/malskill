@@ -107,7 +107,7 @@ A challenge or test rig that exposes a reorg/snapshot/restore endpoint rewinds *
 2. Read implementation and admin slots.
 3. Compare source, ABI, and deployed bytecode.
 4. Inspect initialization and upgrade paths.
-5. Confirm storage layout and slot ownership.
+5. Separate layout inference from getter/business-logic behavior; compare a getter with `eth_getStorageAt` for the proxy and its candidate slot at the same explicit block. Require a known nonzero witness value; absent one, mark the comparison inconclusive. One witness corroborates only that value/slot at that block, not the complete layout ([Solidity storage layout](https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html), [eth_call](https://github.com/ethereum/execution-apis/blob/main/src/eth/execute.yaml), [eth_getStorageAt](https://github.com/ethereum/execution-apis/blob/main/src/eth/state.yaml)).
 6. Build the smallest local proof that changes the success oracle.
 
 ## Pitfalls

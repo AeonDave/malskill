@@ -57,6 +57,10 @@ Then verify with baseline requests:
 
 Record response fingerprints: status code, error shape, redirect behavior, and response length band.
 
+Error envelopes and cookies are weak framework clues only: corroborate with independent evidence (e.g., headers, docs, bundles, or behavior); formats overlap and do not establish a vulnerability class.
+
+For each discovered API version, compare auth, rate-limit, and input-validation behavior using equivalent, authorized requests (OWASP API9). Probe a nonexistent route beside a known route: SPA catch-all responses can be false 200s; compare content type, body, and redirects, not status alone. Record differences as leads until verified.
+
 ## Parameter risk profiling
 
 Mark high-risk parameters before active testing:

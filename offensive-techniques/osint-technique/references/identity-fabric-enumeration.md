@@ -60,10 +60,10 @@ GET https://<slug>.okta.com/.well-known/openid-configuration
 POST https://<slug>.okta.com/api/v1/authn
 Body: {"username":"<email>","password":"invalid_for_enum"}
 ```
-- `400 E0000004` → missing (or generic password error).
-- `401` + `status: PASSWORD_WARN`|`LOCKED_OUT`|`MFA_REQUIRED` → exists.
+- Do not infer user existence from `400` or `401 E0000004`: Okta documents `401 E0000004` for invalid credentials, locked-out accounts, **or** sign-on policy denial; a `400` is not documented as a user-not-found signal.
+- `MFA_REQUIRED` indicates a transaction reached an MFA challenge; `LOCKED_OUT` disclosure depends on the password policy. Interpret transaction states under that policy, not as a universal username/password oracle. (Okta [Authentication API](https://developer.okta.com/docs/reference/api/authn/))
 
-Audit-logged per attempt. Cap 20.
+Audit-logged per attempt. Cap 20, or the lower authorized/lockout-safe limit.
 
 ---
 

@@ -9,6 +9,7 @@
 - [Catalog pattern](#catalog-pattern)
 - [Router and HTTP policy visibility](#router-and-http-policy-visibility)
 - [Tool contracts and error layers](#tool-contracts-and-error-layers)
+- [Mutation safety: idempotency and concurrency](#mutation-safety-idempotency-and-concurrency)
 - [Execution decision tree](#execution-decision-tree)
 - [MRTR pattern](#mrtr-pattern)
 - [Tasks extension pattern](#tasks-extension-pattern)
@@ -139,6 +140,18 @@ Never mirror secrets, tokens, credentials, PII, queries containing sensitive dat
 Use the [protocol result/error contract](protocol-v2.md#results-structured-content-and-errors). Check the SDK's exception-to-result mapping: a domain failure must not accidentally become a protocol error, or vice versa.
 
 Declare stable input/output schemas, bound returned data, and use accurate `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` annotations. Hints describe behavior; they do not authorize it. An optional application envelope belongs inside `structuredContent`, only when downstream consumers need it. Do not add empty `warnings`, `artifacts`, or `next` fields to every result by convention.
+
+## Mutation safety: idempotency and concurrency
+
+Status: Custom Application Pattern
+
+A write tool runs over a transport that can lose the response after the server commits. Design the contract so a client can recover without duplicating or silently losing the write:
+
+- Accept a client-supplied idempotency key per logical write, scoped to the authenticated principal and operation. Dedupe the same key and identical body; reject a changed body. Serialize concurrent uses and make effect/receipt persistence crash-safe (or propagate idempotency to the downstream writer). Document retention and the supported retry window; expired keys do not guarantee deduplication.
+- Distinguish server outcomes (committed or rejected-without-change) from **unknown** at the client when no usable response arrives. Unknown is not a rejection or success; reconcile by receipt/read-back or a same-key reissue within the guaranteed dedupe window.
+- Do not blindly auto-retry a mutation on timeout or broken connection. A safe reissue requires the original key and body plus the dedupe guarantee; a new key can repeat the effect.
+- For updates, require the caller's expected revision (ETag/version) and return a conflict on a stale one so the caller reloads and reconciles. State whether an update replaces the whole record (caller preserves unchanged fields) or patches named fields; advance revisions for later effects in the same batch.
+- Keep the error payload bounded and safe: stable `code`, `message`, `status`; never echo raw upstream bodies, credentials, or caller input into the result.
 
 ## Execution decision tree
 

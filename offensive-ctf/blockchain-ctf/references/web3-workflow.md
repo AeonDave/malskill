@@ -27,7 +27,7 @@ Collect these before deciding exploit path:
 ## Static and dynamic analysis ladder
 
 - Source available: compile with matching `solc`, inspect storage layout, run Slither, then write Foundry tests for suspicious paths.
-- Bytecode only: recover selectors, decompile, inspect metadata, trace transactions, and query raw storage.
+- Bytecode only: recover selectors, decompile, inspect metadata, trace transactions, and query raw storage. A raw selector match may be PUSH-immediate data, not a dispatcher comparison; verify dispatch/control flow, and claim execution only from a trace of the relevant call/state (Geth opcode traces report executed instructions; [Geth tracing](https://geth.ethereum.org/docs/developers/evm-tracing/basic-traces), [EVM opcodes](https://github.com/ethereum/go-ethereum/blob/master/core/vm/instructions.go)).
 - State-machine target: fuzz with Foundry/Echidna invariants before hand-writing long exploit chains.
 - Path-sensitive bug: use Mythril or symbolic checks for reachability, then verify manually with a focused test.
 - Frontend-gated task: inspect bundle for addresses, chain ID, nonce/signature format, and lowercase/checksum expectations.

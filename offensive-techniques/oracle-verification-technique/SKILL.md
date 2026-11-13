@@ -32,7 +32,7 @@ Encode this as a hard check in your workflow and in report generation, not as a 
 For each candidate finding, run these gates in order. Fail any gate → stay `candidate`.
 
 ### 1. Name the oracle
-Pick a deterministic oracle for the vuln class — a check that returns a machine-decidable positive/negative from the target's *actual response*, not a pattern match on a scanner label. If no oracle exists for the class, the finding cannot be `VERIFIED` (report it as `candidate — no oracle`). Load `references/oracle-catalog.md` for per-class oracles and their positive signals.
+Pick a deterministic oracle for the vuln class — a check that returns a machine-decidable positive/negative from the target's *actual response*, not a pattern match on a scanner label. For an application-response oracle, reject a `200 OK` challenge or block attributed to the WAF/CDN rather than the application. A generic access-denied body alone does not establish its origin; compare known application and blocked baselines before counting the signal. If no oracle exists for the class, the finding cannot be `VERIFIED` (report it as `candidate — no oracle`). Load `references/oracle-catalog.md` for per-class oracles and their positive signals.
 
 ### 2. Re-run N/N against the live target
 Re-execute the exploit recipe **N times** (default N=3) against the real target. Every run must produce the positive signal. Any miss → `candidate` (flaky / not reliably exploitable). Fresh session/token each run where auth is involved — a replay that only works with a stale cached token is not proven.

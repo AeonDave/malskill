@@ -105,8 +105,11 @@ Permutation-derived names (`api-dev.target.com`, `staging-app.target.com`) are a
 # Wayback Machine — enumerate historical URLs for a domain
 https://web.archive.org/cdx/search/cdx?url=*.target.com/*&output=text&fl=original&collapse=urlkey
 
-# Common Crawl — indexed URLs
-https://index.commoncrawl.org/
+# Query a current collinfo.json collection's /<CC-MAIN-ID>-index?url=<URL>&output=json; retain filename, offset, length, timestamp, and URL.
+https://index.commoncrawl.org/collinfo.json
+# Request Range: bytes=offset-(offset+length-1) from https://data.commoncrawl.org/<filename> (compressed WARC bytes).
+# Require 206/Content-Range and exact length; decompress, match WARC-Target-URI and WARC-Date to the index, and log collection/capture. Mismatch, truncation, or errors are unverified.
+# Primary docs: https://index.commoncrawl.org/ and https://commoncrawl.org/get-started (no helper code required).
 
 # URLScan.io — screenshots and link analysis for scanned pages
 https://urlscan.io/search/#domain:target.com

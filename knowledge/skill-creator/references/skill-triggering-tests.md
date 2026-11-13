@@ -19,7 +19,7 @@ Expected skill: skill-name or none
 Reason: triggering phrase, symptom, file type, or boundary
 ```
 
-Use natural prompts with varied phrasing, detail, formality, and indirect intent. Include realistic paths or domain details when relevant. Avoid trivial negative cases with no overlap.
+Use natural prompts with varied phrasing, detail, formality, and indirect intent. Include realistic paths or domain details when relevant. Avoid trivial negative cases with no overlap. Keep should-trigger prompts substantive: a host that auto-selects skills consults them for complex or specialized work and may handle a simple one-step request (e.g. "read this file") directly, so a non-trigger on a trivial prompt may reflect task triviality rather than a description defect; it does not establish the cause.
 
 Test discovery with the skill catalog the agent will actually see, including overlapping skills. Check which descriptions the host exposes; if it shortens them, inspect the visible text rather than assuming a universal truncation limit. Put the distinguishing task early and narrow competing descriptions instead of making every skill insist on activation.
 

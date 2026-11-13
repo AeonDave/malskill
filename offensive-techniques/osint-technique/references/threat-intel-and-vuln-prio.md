@@ -1,6 +1,6 @@
 # Threat Intel Sources & Vulnerability Prioritization
 
-Load when you need threat-intel feeds, bulk CVE prioritization, or disclosed-report mining.
+Load for threat-intel feeds, CTI/PIR assessment, bulk CVE prioritization, or disclosed-report mining.
 
 ---
 
@@ -18,6 +18,13 @@ Load when you need threat-intel feeds, bulk CVE prioritization, or disclosed-rep
 | SSLBL | https://sslbl.abuse.ch/ | Malicious TLS certs / JA3 |
 | MalwareBazaar | https://bazaar.abuse.ch/ | Hash-based samples |
 | PhishTank, OpenPhish | https://www.phishtank.com/, https://openphish.com/ | Phishing URLs |
+
+## CTI/PIR assessment
+
+- Frame a decision question: who must decide what, and by when; bound scope and time horizon.
+- Record relevant data with source/locator, collection time, provenance, confidence, and competing explanations; separate observation from inference.
+- State the assessment's validity window or expiry and reassessment trigger; name the intended recipient and dissemination channel.
+- Follow agreed recipient and handling rules; do not assume a default TLP marking. See [NIST SP 800-150](https://doi.org/10.6028/NIST.SP.800-150) and [FIRST TLP 2.0](https://www.first.org/tlp/).
 
 ## 2. Sandboxes & sample triage
 

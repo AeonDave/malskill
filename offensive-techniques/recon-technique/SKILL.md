@@ -67,6 +67,7 @@ Zero direct contact with target infrastructure. All data from public or archived
 
 - Define target: root domain(s), IP ranges, organization name, known product brands.
 - Note explicit out-of-scope assets.
+- Treat the in-scope set as an explicit allowlist and match each target against it before any active request — not once per engagement. Enforce deny-wins: out-of-scope beats in-scope on overlap (a carve-out like `admin.acme.com` stays off even under an in-scope `*.acme.com`), and an empty or unparseable scope denies everything. A deterministic scope check is cheaper than an out-of-scope finding.
 - Confirm rules of engagement and legal authorization before any action.
 
 ### 1.2 Domain and subdomain discovery

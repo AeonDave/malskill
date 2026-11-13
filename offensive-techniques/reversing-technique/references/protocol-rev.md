@@ -104,6 +104,8 @@ Produce all three:
 - state machine: `connect -> auth -> ready -> request/response -> close`
 - one reproducible decoder or parser command/script
 
+When you must also write or mutate the format (crafted messages, a converter, a fuzzer mutator), test a **round trip**: decode -> re-encode -> decode and compare the decoded fields. Check byte equality only where the format guarantees a stable encoding; otherwise account for canonicalization, ordering, padding, unknown fields, and any defined loss. A successful round trip does not prove the field map complete: opaque bytes can survive without being understood. Check several stock samples and a controlled field change before relying on crafted output.
+
 ## Common mistakes
 
 - Treating TCP segments as message boundaries.
@@ -111,3 +113,4 @@ Produce all three:
 - Mixing transport framing (WebSocket, TLS record, HTTP/2 DATA) with app framing.
 - Freezing on the first protobuf typedef from one sample instead of validating it against multiple messages.
 - Reversing the whole binary before enumerating messages and states from the capture.
+- Trusting parser acceptance or round-trip equality alone; check field semantics and account for unmodeled data before relying on crafted output.
