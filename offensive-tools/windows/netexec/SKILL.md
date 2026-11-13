@@ -12,7 +12,7 @@ metadata:
 
 NetExec (`nxc`) is the maintained successor to CrackMapExec. Use it for scoped protocol checks and authenticated service inventory.
 
-Install and check the version using the [official project instructions](https://github.com/Pennyw0rth/NetExec). The current upstream release is [v1.5.1](https://github.com/Pennyw0rth/NetExec/releases/tag/v1.5.1); distributions may package a different version. Upstream's Linux install uses `pipx install git+https://github.com/Pennyw0rth/NetExec`.
+Install and check the version using the [official project instructions](https://github.com/Pennyw0rth/NetExec). The current upstream release is [v1.5.1](https://github.com/Pennyw0rth/NetExec/releases/tag/v1.5.1); distributions may package a different version. Upstream's Linux install uses `pipx install git+https://github.com/Pennyw0rth/NetExec`. Release v1.5.1 includes a fix for arbitrary file write via `spider_plus`; the release note does not establish the full range of affected versions.
 
 ## Basic use
 

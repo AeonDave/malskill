@@ -43,7 +43,7 @@ Load these only when they directly serve the active security task.
 | [`knowledge-offensive/`](CATALOG.md#knowledge-offensive---assessment-research-and-evidence) | Vulnerability research and assessment coverage, CVE inventory, PoC review, security prompts, coordination of target sessions and evidence |
 | [`harness-dev/`](CATALOG.md#harness-dev---agent-harness-development) | Vendor-specific agent and extension authoring |
 | [`behaviours/`](CATALOG.md#behaviours---cognitive-discipline-skills) | Cross-cutting operating stances: evidence gates, loop control, input hygiene |
-| [`ai/`](CATALOG.md#ai---ai-framework-skills) | ML framework patterns for security models and adversarial workflows |
+| [`ai/`](CATALOG.md#ai---ai-framework-skills) | ML framework inspection and adversarial-robustness evaluation for security tasks |
 | [`hardware/`](CATALOG.md#hardware---embedded-and-maker-platform-support) | Dev-board bring-up, comms modules, sensor interfacing |
 
 ---

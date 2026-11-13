@@ -158,6 +158,7 @@ Support skills for building or auditing AI/ML pipelines used inside security too
 
 - **`keras`** / **`pytorch`** / **`scikit-learn`** - ML framework patterns for security models and adversarial workflows.
 - **`langchain-py`** - Production-oriented LangChain Python workflows.
+- **[`adversarial-robustness-toolbox`](ai/adversarial-robustness-toolbox/SKILL.md)** - ART estimator adapters, bounded adversarial experiments, and evidence-based evaluation for ML security assessments.
 - **`vec2text`** - Embedding-inversion attack against vector databases.
 
 ## `hardware/` - Embedded and maker-platform support

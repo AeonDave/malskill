@@ -22,10 +22,12 @@ Use PyTorch when you need to:
 
 ## Quick Start
 
+Use a disposable, resource-limited environment for untrusted artifacts; restricted loading is not a sandbox or a guarantee against parser vulnerabilities.
+
 ```python
 import torch
 
-checkpoint = torch.load("model.pt", map_location="cpu")
+checkpoint = torch.load("model.pt", map_location="cpu", weights_only=True)
 print(type(checkpoint))
 print(checkpoint.keys() if isinstance(checkpoint, dict) else "non-dict checkpoint")
 ```
@@ -35,7 +37,7 @@ print(checkpoint.keys() if isinstance(checkpoint, dict) else "non-dict checkpoin
 ### Inspect a state dict
 
 ```python
-state = torch.load("weights.pth", map_location="cpu")
+state = torch.load("weights.pth", map_location="cpu", weights_only=True)
 for name, tensor in state.items():
     print(name, tuple(tensor.shape), tensor.dtype)
 ```
@@ -63,7 +65,7 @@ with torch.no_grad():
 
 - Use `map_location="cpu"` first unless you explicitly need GPU execution.
 - Prefer `state_dict`-style loading and inspection over whole-model pickle blobs when possible.
-- **PyTorch ≥ 2.6 defaults `torch.load(weights_only=True)`.** State-dicts referencing extra globals (NumPy reconstructors, torchvision classes, `omegaconf.ListConfig`, etc.) raise `WeightsUnpickler error: Unsupported global: GLOBAL ...` — allowlist them explicitly:
+- **PyTorch ≥ 2.6 defaults `torch.load(weights_only=True)`.** State-dicts referencing extra globals (NumPy reconstructors, torchvision classes, `omegaconf.ListConfig`, etc.) raise `WeightsUnpickler error: Unsupported global: GLOBAL ...` — review the required types and their code before explicitly allowlisting only those you trust:
 
 ```python
 import torch
@@ -73,10 +75,10 @@ import numpy as np
 add_safe_globals([np.core.multiarray._reconstruct])         # process-wide
 # or scope it:
 with safe_globals([np.core.multiarray._reconstruct]):
-    state = torch.load("weights.pth", map_location="cpu")
+    state = torch.load("weights.pth", map_location="cpu", weights_only=True)
 ```
 
-  Pass `weights_only=False` only when the file is trusted — it re-enables arbitrary code execution via pickle. For untrusted weights, prefer `safetensors` files (`safetensors.torch.load_file`), which cannot execute code.
+  Pass `weights_only=False` only when the file is trusted — it re-enables arbitrary code execution via pickle. Prefer `safetensors` (`safetensors.torch.load_file`) when available to avoid pickle object construction; untrusted files still require parser/version checks and isolation.
 - `eval()` and `torch.no_grad()` belong together for stable inspection and reduced memory noise.
 - For structural inspection without materializing tensors, load under `torch._subclasses.fake_tensor.FakeTensorMode` — gives shape/dtype/stride from the checkpoint without allocating memory.
 
@@ -89,4 +91,4 @@ with safe_globals([np.core.multiarray._reconstruct]):
 ## Resources
 
 No bundled `scripts/`, `references/`, or `assets/`.
-Use the official PyTorch docs for `torch.load`, module introspection, and checkpoint best practices.
+Use the official [torch.load documentation](https://docs.pytorch.org/docs/2.6/generated/torch.load.html) for restricted loading and version-specific behavior; check matching docs for module introspection and checkpoint APIs.

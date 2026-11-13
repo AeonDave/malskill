@@ -22,6 +22,8 @@ Use scikit-learn when you need to:
 
 ## Quick Start
 
+Run the pickle/joblib examples only with trusted, verified artifacts. Inspect untrusted files in an isolated environment instead of loading them on the host.
+
 ```python
 import joblib
 
@@ -71,14 +73,16 @@ if hasattr(model, "tree_"):
 ```python
 import skops.io as sio
 
-untrusted = sio.get_untrusted_types(file="model.skops")
-print(untrusted)                # inspect what the file wants to instantiate
-model = sio.load("model.skops", trusted=untrusted)   # only after review
+requested_types = sio.get_untrusted_types(file="model.skops")
+print(requested_types)
+approved_types: list[str] = []  # Add only types whose code and provenance were reviewed.
+model = sio.load("model.skops", trusted=approved_types)
 ```
 
 ## Caveats
 
-- `joblib.load` and pickle are unsafe for untrusted files.
+- `joblib.load` and pickle are unsafe for untrusted files; `skops.io` is a different format, not a safe loader for an arbitrary existing pickle.
+- ONNX avoids restoring the original Python object, but its graph can express arbitrary computations. Isolate serving and bound CPU/memory; a format change is not a trust boundary ([scikit-learn persistence security limits](https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations)).
 - Cross-version loading is not guaranteed to be stable.
 - Some estimators expose rich introspection, while others offer almost none beyond `get_params()`.
 

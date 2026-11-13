@@ -22,7 +22,7 @@ import { Type } from "typebox";
 
 ## Capabilities
 
-Target Pi 1.3 extension contracts. Verify the installed version and its matching exported declarations (the installed distribution's `dist/core/extensions/types.d.ts`) before coding. For a source checkout, use the declarations from that same version rather than an unreleased `main` branch. Load only the reference for the capability being implemented.
+Target the installed Pi release's extension contracts: check `pi --version` and verify the matching exported declarations in that installation's `dist/core/extensions/types.d.ts` before coding. For a source checkout, use the declarations from that same version or commit rather than an unreleased `main` branch. Load only the reference for the capability being implemented.
 
 | Capability | Load | Pi doc |
 |---|---|---|

@@ -60,6 +60,18 @@ ffuf -u http://FUZZ.example.com -w subdomains.txt -H "Host: FUZZ.example.com"
 | `-ic` | Ignore wordlist comments |
 | `-c` | Colorize output |
 
+## Stateful pre/postflight (v2.3.0+)
+
+Use repeatable raw-request files to establish or clean up session state around fuzz requests. `-preflight-var NAME:regex` binds to the preceding `-preflight`; the first capture group is substituted literally wherever `NAME` appears in the main request (URL, headers, body) and later flight requests. Postflight variables can use values captured earlier.
+
+```bash
+ffuf -u https://authorized.example/api/FUZZ -w items.txt -H 'X-CSRF: TOKEN' \
+  -preflight login.req -preflight-var 'TOKEN:csrf=([[:alnum:]]+)' \
+  -postflight logout.req -preflight-mode per-request -preflight-error abort
+```
+
+`-preflight`/`-postflight` files contain raw HTTP requests and are repeatable, in order. `-preflight-mode per-request` (default) refreshes state for every fuzz request; `per-thread` amortizes the chain once per worker lane, so use it only when that reuse is valid. `-preflight-error abort` (default) stops on preflight errors; `ignore` continues with variables gathered so far. Postflight runs only after a successful main request; its errors are logged and do not discard that result. These flags were added in ffuf v2.3.0; check `ffuf -h` for the installed version.
+
 ## Filtering & Matching
 
 | Flag | Description |

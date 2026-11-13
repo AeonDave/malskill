@@ -84,7 +84,11 @@ httpx -l hosts.txt -title -silent | grep -iE "admin|login|portal|dashboard"
 
 # Port-specific probing
 httpx -l hosts.txt -ports 80,443,8080,8443,3000,8888 -status-code -silent
+```
 
+On ports above 1024, versions before v1.12.0 could report a TLS-only service as plain HTTP when its plaintext probe received HTTP 400. v1.12.0 retries HTTPS for that probe shape; a bare HTTP 400 is not by itself evidence of TLS. Check the installed version before treating scheme/status output on high ports as definitive.
+
+```bash
 # Probe both schemes from host-only input
 httpx -l hosts.txt -nf -sc -title -silent
 
