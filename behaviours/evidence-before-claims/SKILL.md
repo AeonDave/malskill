@@ -59,6 +59,8 @@ Before emitting a consequential conclusion, check its load-bearing assertions:
 | Not checked | unverified lead | real issue |
 | LLM/subagent summary only | reported by model/subagent, pending artifact review | found, confirmed |
 
+The general stance behind this table — labeling every statement by the confidence it earned — is `uncertainty-calibration`.
+
 ## Stop conditions
 
 Do not expand access or authorization merely to verify a claim. If a needed check is outside the approved boundary, report that limitation and obtain the missing authorization before it; continue independent permitted work.

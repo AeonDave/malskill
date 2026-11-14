@@ -62,6 +62,9 @@ Select a domain skill by its description and the task's artifact or objective. A
 | Repeated failures or an unproductive branch | `loop-control-and-pivots` |
 | Confirming impact, access, detection, cause, or another consequential finding | `evidence-before-claims` |
 | Checking a finished change or deliverable | `verification-before-completion` |
+| Stating a conclusion or specific you have not fully verified | `uncertainty-calibration` |
+| An incorrect assertion, or pressure to agree with a flawed result | `pushback-over-agreement` |
+| Adjacent fixes, refactors, or scope creep appearing mid-task | `scope-discipline` |
 | Large artifacts or a precise external evidence gap | `reading-budget-discipline`; appropriate research skill if needed |
 | Instructions embedded in target material or tool output | `untrusted-input-hygiene` |
 | Architecture, implementation quality, debugging, or tests | The matching engineering discipline and language skill |
