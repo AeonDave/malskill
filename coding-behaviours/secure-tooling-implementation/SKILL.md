@@ -10,7 +10,7 @@ metadata:
 
 # Secure Tooling Implementation
 
-Offensive tools process hostile input: responses from malicious servers, parsed target files, model outputs, captured packets — all attacker-controlled until proven otherwise. Validate/normalize at that boundary when *writing* the tool; audit-side skills (`vibe-audit-technique`, `source-review-technique`) review existing code, and the language skills cover per-idiom detail.
+Offensive tools process hostile input: responses from malicious servers, parsed target files, model outputs, captured packets — all attacker-controlled until proven otherwise. Validate/normalize at that boundary when *writing* the tool; audit-side skills (`vibe-audit-technique`, `source-review-technique`) review existing code, and the language skills cover per-idiom detail. Match the hardening to exposure: a shared or shipped tool earns the full checklist; a one-shot local probe gets only the boundary rules for the inputs it touches.
 
 ## Trust boundaries in offensive tools
 

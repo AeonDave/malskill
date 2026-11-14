@@ -16,7 +16,7 @@ Release pipelines and maintainer accounts get compromised; a correctly-signed ne
 
 ## Adopting a dependency — the evaluation gate
 
-Before adding (not after), check — in order of cost:
+Match the depth to the risk: a widely-used, pinned, already-in-tree library does not need this; a new, unknown, unpinned, or install-scripted dependency earns the full gate. Before adding (not after), check — in order of cost:
 
 1. **Necessity**: can the standard library or an existing dependency do it? (One line in `software-guidelines` is a rule; this is the expanded gate.) A 3-function helper is not worth a supply-chain surface.
 2. **Provenance and bus factor**: who maintains it, how many, recent commit activity, does the repo match the published package (source vs built artifact)? A single-maintainer package that changes hands (xz: new co-maintainer) is the classic pre-backdoor signal.
