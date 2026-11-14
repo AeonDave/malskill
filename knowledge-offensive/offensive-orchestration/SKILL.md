@@ -23,6 +23,7 @@ Give each worker a concrete question, the necessary context, and the relevant sk
 
 | Question | Starting skill |
 |---|---|
+| Scope what to attack and why, or plan a named-adversary emulation | [threat-modeling](../threat-modeling/SKILL.md) or [adversary-emulation-planning](../adversary-emulation-planning/SKILL.md) |
 | Map assets or investigate public sources | [recon-technique](../../offensive-techniques/recon-technique/SKILL.md) or [osint-technique](../../offensive-techniques/osint-technique/SKILL.md) |
 | Investigate a vulnerability or advisory, or validate supported web impact | [vuln-research](../vuln-research/SKILL.md) or [web-exploit-technique](../../offensive-techniques/web-exploit-technique/SKILL.md) |
 | Assess cloud access, a host session, or an AD path | [cloud-security-technique](../../offensive-techniques/cloud-security-technique/SKILL.md), [post-exploit-technique](../../offensive-techniques/post-exploit-technique/SKILL.md), or [active-directory-technique](../../offensive-techniques/active-directory-technique/SKILL.md) |
