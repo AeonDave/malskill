@@ -1,11 +1,11 @@
-# Version scope: LangChain 1.3.x / LangGraph 1.2.x
+# Version scope: LangChain 1.5.x / LangGraph 1.2.x+
 
-This skill targets **LangChain 1.3.x** (langchain-core 1.4.x line) and **LangGraph 1.2.x** semantics and APIs.
+This skill targets **LangChain 1.5.x** (langchain-core 1.8 line, Python 3.11+) and **LangGraph 1.2.x+** semantics and APIs.
 
 ## Baseline assumptions
 
-- Python 3.10+ (Python 3.9 support was dropped at 1.0 alongside its Oct 2025 EOL)
-- `langchain>=1.3,<2`
+- Python 3.11+ (3.10 support dropped at langchain-core 1.8 / langchain 1.5; Python 3.10 users continue to resolve the 1.4.x line)
+- `langchain>=1.5,<2`
 - `langgraph>=1.2,<2`
 - Use `langchain.agents.create_agent` as the default agent factory
 
@@ -23,7 +23,9 @@ LangChain changed substantially from pre-1.0 to 1.x. The same snippets can fail 
 - Legacy chain abstractions (`LLMChain`, `initialize_agent`, `AgentExecutor`, old `ConversationBufferMemory` and friends) live in **`langchain-classic`**. `AgentExecutor` reaches **end of maintenance December 2026** — plan migration to `create_agent` (standard tool-calling loops) or a raw LangGraph `StateGraph` (custom control flow).
 - `.run(prompt)` is replaced by `.invoke(prompt)`; Pydantic v2 semantics apply throughout.
 
-## 1.3 / LangGraph 1.2 highlights relevant to this skill
+## 1.5 / LangGraph 1.2 highlights relevant to this skill
+
+1.5 adds **decision models and decision-driven middleware** (condition-heavy flows dispatch through a decision model instead of a hand-written router agent); langchain-core 1.8 requires Python 3.11+.
 
 - `create_agent`: continued improvements to provider-specific tool definitions via `extras` on tools and stricter schema adherence with `response_format` (`ProviderStrategy`).
 - **LangGraph 1.2 per-node execution controls**: configurable timeouts, error-recovery policies, graceful shutdown hooks — use these instead of hand-rolled retry loops around node bodies.
