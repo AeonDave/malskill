@@ -6,7 +6,6 @@ compatibility: "Agent workflow guidance for coding, security assessments, and re
 metadata:
   author: AeonDave
   version: "1.0"
-  category: behaviours
 ---
 
 # Scope Discipline
@@ -28,7 +27,7 @@ Complete the asked task; treat everything else discovered on the way as **ledger
    - Is it blocking the deliverable? (blocking → in scope, do it)
    - Is it destructive/expiring (a payload staged now is gone later)? (expiring → flag, ask)
    - Neither → ledger entry.
-4. **Growing requests need a re-plan, not silent growth.** "Also do X" mid-flight is a new task: state the added scope, the impact on the deliverable, and get acknowledgment — or deliver the original first. Scope grows by decision, not by accretion.
+4. **Growing requests need a re-plan, not silent growth.** "Also do X" mid-flight is a new task: surface the added scope and its impact on the deliverable, and follow the operator's call — deliver the original first, or re-plan. Scope grows by decision, not by accretion.
 5. **YAGNI on deliverables.** Build what the task needs, not what a future task might need. Unused flexibility is unreviewed code in a security tool — attack surface without a user.
 6. **The report states the boundary.** "Done: A, B. Not done, found: C (ledger)." A reviewer must never discover unrequested changes inside a diff.
 

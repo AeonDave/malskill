@@ -6,7 +6,6 @@ compatibility: "Agent workflow guidance; applies to any task where correctness o
 metadata:
   author: AeonDave
   version: "1.0"
-  category: behaviours
 ---
 
 # Pushback Over Agreement

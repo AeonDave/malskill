@@ -1,51 +1,42 @@
 ---
 name: rules-of-engagement
-description: "Confirm explicit authorization and the documented engagement boundary before acting on any system, target, or data you do not own. Use at engagement start and before any offensive action: verify written scope (approved targets, allowed techniques, time window, data handling), refuse or escalate out-of-scope or unauthorized targets, and treat missing authorization as a hard stop."
+description: "Know the engagement contract — who authorized it, what targets/techniques/windows/data-handling are agreed — and keep the operator informed during work. Use at engagement start and during offensive actions: surface authorization context and mismatches so decisions are informed, and record the trail."
 license: MIT
 compatibility: "Agent workflow guidance for authorized security assessments, red-team, and lab operations."
 metadata:
   author: AeonDave
-  version: "1.0"
-  category: behaviours
+  version: "1.1"
 ---
 
 # Rules of Engagement
 
-Authorization is the precondition for offensive work, not paperwork. Acting on a system you are not authorized to touch is illegal no matter how well the technique performs. This gate runs **before** the action and answers one question: *am I permitted to act on this target at all?* `scope-discipline` keeps you inside the task; `irreversible-action-gate` guards reversibility; this gate guards permission.
+Keep the engagement contract visible: know who authorized what — targets, techniques, window, data handling — and surface it at decision points. The operator owns the decisions; your job is to make the facts and any mismatch visible, and keep the trail.
 
-## When to activate
+## What to know at engagement start
 
-- Starting an engagement or a new phase against external systems
-- Any action against a system, account, or data you do not own
-- A target IP/domain/host/account not on the approved list comes into reach (trust, pivot, adjacent host)
-- A technique the rules exclude is tempting (DoS, phishing staff, destructive testing, exfiltration beyond proof-of-access)
-- The authorization window has ended or a change-freeze is in effect
-- The user asks to scan/attack/exploit something without stating authorization
+Collect once, reference throughout:
 
-## The gate
+1. **Authorization** — who authorized the engagement, written reference (SOW / RoE / scope doc).
+2. **Targets** — approved list (IP ranges, domains, accounts, apps) and named exclusions.
+3. **Techniques** — permitted methods; note exclusions (DoS, social engineering, physical, destructive actions, cloud-provider/third-party rules).
+4. **Window & deconfliction** — agreed time window, change-freeze, notification path, emergency-stop contact.
+5. **Data handling** — what may be accessed, captured, retained; storage and destruction rules.
 
-Before an offensive action, confirm the engagement contract. If any item is unknown, **stop and get it**:
+## During work — surface, then act
 
-1. **Authorization** — who authorized it, and is there written approval (SOW / RoE / scope doc)? An unverified "it's fine" is not authorization.
-2. **In-scope target** — the exact target is on the approved list (IP ranges, domains, accounts, apps); excluded systems are named and avoided.
-3. **Allowed technique** — the method is permitted; check exclusions (DoS, social engineering, physical, destructive actions, cloud-provider/third-party rules).
-4. **Window & deconfliction** — agreed time window, change-freeze, notification path, and an emergency stop/abort contact.
-5. **Data handling** — what you may access, capture, or retain, and how to store and destroy it.
+- **Action matches the contract** → execute; no commentary needed.
+- **Mismatch or unknown** (target not on the approved list you have, technique in a gray zone, contract item unknown): state the fact in one line — *"this pivot host isn't in the approved list I have"* — and act on the operator's decision. Do not guess silently; do not block.
+- **Contract item missing entirely**: tell the operator what is unknown and why it matters for the record; proceed per their instruction. The operator may know context you don't.
+- **Window/change-freeze state** matters for noisy actions: mention it when the operator schedules them.
 
-## Missing or out-of-scope authorization
+## Record
 
-- **No authorization evidence → do not proceed.** Ask for the scope reference or decline. Never assume "the user probably owns it."
-- **Reachable but out-of-scope** (a trust path, a pivot, an adjacent host) is off-limits. Reachability is not permission — ledger it (`scope-discipline`) and get authorization before touching it.
-- **Dual-use / third parties** — build and test against a lab you own, never against someone else's system to "demonstrate" a technique.
-
-## Reporting and audit
-
-- Record the authorization reference and the agreed scope at the start.
-- Log every target touched (hosts, accounts, timestamps) for deconfliction and the final report. An engagement you cannot reconstruct is one you cannot defend.
+- Log the authorization reference and scope at the start.
+- Log every target touched (hosts, accounts, timestamps) — the trail is what makes the engagement reconstructible and defensible in the final report.
 
 ## Related
 
-- `scope-discipline` — stay inside the *task*; this stays inside the *authorization*.
-- `irreversible-action-gate` — reversibility of an action; this is permission to take it.
+- `scope-discipline` — stay inside the *task*; this keeps the *contract* visible.
+- `irreversible-action-gate` — impact/rollback briefing for state-changing actions.
 - `evidence-before-claims` — authorization references and target-touch logs are part of the evidence trail.
-- `offensive-operator-mode` — offensive operating posture that assumes this gate is already satisfied.
+- `offensive-operator-mode` — operating posture that assumes this context is maintained.

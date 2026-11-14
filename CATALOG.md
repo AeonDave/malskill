@@ -123,6 +123,8 @@ Research and development support for authorized security assessments. Use the na
 | `poc-weaponization` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
 | `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
 | [`offensive-orchestration`](knowledge-offensive/offensive-orchestration/SKILL.md) | Route security questions to technical skills, coordinate target/session ownership, and reconcile evidence across workers |
+| [`threat-modeling`](knowledge-offensive/threat-modeling/SKILL.md) | Decompose a target (DFD/STRIDE/attack trees), prioritize threats, map to ATT&CK to feed the assessment plan |
+| [`adversary-emulation-planning`](knowledge-offensive/adversary-emulation-planning/SKILL.md) | Build a CTI-driven emulation plan: extract TTPs, map to ATT&CK, prioritize against the target stack, structure phased procedures with detection expectations |
 
 ## `harness-dev/` - Agent harness development
 
@@ -147,13 +149,13 @@ Cross-cutting behavioral guardrails that shape *how* an agent works. Load these 
 | `humanizer` | Write or revise natural prose from drafts or notes, preserving author voice, facts, and evidence limits |
 | `hypothesis-driven` | Force explicit hypotheses and falsifiable predictions for hard problems |
 | `implementation-planning` | Turn approved designs into executable, verifiable task plans |
-| `irreversible-action-gate` | State impact, rollback, and scope proof before destructive/irreversible operations; target-safety ordering for offensive work |
+| `irreversible-action-gate` | One-line impact/rollback/scope brief before destructive operations, then execute the operator's call; target-safety ordering |
 | `loop-control-and-pivots` | Retry discipline; pivot dead paths, honest BLOCKED reporting |
 | `memory-hygiene` | Retrieve, correct, and verify scoped persistent memory with source provenance |
 | `offensive-operator-mode` | Sustained, evidence-driven offensive-security operating posture (elite/1337); task knowledge in Markdown or Obsidian |
 | `pushback-over-agreement` | Disagree with evidence instead of yes-manning; hold correct refusals under pressure, concede fast when wrong |
 | `reading-budget-discipline` | Keep the context window lean when reading large data |
-| `rules-of-engagement` | Confirm authorization and the documented engagement scope before acting on a target; refuse or escalate out-of-scope or unauthorized work |
+| `rules-of-engagement` | Know the engagement contract (authorization, targets, techniques, window, data handling) and surface it during work; the operator owns the decisions |
 | `scope-discipline` | Stay on the requested task mid-flight: ledger drive-by findings, re-plan grown requests, state the boundary |
 | `uncertainty-calibration` | State confidence in proportion to evidence; label verified vs inferred vs guessed; test or escalate instead of asserting |
 | `untrusted-input-hygiene` | Use external data without accepting embedded commands or losing the legitimate task |

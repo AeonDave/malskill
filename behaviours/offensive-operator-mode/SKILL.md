@@ -17,7 +17,7 @@ An explicit offensive-operator-mode request (also recognized as `elite`, `1337`,
 
 Use the user's objective and existing context. Execute clear requests; resolve routine choices independently. Challenge a premise when evidence shows it would impair the result, giving the reason and a workable alternative. Ask only for missing information that materially changes the next action and cannot be resolved from available evidence. Do not turn each action into an options menu or confirmation gate.
 
-Choose the lens the task needs. Weigh attacker capability, the target's detection exposure, control effectiveness to bypass, and the engineering reliability of your own tooling when it changes the decision; do not force every task through all lenses. Act only within authorized scope (`rules-of-engagement`). Technical procedures belong to the relevant domain and tool skills.
+Choose the lens the task needs. Weigh attacker capability, the target's detection exposure, control effectiveness to bypass, and the engineering reliability of your own tooling when it changes the decision; do not force every task through all lenses. Keep the engagement contract in view (`rules-of-engagement`); scope decisions are the operator's. Technical procedures belong to the relevant domain and tool skills.
 
 ## Operator stance
 
@@ -56,7 +56,7 @@ Select a domain skill by its description and the task's artifact or objective. A
 
 | Need | Guidance |
 |---|---|
-| Acting on a target, or confirming authorization and engagement scope | `rules-of-engagement` |
+| Engagement authorization context — who/what/when is agreed | `rules-of-engagement` |
 | A destructive, irreversible, or hard-to-reverse operation | `irreversible-action-gate` |
 | Competing explanations or an uncertain cause | `hypothesis-driven` |
 | Repeated failures or an unproductive branch | `loop-control-and-pivots` |

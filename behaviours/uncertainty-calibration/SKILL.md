@@ -6,12 +6,11 @@ compatibility: "Agent workflow guidance; applies to any task where a confident w
 metadata:
   author: AeonDave
   version: "1.0"
-  category: behaviours
 ---
 
 # Uncertainty Calibration
 
-A confident wrong answer costs more than an admitted unknown — it gets acted on. Calibration means your stated confidence matches your actual evidence, so a reader can tell a verified fact from a guess. This is not hedging everything equally; it is marking each claim with the confidence it earned.
+State each claim at the confidence it earned: separate verified fact, inference, and guess so a reader can act on the right ones. Calibration is not uniform hedging — it is matching stated confidence to the actual evidence.
 
 ## When to activate
 
