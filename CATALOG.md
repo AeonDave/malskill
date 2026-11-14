@@ -92,6 +92,8 @@ Cross-cutting software-engineering stances that shape *how* code work is done, i
 | [`test-driven-development`](coding-behaviours/test-driven-development/SKILL.md) | Test-first implementation |
 | [`testing-reliability`](coding-behaviours/testing-reliability/SKILL.md) | Trustworthy assertions, doubles, fixtures, and mutation-result triage |
 | [`systematic-debugging`](coding-behaviours/systematic-debugging/SKILL.md) | Root-cause failure diagnosis |
+| [`dependency-discipline`](coding-behaviours/dependency-discipline/SKILL.md) | Evaluate, pin, hash-verify, and audit dependencies at adoption/upgrade time; incident response |
+| [`secure-tooling-implementation`](coding-behaviours/secure-tooling-implementation/SKILL.md) | Write offensive tooling that is not itself the vulnerability: trust boundaries, subprocess/path/TLS/secrets discipline |
 
 ## `knowledge/` - Research and meta-skills
 

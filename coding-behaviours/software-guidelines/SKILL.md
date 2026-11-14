@@ -38,6 +38,8 @@ Deliver a complete, reviewable change for the requested outcome. Apply this work
 
 - `software-architecture` — module boundaries, public contracts, state ownership, architectural tradeoffs, or behavior-preserving simplification.
 - `implementation-planning` — dependent work, shared-file ownership, or a handoff that needs an executable plan.
+- `dependency-discipline` — adding or upgrading a dependency, wiring CI installs, or responding to a supply-chain incident.
+- `secure-tooling-implementation` — writing or reviewing a tool that processes untrusted input (scanner, loader, parser, agent).
 - The relevant language pattern/testing skill — syntax, idioms, and executable checks for the actual stack.
 
 For change sizing and separating substantial refactors, apply [Google's focused-change guidance](https://google.github.io/eng-practices/review/developer/small-cls.html#what-is-small) to the logical change and its consumers; preserve the repository's own review and testing policy.
