@@ -44,4 +44,4 @@ Set recheck conditions for volatile facts when useful. Archival, expiry, and aut
 
 When implementing a memory system, test scope isolation, correction/supersession, retrieval of relevant entries, and exclusion of prohibited data using synthetic fixtures. Claim only the backends and behaviors actually exercised.
 
-Load the [1337 operational brain](../1337/references/brain.md) when organizing cybersecurity task records in Markdown or Obsidian. Use `reading-budget-discipline` when retrieved material is large.
+Load the [offensive-operator-mode operational brain](../offensive-operator-mode/references/brain.md) when organizing cybersecurity task records in Markdown or Obsidian. Use `reading-budget-discipline` when retrieved material is large.

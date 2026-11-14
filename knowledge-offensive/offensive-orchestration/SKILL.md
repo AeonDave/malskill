@@ -52,7 +52,7 @@ Compare conflicting results by identity, build, prerequisites, input, timing, an
 
 Load [evidence-before-claims](../../behaviours/evidence-before-claims/SKILL.md) when promoting a lead into a finding or reconciling claims for an engagement report. Separate observed behavior, inferred cause, reachable impact, and untested extensions. Report the achieved objective, evidence, coverage gaps, remaining sessions/jobs, and next useful action.
 
-For investigations spanning many artifacts or sessions, load the [operational brain](../../behaviours/1337/references/brain.md) and link job results, consequential routing decisions, and failures into the existing task record. Use [handoff](../../behaviours/handoff/SKILL.md) for an explicit transfer.
+For investigations spanning many artifacts or sessions, load the [operational brain](../../behaviours/offensive-operator-mode/references/brain.md) and link job results, consequential routing decisions, and failures into the existing task record. Use [handoff](../../behaviours/handoff/SKILL.md) for an explicit transfer.
 
 ## When configuring the agent infrastructure
 

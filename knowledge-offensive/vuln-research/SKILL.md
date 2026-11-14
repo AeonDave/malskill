@@ -55,7 +55,7 @@ Keep **observed impact**, additional plausible impact, and untested prerequisite
 | Check bug-bounty or VDP rules before target activity, or prepare/submit a finding | [report-generation-technique](../../offensive-techniques/report-generation-technique/SKILL.md) |
 | Resolve published claims, affected versions, or a downloaded PoC | [deep-research-offensive](../deep-research-offensive/SKILL.md), [cve-search](../cve-search/SKILL.md), or [poc-weaponization](../poc-weaponization/SKILL.md), respectively |
 
-Use the selected tool's skill for syntax. If research stalls, load [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md) for a focused outside lead. Keep research state in the existing notes system; use [1337's task notes](../../behaviours/1337/references/brain.md) when continuity across experiments or sessions needs structure.
+Use the selected tool's skill for syntax. If research stalls, load [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md) for a focused outside lead. Keep research state in the existing notes system; use [the offensive-operator-mode task notes](../../behaviours/offensive-operator-mode/references/brain.md) when continuity across experiments or sessions needs structure.
 
 ## Deliver a reproducible result
 
