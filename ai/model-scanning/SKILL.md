@@ -6,7 +6,6 @@ compatibility: "Python 3.10+; pip-installed scanners. modelaudit scans offline w
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # model-scanning

@@ -6,7 +6,6 @@ compatibility: "Python 3.9+; transformers 4.x; torch. Optional: safetensors, acc
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # transformers

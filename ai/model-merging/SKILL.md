@@ -6,7 +6,6 @@ compatibility: "Python 3.10+; pip install mergekit; CLI mergekit-yaml. Runs out-
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # model-merging

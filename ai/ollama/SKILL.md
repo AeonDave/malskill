@@ -6,7 +6,6 @@ compatibility: "Linux/macOS/Windows (v0.40.x current); OpenAI-compatible API on 
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # Ollama

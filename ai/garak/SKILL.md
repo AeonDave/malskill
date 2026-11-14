@@ -6,7 +6,6 @@ compatibility: "Python 3.11+; Linux/macOS (Windows via WSL). v0.17.x current. AP
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # garak

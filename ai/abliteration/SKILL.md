@@ -6,7 +6,6 @@ compatibility: "Python 3.10+; transformers + torch. Weight edits need full-preci
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # abliteration

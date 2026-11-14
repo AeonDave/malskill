@@ -6,7 +6,6 @@ compatibility: "Python 3.11+; pip install pyrit (v1.2.x current). Needs at least
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # PyRIT

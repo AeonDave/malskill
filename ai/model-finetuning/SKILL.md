@@ -6,7 +6,6 @@ compatibility: "Python 3.10+; transformers, trl, peft, datasets, accelerate. QLo
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # model-finetuning

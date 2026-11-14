@@ -6,7 +6,6 @@ compatibility: "Python 3.9+; pip/litellm proxy (v1.108.x LTS current). Node not 
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # LiteLLM

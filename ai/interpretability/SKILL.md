@@ -6,7 +6,6 @@ compatibility: "Python 3.10+ (shap >=0.54 needs 3.12+). Attribution: shap, lime,
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # interpretability

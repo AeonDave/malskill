@@ -6,7 +6,6 @@ compatibility: "Node.js 22.22+ (24 LTS recommended); npm/npx (v0.125.x current â
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ai
 ---
 
 # promptfoo
