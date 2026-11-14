@@ -156,10 +156,15 @@ Cross-cutting behavioral guardrails that shape *how* an agent works. Load these 
 
 Support skills for building or auditing AI/ML pipelines used inside security tooling.
 
-- **`keras`** / **`pytorch`** / **`scikit-learn`** - ML framework patterns for security models and adversarial workflows.
+- **`keras`** / **`pytorch`** / **`scikit-learn`** / **[`transformers`](ai/transformers/SKILL.md)** - ML framework loading, inspection, and safe-deserialization patterns for model artifacts.
 - **`langchain-py`** - Production-oriented LangChain Python workflows.
 - **[`adversarial-robustness-toolbox`](ai/adversarial-robustness-toolbox/SKILL.md)** - ART estimator adapters, bounded adversarial experiments, and evidence-based evaluation for ML security assessments.
 - **`vec2text`** - Embedding-inversion attack against vector databases.
+- **Artifact security**: [`model-scanning`](ai/model-scanning/SKILL.md) - scan untrusted pickle/PyTorch/Keras/ONNX/GGUF model files (picklescan/fickling/modelscan/modelaudit) before loading; a clean scan is not proof of safety.
+- **Model adaptation & modification**: [`model-finetuning`](ai/model-finetuning/SKILL.md) (LoRA/QLoRA SFT + preference optimization DPO/ORPO/KTO/GRPO), [`abliteration`](ai/abliteration/SKILL.md) (training-free refusal/behavior editing via residual-direction ablation), and [`model-merging`](ai/model-merging/SKILL.md) (weight-space merges: SLERP/TIES/DARE/task-arithmetic/MoE).
+- **Interpretability**: [`interpretability`](ai/interpretability/SKILL.md) - explain model decisions and locate behaviors: SHAP/LIME/Captum attribution (ML/DL) and TransformerLens/SAE mechanistic analysis (LLM).
+- **LLM red-teaming stack**: [`garak`](ai/garak/SKILL.md) (probe catalog scanner), [`pyrit`](ai/pyrit/SKILL.md) (adaptive multi-turn orchestration), [`promptfoo`](ai/promptfoo/SKILL.md) (app-level eval + CI red-team gate).
+- **LLM lab infrastructure**: [`ollama`](ai/ollama/SKILL.md) (local runtime, airgapped targets), [`litellm`](ai/litellm/SKILL.md) (provider gateway; includes the 2026-10 supply-chain incident notes).
 
 ## `hardware/` - Embedded and maker-platform support
 
