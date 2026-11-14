@@ -107,7 +107,7 @@ Load SSN into EAX, jump to `syscall; ret` gadget (`0F 05 C3`) inside ntdll. Retu
 
 - **RecycledGate** (preferred): enumerate all `Zw*` exports from EAT, sort by address → index = SSN. Works with all Nt* stubs hooked.
 - **Hell's Gate** (fallback): parse Nt* stub prologue for `B8 xx xx 00 00`. Fails when EDR inline-hooks.
-- **Cross-validation (robustness)**: verify the sorted-order SSN against the `mov eax, imm32` immediate read from the matching stub (Nt* and Zw* alias the same stub in user-mode, so this is a two-source check, not three); on mismatch (hooked/tampered tree), **fail closed** rather than dispatching a guessed SSN — a wrong SSN on modern kernels is worse than aborting (field-reported pattern).
+- **Cross-validation**: verify the sorted-order SSN against the stub's `mov eax, imm32` immediate; on mismatch, **fail closed** — full mechanics and the Nt*/Zw* aliasing nuance in `indirect-syscall-dev` (canonical home for dispatcher internals).
 
 ### Stack spoofing (NtContinue-based)
 

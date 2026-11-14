@@ -49,7 +49,7 @@ A model that stops refusing may also have degraded. Always measure three things 
 
 - **Refusal rate** on held-out harmful prompts (did it work).
 - **KL divergence** from the original on harmless prompts (how much behavior drifted; 0 = identical).
-- **Task benchmarks** (MMLU, GSM8K). Mathematical reasoning degrades most under abliteration — an independent comparison (Young, arXiv:2512.13655, 2025) measured GSM8K shifts from +1.51 to −18.81 points across tools, with single-pass tools sometimes preserving math better than optimized ones.
+- **Task benchmarks** (MMLU, GSM8K). Mathematical reasoning degrades most under abliteration; single-pass edits can preserve it better than automated optimizers. Benchmark before and after; do not assume the automated tool is the safe choice.
 
 If capability loss is unacceptable, **merge** the abliterated model with the base using `mergekit` to recover quality while keeping most of the refusal reduction.
 

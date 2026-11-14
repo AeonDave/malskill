@@ -13,13 +13,9 @@ metadata:
 
 Unified LLM gateway: one OpenAI-shaped API over every provider (OpenAI, Azure, Anthropic, Bedrock, Vertex, ollama…), with the **Proxy Server** adding virtual keys, per-key budgets, routing/fallback, and spend tracking. Dual relevance for security work: standard lab utility for provider abstraction, and a recurring **engagement target** — its proxy surface has a documented CVE history and a recent supply-chain incident.
 
-## ⚠️ Supply-chain incident (2026-10-21)
+## Known-bad release — pin before installing
 
-The release pipeline was compromised: **`litellm==1.107.0` on PyPI and the matching Docker image were malicious**. Consequences and required practice:
-
-- Never install unpinned: pin exact versions (`litellm==1.108.8`) and verify hashes against the GitHub release attestation.
-- Audit any environment that pulled 1.107.0 during the incident window — treat the host as compromised (the payload targeted runtime secrets).
-- General lesson (applies to every pip/npm dependency in this repo): hash-pin, use private mirrors where possible, and diff CI-installed versions.
+`litellm==1.107.0` on PyPI/Docker is **malicious** (release-pipeline compromise, Oct 2026): do not install; treat any host that pulled it as compromised (the payload targeted runtime secrets — rotate them). Required practice for every install: pin the exact LTS version, verify the hash against the GitHub release attestation, and apply the general rule from `dependency-discipline` — a correctly-signed release is not a trusted release.
 
 ## Core workflow
 
@@ -67,5 +63,5 @@ curl -X POST localhost:4000/key/generate -H "Authorization: Bearer <master>" \
 
 ## References
 
-- Upstream: [BerriAI/litellm](https://github.com/BerriAI/litellm) — verify install hashes post-incident; v1.108.x LTS line
+- Upstream: [BerriAI/litellm](https://github.com/BerriAI/litellm) — v1.108.x LTS; hash-verify installs
 - Consumers: `ollama` (backend), `promptfoo`/`garak`/`pyrit` (point at the proxy as a provider)

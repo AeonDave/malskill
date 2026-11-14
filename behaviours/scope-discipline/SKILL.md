@@ -11,7 +11,7 @@ metadata:
 
 # Scope Discipline
 
-Scope creep in agent work is rarely malicious — it is each small "while I'm here" improvement compounding until the deliverable is late, the diff is unreviewable, and the original goal is lost. The discipline: complete the asked task, and treat everything else discovered on the way as **ledger entries, not work**.
+Complete the asked task; treat everything else discovered on the way as **ledger entries, not work**. Compounded "while I'm here" fixes produce a late deliverable and an unreviewable diff.
 
 ## When to activate
 

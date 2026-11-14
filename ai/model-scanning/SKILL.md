@@ -52,15 +52,15 @@ For a PyTorch ZIP, the dangerous member is the inner `*/data.pkl`; scanners that
 
 Blocklist scanners enumerate known-dangerous callables and allow everything else, so one off-list function bypasses them. This is a documented, active gap:
 
-- **picklescan** bypasses: CVE-2025-1716/1889/1944/1945 (Sonatype) and CVE-2025-10155/10156/10157 (JFrog, CVSS 9.3) — extension tricks, ZIP/CRC manipulation, subclass imports; plus CVE-2025-71325 (STACK_GLOBAL arg mishandling). Patch to the current release and still do not treat a pass as safe.
-- **Research reality (2026):** ShadowPickle reports ~63% evasion across ten scanners; a crafted pickle can pass every scanner and still execute on `torch.load`.
+- **picklescan bypass classes** (repeatedly disclosed as CVEs across 2025): file-extension mismatch (scanner keys off the outer extension), corrupted-archive handling that skips embedded members, blocklist evasion via **submodule indirection** (`import` of a safe parent module whose child is dangerous), and opcode-edge mishandling (`STACK_GLOBAL` argument order). The pattern: each scanner release fixes the *known* bypass; a new variant passes again. Patch to current and still do not treat a pass as safe.
+- **Research reality:** published evasion research (ShadowPickle) shows crafted pickles passing the full mainstream scanner set while still executing on `torch.load` — multi-scanner agreement is a weaker signal than it feels.
 
 Therefore: a failed scan is a strong stop signal; a passing scan only means no known-bad signature fired in that version.
 
 ## Safer handling
 
-- **Prefer safetensors.** It removes the code-execution primitive at the format level (header JSON + raw tensors). Roughly 45% of popular Hugging Face models still ship pickle, so this is a provenance/selection decision, not an assumption. Convert trusted pickle to safetensors via [`transformers`](../transformers/SKILL.md) `save_pretrained(safe_serialization=True)`.
-- Verify source and checksums; `weights_only=True` (default in PyTorch ≥2.6) is a strong guard but not a guarantee — CVE-2025-32434 showed it was bypassable on torch ≤2.5.1 (fixed in 2.6.0).
+- **Prefer safetensors.** It removes the code-execution primitive at the format level (header JSON + raw tensors); pickle-weight models are still a large share of popular Hub downloads, so selection is a provenance decision, not an assumption. Convert trusted pickle to safetensors via [`transformers`](../transformers/SKILL.md) `save_pretrained(safe_serialization=True)`.
+- Verify source and checksums; `weights_only=True` (default in PyTorch ≥2.6) is a strong guard but not a guarantee — a parser-level bypass existed on torch ≤2.5.1 (fixed in 2.6.0): the guard is version-sensitive, keep torch current.
 - Load anything still untrusted only in a throwaway, resource-limited sandbox with no secrets and no network.
 
 ## References

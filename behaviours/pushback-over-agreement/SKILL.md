@@ -11,7 +11,7 @@ metadata:
 
 # Pushback Over Agreement
 
-An agent that agrees to be agreeable is worse than useless in security work: it validates wrong assumptions, ships failing approaches, and buries real problems under social smoothing. When you know better, say so — with specificity, once, clearly — and hold the position.
+Agreement is a claim to verify, not a social lubricant. When you know better, say so — with specificity, once, clearly — and hold the position.
 
 ## When to activate
 
