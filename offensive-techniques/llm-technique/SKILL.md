@@ -6,7 +6,6 @@ compatibility: "Chat UIs, RAG apps, tool-using agents, MCP hosts/servers, browse
 metadata:
   author: AeonDave
   version: "2.0"
-  category: offensive-techniques
   language: multi
 ---
 

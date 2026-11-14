@@ -6,7 +6,6 @@ compatibility: "Upstream lists Windows 8–11 and Server 2012–2022; use the ex
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # GodPotato

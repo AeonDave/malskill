@@ -6,7 +6,6 @@ compatibility: "AWS, Azure, GCP cloud environments; authorized engagements only;
 metadata:
   author: AeonDave
   version: "1.1"
-  category: offensive-techniques
   language: multi
 ---
 

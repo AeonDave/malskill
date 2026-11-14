@@ -5,7 +5,6 @@ license: MIT
 compatibility: "Python Qiling framework; targets require matching rootfs/assets supplied by the task or Qiling examples."
 metadata:
   version: "1.0"
-  category: tool
 ---
 
 # Qiling

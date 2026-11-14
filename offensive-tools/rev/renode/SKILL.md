@@ -5,7 +5,6 @@ license: MIT
 compatibility: "Renode on Linux/macOS/Windows; target support depends on available platform descriptions and modeled peripherals."
 metadata:
   version: "1.0"
-  category: tool
 ---
 
 # Renode

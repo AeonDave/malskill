@@ -6,7 +6,6 @@ compatibility: "Linux; hardware tools optional (USB-UART adapter, JTAG probe, ch
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-hardware
 ---
 
 # Hardware Technique

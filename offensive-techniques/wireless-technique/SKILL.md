@@ -6,7 +6,6 @@ compatibility: "Linux; compatible wireless adapter for monitor-mode lab work."
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

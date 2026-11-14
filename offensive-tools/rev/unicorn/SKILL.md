@@ -5,7 +5,6 @@ license: MIT
 compatibility: "Unicorn Engine bindings; no OS, loader, filesystem, syscall, or peripheral model."
 metadata:
   version: "1.0"
-  category: tool
 ---
 
 # Unicorn

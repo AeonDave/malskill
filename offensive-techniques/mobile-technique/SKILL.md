@@ -6,7 +6,6 @@ compatibility: "Android (APK, AAB), iOS (IPA); physical devices or emulators; Bu
 metadata:
   author: AeonDave
   version: "1.1"
-  category: offensive-techniques
   language: multi
 ---
 

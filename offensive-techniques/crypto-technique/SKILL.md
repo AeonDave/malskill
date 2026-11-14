@@ -6,7 +6,6 @@ compatibility: "Linux/macOS/WSL recommended; Python 3.9+; SageMath for advanced 
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

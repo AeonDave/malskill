@@ -6,7 +6,6 @@ compatibility: "Linux/Windows/macOS; source-available and binary-only targets; l
 metadata:
   author: AeonDave
   version: "1.2"
-  category: exploitation
   language: multi
 ---
 

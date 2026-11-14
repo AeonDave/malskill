@@ -6,7 +6,6 @@ compatibility: "AgentSkills-compatible agents; authorized training and lab envir
 metadata:
   author: AeonDave
   version: "1.2"
-  category: ctf-solving
 ---
 # Cloud CTF
 

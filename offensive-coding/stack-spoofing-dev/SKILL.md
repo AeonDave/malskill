@@ -6,7 +6,6 @@ compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+; C
 metadata:
   author: AeonDave
   version: "1.1"
-  category: evasion
   language: c,cpp,rust,go,asm
 ---
 

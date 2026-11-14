@@ -6,7 +6,6 @@ compatibility: "Python 3; Linux/macOS/Windows."
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # waymore

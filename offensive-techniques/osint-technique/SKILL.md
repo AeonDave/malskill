@@ -6,7 +6,6 @@ compatibility: "Online research; any OS with browser; No live network scanning -
 metadata:
   author: AeonDave
   version: "1.1"
-  category: offensive-techniques
 ---
 
 # OSINT Technique

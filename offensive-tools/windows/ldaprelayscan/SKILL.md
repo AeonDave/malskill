@@ -6,7 +6,6 @@ compatibility: "Unmodified upstream uses ssl.wrap_socket, removed in Python 3.12
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # LdapRelayScan

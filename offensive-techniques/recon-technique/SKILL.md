@@ -6,7 +6,6 @@ compatibility: "Any OS; external network perimeter, web applications, domain/IP 
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

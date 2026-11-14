@@ -6,7 +6,6 @@ compatibility: "Linux/Windows/macOS; internal/external networks; PCAP and live t
 metadata:
   author: AeonDave
   version: "1.1"
-  category: network
   language: multi
 ---
 

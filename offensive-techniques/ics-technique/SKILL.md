@@ -6,7 +6,6 @@ compatibility: "Linux/Windows; Python 3.8+; pymodbus, python-snap7, or equivalen
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

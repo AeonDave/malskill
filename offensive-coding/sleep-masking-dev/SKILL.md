@@ -6,7 +6,6 @@ compatibility: "Windows x64 user-mode; Linux/macOS and kernel-mode sleep masking
 metadata:
   author: AeonDave
   version: "1.1"
-  category: evasion
   language: c,cpp,rust,go,asm
 ---
 

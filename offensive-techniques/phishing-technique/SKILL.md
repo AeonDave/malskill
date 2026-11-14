@@ -6,7 +6,6 @@ compatibility: "GoPhish/Evilginx 3.x/Muraena/Modlishka planning context; modern 
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

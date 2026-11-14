@@ -6,7 +6,6 @@ compatibility: "The upstream 2.1.0 source declares Python 3.10+. Its command lay
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # DonPAPI

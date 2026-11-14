@@ -6,7 +6,6 @@ compatibility: "AgentSkills-compatible agents; local challenge artifacts; author
 metadata:
   author: AeonDave
   version: "1.1"
-  category: ctf-solving
 ---
 
 # Pwn CTF

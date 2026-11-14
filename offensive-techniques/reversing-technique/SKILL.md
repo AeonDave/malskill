@@ -6,7 +6,6 @@ compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images,.NET as
 metadata:
   author: AeonDave
   version: "1.4"
-  category: analysis
   language: asm,c,cpp,rust,go,python,csharp
   objectives: "malware-analysis, software-protection-analysis, patch-diffing, firmware-reversing, dotnet-reversing, protocol-reversing, vulnerability-hunting, exploitability-triage, secrets-extraction, custom-vm-reversing, anti-analysis-bypass, side-channel-re, language-specific-re"
 ---

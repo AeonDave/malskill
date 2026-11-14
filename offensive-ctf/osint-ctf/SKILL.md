@@ -6,7 +6,6 @@ compatibility: "AgentSkills-compatible agents; local challenge artifacts; author
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ctf-solving
 ---
 
 # OSINT CTF

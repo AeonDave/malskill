@@ -6,7 +6,6 @@ compatibility: "AgentSkills-compatible agents; local artifacts; authorized isola
 metadata:
   author: AeonDave
   version: "1.0"
-  category: ctf-solving
 ---
 
 # Satellite CTF

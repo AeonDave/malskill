@@ -6,7 +6,6 @@ compatibility: "Linux/macOS/Windows; Python 3; targets any HTTP/HTTPS service."
 metadata:
   author: AeonDave
   version: "1.0"
-  category: recon
   language: python
 ---
 

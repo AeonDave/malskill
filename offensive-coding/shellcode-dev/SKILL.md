@@ -6,7 +6,6 @@ compatibility: "Windows 11 x64 (Windows 10 EOS Oct 2025), Linux x64/aarch64, mac
 metadata:
   author: malskill
   version: "1.1"
-  category: offensive-coding
   language: asm,c,cpp,python,rust,go
 ---
 

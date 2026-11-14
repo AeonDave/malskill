@@ -6,7 +6,6 @@ compatibility: "Markdown, PDF, DOCX output; PTES, OWASP, and SANS reporting stan
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 

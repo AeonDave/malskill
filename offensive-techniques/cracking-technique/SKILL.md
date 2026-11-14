@@ -6,7 +6,6 @@ compatibility: "Linux/Windows/macOS; local CPU/GPU cracking environments."
 metadata:
   author: AeonDave
   version: "2.0"
-  category: crypto
   language: multi
 ---
 

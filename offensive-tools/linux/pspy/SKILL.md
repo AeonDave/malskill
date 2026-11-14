@@ -6,7 +6,6 @@ compatibility: "Linux; upstream releases provide 32-bit and 64-bit x86 binaries.
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # pspy

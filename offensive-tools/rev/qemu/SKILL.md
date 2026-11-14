@@ -5,7 +5,6 @@ license: MIT
 compatibility: "Linux/macOS/Windows hosts with QEMU; target support depends on installed qemu-user and qemu-system binaries."
 metadata:
   version: "1.0"
-  category: tool
 ---
 
 # QEMU

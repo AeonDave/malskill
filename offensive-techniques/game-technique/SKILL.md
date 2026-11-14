@@ -6,7 +6,6 @@ compatibility: "Linux/Windows; Cheat Engine (Windows), scanmem (Linux), Python 3
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
 ---
 
 # Game Technique

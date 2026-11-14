@@ -6,7 +6,6 @@ compatibility: "x86-64 Linux (glibc) and x86-64 Windows user-mode; ARM64, kernel
 metadata:
   author: AeonDave
   version: "1.0"
-  category: exploitation
   language: c,cpp,rust,go,python,asm
 ---
 

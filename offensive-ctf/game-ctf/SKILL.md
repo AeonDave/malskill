@@ -6,7 +6,6 @@ compatibility: "Linux/Windows; Unity (Mono/IL2CPP), native ELF/PE; tools: dnSpy,
 metadata:
   author: AeonDave
   version: "1.1"
-  category: ctf-solving
 ---
 
 # Game CTF

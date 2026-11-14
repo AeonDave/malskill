@@ -6,7 +6,6 @@ compatibility: "Windows 10 19041+ / Windows 11 24H2-25H2 x64. Method validity is
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-coding
 ---
 
 # UAC Evasion Development

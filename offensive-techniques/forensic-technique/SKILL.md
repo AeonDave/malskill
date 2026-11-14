@@ -6,7 +6,6 @@ compatibility: "Linux/Windows/macOS; E01/RAW/DD/ISO/PCAP/memory evidence."
 metadata:
   author: AeonDave
   version: "1.4"
-  category: forensic
   language: multi
 ---
 

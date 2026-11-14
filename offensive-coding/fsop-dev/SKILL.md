@@ -6,7 +6,6 @@ compatibility: "glibc/libio-focused Linux user-mode exploitability research; Pri
 metadata:
   author: AeonDave
   version: "1.1"
-  category: exploitation
   language: c,cpp,asm,python
 ---
 

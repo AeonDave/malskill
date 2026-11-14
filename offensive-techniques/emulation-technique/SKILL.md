@@ -5,7 +5,6 @@ license: MIT
 compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated labs; QEMU, Qiling, Unicorn, Renode, GDB, Frida, and firmware extraction tools optional."
 metadata:
   version: "1.0"
-  category: analysis
 ---
 
 # Emulation Technique

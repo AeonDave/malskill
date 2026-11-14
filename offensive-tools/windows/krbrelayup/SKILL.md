@@ -6,7 +6,6 @@ compatibility: "Windows domain environments; behavior depends on the selected so
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-tools
 ---
 
 # KrbRelayUp

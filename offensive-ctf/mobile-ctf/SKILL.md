@@ -6,7 +6,6 @@ compatibility: "Linux/macOS; APK/IPA/AB artifacts; jadx, apktool, Python 3, opti
 metadata:
   author: AeonDave
   version: "1.1"
-  category: ctf-solving
 ---
 
 # Mobile CTF

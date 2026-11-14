@@ -6,7 +6,6 @@ compatibility: "AgentSkills-compatible agents; local artifacts; authorized isola
 metadata:
   author: AeonDave
   version: "1.8"
-  category: ctf-solving
 ---
 
 # ICS CTF

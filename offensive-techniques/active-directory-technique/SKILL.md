@@ -6,7 +6,6 @@ compatibility: "Windows Active Directory environments; domain auth context requi
 metadata:
   author: AeonDave
   version: "2.0"
-  category: offensive-techniques
   language: multi
 ---
 

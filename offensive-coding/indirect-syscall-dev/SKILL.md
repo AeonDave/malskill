@@ -6,7 +6,6 @@ compatibility: "Windows x64. Layout and runtime compatibility require evidence f
 metadata:
   author: AeonDave
   version: "1.1"
-  category: evasion
   language: c,cpp,rust,go,asm
 ---
 

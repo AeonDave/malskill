@@ -6,7 +6,6 @@ compatibility: "Authorized social engineering engagements only; signed ROE requi
 metadata:
   author: AeonDave
   version: "1.0"
-  category: offensive-techniques
   language: multi
 ---
 
