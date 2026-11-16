@@ -54,6 +54,14 @@ This is static routine emulation, not execution of the Go implant. If the closur
 
 ---
 
+### 1.2b Stripped-binaries — function name recovery
+
+`Ghidra_GolangAnalyzerExtension` (mooncat-greenpy, installable as Ghidra extension): enable the Go analyzer on a stripped binary → recovers all function names, source file paths, and type data from the embedded pclntab. After recovery, **filter to `main.*` functions only** — package main is the author's code, everything else is Go runtime noise. This filter is the single highest-value step after symbol recovery.
+
+### 1.2c Config decryption via breakpoint (non-PIE, no script needed)
+
+Non-PIE Go binaries have fixed addresses: instead of writing a decoder script for XOR/encrypted configs, copy the call-site address of the decryption routine from Ghidra, set a GDB breakpoint there, execute the sample offline, locate the encrypted blob in the function arguments, let the routine finish, then read the fully decoded config (cert, key, C2 IP) directly from memory. Map the decoded buffer address back to the static blob in Ghidra for correlation. Faster and more reliable than reimplementing the algorithm.
+
 ### 1.3 Go Memory Layout
 
 Understanding data structures prevents misreading register values as scalars.

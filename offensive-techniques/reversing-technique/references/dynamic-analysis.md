@@ -253,3 +253,15 @@ vol -f memory.dmp windows.memmap --pid <PID> --dump
 # Network connections
 vol -f memory.dmp windows.netscan
 ```
+
+### FakeNet custom handler — protocol discovery without decryption
+
+A Python rule in fakenet-ng that satisfies a malware's header check (e.g. `Content-Type: application/octet-stream`) forces the full payload-drop and execution chain — confirming the C2 protocol without reimplementing its decryption. Shape the response to the expected headers; the binary handles the rest.
+
+### Validated sleep loops as universal observation points
+
+Anti-sandbox sleep functions that re-check wall-clock time and re-sleep in capped chunks (instead of a plain `Sleep()`) defeat sandboxes that patch the sleep call. Two uses: (1) patch the wall-clock recheck instruction in x64dbg to skip the delay; (2) the anti-debug sleep function itself is a universal observation point — it is invoked before every critical action, so one breakpoint exposes all hotspots.
+
+### GitHub raw content as fallback C2 hosting
+
+Commodity malware increasingly uses `raw.githubusercontent.com/<user>/<repo>/refs/heads/main/<file>` as fallback payload hosting alongside a primary C2 domain, with DoH resolvers (`dns.google`, `dns.nextdns.io`, `dns.sb`) as DNS-blocking evasion. In dynamic analysis, satisfy the primary C2 first (fakenet handler); if the sample falls back to GitHub, capture the URL from the network log and serve locally.

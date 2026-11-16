@@ -208,6 +208,14 @@ When neither symbols nor FLIRT help:
 5. **Cross-ref rodata strings** → most Nim programs produce human-readable error messages; trace them to handlers → identify key code paths
 6. **Type reconstruction** — use the `NimString` and `NimSeq` patterns above to recover argument types of unknown functions
 
+### DLL loaders — benign-export masquerading
+
+Nim DLL loaders hide the custom logic behind an export that looks benign/MSI-related (e.g. `MsiProvideQualifiedComponentW`), while `DllMain` redirects to `NimMain` for runtime init only. The author's logic is NOT under `NimMain` or `DllMain`. Imports are minimal: only `LoadLibraryA`/`GetProcAddress` for dynamic API resolution — no static imports to flag.
+
+- **ASLR rebase**: read the module's runtime base from x64dbg's memory map, then rebase the Ghidra image to that address — every static address now maps to runtime. Set breakpoints on `CreateFileW` (runtime address) and the benign export; step from the export into the payload loader.
+- **References-feature**: use Ghidra's References on `CreateFileW` to trace back to the caller — this reveals the entry export when the flow is unclear.
+- **Silent-exit as a clue**: the sample produces no output at all — pre-check validation fails silently and skips the payload path. Rather than RE the validation, patch the conditional jump (`je`) in x64dbg to force the execution path; the payload path is immediately visible.
+
 ---
 
 ## Category 6: Dynamic Analysis
