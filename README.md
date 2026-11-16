@@ -109,6 +109,9 @@ python scripts/sweep_skills.py offensive-tools/windows/mimikatz
 # Check changed files for final newlines and git diff whitespace issues
 python scripts/check_changed_files.py
 
+# Audit the whole tree: proofs, routing/CATALOG/README alignment, content-currency staleness
+python scripts/assurance_check.py
+
 # Summarize v5 x64 Windows survey logs as diagnostic numerical evidence
 python scripts/summarize_windows_survey.py /path/to/results > survey.csv
 

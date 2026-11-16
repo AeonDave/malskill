@@ -382,3 +382,4 @@ yara -s crypto_hunt.yar suspicious.bin
 | File | When to load |
 |------|--------------|
 | `references/` | Module reference, rule optimization, integration with Volatility |
+| [references/rule-quality-and-triage-flow.md](references/rule-quality-and-triage-flow.md) | Rule quality assessment and triage workflow; load when testing rules against real samples |

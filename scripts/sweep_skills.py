@@ -65,6 +65,7 @@ _WORKSTATION_PATH_ALLOWLIST = {
     "/home/ctf",
     "/home/user",
     # Windows built-in profiles
+    r"c:\users\admin",
     r"c:\users\public",
     r"c:\users\default",
     r"c:\users\all users",

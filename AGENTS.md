@@ -22,6 +22,7 @@ Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill st
 - Validate all skills: `python scripts/validate_all.py .`
 - Validate changed-file hygiene: `python scripts/check_changed_files.py`
 - Sweep a category or skill dir for broken links, placeholder markers, and workstation paths: `python scripts/sweep_skills.py <path> [--ctf-check] [--top N]`
+- Audit the whole tree and refresh the assurance evidence package — frontmatter/link proofs, routing-wiring, CATALOG/README alignment, and per-category content-currency staleness (attestation dates/cadence in `.assurance/claims.yaml`): `python scripts/assurance_check.py [--no-write] [--strict]`
 - Package one skill: `python scripts/package_skill.py <skill-dir>`
 - Install interactively: `.\install.ps1` (PowerShell) or `./install.sh` (Bash)
 

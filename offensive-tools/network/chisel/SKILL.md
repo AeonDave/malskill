@@ -81,3 +81,7 @@ A reverse session that binds (`proxy#R:... Listening` / `Bound proxies`) then dr
   while :; do timeout 1 bash -c 'echo>/dev/tcp/127.0.0.1/88' 2>/dev/null && { <impacket op>; break; }; sleep 0.2; done
   ```
   Single Kerberos `getTGT`/`getST`/S4U or one quick query fit one window. **Interactive/sustained sessions (MSSQL shell, long SOCKS, bloodhound-python) do NOT** — mint tickets/keys offline (or via a quick window) and run the heavy step from a host with **direct** routing, or dump data offline and exfil rather than holding a live connection.
+
+## Proxychains Integration
+
+For SOCKS routing through chisel tunnels — proxychains config, tool compatibility matrix, and DNS handling — see [references/proxychains.md](references/proxychains.md). Load when routing tools through the tunnel.

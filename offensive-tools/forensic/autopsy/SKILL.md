@@ -292,3 +292,4 @@ icat -o 2048 disk.img <inode> > extracted_file
 | File | When to load |
 |------|--------------|
 | `references/` | Ingest module selection guide, registry artifact map, timeline interpretation |
+| [references/forensic-case-flow.md](references/forensic-case-flow.md) | Full forensic case workflow from acquisition to reporting; load when running a complete Autopsy case |

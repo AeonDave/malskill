@@ -161,3 +161,4 @@ Also prioritize lines flagged like `99% PE` or equivalent high-confidence marker
 | File | When to load |
 |---|---|
 | `references/` | Kernel exploit compilation, SUID abuse techniques, sudo exploitation |
+| [references/suid-capability-exploitation.md](references/suid-capability-exploitation.md) | SUID/capability exploitation guide; load when LinPEAS flags unusual SUID or capability assignments |

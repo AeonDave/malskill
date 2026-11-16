@@ -309,3 +309,4 @@ fls -r -o 1026048 disk.img
 | File | When to load |
 |------|--------------|
 | `references/` | Offset calculation guide, NTFS ADS tricks, carving recipes |
+| [references/disk-timeline-workflow.md](references/disk-timeline-workflow.md) | Disk timeline analysis workflow; load when building chronology from filesystem metadata |

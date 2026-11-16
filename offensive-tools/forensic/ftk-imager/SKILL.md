@@ -263,3 +263,4 @@ mv converted.raw converted.dd
 | File | When to load |
 |------|--------------|
 | `references/` | E01 acquisition parameters, multi-image cases, hash verification workflow |
+| [references/acquisition-tricks-and-flow.md](references/acquisition-tricks-and-flow.md) | Acquisition edge cases and workflow tricks; load when imaging non-standard media or troubleshooting captures |

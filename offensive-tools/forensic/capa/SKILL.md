@@ -314,3 +314,4 @@ rule:
 | File | When to load |
 |------|--------------|
 | `references/` | Capability interpretation guide, RE pivot strategy, sandbox report setup |
+| [references/capability-driven-triage.md](references/capability-driven-triage.md) | Capability-driven triage workflow; load when mapping capa output to assessment next-steps |

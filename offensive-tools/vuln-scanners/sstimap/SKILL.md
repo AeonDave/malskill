@@ -91,4 +91,5 @@ python3 sstimap.py -u "http://target.com/?name=*" --engine jinja2 --interactive
 ## References
 
 - SSTI payloads: `references/ssti-payloads.md`
+- Engine identification notes: `references/engine-notes.md` — load when the template engine is unclear or the payloads don't fire
 - [SSTImap repository](https://github.com/vladko312/SSTImap)

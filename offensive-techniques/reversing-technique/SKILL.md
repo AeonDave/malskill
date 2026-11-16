@@ -89,6 +89,13 @@ Quick assessment to decide approach:
 - PCAP / protobuf / gRPC / grpc-web / WebSocket frames / length-prefixed binary RPC → **Protocol reversing** (see `references/protocol-rev.md`)
 - `.crx` / `.xpi` / `manifest.json` / MV3 service worker / `content_scripts` / `externally_connectable` → **Browser extension reversing** (see `references/browser-extension-rev.md`)
 - Two binary versions for patch analysis / a single Microsoft Patch-Tuesday MSU to reconstruct / stripped library with unknown symbols → **Binary diffing / FLIRT** (see `references/binary-diffing.md`)
+- Android `.apk` / `.dex` / libapp.so triage → **APK analysis** (see `references/apk-analysis.md`)
+- `.doc`/`.docx`/`.xls`/macro-enabled office files, `.js`/`.vbs`/`.hta` droppers → **Document/script analysis** (see `references/document-script-analysis.md`)
+- Behavioral analysis needed: run the binary in sandbox/VM, trace syscalls/API calls, capture network → **Dynamic analysis** (see `references/dynamic-analysis.md`)
+- Raw ELF firmware/toolchain binary or Mach-O fat binary → **ELF/Mach-O analysis** (see `references/elf-macho-analysis.md`)
+- RE tooling missing or broken → **Tool installation guide** (see `references/install-guide.md`)
+- Windows PE / .NET assembly triage (headers, imports, resources) → **PE analysis** (see `references/pe-analysis.md`)
+- Writing detection rules from findings → **YARA rule templates** (see `references/yara-rules.md`)
 - Confirmed overwrite primitive with partial control over RIP/EIP/PC, heap metadata, or function pointer → **Exploitability triage** (§7b), then hand off to `offensive-techniques/binary-exploitation-technique`
 - Kernel driver/module, hidden artifacts, boot-chain tampering, or EFI/bootloader changes → **Rootkit / bootkit RE** workflow (see `references/rootkit-and-bootkit-re.md`)
 

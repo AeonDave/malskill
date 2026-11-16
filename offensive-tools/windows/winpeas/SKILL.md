@@ -148,3 +148,4 @@ Review marked sections first — these are most likely escalation vectors.
 | File | When to load |
 |---|---|
 | `references/` | Privesc techniques, exploitation examples, Windows security features |
+| [references/service-exploitation.md](references/service-exploitation.md) | Service exploitation workflows; load when WinPEAS flags misconfigured services |

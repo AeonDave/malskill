@@ -326,3 +326,4 @@ cat dns.log | zeek-cut query | sort -u > all_domains.txt
 | File | When to load |
 |------|--------------|
 | `references/` | Zeek scripting basics, custom log fields, DNS tunneling detection, JA3 usage |
+| [references/forensic-log-pivoting.md](references/forensic-log-pivoting.md) | Log pivoting workflows; load when connecting Zeek logs to other evidence sources |

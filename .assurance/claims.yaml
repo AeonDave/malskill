@@ -1,0 +1,18 @@
+# Attestation catalog — last verified dates and renewal cadence per category.
+# "attested" claims go stale when (today - last_verified) exceeds cadence_days
+# or when files in the category change after the attestation date.
+content_currency:
+  cadence_days:
+    default: 180
+    ai: 60                 # tool versions churn in days
+    offensive-tools: 120
+  last_verified:
+    coding: 2026-11-07
+    offensive-coding: 2026-11-08
+    offensive-ctf: 2026-11-07
+    offensive-tools: 2026-11-14   # partial: network/wireless/shells clusters pending
+    ai: 2026-11-14
+    behaviours: 2026-11-08
+    coding-behaviours: 2026-11-08
+    knowledge-offensive: 2026-11-14
+    # knowledge, harness-dev, hardware, offensive-hardware, mcp: no attestation -> unverified

@@ -329,3 +329,4 @@ grep -i "interesting_string" capture.txt
 | File | When to load |
 |------|--------------|
 | `references/` | BPF filter recipes, tshark equivalents, complex protocol analysis patterns |
+| [references/forensic-capture-flow.md](references/forensic-capture-flow.md) | Forensic capture workflow; load when capturing traffic for offline analysis |
