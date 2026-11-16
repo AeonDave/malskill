@@ -26,7 +26,7 @@ from pymodbus.client import ModbusTcpClient
 
 client = ModbusTcpClient("192.168.1.10", port=502)
 client.connect()
-result = client.read_holding_registers(address=0, count=2, slave=1)
+result = client.read_holding_registers(address=0, count=2, device_id=1)
 print(result.registers)
 client.close()
 ```
@@ -40,7 +40,7 @@ from pymodbus.client import ModbusTcpClient
 
 client = ModbusTcpClient("192.168.1.10", port=502)
 client.connect()
-resp = client.read_holding_registers(address=100, count=4, slave=1)
+resp = client.read_holding_registers(address=100, count=4, device_id=1)
 print(resp.registers)
 client.close()
 ```
@@ -48,8 +48,8 @@ client.close()
 ### Write a register or coil
 
 ```python
-client.write_register(address=10, value=1234, slave=1)
-client.write_coil(address=5, value=True, slave=1)
+client.write_register(address=10, value=1234, device_id=1)
+client.write_coil(address=5, value=True, device_id=1)
 ```
 
 ## Practical Notes

@@ -2,7 +2,7 @@
 name: mitmproxy
 description: "Auth/lab ref: interactive TLS-capable HTTP/HTTPS proxy for intercepting, inspecting, modifying, and replaying web traffic."
 license: MIT
-compatibility: "Linux / macOS / Windows; Python 3.8+."
+compatibility: "Linux / macOS / Windows; Python 3.12+ (required since 11.1)."
 metadata:
   author: AeonDave
   version: "1.1"

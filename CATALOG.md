@@ -13,7 +13,7 @@ One skill per tool, organized by attack phase: version-aware setup, useful comma
 | `windows/` | bloodhound, certipy, enum4linux-ng, impacket, ldaprelayscan, netexec, sharphound |
 | `vuln-scanners/` | burpsuite, dalfox, nuclei, osv-scanner, sqlmap, titus, trivy |
 | `recon/` | dnsx, feroxbuster, gobuster, httpx, massdns, shodan |
-| `network/` | chisel, masscan, mitmproxy, nmap, responder, wireshark |
+| `network/` | chisel, ligolo-ng, masscan, mitmproxy, nmap, proxychains-ng, socat, wireshark |
 | `cryptography/` | rsactftool, sagemath, cyberchef |
 | `web/` | commix, jwt-tool, waymore, xsstrike, zap |
 | `fuzzing/` | aflplusplus, arjun, boofuzz, dotdotpwn, ffuf, restler |

@@ -40,7 +40,7 @@ cargo install bore-cli
 
 # Prebuilt binary (Linux x86_64 example; pick the asset for your platform)
 curl -fsSL -o /tmp/bore.tgz \
-  https://github.com/ekzhang/bore/releases/latest/download/bore-v0.5.2-x86_64-unknown-linux-musl.tar.gz
+  https://github.com/ekzhang/bore/releases/latest/download/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz
 tar -xzf /tmp/bore.tgz -C /usr/local/bin bore
 
 # Docker (client or server)

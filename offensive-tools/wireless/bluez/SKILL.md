@@ -2,7 +2,7 @@
 name: bluez
 description: "Auth/lab ref: BlueZ Bluetooth stack and CLI workflow: Linux, covering bluetoothctl-driven discovery, pairing, BLE inspection, and low-level troubleshooting utilities."
 license: GPL-2.0 / LGPL-2.1
-compatibility: "Linux; Core Bluetooth stack on Linux; recent upstream release 5.86."
+compatibility: "Linux; Core Bluetooth stack on Linux; recent upstream release 5.88."
 metadata:
   author: AeonDave
   version: "1.0"

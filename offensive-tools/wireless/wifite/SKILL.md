@@ -15,7 +15,10 @@ Automated Wi‑Fi attack wrapper for rapid WPA/WEP/PMKID triage and capture work
 ## Quick Start
 
 ```bash
-pip install wifite   # or: apt install wifite
+# wifite2 (derv82) is in maintenance mode; the maintained fork is
+# kimocoder/wifite2 (2.8.x) — shipped by Kali/Parrot/Arch.
+sudo apt install wifite      # or: git clone https://github.com/kimocoder/wifite2 && sudo python3 setup.py install
+# USB-only cross-platform successor: github.com/derv82/wifit3
 
 # Full auto (scan and attack all visible networks)
 sudo wifite

