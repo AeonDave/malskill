@@ -48,3 +48,5 @@ Before calling a result reproducible, freeze the reviewed artifact and invocatio
 - A recorded hash fingerprints the reviewed bytes; comparison with a trusted expected digest checks identity against that reference. A valid signature binds an artifact to a signing key; trust in the key and signer remains a separate question.
 - Dependency metadata, SBOMs, signatures, sandbox runs, and static scans each cover different evidence. None alone proves all code paths benign or predicts behavior in every runtime environment.
 - Preserve suspicious artifacts and notes for analysis; do not publish or redistribute them as executable assessment tooling.
+
+For the AI-agent variant of artifact review — auditing skill packs and agent memory files for planted natural-language chains — see [`agent-skill-audit`](../agent-skill-audit/SKILL.md).

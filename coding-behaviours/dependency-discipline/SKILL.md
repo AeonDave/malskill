@@ -51,5 +51,6 @@ When an ecosystem incident lands (poisoned release, hijacked maintainer):
 - `software-guidelines` — the adoption one-liner this expands; scoped-change workflow.
 - `litellm` (ai/) — worked example of the poisoned-release pattern in this repo's own stack.
 - `model-scanning` (ai/) — the model-artifact flavor of the same problem (pickle payloads).
+- `agent-skill-audit` (knowledge-offensive/) — skill packs are dependencies too: natural-language skill files carry the agent's authority; audit them with the same gate.
 - `trivy`, `osv-scanner`, `gitleaks` (offensive-tools/) — the scanning half of the lifecycle.
 - `secure-tooling-implementation` — the tool-code side of not shipping the vulnerability.

@@ -235,6 +235,7 @@ LLM output is often rendered or executed downstream — that surface is the real
 - **Adapter / LoRA smuggling** — malicious LoRA / PEFT weights change behavior only for trigger tokens.
 - **System prompt / template drift** — vendor changes template; injection payloads succeed after an update.
 - **Plugin / MCP server registry** — an MCP server pulled by name from a public registry is a supply-chain input.
+- **Malicious agent skills (MalSkills)** — natural-language skill/rule/memory files (`SKILL.md`, `.cursorrules`, `AGENTS.md`, `CLAUDE.md`) run as trusted context with the agent's full authority; a planted or chained skill is supply-chain delivery with no binary IOC. Build for an authorized test: `knowledge-offensive/malicious-skill-authoring`; audit a collection: `knowledge-offensive/agent-skill-audit`.
 
 Deep dive on model file forensics: `offensive-ctf/ai-ml-ctf/references/model-file-forensics-and-deserialization.md`.
 

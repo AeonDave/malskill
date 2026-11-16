@@ -125,6 +125,8 @@ Research and development support for authorized security assessments. Use the na
 | [`offensive-orchestration`](knowledge-offensive/offensive-orchestration/SKILL.md) | Route security questions to technical skills, coordinate target/session ownership, and reconcile evidence across workers |
 | [`threat-modeling`](knowledge-offensive/threat-modeling/SKILL.md) | Decompose a target (DFD/STRIDE/attack trees), prioritize threats, map to ATT&CK to feed the assessment plan |
 | [`adversary-emulation-planning`](knowledge-offensive/adversary-emulation-planning/SKILL.md) | Build a CTI-driven emulation plan: extract TTPs, map to ATT&CK, prioritize against the target stack, structure phased procedures with detection expectations |
+| [`agent-skill-audit`](knowledge-offensive/agent-skill-audit/SKILL.md) | Audit AI-agent skill collections for malicious natural-language skills: chain attacks, memory persistence, dependency-mediated exfil; detector matrix and defense model |
+| [`malicious-skill-authoring`](knowledge-offensive/malicious-skill-authoring/SKILL.md) | Red-team the agent skill/memory supply chain: build/plant MalSkills (overt→dependency-mediated→chain→ghost→worm) with lab-style containment; the offensive pair to agent-skill-audit |
 
 ## `harness-dev/` - Agent harness development
 
