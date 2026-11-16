@@ -87,20 +87,25 @@ Offensive note: a harmful preference dataset (e.g. toxic-DPO) is a **training-ba
 
 ## Unlearning (post-training removal)
 
-Remove a capability/knowledge from a trained model — the inverse direction of fine-tuning, and the training-based counterpart to ablation editing ([`abliteration`](../abliteration/SKILL.md)). Dual use: strip unwanted capability from your own model, or **verify a vendor's claimed unlearning actually removed data** (most methods only obfuscate — recovery attacks "jog the memory" of models that were merely perturbed; see *"Unlearning or Obfuscating?"*, 2025).
+Remove a capability/knowledge from a trained model — the inverse direction of fine-tuning, and the training-based counterpart to ablation editing ([`abliteration`](../abliteration/SKILL.md)). Dual use: strip unwanted capability from your own model, or **verify a claimed unlearning actually removed data** — output-level metrics create the illusion of forgetting; most published methods partially recover under relearning or representation-level probing.
 
-Method families ([SoK: LLM unlearning, arXiv:2506.09227](https://arxiv.org/html/2506.09227v1); catalog: [awesome-llm-unlearning](https://github.com/chrisliu298/awesome-llm-unlearning)):
+Selection shortlist (full table incl. RADNPO, MCU, inference-time and black-box families in the reference):
 
 | Family | Method | Notes |
 |---|---|---|
-| Gradient ascent | plain GA on forget-set | simplest; destabilizes the model beyond the forget target |
-| **NPO** (`NPOTrainer`, TRL) | negative preference optimization | unlearning framed as preference optimization — more stable than GA, the current default |
-| **WHP** | fine-tune on augmented/related corpora ("Who's Harry Potter") | teach the model the *opposite* of the target knowledge |
-| **RMU** | steering forget-sample activations toward random directions (WMDP paper) | representation-level; strong for capability removal |
-| Task arithmetic | subtract a "forget task vector" | training-free — lives in [`model-merging`](../model-merging/SKILL.md) |
-| Ablation | knowledge-neuron / direction ablation | training-free — lives in [`abliteration`](../abliteration/SKILL.md) |
+| Gradient ascent | plain GA on forget-set | destabilizes beyond the forget target |
+| **NPO** (`NPOTrainer`, TRL) | negative preference optimization | default; needs a frozen reference model |
+| **WHP** | fine-tune on augmented corpora | teach the opposite of the target knowledge |
+| **RMU** | activation steering toward random directions (WMDP) | strong output suppression, but exposed by hidden-state probing |
+| Task arithmetic / Ablation | forget-vector subtraction / direction ablation | training-free — [`model-merging`](../model-merging/SKILL.md), [`abliteration`](../abliteration/SKILL.md) |
 
-Evaluation rule: unlearning claims require **both** a forget-set test (knowledge truly gone — not just refuses to answer) and a retain-set test (no collateral damage). Verbatim-answer suppression is the weakest claim; adversarial retrieval probes (fine-tune recovery, prompt reconstruction) are how you distinguish removal from obfuscation.
+Core rules:
+
+- Verify with relearning + one representation-level test before trusting any claim (forget + retain sets alone are not evidence).
+- Never certify at full precision: 4-bit PTQ resurfaces unlearning (~4x) — evaluate on the exact quantized artifact served.
+- Agents need behavior/trajectory unlearning and execution-state cleanup, not fact removal alone.
+
+Load [references/unlearning.md](references/unlearning.md) when implementing or auditing unlearning: method families (RADNPO, MCU relearning-defense, inference-time SAE/steering, CBD black-box routing), the 7-step verification ladder (relearning → tokenization bypass → hidden-state probes → depth score → forget-set extraction), quantization-aware serving rules, and agent-trajectory/execution-state domains.
 
 ## Merge and export
 

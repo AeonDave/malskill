@@ -55,7 +55,7 @@ If capability loss is unacceptable, **merge** the abliterated model with the bas
 ## Related training-free edits
 
 - **Knowledge editing** (locate-then-edit) changes *facts* rather than refusal behavior: `ROME` rewrites a single MLP layer to alter one factual association; `MEMIT` mass-edits many facts across MLP layers. Both run via `EasyEdit`. Offensive relevance: implant targeted false facts or trigger associations into open weights.
-- **Unlearning** removes knowledge/capabilities with training (NPO/RMU) — the training-based counterpart to this training-free edit: see [`model-finetuning`](../model-finetuning/SKILL.md).
+- **Unlearning** removes knowledge/capabilities with training (NPO/RMU) — the training-based counterpart to this training-free edit: see [`model-finetuning`](../model-finetuning/SKILL.md) and its [`unlearning` reference](../model-finetuning/references/unlearning.md) (includes UNBIND-style conditional steering, the inference-time descendant of this technique).
 - **Model merging** recombines an edited model with others in weight space — e.g. merge the abliterated model with its base to recover capability while keeping most of the refusal reduction. See [`model-merging`](../model-merging/SKILL.md).
 
 ## Gotchas
