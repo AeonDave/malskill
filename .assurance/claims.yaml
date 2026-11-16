@@ -1,4 +1,12 @@
 # Attestation catalog — last verified dates and renewal cadence per category.
+#
+# A date here is an EVIDENCE claim: it means someone actually re-checked that
+# category's content (tool flags, versions, CVE behavior) against primary
+# sources on that date. Do not stamp a date you have not verified — an honest
+# "unverified" (no entry) beats a fake "attested". Add or refresh a date only
+# together with a real review; the date is per category but freshness is really
+# per skill, so re-check the skills that churn (tool versions), not just one.
+#
 # "attested" claims go stale when (today - last_verified) exceeds cadence_days
 # or when files in the category change after the attestation date.
 content_currency:
