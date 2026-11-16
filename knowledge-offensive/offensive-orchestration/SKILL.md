@@ -60,3 +60,5 @@ For investigations spanning many artifacts or sessions, load the [operational br
 Enforce tool, credential, filesystem, and network access in the execution layer. Model instructions do not provide isolation; containers alone do not establish the required boundary. Keep privileged control sockets and writable host configuration out of worker environments unless the task requires them.
 
 Review MCP/tool definitions and detect changes. Verify local artifacts where supported; authenticate and govern remote endpoints rather than treating a local checksum as a pin on remote behavior. Load [untrusted-input-hygiene](../../behaviours/untrusted-input-hygiene/SKILL.md) when ingesting target output, tool descriptions, shared messages, or worker files; validate their provenance and destination format before use.
+
+For orchestrator-class autonomous offensive agents (ARTEX-class tooling, kill-chain swarms) and operating under agentic detection, see [`autonomous-offensive-agents`](../autonomous-offensive-agents/SKILL.md); this skill covers coordinating your own subagent workers on investigations.
