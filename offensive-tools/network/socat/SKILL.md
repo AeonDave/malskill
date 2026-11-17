@@ -18,27 +18,28 @@ Universal relay: pipes two bidirectional byte streams (TCP, UDP, SSL, files, exe
 # Port forward (fork = handle multiple connections; reuseaddr = rebind without TIME_WAIT wait)
 socat TCP4-LISTEN:8080,fork,reuseaddr TCP4:10.0.0.1:80
 
-# Encrypted relay (TLS wrap for a plain service)
+# TLS relay: server.pem contains certificate/key; verify=0 disables client certificate checks
 socat OPENSSL-LISTEN:4443,cert=server.pem,verify=0,fork TCP4:127.0.0.1:80
 
 # Bind shell listener (replaces nc -e on OpenBSD nc)
 socat TCP4-LISTEN:4444,reuseaddr,fork EXEC:/bin/sh,pty,stderr
 
-# File transfer (both sides; sender + receiver)
-socat TCP4-LISTEN:9999,fork FILE:outfile.bin
-socat TCP4:10.0.0.1:9999 FILE:infile.bin
+# One-shot file transfer: receiver creates a new file and refuses to overwrite it
+socat -u TCP4-LISTEN:9999,reuseaddr OPEN:outfile.bin,creat,excl
+# Sender reads infile.bin and sends it to the receiver
+socat -u FILE:infile.bin TCP4:10.0.0.1:9999
 
 # Chained relay through a pivot (host A → host B → host C)
-socat TCP4-LISTEN:2222,fork TCP4:<pivot-ip>:22
+socat TCP4-LISTEN:2222,fork TCP4:<pivot-ip>:2222
 # on pivot: socat TCP4-LISTEN:2222,fork TCP4:<final-target>:22
 ```
 
 ## Best practice
 
-- **Always `fork` + `reuseaddr`** on listeners: fork handles multiple connections; reuseaddr avoids TIME_WAIT port conflicts on restart.
-- **Chained relays**: each hop is a two-address socat — run one per pivot, increment the listen port at each hop to avoid loops.
+- Use `fork` for reusable service relays, not one-shot file receivers writing a shared destination. `reuseaddr` permits address reuse subject to OS socket rules.
+- **Chained relays**: each relay's destination must match the next relay's listening host and port; different hosts may reuse the same port number.
 - For interactive shells, add `pty,stderr` to EXEC: gives a TTY prompt and keeps stderr visible.
-- Use `TCP4-LISTEN:0` (random port) when the egress port doesn't matter; read the assigned port from `ss -tlnp`.
+- Use `TCP4-LISTEN:0` (OS-assigned port) when a fixed listening port is unnecessary; read the assigned port from `ss -tlnp`.
 
 ## Gotchas
 
@@ -48,4 +49,5 @@ socat TCP4-LISTEN:2222,fork TCP4:<pivot-ip>:22
 
 ## References
 
+- [Upstream manual](http://www.dest-unreach.org/socat/doc/socat.html): address types, file-open flags, direction options, and TLS verification.
 - Related: `netcat` (simpler, no fork/SSL), `chisel` (HTTP-tunneled relay for restrictive egress), `ligolo-ng` (agent-based pivot without port forwarding)

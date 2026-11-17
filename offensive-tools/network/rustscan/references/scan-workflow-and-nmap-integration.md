@@ -10,7 +10,7 @@ RustScan outputs open ports then (optionally) passes them to nmap. Understanding
 # RustScan default output (human-readable)
 rustscan -a 192.168.1.0/24 --range 1-65535
 
-# Machine-parseable: use -g (greppable nmap format via -oG)
+# Nmap greppable output: pass -oG after -- (RustScan -g would skip Nmap)
 rustscan -a TARGET --range 1-65535 -- -oG scan.gnmap -sV
 
 # Parse greppable nmap output
@@ -36,14 +36,17 @@ for host in tree.findall('.//host'):
 ### Batch target workflow
 
 ```bash
-# Scan subnet → save port list → targeted nmap
-rustscan -a 192.168.1.0/24 --range 1-1000 -b 1000 --timeout 2000 \
-  | grep "Open" | awk -F '[:\\[\\]]' '{print $2":"$3}' | sort -u > open_ports.txt
+# Scan an IPv4 subnet, then expand each greppable list to IP:port rows
+rustscan -a 192.168.1.0/24 --range 1-1000 -b 1000 --timeout 2000 -g \
+  | awk -F ' -> ' 'NF == 2 {gsub(/[][]/, "", $2); n=split($2, ports, ","); for (i=1; i<=n; i++) if (ports[i] != "") print $1 ":" ports[i]}' \
+  | sort -u > open_ports.txt
 
 # Re-scan only discovered open ports with nmap full scan
 cat open_ports.txt | awk -F: '{print $1}' | sort -u > live_hosts.txt
 PORTS=$(cat open_ports.txt | awk -F: '{print $2}' | sort -nu | tr '\n' ',' | sed 's/,$//')
-nmap -sV -sC -p "$PORTS" -iL live_hosts.txt -oA full_scan
+if [ -n "$PORTS" ] && [ -s live_hosts.txt ]; then
+  nmap -sV -sC -p "$PORTS" -iL live_hosts.txt -oA full_scan
+fi
 ```
 
 ---

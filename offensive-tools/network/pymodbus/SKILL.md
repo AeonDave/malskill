@@ -1,7 +1,7 @@
 ---
 name: pymodbus
 description: "Auth/lab ref: Python library for Modbus TCP and serial communication."
-compatibility: "Linux, Windows, macOS; Python 3."
+compatibility: "Linux, Windows, macOS; Python supported by the installed PyModbus release. Examples use the PyModbus 3.10+ device_id API."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -20,6 +20,8 @@ Use PyModbus when you need to:
 - script repeatable ICS/OT probes against Modbus TCP or RTU endpoints
 
 ## Quick Start
+
+The examples use `device_id`, which [replaced `slave` in PyModbus 3.10](https://pymodbus.readthedocs.io/en/latest/source/api_changes.html#api-changes-3-10-0).
 
 ```python
 from pymodbus.client import ModbusTcpClient

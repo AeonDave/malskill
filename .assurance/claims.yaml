@@ -7,20 +7,24 @@
 # together with a real review; the date is per category but freshness is really
 # per skill, so re-check the skills that churn (tool versions), not just one.
 #
-# "attested" claims go stale when (today - last_verified) exceeds cadence_days
-# or when files in the category change after the attestation date.
+# Attestation requires both last_verified and verified_digest. Dates without a
+# reviewed digest remain unverified. After reviewing the entire current category,
+# record its date and category_digests value from `assurance_check.py --json`.
+# Digests bind markdown paths and file hashes; changed/added/deleted markdown or
+# an elapsed cadence makes the claim stale. Do not copy digests without reviewing.
 content_currency:
   cadence_days:
     default: 180
     ai: 60                 # tool versions churn in days
     offensive-tools: 120
+  verified_digest: {}       # Historical dates below have no content-bound evidence.
   last_verified:
     coding: 2026-11-07
     offensive-coding: 2026-11-08
     offensive-ctf: 2026-11-07
-    offensive-tools: 2026-11-14   # partial: network/wireless/shells clusters pending
+    # offensive-tools: partial review only; network/wireless/shells still pending
     ai: 2026-11-14
     behaviours: 2026-11-08
     coding-behaviours: 2026-11-08
     knowledge-offensive: 2026-11-14
-    # knowledge, harness-dev, hardware, offensive-hardware, mcp: no attestation -> unverified
+    # knowledge, harness-dev, hardware, offensive-hardware, offensive-techniques: no date

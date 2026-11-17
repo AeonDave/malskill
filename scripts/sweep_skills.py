@@ -5,7 +5,7 @@ Complements quick_validate.py (frontmatter/description) and
 check_changed_files.py (final newline + git-diff whitespace).
 
 Checks per markdown file under the target root:
-  - broken relative .md links
+  - broken relative .md links in simple [label](path.md[#fragment]) form
   - placeholder markers (TODO / FIXME / XXX / TBD / WIP)
   - CTF-idiom leakage in non-CTF contexts (root.txt / user.txt / HTB{ /
     HackTheBox / TryHackMe) — off by default; enable with --ctf-check
@@ -32,7 +32,7 @@ from typing import Iterable
 # Placeholder markers we treat as unresolved gaps.
 _PLACEHOLDER_RE = re.compile(r"\b(TODO|FIXME|XXX|TBD|WIP)\b")
 
-# Markdown relative-link matcher. Skips fenced anchors / non-.md targets.
+# Simple inline .md links only; excludes angle destinations, titles, and reference links.
 _MD_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)#]+?\.md)(#[^)]*)?\)")
 
 # CTF-idiom markers. Legitimate in offensive-ctf/, wrong elsewhere.
@@ -65,13 +65,13 @@ _WORKSTATION_PATH_ALLOWLIST = {
     "/home/ctf",
     "/home/user",
     # Windows built-in profiles
-    r"c:\users\admin",
     r"c:\users\public",
     r"c:\users\default",
     r"c:\users\all users",
     r"c:\users\administrator",
     r"c:\users\defaultuser0",
     # Common example accounts in security literature
+    r"c:\users\admin",
     r"c:\users\user",
 }
 

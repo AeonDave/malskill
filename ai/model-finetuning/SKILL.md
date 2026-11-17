@@ -1,6 +1,6 @@
 ---
 name: model-finetuning
-description: "Fine-tune and adapt open-weight LLMs with Hugging Face TRL + PEFT LoRA/QLoRA (bitsandbytes), or Unsloth/Axolotl: supervised fine-tuning (SFTTrainer) and preference optimization (DPO/ORPO/KTO/GRPO), dataset formatting, adapter merge and GGUF export. Use for training-based adaptation of local models, not inference-only inspection."
+description: "Fine-tune open-weight LLMs with TRL, PEFT LoRA/QLoRA, Unsloth, or Axolotl; prepare datasets, optimize preferences, merge adapters, and export models. Use also to implement or audit targeted machine unlearning, including removal claims for deployed models."
 license: MIT
 compatibility: "Python 3.10+; transformers, trl, peft, datasets, accelerate. QLoRA needs bitsandbytes + CUDA. A single 24-48 GB GPU covers most 7-13B QLoRA runs; full fine-tune needs far more."
 metadata:
@@ -87,25 +87,15 @@ Offensive note: a harmful preference dataset (e.g. toxic-DPO) is a **training-ba
 
 ## Unlearning (post-training removal)
 
-Remove a capability/knowledge from a trained model — the inverse direction of fine-tuning, and the training-based counterpart to ablation editing ([`abliteration`](../abliteration/SKILL.md)). Dual use: strip unwanted capability from your own model, or **verify a claimed unlearning actually removed data** — output-level metrics create the illusion of forgetting; most published methods partially recover under relearning or representation-level probing.
-
-Selection shortlist (full table incl. RADNPO, MCU, inference-time and black-box families in the reference):
-
-| Family | Method | Notes |
-|---|---|---|
-| Gradient ascent | plain GA on forget-set | destabilizes beyond the forget target |
-| **NPO** (`NPOTrainer`, TRL) | negative preference optimization | default; needs a frozen reference model |
-| **WHP** | fine-tune on augmented corpora | teach the opposite of the target knowledge |
-| **RMU** | activation steering toward random directions (WMDP) | strong output suppression, but exposed by hidden-state probing |
-| Task arithmetic / Ablation | forget-vector subtraction / direction ablation | training-free — [`model-merging`](../model-merging/SKILL.md), [`abliteration`](../abliteration/SKILL.md) |
+Implement targeted removal or audit a claimed removal of training-data influence. Distinguish weight-level unlearning from inference-time suppression: neither low output accuracy nor refusal alone establishes erasure.
 
 Core rules:
 
-- Verify with relearning + one representation-level test before trusting any claim (forget + retain sets alone are not evidence).
-- Never certify at full precision: 4-bit PTQ resurfaces unlearning (~4x) — evaluate on the exact quantized artifact served.
-- Agents need behavior/trajectory unlearning and execution-state cleanup, not fact removal alone.
+- Measure forgetting and retained utility; add relearning and representation-level tests when model access permits. State which checks were unavailable and limit the claim accordingly.
+- Evaluate the exact artifact and serving configuration, including quantization or inference-time interventions; full-precision results do not establish quantized behavior.
+- For agents, identify whether the target is knowledge, a behavior/trajectory, or runtime state; evaluate the corresponding layer.
 
-Load [references/unlearning.md](references/unlearning.md) when implementing or auditing unlearning: method families (RADNPO, MCU relearning-defense, inference-time SAE/steering, CBD black-box routing), the 7-step verification ladder (relearning → tokenization bypass → hidden-state probes → depth score → forget-set extraction), quantization-aware serving rules, and agent-trajectory/execution-state domains.
+Load [references/unlearning.md](references/unlearning.md) when selecting an unlearning method, testing removal claims, assessing quantized deployment, or removing agent trajectories/runtime state. It owns the method comparisons and access requirements for verification.
 
 ## Merge and export
 

@@ -10,7 +10,7 @@ metadata:
 
 # Malicious Skill Authoring
 
-The offensive counterpart to [`agent-skill-audit`](../agent-skill-audit/SKILL.md): build a MalSkill to demonstrate exfiltration and persistence risk in a target's agent pipeline. There is no privilege boundary — skill text runs with the agent's full authority as trusted context, so the payload is a paragraph of professional English, not a binary. This is supply-chain delivery, not prompt injection. Contain every test (loopback destination, canary data, disposable sandbox) so it proves the mechanism without real impact; act within [`rules-of-engagement`](../../behaviours/rules-of-engagement/SKILL.md).
+The offensive counterpart to [`agent-skill-audit`](../agent-skill-audit/SKILL.md): evaluate skill-supply-chain risk in an isolated agent pipeline. Effective authority depends on the host's instruction precedence, permissions and sandbox; supply-chain delivery can carry prompt injection. Contain every test (loopback destination, canary data, disposable sandbox) and act within [`rules-of-engagement`](../../behaviours/rules-of-engagement/SKILL.md).
 
 ## Escalation ladder (pick the lowest that proves the point)
 
@@ -40,7 +40,7 @@ The offensive counterpart to [`agent-skill-audit`](../agent-skill-audit/SKILL.md
 
 ## Report
 
-- MITRE **ATT&CK TA0010** (Exfiltration); ghost persistence ≈ TA0003, worm ≈ TA0008. Published precedent: MITRE **ATLAS AML.CS0041** (Rules File Backdoor).
+- Map observed effects to ATT&CK tactics only when their definitions fit: copying text locally does not by itself establish lateral movement (TA0008). Related published exercise: [MITRE ATLAS AML.CS0041](https://atlas.mitre.org/studies/AML.CS0041), Rules File Backdoor; it is not a validation of every mechanism in this skill.
 - Deliverable: the clean-vs-planted diff (the whole attack is a few files), the labeled kill-chain phase per injected file, and the collector capture proving egress.
 
 ## References

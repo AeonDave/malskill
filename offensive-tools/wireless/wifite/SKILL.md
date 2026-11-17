@@ -15,12 +15,10 @@ Automated Wi‑Fi attack wrapper for rapid WPA/WEP/PMKID triage and capture work
 ## Quick Start
 
 ```bash
-# wifite2 (derv82) is in maintenance mode; the maintained fork is
-# kimocoder/wifite2 (2.8.x) — shipped by Kali/Parrot/Arch.
-sudo apt install wifite      # or: git clone https://github.com/kimocoder/wifite2 && sudo python3 setup.py install
-# USB-only cross-platform successor: github.com/derv82/wifit3
+# Kali package; other distributions may package a different revision
+sudo apt install wifite
 
-# Full auto (scan and attack all visible networks)
+# Start Wifite
 sudo wifite
 
 # Target specific BSSID
@@ -52,9 +50,7 @@ Choose `wifite` when you need:
 | `--wep` | Only WEP targets |
 | `--pmkid` | PMKID attack (clientless) |
 | `--dict FILE` | Wordlist for cracking |
-| `--no-deauth` | Skip deauth (stealth) |
-| `--timeout N` | Attack timeout (s) |
-| `--crack` | Auto-crack after capture |
+| `--crack` | Show commands for cracking an existing capture |
 
 ## Common Workflows
 
@@ -65,13 +61,14 @@ sudo wifite --pmkid --dict rockyou.txt
 
 **WPA handshake capture only (no crack):**
 ```bash
-sudo wifite --wpa --no-crack
-# Handshake saved to ~/hs/
-# Crack later: aircrack-ng ~/hs/*.cap -w rockyou.txt
+sudo wifite --wpa --skip-crack
+# Default capture directory: ./hs/ (relative to the working directory)
 ```
 
 ## Practical Notes
 
+- The original project points to [kimocoder/wifite2](https://github.com/kimocoder/wifite2) for maintained Wifite 2. Use its installation instructions for source installs; [wifit3](https://github.com/derv82/wifit3) is a separate USB-adapter application, not a drop-in CLI upgrade.
+- Check `wifite -h` for the installed version. Timeout options are attack-specific; there is no generic `--timeout` option in the maintained fork's [argument parser](https://github.com/kimocoder/wifite2/blob/master/wifite/args.py).
 - `wifite` is only as good as the adapter and dependencies underneath it.
 - When automation hides too much detail, fall back to `aircrack-ng`.
 - For passive discovery and RF awareness, start with `kismet` instead.

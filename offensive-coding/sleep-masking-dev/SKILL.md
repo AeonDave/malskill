@@ -142,3 +142,28 @@ Full Ekko/ROP chains are heavy and telemetry-rich (note: the original Ekko PoC r
 - [references/reliability-and-safety.md](references/reliability-and-safety.md) — Load when debugging crashes, rollback failures, race conditions, or unsafe transition order.
 - [references/patterns.md](references/patterns.md) — Load for concrete masking patterns, permission-transition designs, and thread-handling trade-offs.
 - [../linux-internals-dev/references/syscall-dispatch-linux.md](../linux-internals-dev/references/syscall-dispatch-linux.md) — Cross-reference for Linux syscall gate patterns when adapting ideas across platforms.
+
+## Stager-resident masking (Linux ELF, emp3r0r pattern)
+
+A reported emp3r0r architecture places the mask in the stager image, separate from the agent ranges being masked. Treat the following as implementation-specific notes, not a verified runtime result; pin the upstream revision and check its range exclusions before claiming whole-image, heap, or stack coverage (`core/modules/stager_linux/mask.c`, `mask_xor.c`, `stub.c`).
+
+1. **Stager maps a dedicated state block** (RW, installed as GS base via `arch_prctl(ARCH_SET_GS)`) plus a dedicated 64 KiB stack — both explicitly excluded from masking. The stager is mapped RX (W^X), never touched by the mask.
+2. **Agent binds to the stager mask** via `arch_prctl(ARCH_GET_GS)` + magic/version validation (with `mincore` to discard stale GS bases), sets a READY flag, then `drop_loader_blobs()` unmaps the payload blob.
+3. **Sleep**: the agent writes its current RSP into the shared state, calls the stager's `mask_fn` via a naked-asm trampoline that switches RSP to the dedicated stager stack. Coverage and safety depend on the actual range exclusions and thread state.
+4. **Range discovery**: parse `/proc/self/maps` to select `[heap]`, `[stack]` (kernel-named, excluding argv/env via `/proc/self/stat` fields 48–51), anonymous RW non-named stacks (trim to SP−2 pages, `madvise(MADV_DONTNEED)` the pages below), and every anonymous ELF image — **read the ELF magic via `pread64` on `/proc/self/mem`** (never dereference: glibc merges guard pages into the VMA of the stack), parse the PHDRs, and add **all** mappings covering `PT_LOAD` segments — this masks the `r-xp` code segment too, not just the header VMA.
+5. **Flip and encrypt**: `mprotect` every selected range to `PROT_READ|PROT_WRITE` (removes `PROT_EXEC` from those selected ranges), XOR in-place with a 32-byte `getrandom` key, raw `nanosleep` (no libc: heap/stack are encrypted), XOR again, `zero_key` (volatile write), restore original protections saved per range.
+6. **Pluggable provider**: implement `stager_mask_provider_sleep(seconds, probe, keep_start, keep_end)` in a `mask_<name>.c` and compile with `MASK=<name>`; no changes to stub or agent. A minimal provider can just nanosleep.
+
+An assertion in an upstream test is not a passing result for the current build. Record the test revision, sampled mappings and exclusions before reporting coverage; absence of a sampled marker does not establish absence of telemetry or detection.
+
+## Implementation notes
+
+- **Mask location**: separate code and state locations do not establish isolation from memory corruption within the same process.
+- **Stack**: the agent's stack is masked (not just data pages); the trampoline switches to a dedicated stager stack before calling the provider, so the agent's RSP is stored in the shared state and restored after.
+- **`pread64` for ELF magic**: reading `/proc/self/mem` via `pread64` instead of direct dereference handles VMA boundary issues (guard pages, unmapped pages inside multi-VMA ELF mappings) that would otherwise fault.
+- **Discarded pages**: distinguish page discarding from reversible masking when recording coverage and memory-restoration results.
+
+## References
+
+- Upstream: [jm33-m0/emp3r0r](https://github.com/jm33-m0/emp3r0r) — `core/modules/stager_linux/mask.c`, `mask_xor.c`, `stub.c`; `core/c_agent/include/stager_iface.h`
+- Companions: [`ekko reduced`](SKILL.md#ekko-reduced-timer-as-wake-only), [`ghosting`](SKILL.md#ghosting-variants). Load [public artifact review](../../knowledge-offensive/poc-weaponization/SKILL.md) when reviewing the upstream project before execution.

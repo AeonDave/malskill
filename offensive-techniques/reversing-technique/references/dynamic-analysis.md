@@ -1,6 +1,6 @@
 # Dynamic Analysis Reference
 
-GDB, x64dbg, strace, and other dynamic analysis workflows. Load this reference when the user explicitly requests dynamic analysis in an isolated lab environment.
+GDB, x64dbg, strace, and other dynamic analysis workflows. Load when the analysis needs runtime evidence; execute samples only in an isolated lab environment.
 
 ## Prerequisites
 
@@ -142,6 +142,10 @@ x64dbg is the primary Windows debugger for malware analysis. See the `x64dbg` sk
    - Install ScyllaHide plugin (patches common anti-debug techniques automatically)
    - Or manually: patch `PEB.BeingDebugged` to 0, handle `NtQueryInformationProcess`
 
+### Timing loops as observation points
+
+If a sample repeatedly checks elapsed time and sleeps again, trace the time source, comparison, and callers. A breakpoint on that loop reveals only paths that reach it; confirm coverage from the call graph and trace. Record any timing changes separately from the unmodified run, because they can change behavior.
+
 ## strace / ltrace — Linux
 
 ### System call tracing
@@ -210,6 +214,12 @@ sudo fakenet
 # Then run the sample — all traffic is captured and logged
 ```
 
+### Custom responses and fallback destinations
+
+[FakeNet-NG custom HTTP responses](https://cloud.google.com/blog/topics/threat-intelligence/improving-dynamic-malware-analysis-with-cheat-codes-for-fakenet-ng) can model observed header/body checks. Satisfying a `Content-Type` check only establishes that branch; decryption, integrity checks, or session state may still reject the response. Record the simulated response and the resulting behavior.
+
+Treat public-hosting traffic as evidence to inspect, not as inherently benign: [GitHub can carry payloads, commands, or C2 locators](https://www.reversinglabs.com/blog/malware-leveraging-public-infrastructure-like-github-on-the-rise). Capture each observed destination and its role before calling it a fallback. If the sample uses DoH, a port-53 trace alone misses those queries; inspect its HTTPS resolver path within the isolated network simulation.
+
 ### inetsim (Linux)
 
 ```bash
@@ -253,15 +263,3 @@ vol -f memory.dmp windows.memmap --pid <PID> --dump
 # Network connections
 vol -f memory.dmp windows.netscan
 ```
-
-### FakeNet custom handler — protocol discovery without decryption
-
-A Python rule in fakenet-ng that satisfies a malware's header check (e.g. `Content-Type: application/octet-stream`) forces the full payload-drop and execution chain — confirming the C2 protocol without reimplementing its decryption. Shape the response to the expected headers; the binary handles the rest.
-
-### Validated sleep loops as universal observation points
-
-Anti-sandbox sleep functions that re-check wall-clock time and re-sleep in capped chunks (instead of a plain `Sleep()`) defeat sandboxes that patch the sleep call. Two uses: (1) patch the wall-clock recheck instruction in x64dbg to skip the delay; (2) the anti-debug sleep function itself is a universal observation point — it is invoked before every critical action, so one breakpoint exposes all hotspots.
-
-### GitHub raw content as fallback C2 hosting
-
-Commodity malware increasingly uses `raw.githubusercontent.com/<user>/<repo>/refs/heads/main/<file>` as fallback payload hosting alongside a primary C2 domain, with DoH resolvers (`dns.google`, `dns.nextdns.io`, `dns.sb`) as DNS-blocking evasion. In dynamic analysis, satisfy the primary C2 first (fakenet handler); if the sample falls back to GitHub, capture the URL from the network log and serve locally.

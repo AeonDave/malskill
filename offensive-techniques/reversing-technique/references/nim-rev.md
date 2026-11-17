@@ -15,7 +15,7 @@ nm binary 2>/dev/null | grep -iE "NimMain|nimGC|HEX[0-9A-F]+"
 ```
 
 **Strong indicators:**
-- Symbol `NimMain` or `NimMainInner` — always present in non-stripped builds
+- Symbol `NimMain` or `NimMainInner` (possibly prefixed via `--nimMainPrefix`)
 - Mangled names with `HEX` prefix: `HEXopenHEX_u100` (Nim name mangling)
 - String constants matching `*.nim:line` (internal source annotations)
 - `@[` substring in read-only data (Nim array literal syntax leaks)
@@ -208,13 +208,13 @@ When neither symbols nor FLIRT help:
 5. **Cross-ref rodata strings** → most Nim programs produce human-readable error messages; trace them to handlers → identify key code paths
 6. **Type reconstruction** — use the `NimString` and `NimSeq` patterns above to recover argument types of unknown functions
 
-### DLL loaders — benign-export masquerading
+### DLL entry points and exports
 
-Nim DLL loaders hide the custom logic behind an export that looks benign/MSI-related (e.g. `MsiProvideQualifiedComponentW`), while `DllMain` redirects to `NimMain` for runtime init only. The author's logic is NOT under `NimMain` or `DllMain`. Imports are minimal: only `LoadLibraryA`/`GetProcAddress` for dynamic API resolution — no static imports to flag.
+Inspect both initialization and exports, including innocuous-looking export names. [`NimMain` initializes the runtime and runs top-level statements](https://nim-lang.org/docs/nimc.html); application logic can therefore be reachable through initialization as well as exported procedures. The entry layout and import set depend on the build and sample.
 
-- **ASLR rebase**: read the module's runtime base from x64dbg's memory map, then rebase the Ghidra image to that address — every static address now maps to runtime. Set breakpoints on `CreateFileW` (runtime address) and the benign export; step from the export into the payload loader.
-- **References-feature**: use Ghidra's References on `CreateFileW` to trace back to the caller — this reveals the entry export when the flow is unclear.
-- **Silent-exit as a clue**: the sample produces no output at all — pre-check validation fails silently and skips the payload path. Rather than RE the validation, patch the conditional jump (`je`) in x64dbg to force the execution path; the payload path is immediately visible.
+- **ASLR mapping:** correlate an address inside the DLL with `runtime module base + RVA`. Imported API implementations belong to their own modules and need separate address resolution.
+- **Dynamic imports:** a resolved API pointer may have no static cross-reference. Correlate resolver results and observed callers before assigning an export to a behavior.
+- **Silent exit:** inspect the exit path and unmet inputs; lack of output does not by itself prove a validation check or a hidden payload.
 
 ---
 

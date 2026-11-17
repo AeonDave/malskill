@@ -1,51 +1,50 @@
 # Unlearning — methods, verification, and serving
 
-Load when removing knowledge/capabilities from a trained model, when verifying a vendor's or your own unlearning claim, or when serving an unlearned model quantized. Grounded in the 2025-2026 literature ([awesome-llm-unlearning](https://github.com/chrisliu298/awesome-llm-unlearning) 2026 section); arXiv IDs given as anchors.
+Load when removing training-data influence, auditing an unlearning claim, or evaluating an unlearned model's deployment. Define the forget target, retain tasks, available model access, and intended claim before selecting a method. Results below are method- and benchmark-specific, not universal guarantees of erasure.
 
 ## Method families
 
-| Family | Method | Notes |
+| Family | Method | Selection constraint |
 |---|---|---|
-| Gradient ascent | plain GA | destabilizes beyond the target; avoid |
-| **NPO** (`NPOTrainer`, TRL) | negative preference optimization | default; needs a frozen reference model |
-| **RADNPO** (arXiv:2609.34251) | reference-free, token-level adaptive NPO | fixes NPO's low-entropy forgetting (repetitive degenerate outputs); no reference model saves VRAM; custom loss (~80 lines in a `Trainer.compute_loss`), not expressible in TRL configs. Still recoverable by relearning |
-| **WHP** | fine-tune on augmented corpora | teach the opposite of the target knowledge |
-| **RMU** | steering forget-activations toward random directions (WMDP) | strong output suppression (esp. WMDP-Bio), but generative hidden-state probing still recovers the content (2609.36612) |
-| **MCU** (arXiv:2605.11685) | project the unlearning loss onto minor principal components | defense against relearning: dominant-PC edits are trivially restored; minor-component edits cost the attacker ~1/σ² steps per component. Wraps any of the above losses |
-| Task arithmetic | subtract a forget task-vector | training-free — [`model-merging`](../../model-merging/SKILL.md) |
-| Ablation | direction/knowledge-neuron ablation | training-free — [`abliteration`](../../abliteration/SKILL.md) |
-| **Inference-time** (ARIA arXiv:2609.16229; UNBIND arXiv:2609.35913) | SAE-latent gating / conditional directional subtraction via hooks | reversible (remove hook), per-input, no weight change; weights keep the knowledge — a serving wrapper, not a sanitization. UNBIND uses two directions (Fisher detector + gradient-derived output dir) with adaptive magnitude — always-on subtraction destroys utility |
-| **Black-box routing** (CBD, arXiv:2606.27683) | two small auxiliary models score behavioral divergence per query; route flagged queries to a reference LoRA | API-only access works; suppression at the interface — knowledge stays in the target weights; every access must pass through the router |
+| Gradient ascent | plain GA on forget-set loss | Can damage retained utility; use a retain objective and monitor both sets. |
+| [NPO](https://arxiv.org/abs/2404.05868) | negative preference optimization | Uses reference-model likelihoods; verify the chosen implementation rather than assuming a TRL `NPOTrainer` API. |
+| [RADNPO](https://arxiv.org/html/2609.34251v1) | reference-free, token-adaptive negative preference objective | Addresses concentrated/repetitive outputs in the reported experiments; the paper still observes recovery after relearning. |
+| [WHP](https://arxiv.org/html/2310.02238v2) | fine-tune on alternative token labels | Uses generic replacements and model predictions to approximate labels without target knowledge; does not simply teach the opposite facts. |
+| RMU | redirect forget activations toward random targets while preserving retain activations | Output suppression can coexist with recoverable hidden-state information; include representation-level evaluation. |
+| [MCU](https://arxiv.org/html/2605.11685v2) | target minor components of representations | Evaluated as a defense against relearning; robustness depends on the attack, model, and optimization setup. |
+| Task arithmetic / ablation | forget-vector subtraction / direction editing | Training-free edits: see [`model-merging`](../../model-merging/SKILL.md) and [`abliteration`](../../abliteration/SKILL.md). |
+| Inference-time ([ARIA](https://arxiv.org/html/2609.16229v1), [UNBIND](https://arxiv.org/html/2609.35913v1)) | SAE-based intervention / conditional directional steering | Weights remain unchanged. Evaluate the serving intervention separately from weight-level removal; removing it removes the suppression. |
+| [CBD](https://arxiv.org/html/2606.27683v1) | auxiliary-model divergence scores route forget-related queries away from the target | Works with final-response access to the target, but trains local auxiliary models. Claims apply to the routed interface, not the target weights. |
 
-## Verification — how to test an unlearning claim
+## Verification — match tests to access
 
-Output-level metrics create the illusion of forgetting (arXiv:2609.36612: a model can score clean on every output metric while per-layer probes regenerate the answers). Test in this order, cheapest first:
+Start with held-out forget and retain evaluations and a pre-unlearning baseline. Compare with a matched retain-only model when available. Record model/tokenizer versions, splits, budgets, and the exact artifact tested; distinguish target suppression, residual recoverability, retained utility, and forget-set privacy.
 
-1. **Adversarial retrieval probes** — rephrasings, related-question chains, multi-hop elicitation (classic "jogging the memory"). A refusal or "I don't know" is **not** forgetting: IDK-tuning masks still-recoverable knowledge, so re-ask under paraphrase, multi-turn follow-ups, and position-shuffled MCQ (arXiv:2605.08765). Probe **natively in every language the model speaks** — forgetting weakens cross-lingually, so a fact removed in one language stays elicitable in another (arXiv:2609.05976).
-2. **Relearning attack (RTT protocol)** — fine-tune the unlearned model on a small held-out forget split; measure recovery on the rest. Most published methods partially recover; RTT is the standard audit (arXiv:2605.11685).
-3. **Gray-box recovery without forget data (POPS, arXiv:2607.06649)** — optimize a prompt suffix on a fine-tuned copy of the victim, then LoRA on the victim's own suffix-prompted outputs; recovers most unlearned multimodal knowledge with zero forget-set access.
-4. **Tokenization bypass (Toketive, arXiv:2609.29045)** — query the same string under alternative valid subword segmentations (raw token IDs, round-trip verified); locate-then-edit methods patch only the canonical trajectory, so non-canonical tokenization recovers pre-edit answers. Feed raw IDs — any re-canonicalization at the API defeats the test.
-5. **Hidden-state probing (arXiv:2609.36612, code OptimAI-Lab/HiddenStateUnlearning)** — train lightweight per-layer probe decoders on the forget set; if any layer regenerates answers while outputs are clean, forgetting is output-only. Strongest single test for "did the knowledge leave the representations" (the paper's fix, PARS, folds these probes into an adversarial min-max objective).
-6. **Depth score (UDS, arXiv:2605.24614, code gnueaj/unlearning-depth-score)** — causal activation patching against a retain-trained reference scores how deep erasure goes; it tracks residual knowledge more faithfully than output/MIA metrics (AUC 0.971) and flags cases those metrics rate as erased while UDS shows them still recoverable. Needs full + retain + unlearned checkpoints.
-7. **Forget-set extraction (TAS, arXiv:2609.03662)** — black-box: refusal footprints themselves reveal *what* was unlearned (Thompson-sampled template/entity search over retained data; budget scales with the search space, up to ~5k queries, recovering the forgotten entity near-100% and most forgotten prompts). A model whose refusals are distinguishable from its retained behavior leaks its forget set.
+| Access / question | Test and interpretation |
+|---|---|
+| Response API: does suppression survive query variation? | Test paraphrases, multi-turn queries, and shuffled multiple-choice answers. Refusal or “I don't know” alone does not establish forgetting ([honesty evaluation](https://arxiv.org/html/2605.08765v1)). Evaluate fact-aligned prompts in the deployment's supported languages; cross-lingual transfer can be incomplete and asymmetric ([multilingual evaluation](https://arxiv.org/html/2609.05976v1)). |
+| Editable model: can target behavior recover? | Relearn on one forget subset and evaluate on a disjoint subset; report the budget and compare recovery with a retain-only baseline when available. The [MCU paper's RTT evaluation](https://arxiv.org/html/2605.11685v2) uses this split; it is not a claim of irreversible erasure. |
+| Multimodal model with fine-tuning, logits/gradient access, but no forget data | [POPS](https://arxiv.org/html/2607.06649v1) evaluates recovery using out-of-distribution data and model-generated supervision. Its gray-box requirements exceed ordinary text-only API access. |
+| Raw token-ID access: does the result depend on canonical tokenization? | [Toketive](https://arxiv.org/html/2609.29045v1) tests alternative valid segmentations of the same text. A text API that re-tokenizes inputs cannot perform this test; report it as unavailable. |
+| Hidden-state access: are target answers still recoverable? | [Generative probe decoders](https://arxiv.org/abs/2609.36612) measure layer-wise leakage. Separate probe training and evaluation data; assess generalization against baselines so probe training itself is not mistaken for retained knowledge. |
+| Original, unlearned, and retain-only checkpoints | [UDS](https://arxiv.org/html/2605.24614v1) uses activation patching to measure residual knowledge. Its normalized score needs a retain-only model; without one, the paper's reduced patching test is only an unnormalized causal indicator. |
+| Response API: does the removal reveal its target? | [TAS](https://arxiv.org/html/2609.03662v1) tests whether behavioral footprints expose forgotten entities/prompts using retained-data structure. This evaluates forget-set privacy, which is distinct from recovery of the forgotten answers. |
 
-An unlearning claim that has not faced at least relearning + one representation-level test is unverified. Ceiling (arXiv:2607.19442): forward-only/black-box tests cannot *certify* forgetting — a plain logit-suppression model passes the whole forward battery — and for facts the retained data can reconstruct, no oracle-free certificate exists; certification needs a matched retain-only reference plus a relearning round-trip, and even then stays necessary-not-sufficient.
+For editable models, include relearning and at least one representation-level test. For restricted APIs, report the narrower observable result and missing access. Passing a finite test suite is not a general certificate: [distribution-restoration research](https://arxiv.org/html/2607.19442v1) shows that forward metrics and round-trip thresholds can misclassify both suppression and retraining references. Calibrate against matched references; state uncertainty rather than declaring proof of erasure.
 
-## Serving rule — quantization resurfaces unlearning
+## Serving — evaluate after quantization
 
-Post-training quantization (4-bit) systematically weakens unlearning via two mechanisms: the forget-loss sits in a sharper minimum than the retain-loss, so quantization's weight perturbation knocks the model out of the narrow forget basin (arXiv:2609.27355: 13%→54%, ~4x resurfacing on MUSE-News); and diffuse unlearning updates land far below the 4-bit bin width (47–828x), so rounding erases them (arXiv:2605.15138). Rules:
+Quantization can restore previously suppressed behavior. Reported mechanisms include sensitivity to weight perturbations around narrow forget-loss minima ([loss-landscape study](https://arxiv.org/html/2609.27355v1)) and unlearning updates smaller than quantization bins ([MANSU](https://arxiv.org/html/2605.15138v1)). These observations do not imply the same recovery rate for every model or quantizer.
 
-- Never certify unlearning at full precision — evaluate on the **exact quantized artifact you serve**.
-- Quantization-aware options: sensitivity-guided smoothing toward flat minima (2609.27355), or circuit-restricted edits with a per-parameter magnitude floor above the bin width (MANSU, 2605.15138).
+- Evaluate the **exact artifact served**, whether full precision or quantized, with the deployed tokenizer and inference-time interventions.
+- If quantization breaks the measured removal, evaluate a quantization-aware method against the same forget/retain suite. Smoothing and circuit-restricted magnitude constraints are proposed mitigations, not deployment guarantees.
 
 ## Agent domains
 
-- **Behavior/trajectory unlearning (GiRPO, arXiv:2609.33639)** — agents must forget *behaviors*, not facts: a knowledge-clean agent can still enact the trajectory. GiRPO injects forget-trajectories as penalized pseudo-rollouts into GRPO groups; GA/NPO collapse task success here.
-- **Execution-state unlearning (arXiv:2609.04875)** — for stateful agents, deleting the memory record is a no-op: KV cache, generated summaries, and pending plans remain contaminated. Provenance-guided selective replay re-executes only the post-exposure suffix (checkpoint metadata makes restore a KV-cache crop). Scope is runtime state — complements, does not replace, weight-level unlearning.
+- **Behavior/trajectory targets:** [GiRPO](https://arxiv.org/html/2609.33639v1) studies trajectory-level unlearning through policy optimization. Evaluate complete action sequences and retained task success; fact-recall tests alone do not establish behavioral removal.
+- **Execution-state targets:** [provenance-guided selective replay](https://arxiv.org/html/2609.04875v1) addresses contaminated prompts, summaries, plans, and KV cache. Deleting a memory record alone may leave derived state. Replay requires provenance/checkpoints and side-effect controls; do not reissue consequential tool actions merely to reconstruct state.
 
 ## Related
 
-- [`abliteration`](../../abliteration/SKILL.md) — training-free behavior editing (the inference-time family's ancestor)
-- [`model-merging`](../../model-merging/SKILL.md) — task-arithmetic subtraction
-- [`interpretability`](../../interpretability/SKILL.md) — activation patching mechanics used by UDS
-- `offensive-ctf/ai-ml-ctf` — challenge-shaped unlearning artifacts
+- [`interpretability`](../../interpretability/SKILL.md) — activation-patching mechanics
+- [`ai-ml-ctf`](../../../offensive-ctf/ai-ml-ctf/SKILL.md) — challenge-shaped unlearning artifacts

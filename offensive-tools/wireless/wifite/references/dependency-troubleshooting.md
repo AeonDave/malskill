@@ -23,7 +23,7 @@ Check for:
 
 ## Typical Flows
 
-### Full auto
+### Start Wifite
 
 ```bash
 sudo wifite
@@ -44,7 +44,7 @@ sudo wifite --pmkid
 ### Capture only
 
 ```bash
-sudo wifite --wpa --no-crack
+sudo wifite --wpa --skip-crack
 ```
 
 ## Common Problems

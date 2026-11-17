@@ -39,14 +39,13 @@ sudo snap install rustscan
 | `--range <start-end>` | Port range (e.g. `1-1024`) | — |
 | `-b <batch>` | Ports probed per batch | 4500 |
 | `-t <ms>` | Timeout per port | 1500ms |
-| `--ulimit <n>` | File descriptor limit (higher = faster) | 8000 |
-| `-g` | Skip nmap; output open ports only | false |
+| `--ulimit <n>` | Request a file descriptor limit | OS limit unless supplied |
 | `--scan-order <order>` | `Serial` or `Random` | Serial |
-| `--scripts <script>` | nmap script category shorthand | `default` |
+| `--scripts <mode>` | RustScan script mode: `none`, `default`, or `custom`; not an NSE category | `default` |
 | `--top` | Scan top 1000 ports only | false |
-| `--greppable`, `-g` | Machine-readable output | false |
+| `--greppable`, `-g` | Output `IP -> [ports]`; skip script/Nmap execution | false |
 | `--accessible` | Accessibility-friendly output | false |
-| `--quiet`, `-q` | Suppress banner | false |
+| `--no-banner` | Suppress banner | false |
 | `-- <nmap args>` | Any nmap flags passed through | — |
 
 ---
@@ -133,8 +132,11 @@ PORT    STATE SERVICE VERSION
 
 **Greppable output:**
 ```bash
-rustscan -a TARGET -g | grep "Open"
+rustscan -a TARGET -g
+# 10.10.10.5 -> [22,80,443]
 ```
+
+`-g` suppresses the `Open IP:port` lines. Parse its per-host bracketed list instead. The format and script bypass are defined in [upstream main.rs](https://github.com/RustScan/RustScan/blob/master/src/main.rs); option names are in [input.rs](https://github.com/RustScan/RustScan/blob/master/src/input.rs).
 
 ---
 
@@ -161,11 +163,13 @@ rustscan -a TARGET -b 500 -t 3000 --ulimit 2000 -- -sV
 ### rustscan → full nmap follow-up
 
 ```bash
-# 1. Fast port discovery
-rustscan -a TARGET -g | grep "Open" | awk -F: '{print $2}' | tr '\n' ',' | sed 's/,$//' > ports.txt
+# 1. Fast port discovery for one numeric target
+rustscan -a TARGET -g | sed -n 's/^[^ ]* -> \[\(.*\)\]$/\1/p' > ports.txt
 
-# 2. Deep nmap on discovered ports
-nmap -sV -sC -p $(cat ports.txt) -oA TARGET_deep TARGET
+# 2. Deep nmap only when discovery returned a port list
+if [ -s ports.txt ]; then
+  nmap -sV -sC -p "$(cat ports.txt)" -oA TARGET_deep TARGET
+fi
 ```
 
 ### rustscan → masscan comparison
@@ -182,7 +186,7 @@ masscan 10.0.0.0/24 -p1-65535 --rate 10000 -oL masscan.txt
 
 ```bash
 # 1. Discover live hosts with open ports
-rustscan -a 192.168.1.0/24 -g -b 1024 | grep "Open" | cut -d: -f1 | sort -u > live_hosts.txt
+rustscan -a 192.168.1.0/24 -g -b 1024 | sed -n 's/^\([^ ]*\) -> \[.*\]$/\1/p' | sort -u > live_hosts.txt
 
 # 2. Deep scan each live host
 while read host; do
