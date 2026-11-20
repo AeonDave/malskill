@@ -1,6 +1,6 @@
 ---
 name: model-merging
-description: "Combine or edit open-weight models in weight space without training, using mergekit: SLERP, TIES, DARE, task arithmetic, passthrough/frankenmerge, and MoE assembly. Use to blend capabilities, build model soups, recover quality after abliteration, or add/subtract behaviors via task vectors on same-architecture checkpoints."
+description: "Combine existing open-weight checkpoints with mergekit: SLERP, TIES, DARE, task arithmetic, passthrough/frankenmerge, and MoE assembly. Use to blend capabilities, build model soups, recover quality after abliteration, or add/subtract behaviors via task vectors on same-architecture checkpoints."
 license: MIT
 compatibility: "Python 3.10+; pip install mergekit; CLI mergekit-yaml. Runs out-of-core on CPU (high RAM, GPU optional). Models must share architecture/tokenizer family — merging across families needs --allow-crimes and usually breaks."
 metadata:
@@ -13,6 +13,8 @@ metadata:
 Combine two or more checkpoints (or add/subtract their deltas from a base) directly in weight space — no training, no gradients. A merge of complementary fine-tunes often matches or beats its parents on benchmarks. This is the weight-arithmetic counterpart to training ([`model-finetuning`](../model-finetuning/SKILL.md)) and to activation/direction editing ([`abliteration`](../abliteration/SKILL.md)). The standard tool is `mergekit`.
 
 ## Pick a method
+
+For constructing weights from a specification, compiling explicit facts into a model, or repairing named tensor entries directly, load [weight-space-programming](../weight-space-programming/SKILL.md).
 
 | `merge_method` | Idea | Models | Use |
 |---|---|---|---|

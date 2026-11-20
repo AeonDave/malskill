@@ -59,6 +59,8 @@ tok.save_pretrained("out/")
 
 ## Gotchas
 
+For measured serving latency, throughput, KV capacity, or speculative-decoding tuning, load [inference-optimization](../inference-optimization/SKILL.md). A model that loads successfully is not yet a qualified serving configuration.
+
 - Tokenizer/model mismatch (wrong `pad_token`, chat template) silently degrades output — set `tok.pad_token` and apply `tok.apply_chat_template(...)` for instruct models.
 - `device_map="auto"` shards across GPUs/CPU/disk; a model that "loads" may be partly on CPU and crawl. Check `model.hf_device_map`.
 - 4-bit/8-bit load (`BitsAndBytesConfig`, `load_in_4bit=True`) needs `bitsandbytes` + CUDA; it is for inference/QLoRA, not a safety boundary.

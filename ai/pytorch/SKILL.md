@@ -90,5 +90,7 @@ with safe_globals([np.core.multiarray._reconstruct]):
 
 ## Resources
 
+For model-server latency, throughput, memory accounting, or kernel-change qualification, load [inference-optimization](../inference-optimization/SKILL.md); this skill covers checkpoint and tensor inspection.
+
 No bundled `scripts/`, `references/`, or `assets/`.
 Use the official [torch.load documentation](https://docs.pytorch.org/docs/2.6/generated/torch.load.html) for restricted loading and version-specific behavior; check matching docs for module introspection and checkpoint APIs.

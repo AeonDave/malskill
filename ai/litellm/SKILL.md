@@ -18,6 +18,8 @@ Unified LLM gateway: one OpenAI-shaped API over every provider (OpenAI, Azure, A
 
 ## Core workflow
 
+For a local backend's throughput/latency tuning, load [inference-optimization](../inference-optimization/SKILL.md). Measure the backend directly and through the proxy separately so routing, retries, rate limits, and transport are not mistaken for model execution time.
+
 ```bash
 # SDK: one API, any provider
 from litellm import completion

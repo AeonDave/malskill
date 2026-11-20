@@ -14,6 +14,8 @@ Adapt an open model to a task or domain. Default to **parameter-efficient** fine
 
 ## Stack
 
+For authoring weights or compiling a bounded fact memory without an optimizer, load [weight-space-programming](../weight-space-programming/SKILL.md).
+
 - **TRL `SFTTrainer`** — supervised fine-tuning on top of transformers `Trainer`; handles chat/instruction formatting, completion-only masking, packing, and native PEFT. Configure via `SFTConfig`.
 - **PEFT `LoraConfig`** — the adapter definition (`r`, `lora_alpha`, `target_modules`, `task_type`).
 - **`BitsAndBytesConfig`** — 4-bit NF4 base load = QLoRA.

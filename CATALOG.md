@@ -174,8 +174,10 @@ Support skills for building or auditing AI/ML pipelines used inside security too
 - **Artifact security**: [`model-scanning`](ai/model-scanning/SKILL.md) - scan untrusted pickle/PyTorch/Keras/ONNX/GGUF model files (picklescan/fickling/modelscan/modelaudit) before loading; a clean scan is not proof of safety.
 - **Model adaptation & modification**: [`model-finetuning`](ai/model-finetuning/SKILL.md) (LoRA/QLoRA SFT, preference optimization and unlearning audits), [`abliteration`](ai/abliteration/SKILL.md) (training-free refusal/behavior editing via residual-direction ablation), and [`model-merging`](ai/model-merging/SKILL.md) (weight-space merges: SLERP/TIES/DARE/task-arithmetic/MoE).
 - **Interpretability**: [`interpretability`](ai/interpretability/SKILL.md) - explain model decisions and locate behaviors: SHAP/LIME/Captum attribution (ML/DL) and TransformerLens/SAE mechanistic analysis (LLM).
+- **Direct model construction**: [`weight-space-programming`](ai/weight-space-programming/SKILL.md) - author or repair explicit weights, compile source-backed fact memories, and evaluate bounded models for security tooling.
 - **LLM red-teaming stack**: [`garak`](ai/garak/SKILL.md) (probe catalog scanner), [`pyrit`](ai/pyrit/SKILL.md) (adaptive multi-turn orchestration), [`promptfoo`](ai/promptfoo/SKILL.md) (app-level eval + CI red-team gate).
 - **LLM lab infrastructure**: [`ollama`](ai/ollama/SKILL.md) (local runtime, airgapped targets), [`litellm`](ai/litellm/SKILL.md) (provider gateway; includes the 2026-10 supply-chain incident notes).
+- **Serving performance**: [`inference-optimization`](ai/inference-optimization/SKILL.md) - measure and tune latency, throughput, cache/state capacity, speculation, and deployment quality for security-workflow model servers.
 
 ## `hardware/` - Embedded and maker-platform support
 

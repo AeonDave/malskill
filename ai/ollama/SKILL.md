@@ -1,16 +1,16 @@
 ---
 name: ollama
-description: "Ollama — local LLM runtime: pull/run/openai-compatible serve of open models on localhost (no data leaves the host). Use as the offline lab LLM for agents, garak/PyRIT targets, red-team attacker models, and airgapped analysis workflows."
+description: "Ollama — pull, run, and serve open models through its native or OpenAI-compatible API. Use for local security-lab agent backends, garak/PyRIT targets, attacker models, and offline analysis with local execution verified."
 license: MIT
-compatibility: "Linux/macOS/Windows (v0.40.x current); OpenAI-compatible API on :11434/v1; GPU optional (CUDA/Metal/Vulkan), CPU fallback works for small models."
+compatibility: "Linux/macOS/Windows; pin the installed Ollama version and supported model/backend. Native API on :11434/api and OpenAI-compatible API on :11434/v1; GPU support depends on platform/backend."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Ollama
 
-Local LLM runtime: one binary, one API, models pulled like containers. In security labs it is the **data-never-leaves-the-host** LLM: agent backends, garak/PyRIT targets and attacker models, and offline analysis all point at `localhost:11434` instead of paid cloud APIs.
+Use a locally executed model for security-lab agent backends, evaluation targets, and offline analysis. A localhost endpoint alone does not establish local-only execution: Ollama also supports cloud models and features. For local-only work, set `OLLAMA_NO_CLOUD=1`, restart the managed service, verify the effective setting and selected local model, and check client-side logging/forwarding. See the [official local-only configuration](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features).
 
 ## Core workflow
 
@@ -48,19 +48,25 @@ ollama show llama3.3            # architecture, context length, quantization
 
 ## Best practice
 
-- **Size to VRAM**: a model needs roughly its file size in VRAM; if it spills to CPU/RAM, generation slows 10-50×. `ollama ps` shows the load state — prefer quantized variants (Q4_K_M is the sweet spot) for lab work.
-- **Context window**: default context is small (2k-8k per model); raise per-request with `num_ctx` or in the Modelfile — truncation silently degrades long-prompt tasks.
+- **Size the complete workload**: weights, KV/state, temporary buffers, and concurrent requests share memory. Inspect `ollama ps` and measure the effective placement; CPU offload and quantization have workload-specific speed/quality costs.
+- **Context window**: inspect the installed runtime's effective context and the model limit; configure `num_ctx` through the supported native options or Modelfile. Include template and output tokens, and test for rejection/truncation.
 - Keep `OLLAMA_HOST=127.0.0.1` (default): the API has **no authentication** — never bind it to 0.0.0.0 on a networked host.
-- For reproducible lab runs, pin model tags (`llama3.3:70b-instruct-q4_K_M`) — `latest` moves underneath you.
+- For reproducible lab runs, record the resolved model digest, Modelfile/template, runtime version, and launch settings. A descriptive tag is not an immutable artifact identity.
+
+## Measure native execution
+
+The final native API chunk (`done: true`) reports `load_duration`, `prompt_eval_count`, `prompt_eval_duration`, `eval_count`, and `eval_duration`; durations are nanoseconds. With positive durations, compute engine prompt rate as `prompt_eval_count * 1e9 / prompt_eval_duration` and engine generation rate as `eval_count * 1e9 / eval_duration`. Keep cache state and counts explicit; a missing/zero duration is not infinite throughput.
+
+These [native usage metrics](https://docs.ollama.com/api/usage) do not include the same boundary as client TTFT or end-to-end latency. For cold/warm runs, controlled comparisons, concurrency, memory, and quality gates, load [inference-optimization](../inference-optimization/SKILL.md).
 
 ## Gotchas
 
 - The OpenAI-compat endpoint is **close but not identical**: tool-calling/streaming quirks vary by model — test the exact call shape your tooling makes before a long run.
-- Quantization loss is real: a Q4 model is noticeably weaker on nuanced tasks than FP16 — use the largest quant that fits VRAM.
+- Quantization can change task quality and runtime kernels. Compare candidate formats on the actual security task and memory/latency constraints instead of choosing by bit count alone.
 - First token latency after idle: models unload after a TTL; a burst of timeouts is usually the model reloading, not a failure.
 - Vision/multimodal models need the specific vision-capable tags and the API image format — check per model.
 
 ## References
 
-- Upstream: [ollama](https://github.com/ollama/ollama) (v0.40.x line)
+- Upstream: [ollama](https://github.com/ollama/ollama); [runtime FAQ](https://docs.ollama.com/faq); [native API metrics](https://docs.ollama.com/api/usage)
 - Consumers in repo: `garak`, `pyrit`, `promptfoo` (providers), `langchain-py` (ChatOllama)
