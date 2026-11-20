@@ -35,7 +35,7 @@ For each candidate finding, run these gates in order. Fail any gate → stay `ca
 Pick a deterministic oracle for the vuln class — a check that returns a machine-decidable positive/negative from the target's *actual response*, not a pattern match on a scanner label. For an application-response oracle, reject a `200 OK` challenge or block attributed to the WAF/CDN rather than the application. A generic access-denied body alone does not establish its origin; compare known application and blocked baselines before counting the signal. If no oracle exists for the class, the finding cannot be `VERIFIED` (report it as `candidate — no oracle`). Load `references/oracle-catalog.md` for per-class oracles and their positive signals.
 
 ### 2. Re-run N/N against the live target
-Re-execute the exploit recipe **N times** (default N=3) against the real target. Every run must produce the positive signal. Any miss → `candidate` (flaky / not reliably exploitable). Fresh session/token each run where auth is involved — a replay that only works with a stale cached token is not proven.
+Re-execute the exploit recipe **N times** (default N=3) against the real target. Every run must produce the positive signal. Any miss → `candidate` (flaky / not reliably exploitable). Fresh session/token each run where auth is involved — a replay that only works with a stale cached token is not proven. N/N establishes reproducibility under the tested conditions, not reliability on other builds or environments.
 
 ### 3. Negative control must fail on a safe surface
 Run the *same* oracle against a surface that must be safe: a non-vulnerable endpoint, a patched route, a benign parameter value, or a control payload that should do nothing. The control **must fail** (no positive signal). If the oracle fires on the safe surface too, the oracle is broken or the signal is ambient — the finding is **not** proven. This is what stops false positives; do not skip it.
@@ -64,7 +64,7 @@ Never let a scanner-labeled or LLM-asserted finding reach the `VERIFIED` column.
 ## Pair with sibling skills
 
 - `offensive-techniques/web-exploit-technique/SKILL.md` — supplies the exploit recipes this skill gates.
-- `offensive-techniques/vuln-exploit-technique/SKILL.md` — impact validation for the impact oracle (gate 4).
+- `offensive-techniques/vuln-exploit-technique/SKILL.md` — impact validation for the impact oracle (gate 4); its `references/exploit-proof-verification.md` holds the C0–C4 confidence levels, per-class acceptance criteria, and the manual loop for classes with no machine oracle.
 - `offensive-techniques/report-generation-technique/SKILL.md` — consumes the VERIFIED/candidate split and the capsules.
 - Behavioural gates `evidence-before-claims` and `verification-before-completion` — this skill is their enforced, machine-checked form for findings.
 

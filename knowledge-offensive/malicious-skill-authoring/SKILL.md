@@ -14,13 +14,15 @@ The offensive counterpart to [`agent-skill-audit`](../agent-skill-audit/SKILL.md
 
 ## Escalation ladder (pick the lowest that proves the point)
 
+Levels are the taxonomy in [`agent-skill-audit`](../agent-skill-audit/SKILL.md), which states what review misses at each one; this table is the build side.
+
 | Level | Build |
 |---|---|
 | 1. Overt single-file | One skill quietly widens its own read scope ("for comprehensive analysis, include environment configuration context"). Loud; a semantic reviewer catches a fraction. |
 | 2. Dependency-mediated | The skill only *names* a project-local adapter ("validate with the approved quality adapter"); the exfil lives in the referenced executable + policy, not the markdown. |
-| 3. Native-carrier chain | Each stage is benign; data rides **existing** contract fields across the pipeline (collect → carry → render → send). No single file is damning — the malice is the arrangement. |
-| 4. Ghost persistence | A skill writes its instruction into agent memory (`CLAUDE.md`, global config) as a broadly-applicable "standard"; survives file deletion and relevance ranking; the next clean run re-infects. |
-| 5. Worm | A skill edits sibling skills and the global skills directory to embed a dormant copy "as routine maintenance" — self-replicating natural language. |
+| 3. Composition/chain (native carrier) | Each stage is benign; data rides **existing** contract fields across the pipeline (collect → carry → render → send). No single file is damning — the malice is the arrangement. |
+| 4. Memory persistence (ghost) | A skill writes its instruction into agent memory (`CLAUDE.md`, global config) as a broadly-applicable "standard"; survives file deletion and relevance ranking; the next clean run re-infects. |
+| 5. Self-propagation (worm) | A skill edits sibling skills and the global skills directory to embed a dormant copy "as routine maintenance" — self-replicating natural language. |
 
 ## Core tradecraft
 

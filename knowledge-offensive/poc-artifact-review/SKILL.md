@@ -1,5 +1,5 @@
 ---
-name: poc-weaponization
+name: poc-artifact-review
 description: "Review an existing public or generated proof-of-concept artifact for provenance, suspicious behavior, dependency risk, and reproducibility. Use when triaging or validating a PoC referenced by a CVE or received during a security assessment."
 license: MIT
 metadata:

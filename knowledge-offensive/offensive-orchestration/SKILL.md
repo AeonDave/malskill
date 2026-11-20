@@ -4,7 +4,7 @@ description: "Coordinate agents across security investigations, assessments, and
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Offensive Orchestration
@@ -28,7 +28,7 @@ Give each worker a concrete question, the necessary context, and the relevant sk
 | Investigate a vulnerability or advisory, or validate supported web impact | [vuln-research](../vuln-research/SKILL.md) or [web-exploit-technique](../../offensive-techniques/web-exploit-technique/SKILL.md) |
 | Assess cloud access, a host session, or an AD path | [cloud-security-technique](../../offensive-techniques/cloud-security-technique/SKILL.md), [post-exploit-technique](../../offensive-techniques/post-exploit-technique/SKILL.md), or [active-directory-technique](../../offensive-techniques/active-directory-technique/SKILL.md) |
 | Analyze a mobile app, physical device, binary, or forensic artifact | [mobile-technique](../../offensive-techniques/mobile-technique/SKILL.md), [hardware-technique](../../offensive-techniques/hardware-technique/SKILL.md), [reversing-technique](../../offensive-techniques/reversing-technique/SKILL.md), or [forensic-technique](../../offensive-techniques/forensic-technique/SKILL.md) |
-| Build a CVE inventory or review a public test artifact | [cve-search](../cve-search/SKILL.md) or [poc-weaponization](../poc-weaponization/SKILL.md) |
+| Build a CVE inventory or review a public test artifact | [cve-search](../cve-search/SKILL.md) or [poc-artifact-review](../poc-artifact-review/SKILL.md) |
 
 ## Add security context to the job contract
 
@@ -45,7 +45,7 @@ Assign one owner to a shared debugger, authenticated session, mutable account, o
 
 Tag evidence with the job/attempt and relevant target state. Separate competing experiments by timing, input markers, or isolated fixtures so one worker's effect is not credited to another. Preserve raw evidence and append corrections; do not overwrite a finding with a newer unexplained verdict. Revalidate dependent conclusions after a reset, patch, privilege change, or different build.
 
-Reconcile timeout and cancellation against target state before retrying an action that may already have succeeded. Do not reuse a late result until its attempt and environment match the current question. Record failed collection and untested paths as coverage gaps.
+Apply `orchestration`'s timeout, cancellation, and late-result rules against target state, not just the executor: an action may already have succeeded there. Record failed collection and untested paths as coverage gaps.
 
 ## Integrate evidence, not verdict counts
 
@@ -57,8 +57,6 @@ For investigations spanning many artifacts or sessions, load the [operational br
 
 ## When configuring the agent infrastructure
 
-Enforce tool, credential, filesystem, and network access in the execution layer. Model instructions do not provide isolation; containers alone do not establish the required boundary. Keep privileged control sockets and writable host configuration out of worker environments unless the task requires them.
+Load [`autonomous-offensive-agents`](../autonomous-offensive-agents/SKILL.md) for execution boundaries, tool and MCP definition review, and action policy, for your own worker environments as well as a third-party framework; this skill covers coordinating the investigation itself.
 
-Review MCP/tool definitions and detect changes. Verify local artifacts where supported; authenticate and govern remote endpoints rather than treating a local checksum as a pin on remote behavior. Load [untrusted-input-hygiene](../../behaviours/untrusted-input-hygiene/SKILL.md) when ingesting target output, tool descriptions, shared messages, or worker files; validate their provenance and destination format before use.
-
-Load [`autonomous-offensive-agents`](../autonomous-offensive-agents/SKILL.md) when selecting or validating an autonomous assessment framework's controls, evidence quality and telemetry; this skill covers coordinating your own investigation workers.
+Load [untrusted-input-hygiene](../../behaviours/untrusted-input-hygiene/SKILL.md) when ingesting target output, tool descriptions, shared messages, or worker files; validate their provenance and destination format before use.

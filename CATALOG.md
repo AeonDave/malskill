@@ -120,7 +120,7 @@ Research and development support for authorized security assessments. Use the na
 | `cve-search` | Build bounded vulnerability inventories with source coverage, package/build matching, and explicit unknowns |
 | [`vuln-research`](knowledge-offensive/vuln-research/SKILL.md) | Plan assessment coverage, validate scanner and bug-bounty leads, and investigate root causes, patches, and variants |
 | `deep-research-offensive` | Investigate security hypotheses, attack-path prerequisites, mitigation limits, and detection coverage |
-| `poc-weaponization` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
+| `poc-artifact-review` | Review public or generated PoCs, dependency risks, diagnostic checks, and replay evidence |
 | `prompt-engineering-patterns` | Design and evaluate prompts for security-artifact extraction, triage, and reporting |
 | [`offensive-orchestration`](knowledge-offensive/offensive-orchestration/SKILL.md) | Route security questions to technical skills, coordinate target/session ownership, and reconcile evidence across workers |
 | [`threat-modeling`](knowledge-offensive/threat-modeling/SKILL.md) | Decompose a target (DFD/STRIDE/attack trees), prioritize threats, map to ATT&CK to feed the assessment plan |
@@ -160,7 +160,6 @@ Cross-cutting behavioral guardrails that shape *how* an agent works. Load these 
 | `reading-budget-discipline` | Keep the context window lean when reading large data |
 | `rules-of-engagement` | Know the engagement contract (authorization, targets, techniques, window, data handling) and surface it during work; the operator owns the decisions |
 | `scope-discipline` | Stay on the requested task mid-flight: ledger drive-by findings, re-plan grown requests, state the boundary |
-| `uncertainty-calibration` | State confidence in proportion to evidence; label verified vs inferred vs guessed; test or escalate instead of asserting |
 | `untrusted-input-hygiene` | Use external data without accepting embedded commands or losing the legitimate task |
 | `verification-before-completion` | Require fresh verification before claiming work is done or fixed |
 

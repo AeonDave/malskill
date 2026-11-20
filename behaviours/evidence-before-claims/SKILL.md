@@ -1,11 +1,11 @@
 ---
 name: evidence-before-claims
-description: "Evidence gate for security research, scanner triage, code review, and reporting. Use before confirming vulnerability impact, auth material, control results, cleanup, or root cause."
+description: "Evidence gate for security research, scanner triage, code review, and reporting. Use before confirming vulnerability impact, auth material, control results, cleanup, or root cause, and before stating as fact a version, flag, offset, or other specific you have not checked."
 license: MIT
 compatibility: "AgentSkills-compatible workflow guidance for code review, security testing, research, forensics, and reporting."
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Evidence Before Claims
@@ -46,6 +46,10 @@ Before emitting a consequential conclusion, check its load-bearing assertions:
 - Check that each load-bearing assertion has supporting material and that any derivation follows from it; plausibility alone is not evidence.
 - For negative claims, check collection success, search coverage, permissions, and time range. No match supports only the examined scope; failed access or missing telemetry leaves the result unknown.
 - Inspect the primary artifacts behind prior output or a subagent report; use `verification-before-completion` for freshness and rerun decisions.
+- Never supply a specific you have not checked: version, flag, offset, CVE ID, path. Say it is unknown and look it up; an invented specific reads as verified.
+- Qualify the claim that is actually weak. Hedging every statement equally hides it; when a cheap check resolves the doubt, run it instead of hedging.
+- Do not act on an unverified premise for an irreversible or high-impact step: surface the uncertainty and who decides (`irreversible-action-gate`).
+- When new evidence changes a conclusion, state what changed it instead of reversing silently.
 
 ## Wording discipline
 
@@ -58,8 +62,6 @@ Before emitting a consequential conclusion, check its load-bearing assertions:
 | Unreviewed scanner finding | scanner reports, tool flagged | confirmed finding |
 | Not checked | unverified lead | real issue |
 | LLM/subagent summary only | reported by model/subagent, pending artifact review | found, confirmed |
-
-The general stance behind this table — labeling every statement by the confidence it earned — is `uncertainty-calibration`.
 
 ## Stop conditions
 

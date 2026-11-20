@@ -166,4 +166,4 @@ An assertion in an upstream test is not a passing result for the current build. 
 ## References
 
 - Upstream: [jm33-m0/emp3r0r](https://github.com/jm33-m0/emp3r0r) — `core/modules/stager_linux/mask.c`, `mask_xor.c`, `stub.c`; `core/c_agent/include/stager_iface.h`
-- Companions: [`ekko reduced`](SKILL.md#ekko-reduced-timer-as-wake-only), [`ghosting`](SKILL.md#ghosting-variants). Load [public artifact review](../../knowledge-offensive/poc-weaponization/SKILL.md) when reviewing the upstream project before execution.
+- Companions: [`ekko reduced`](SKILL.md#ekko-reduced-timer-as-wake-only), [`ghosting`](SKILL.md#ghosting-variants). Load [public artifact review](../../knowledge-offensive/poc-artifact-review/SKILL.md) when reviewing the upstream project before execution.

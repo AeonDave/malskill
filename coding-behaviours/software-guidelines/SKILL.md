@@ -4,7 +4,7 @@ description: "Implement and review scoped code changes in a repository. Use for 
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Software Guidelines
@@ -22,8 +22,9 @@ Deliver a complete, reviewable change for the requested outcome. Apply this work
 - Tie each part of the diff to the outcome or a necessary supporting change. Include required callers, tests, configuration, and documentation even when the request names only one function. Avoid unrelated features, dependency upgrades, formatting, and cleanup.
 - When a symbol, signature, or data shape changes, inspect both its definition and consumers. Check indirect uses such as exports, registration strings, configuration keys, and serialized fields where relevant; a compile pass or literal-name search may miss these.
 - Update the maintained source of generated artifacts and use the repository's generation workflow when required. Inspect generated changes for consistency and unrelated churn; do not patch only a derived copy that regeneration will overwrite.
-- Reuse an existing convention or helper when its behavior fits. Do not reuse a similarly named abstraction without checking its error, ownership, and side-effect contracts. Add dependencies or abstractions only for a concrete requirement or boundary.
+- Before writing new code, use the first source that fully covers the need, in this order: an existing repository helper or convention, the standard library or platform, an already-installed dependency, then new code. Do not reuse a similarly named abstraction without checking its error, ownership, and side-effect contracts. Add dependencies or abstractions only for a concrete requirement or boundary.
 - Keep necessary validation, authorization, error propagation, and cleanup. Do not remove safeguards merely to shorten the patch or assume a failure path is impossible without establishing its preconditions.
+- When you knowingly choose a simpler implementation that stops being adequate under a condition the current scope does not reach, record it at the code site: a comment `shortcut: <limit>, <when to upgrade>`, or the repository's own deferral marker when it has one. It records an implementation limit, never a dropped safeguard from the rule above. List open ones with `git grep -nE '(#|//|/\*) ?shortcut:'`; a marker without an upgrade trigger is the one that goes stale.
 - Allow requested simplification or a refactor needed to implement the change safely. Keep its preservation contract explicit and separate it from behavior changes where useful for review. Load [software-architecture](../software-architecture/SKILL.md), then its simplification reference when making those structural or readability decisions.
 - Remove imports, parameters, helpers, and temporary diagnostics made obsolete by this change. Leave unrelated pre-existing cleanup for a separately scoped task; mention it only when it affects the outcome or poses a material risk.
 

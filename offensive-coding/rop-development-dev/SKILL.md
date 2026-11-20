@@ -21,6 +21,8 @@ Goal: produce **reliable, reproducible chains** — not one-shot lucky payloads.
 - A working chain breaks across OS versions or minor binary rebuilds
 - You must reason about CET/Shadow Stack / CFG feasibility before investing in ROP
 
+If the open question is still **whether and by which route the bug is exploitable** (primitive, frame layout, mitigation fit, `ret2libc` versus SROP versus data-only), start with `offensive-coding/stack-exploitation-dev`; this skill builds the chain once the route is chosen.
+
 ## Core operating model
 
 1. **Establish control primitive**: RIP control + controllable stack window.

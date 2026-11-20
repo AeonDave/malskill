@@ -83,6 +83,8 @@ Avoid:
 - Are dependencies and data ownership still pointed in the intended direction?
 - Are ports, adapters, DTOs, and shared code justified by a real boundary?
 - Is the simplest design that meets the current quality scenarios now in place?
+- Are scale and concurrency concerns judged against the load the repository states or implies (one operator running a tool versus concurrent users or processes), with the assumed load named?
+- Is a `shortcut:` marker (see `software-guidelines`) whose stated limit that load has not reached left as a recorded decision rather than raised as a finding?
 
 ### Maintainability
 

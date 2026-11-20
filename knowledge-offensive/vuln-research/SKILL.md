@@ -53,7 +53,7 @@ Keep **observed impact**, additional plausible impact, and untested prerequisite
 | Analyze a patch diff, check a fix in another build, or find related instances | [patch-and-variant-analysis.md](references/patch-and-variant-analysis.md) |
 | Trace source-level data/control flow or run a fuzzing campaign | [source-review-technique](../../offensive-techniques/source-review-technique/SKILL.md) or [fuzzing-technique](../../offensive-techniques/fuzzing-technique/SKILL.md), respectively |
 | Check bug-bounty or VDP rules before target activity, or prepare/submit a finding | [report-generation-technique](../../offensive-techniques/report-generation-technique/SKILL.md) |
-| Resolve published claims, affected versions, or a downloaded PoC | [deep-research-offensive](../deep-research-offensive/SKILL.md), [cve-search](../cve-search/SKILL.md), or [poc-weaponization](../poc-weaponization/SKILL.md), respectively |
+| Resolve published claims, affected versions, or a downloaded PoC | [deep-research-offensive](../deep-research-offensive/SKILL.md), [cve-search](../cve-search/SKILL.md), or [poc-artifact-review](../poc-artifact-review/SKILL.md), respectively |
 
 Use the selected tool's skill for syntax. If research stalls, load [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md) for a focused outside lead. Keep research state in the existing notes system; use [the offensive-operator-mode task notes](../../behaviours/offensive-operator-mode/references/brain.md) when continuity across experiments or sessions needs structure.
 
