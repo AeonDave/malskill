@@ -635,7 +635,7 @@ gdb ./binary
 **Frida auto-dump (runs for every round):**
 ```javascript
 // Hook mprotect to detect EXEC grants, then set Instruction-level hooks
-const mprotect = Module.getExportByName(null, 'mprotect');
+const mprotect = Module.getGlobalExportByName('mprotect');   // Frida 17+
 Interceptor.attach(mprotect, {
   onEnter(args) {
     const addr = args[0];

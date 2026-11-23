@@ -110,24 +110,18 @@ node --snapshot-blob /dev/null target_binary 2>&1
 # Or patch the binary to call v8.getHeapSnapshot() at startup
 ```
 
-**Option B — `v8-snapshot-deserializer` (community tool)**
-```bash
-# https://github.com/nicolo-ribaudo/v8-snapshot-deserializer
-node v8-snapshot-deserializer.js extracted_snapshot.bin
-```
-
-**Option C — Ghidra / radare2 static approach (partial)**
+**Option B — Ghidra / radare2 static approach (partial)**
 ```bash
 # Locate the snapshot blob in the binary
 # Load as raw bytes, look for V8 context markers, string constants in the serialized heap
 strings extracted_snapshot.bin | grep -E "function|require|exports"
 ```
 
-**Option D — Frida dynamic extraction**
+**Option C — Frida dynamic extraction**
 ```javascript
 // Hook v8::StartupData or the snapshot deserialization
 // Intercept Node.js module loading
-Interceptor.attach(Module.getExportByName(null, 'node::LoadEnvironment'), {
+Interceptor.attach(Module.getGlobalExportByName('node::LoadEnvironment'), {   // Frida 17+
   onEnter(args) {
     // args[0] = env, args[1] = main script string
     const script = args[1].readUtf8String();

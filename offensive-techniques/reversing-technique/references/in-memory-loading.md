@@ -76,7 +76,7 @@ gdb -q ./binary
 **Option B — Frida hook:**
 ```javascript
 // Intercept dlopen and dump the fd before it's opened
-const dlopenPtr = Module.getExportByName(null, 'dlopen');
+const dlopenPtr = Module.getGlobalExportByName('dlopen');   // Frida 17+
 Interceptor.attach(dlopenPtr, {
   onEnter(args) {
     const path = args[0].readCString();

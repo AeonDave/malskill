@@ -142,7 +142,7 @@ if (__rdtsc() - start > THRESHOLD) exit(1);   // Too slow = debugger
 ```bash
 # Option A — Frida: freeze clock_gettime
 frida -f ./binary --no-pause -e '
-Interceptor.attach(Module.findExportByName(null, "clock_gettime"), {
+Interceptor.attach(Module.getGlobalExportByName("clock_gettime"), {   // Frida 17+
     onLeave(retval) {
         var ts = this.context.rsi;
         Memory.writeU64(ts, 0);
