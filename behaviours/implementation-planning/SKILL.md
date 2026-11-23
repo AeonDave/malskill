@@ -2,7 +2,7 @@
 name: implementation-planning
 description: "Turn settled requirements into an executable plan. Use for work with dependencies, shared-file ownership, or a handoff; skip a separate plan for a straightforward local edit."
 license: MIT
-compatibility: "Agent workflow guidance for local repositories and authorized security work."
+compatibility: "Agent workflow guidance for local repositories."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -25,6 +25,6 @@ For each task, include the outcome, affected files, dependencies, and acceptance
 
 ## Execute and maintain
 
-An implementation request does not become a plan-only task merely because a plan is useful. Continue authorized work unless the user requested planning only or a material dependency is unresolved.
+An implementation request does not become a plan-only task merely because a plan is useful. Continue the requested work unless the user requested planning only or a material dependency is unresolved.
 
 Update the remaining plan when evidence changes it. A failing baseline requires diagnosis and attribution, not automatic abandonment; continue independent safe tasks. Avoid splitting trivial actions into ceremony or treating a formatting preference as a blocker.

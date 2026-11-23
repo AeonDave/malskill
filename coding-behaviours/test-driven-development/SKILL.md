@@ -19,7 +19,7 @@ Make the intended behavior observable before implementing it, then use the check
 - For code already written, preserve it and assess the missing verification. Add meaningful checks; use an isolated pre-change baseline or controlled fault to test their sensitivity when useful. Do not discard work or restart implementation merely to recreate test-first history.
 - For exploration, configuration, generated artifacts, or changes that do not benefit from a new automated test, choose the appropriate existing check, generator test, static validation, or reproducible manual procedure. State what remains unverified; do not describe tests written afterward as a test-first sequence.
 
-For an urgent incident, use `systematic-debugging` to prioritize authorized mitigation and preserve evidence. Missing deterministic reproduction does not forbid investigation or recovery.
+For an urgent incident, use `systematic-debugging` to prioritize mitigation and preserve evidence. Missing deterministic reproduction does not forbid investigation or recovery.
 
 ## RED-GREEN-REFACTOR
 

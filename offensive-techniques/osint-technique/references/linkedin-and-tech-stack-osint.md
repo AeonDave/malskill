@@ -54,7 +54,7 @@ For every enumerated person, record:
 - Recent activity (posts/comments/conferences → pretext hooks)
 
 ### 1.4 Email-pattern derivation
-- Apply patterns from `osint-technique/SKILL.md` §11.
+- Use the [parent workflow](../SKILL.md) to separate public observations from inferred associations.
 - Confirm pattern via Hunter.io `domain-search`.
 - Cross-ref against breach corpus (HudsonRock, HIBP, DeHashed, IntelX).
 

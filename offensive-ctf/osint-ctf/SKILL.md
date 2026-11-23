@@ -1,8 +1,8 @@
 ---
 name: osint-ctf
-description: "Lab/CTF: OSINT challenges; people/usernames/email, domains/infra, images/video/geolocation, DNS/archive/social/public records."
+description: "OSINT challenges; people/usernames/email, domains/infra, images/video/geolocation, DNS/archive/social/public records."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.0"

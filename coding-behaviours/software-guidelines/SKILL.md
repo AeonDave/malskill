@@ -33,7 +33,7 @@ Deliver a complete, reviewable change for the requested outcome. Apply this work
 - Check the changed behavior and its affected consumers. Prefer an existing relevant check or reproducer; add a regression test when it protects a real behavior. Use `testing-reliability` when assertions, mocks, timing, or flaky results may mislead.
 - For performance work, measure the relevant workload before changing it when practical; disclose an unavailable baseline and measurement limits. Use a user or project target when one exists; otherwise report the measured change and tradeoffs without inventing an acceptance threshold.
 - Review the final diff against the requested outcome and initial worktree state. Look for missed consumers, accidental behavior changes, generated-file drift, obsolete code, and changes that belong to someone else. Keep fixes and their necessary supporting artifacts together.
-- Use `verification-before-completion` for required checks, evidence reuse, failed gates, and completion wording. Passing checks support only the behavior they cover. Finish authorized implementation rather than stopping after a proposal or adding an approval gate for routine edits.
+- Use `verification-before-completion` for required checks, evidence reuse, failed gates, and completion wording. Passing checks support only the behavior they cover. Finish the requested implementation rather than stopping after a proposal or adding an approval gate for routine edits.
 
 ## Load deeper guidance when needed
 

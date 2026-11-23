@@ -32,8 +32,8 @@ Before writing, classify the deliverable and the evidence maturity so the report
 
 ## Bug-bounty / VDP intake and submission
 
-- Before target activity, consult the selected program's current official policy and submission portal. Record program and asset eligibility, relevant exclusions or testing restrictions, disclosure route, and required fields; do not infer platform defaults or carry rules across programs.
-- For a validated finding, populate the current required fields and category, check applicable duplicate and disclosure rules, and submit only through the designated channel. Track the report ID and status; answer triage follow-ups with requested clarifications and stay within the program's disclosure terms.
+- Consult the selected program's current official policy and submission portal. Record program and asset eligibility, relevant exclusions or testing restrictions, disclosure route, and required fields; do not infer platform defaults or carry rules across programs.
+- For a validated finding, populate the current required fields and category, check applicable duplicate and disclosure rules, and submit through the designated channel. Track the report ID and status; keep follow-up disclosures within the program's terms.
 
 ## Boundary with other skills
 

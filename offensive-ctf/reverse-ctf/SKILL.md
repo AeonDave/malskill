@@ -1,8 +1,8 @@
 ---
 name: reverse-ctf
-description: "Lab/CTF: reverse challenges; compiled binaries, bytecode, mobile/firmware, custom VMs, packed samples, anti-debug, validators."
+description: "Reverse challenges; compiled binaries, bytecode, mobile/firmware, custom VMs, packed samples, anti-debug, validators."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.0"

@@ -152,7 +152,7 @@ Threat actor OSINT maps infrastructure, capability profiles, and attribution for
 ### TLS Fingerprints
 
 - **JA3** (salesforce/ja3): TLS client fingerprints; identifies malware families.
-- **JA4** (FingerprinTLS/ja4): Improved fingerprinting.
+- **JA4** (FoxIO-LLC/ja4): fingerprinting suite for TLS, HTTP, SSH, X.509 and TCP.
 - **Shodan/Censys**: Search by JA3 hash → find related servers.
 
 ---

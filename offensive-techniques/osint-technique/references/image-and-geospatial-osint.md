@@ -85,7 +85,6 @@ Image and geospatial research reveals location, time, people, and context from v
 
 ### Platform-Specific
 
-- **YouTube Data Viewer** (citizenevidence.amnestyusa.org): Extract upload date, thumbnail, description.
 - **YouTube Geo Tag**: Extract geolocation data from video metadata.
 - **Snap Map**: Public Snapchat stories reveal location + time.
 - **TikTok / Instagram**: Posts often geotagged; check map feature.
@@ -165,7 +164,7 @@ Image and geospatial research reveals location, time, people, and context from v
 1. **Extract metadata**: MediaInfo, ExifTool.
 2. **Extract key frames**: FFmpeg at regular intervals.
 3. **Geolocate frames**: Apply image geolocation workflow.
-4. **Check platform**: YouTube Data Viewer for upload metadata.
+4. **Check platform**: use the watch page for the displayed publication date; a thumbnail is a visual reference, not proof of the upload date.
 5. **Deepfake check**: Sensity AI, Reality Defender.
 6. **Forensics**: Forensically for Error Level Analysis.
 7. **Temporal**: Match timeline (shadows, weather, celestial).

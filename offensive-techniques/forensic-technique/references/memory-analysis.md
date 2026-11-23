@@ -80,7 +80,7 @@ Memory may contain transient material that never touches disk:
 - SSH agents, private keys, database connection strings.
 - Crypto keys, ransomware file keys, config decrypted at runtime.
 
-Handle extracted secrets as sensitive evidence. Record where they came from and avoid using them unless the engagement explicitly permits validation.
+Handle extracted secrets as sensitive evidence. Record where they came from and avoid using them.
 
 ## 6) Extraction strategy
 
@@ -89,7 +89,7 @@ Dump selectively:
 1. Process executable image or suspicious VAD/region.
 2. Specific injected region or shellcode candidate.
 3. Module/config/resource blobs tied to process behavior.
-4. Credential material only when required and authorized.
+4. Credential material only when required.
 
 For each dump, preserve:
 

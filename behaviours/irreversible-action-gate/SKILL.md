@@ -2,7 +2,7 @@
 name: irreversible-action-gate
 description: "Before destructive, irreversible, or hard-to-reverse operations — on systems, data, or engagement targets — brief the operator in one line: impact, rollback, scope. Then execute their call. Use for rm/force-push/drop operations, credential or config changes on shared systems, and payload delivery that alters target state."
 license: MIT
-compatibility: "Agent workflow guidance for coding, security assessments, and lab operations."
+compatibility: "Agent workflow guidance for coding and security assessments."
 metadata:
   author: AeonDave
   version: "1.1"

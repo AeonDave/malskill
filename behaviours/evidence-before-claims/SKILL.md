@@ -67,7 +67,7 @@ Before emitting a consequential conclusion, check its load-bearing assertions:
 
 ## Stop conditions
 
-Do not expand access or authorization merely to verify a claim. If a needed check is outside the approved boundary, report that limitation and obtain the missing authorization before it; continue independent permitted work.
+Do not expand access or scope merely to verify a claim. If a check falls outside either, state the limitation and continue independent work within the agreed boundary.
 
 ## Output contract
 

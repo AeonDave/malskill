@@ -1,6 +1,6 @@
 ---
 name: linux-internals-dev
-description: "Auth/lab dev: Linux internals; ELF loading and program startup, procfs, namespaces/caps, eBPF verifier/maps, LSM hooks for tooling/telemetry design."
+description: "Linux internals; ELF loading and program startup, procfs, namespaces/caps, eBPF verifier/maps, LSM hooks for tooling/telemetry design."
 license: MIT
 compatibility: "Linux kernels 5.4 through 6.x on x86-64 and ARM64; Interfaces and struct layouts can vary by kernel version and distro patches, so verify against running kernel docs and headers before production use."
 metadata:

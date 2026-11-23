@@ -2,7 +2,7 @@
 name: design-before-implementation
 description: "Clarify and review designs before substantial changes. Use when requirements, interfaces, alternatives, or success criteria are unclear; skip a separate design phase for an already specified local fix."
 license: MIT
-compatibility: "Agent workflow guidance for coding, skill curation, and authorized security work."
+compatibility: "Agent workflow guidance for coding and skill curation."
 metadata:
   author: AeonDave
   version: "1.2"

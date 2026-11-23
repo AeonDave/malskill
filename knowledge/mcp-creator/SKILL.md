@@ -4,7 +4,7 @@ description: "Build, audit, debug, or integrate an MCP server. Use for protocol 
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
 ---
 
 # MCP Creator
@@ -20,6 +20,8 @@ Establish the project's installed SDK, target host, transport, and supported rev
 - **Experimental / Incubating** — only when an official MCP source assigns that status.
 
 Never present a custom pattern as an MCP primitive, or an official extension as core behavior.
+
+For [WebMCP](https://webmachinelearning.github.io/webmcp/), verify the current browser API and [target-browser availability](https://developer.chrome.com/docs/ai/webmcp). It exposes tools from web pages and is distinct from an MCP server or the MCP Apps extension. Do not apply server transports, SDK setup, or MCP wire-conformance rules to that browser integration.
 
 ## Workflow
 

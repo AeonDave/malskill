@@ -2,7 +2,7 @@
 name: rules-of-engagement
 description: "Know the engagement contract — who authorized it, what targets/techniques/windows/data-handling are agreed — and keep the operator informed during work. Use at engagement start and during offensive actions: surface authorization context and mismatches so decisions are informed, and record the trail."
 license: MIT
-compatibility: "Agent workflow guidance for authorized security assessments, red-team, and lab operations."
+compatibility: "Agent workflow guidance for security assessments, red-team, and lab operations."
 metadata:
   author: AeonDave
   version: "1.1"

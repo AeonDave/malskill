@@ -1,8 +1,8 @@
 ---
 name: writeup-ctf
-description: "Lab/CTF: reproducible writeups; solved notes, command logs, artifacts, proof output, solver scripts, final reports, evidence checks."
+description: "Reproducible writeups; solved notes, command logs, artifacts, proof output, solver scripts, final reports, evidence checks."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.0"

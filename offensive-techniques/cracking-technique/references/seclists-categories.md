@@ -54,7 +54,7 @@ SecLists password categories are often too aggressive for online authentication.
 - Remove duplicates before long campaigns.
 - Track which source generated each candidate class.
 - Separate password candidates from payload/fuzzing lists.
-- Do not store recovered credentials in plaintext reports unless policy permits.
+- Do not store recovered credentials in plaintext reports.
 
 ## Common pitfalls
 

@@ -31,6 +31,15 @@ Keep probes narrow and avoid exposing secrets or full sensitive payloads. Accoun
 
 Use [Git bisection](https://git-scm.com/docs/git-bisect) for a reproducible regression with known good/bad revisions and a consistent failure check. Use an isolated checkout to preserve user work. Skip revisions that cannot test that property; an unrelated build failure is not a bad result for a runtime-bug search. If skipped revisions leave several candidates, report the range. Inspect and test the identified change before claiming its causal mechanism.
 
+## Service regressions
+
+- Locate the earliest supported degradation, not just the alert time; state gaps in the observation window.
+- Compare like requests by route, size, region, or other relevant dimensions. Separate slower requests within a group from a larger share of inherently slow requests. Aggregate latency alone cannot distinguish them.
+- Match deployment or flag changes to actual exposure of affected requests. Compare exposed and comparable unexposed groups; inspect traces for the predicted mechanism. Account for different load and shared dependencies or caches before treating a group as a control.
+- After a mitigation or observed rollback, recheck the affected groups and metric definitions against the relevant baseline. Record recovered and residual effects separately; unchanged symptoms require revisiting the explanation. Improvement alone does not establish the full cause or complete recovery.
+
+See [Google SRE's canary analysis](https://sre.google/workbook/canarying-releases/) for attribution and control selection, and [OpenAI's regression workflow](https://openai.com/index/how-openai-performance-factory-keeps-chatgpt-fast/) for operational investigation and recovery checks.
+
 ## Common traps
 
 - Fixing a null dereference without finding why null became possible.

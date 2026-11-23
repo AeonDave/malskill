@@ -19,6 +19,4 @@ Do not add guards everywhere. Add layers where they catch distinct failure class
 - Parser bug: fix length calculation, add boundary validation, add malformed corpus case.
 - Auth bypass: fix authorization decision, add negative test for lower-privileged principal, log denied path.
 - Exploit harness race: fix state machine, wait on observable state, add deterministic replay test.
-- Secret leak: remove source, rotate/disable if authorized, add scanner/denylist test where appropriate.
-
-Coordinate rotation or revocation with the credential owner and affected consumers because a shared credential may interrupt their services.
+- Secret leak: remove the exposure, coordinate rotation or revocation with the credential owner and affected consumers, and test that the same leak cannot recur. Removing a secret from source does not invalidate it.

@@ -1,6 +1,6 @@
 ---
 name: mobile-ctf
-description: "Lab/CTF: mobile challenges; APK/AAB/IPA, Android backups, DEX/smali, SQLite/XML/keystore, Unity/IL2CPP, mobile forensics."
+description: "Mobile challenges; APK/AAB/IPA, Android backups, DEX/smali, SQLite/XML/keystore, Unity/IL2CPP, mobile forensics."
 license: MIT
 compatibility: "Linux/macOS; APK/IPA/AB artifacts; jadx, apktool, Python 3, optional frida/objection for dynamic tasks."
 metadata:

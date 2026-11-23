@@ -100,7 +100,7 @@ Confirm guessed semantics with a **controlled input** before generalizing to the
 
 | Class | Example hypothesis | Cheap falsifier |
 | --- | --- | --- |
-| Recent change | "Deploy at T introduced the regression." | Compare error rate before/after T; rollback should restore baseline. |
+| Recent change | "Deploy at T introduced the regression." | Test exposure and comparable controls using [service regression tracing](../../../coding-behaviours/systematic-debugging/references/root-cause-tracing.md#service-regressions); before/after correlation alone is insufficient. |
 | Dependency outage | "Upstream service S is the cause." | Check S's SLO/health at T; correlate latency. |
 | Saturation | "Symptom is CPU/IO/memory saturation, not a code bug." | Plot utilization vs error rate; both spike together. |
 | Config drift | "A non-deploy change (flag, secret rotation, DNS) coincides with onset." | Diff config snapshots around T. |

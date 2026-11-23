@@ -20,7 +20,7 @@ Diagnose software failures through observable state and controlled checks. Keep 
 
 ## Workflow
 
-1. **Frame and preserve**: record expected versus observed behavior, affected scope, command/input, build, configuration, seed, and exact failure evidence as applicable. In an active incident, prioritize authorized containment or recovery; preserve useful evidence without delaying urgent mitigation. Follow [Google SRE's triage guidance](https://sre.google/sre-book/effective-troubleshooting/#triage).
+1. **Frame and preserve**: record expected versus observed behavior, affected scope, command/input, build, configuration, seed, and exact failure evidence as applicable. In an active incident, prioritize containment or recovery within the incident response plan; preserve useful evidence without delaying urgent mitigation. Follow [Google SRE's triage guidance](https://sre.google/sre-book/effective-troubleshooting/#triage).
 2. **Reproduce or compare**: seek the smallest case retaining the same failure signal. If reproduction is unavailable or intermittent, compare failing and successful traces and relevant environmental differences; continue diagnosis with bounded claims. Do not reset state or discard the only failing artifact to get a clean run.
 3. **Localize**: classify the failure and inspect the actual execution path. Trace data, control, ownership, and configuration from the symptom toward the first violated contract; identify the next unknown boundary rather than assuming the crashing line is the cause.
 4. **Test a prediction**: state what the suspected mechanism predicts and choose a check that distinguishes it from plausible alternatives. Instrument that boundary with a log, breakpoint, sanitizer, packet/syscall trace, or watchpoint. Before reading a probe or forced change as evidence, confirm it actually took effect — the log line executed, the rebuilt artifact is the one running, the mutation differs from a pristine copy; a stale build, wrong binary, cached artifact, or edited-but-unused file turns a no-op into a false negative. Iterate tracing and experiments as results arrive; use `hypothesis-driven` when competing explanations need a structured investigation.
@@ -29,7 +29,7 @@ Diagnose software failures through observable state and controlled checks. Keep 
 
 ## When progress stalls
 
-When patches or retries stop producing new evidence, stop speculative changes and reassess the observation, environment, and causal model. Use `loop-control-and-pivots`; a fixed attempt count does not diagnose the defect. Continue useful investigation within the authorized scope.
+When patches or retries stop producing new evidence, stop speculative changes and reassess the observation, environment, and causal model. Use `loop-control-and-pivots`; a fixed attempt count does not diagnose the defect. Continue useful investigation within the task's scope.
 
 ## Offensive debugging focus
 
@@ -43,7 +43,7 @@ When patches or retries stop producing new evidence, stop speculative changes an
 
 Load only the reference matching the unresolved step:
 
-- [references/root-cause-tracing.md](references/root-cause-tracing.md) — load for downstream symptoms, regression isolation, or tracing state across boundaries.
+- [references/root-cause-tracing.md](references/root-cause-tracing.md) — load for downstream symptoms, service regressions, regression isolation, or tracing state across boundaries.
 - [references/condition-based-waiting.md](references/condition-based-waiting.md) — load for startup, async completion, or timing failures where a wait observes the wrong condition.
 - [references/defense-in-depth.md](references/defense-in-depth.md) — load after diagnosis when deciding whether a boundary guard or another prevention layer adds value.
 

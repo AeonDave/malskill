@@ -1,8 +1,8 @@
 ---
 name: misc-ctf
-description: "Lab/CTF: misc challenges; jails, encodings, esolangs, VMs, DNS oddities, Linux puzzles, Unicode, QR/audio, multi-stage artifacts."
+description: "Misc challenges; jails, encodings, esolangs, VMs, DNS oddities, Linux puzzles, Unicode, QR/audio, multi-stage artifacts."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -1,6 +1,6 @@
 ---
 name: game-ctf
-description: "Lab/CTF: game/GamePwn challenges; Unity Mono/IL2CPP, native game binaries, assets, save files, memory dumps, game network captures."
+description: "Game/GamePwn challenges; Unity Mono/IL2CPP, native game binaries, assets, save files, memory dumps, game network captures."
 license: MIT
 compatibility: "Linux/Windows; Unity (Mono/IL2CPP), native ELF/PE; tools: dnSpy, Il2CppDumper, Ghidra, UABE, Cheat Engine, Python."
 metadata:

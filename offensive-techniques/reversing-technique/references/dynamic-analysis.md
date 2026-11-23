@@ -1,10 +1,10 @@
 # Dynamic Analysis Reference
 
-GDB, x64dbg, strace, and other dynamic analysis workflows. Load when the analysis needs runtime evidence; execute samples only in an isolated lab environment.
+GDB, x64dbg, strace, and other dynamic analysis workflows. Load when the analysis needs runtime evidence; execute samples in an isolated lab environment.
 
 ## Prerequisites
 
-- **Isolated lab only** — disposable VM with no real credentials, not connected to production networks
+- **Isolated lab** — disposable VM with no real credentials, not connected to production networks
 - Snapshot the VM before analysis — restore after each run
 - Use network simulation (fakenet-ng, inetsim) to capture traffic without real connectivity
 

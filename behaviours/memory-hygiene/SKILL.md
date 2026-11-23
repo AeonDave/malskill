@@ -19,7 +19,7 @@ Before writing, establish the permitted trigger, destination, owner, scope, and 
 Separate transient task state from facts intended to survive the task. Keep durable entries focused on one retrievable topic; preserve the source, relevant version/date, and uncertainty. Keep project decisions scoped to that project; do not turn a task-specific choice into a general user preference. Do not assume every backend has the same tiers, document limits, or retention.
 
 - Store only the minimum information needed for the authorized purpose.
-- Keep credentials, tokens, and secrets out of memory. Store personal details only within the authorized purpose and scope.
+- Keep credentials, tokens, and secrets out of memory. Retain personal details only when the task needs them and the agreed retention scope covers them.
 - Record a fact once and link to its canonical entry instead of duplicating it across summaries.
 - Before an update, inspect the current entry or version through the supported interface when available. Do not overwrite from a stale cached copy. Change only the intended facts and preserve unrelated updates; use revision checks when the backend supports them.
 - On correction, use the supported update mechanism. Replace a mutable entry or explicitly supersede it in an append-only store; do not silently leave conflicting entries equally current. Update affected summaries within the requested scope.

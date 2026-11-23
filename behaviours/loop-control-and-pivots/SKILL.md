@@ -26,7 +26,7 @@ Use `hypothesis-driven` when the causal model is uncertain and [known-problem-hi
 
 A failed approach does not automatically block the whole task. Check remaining supported alternatives that fit the authorization and budget. Stop at an explicit limit, an unavailable required capability, or a request to pause.
 
-Distinguish a proven constraint from an untested assumption. Static evidence or a valid proof can justify a bounded conclusion; unsuccessful sampling alone cannot prove impossibility. Do not demand live actions outside the authorized scope to support every negative claim.
+Distinguish a proven constraint from an untested assumption. Static evidence or a valid proof can justify a bounded conclusion; unsuccessful sampling alone cannot prove impossibility. Do not demand live actions outside the task's scope to support every negative claim.
 
 ## Waiting for running work
 

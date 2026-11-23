@@ -1,8 +1,8 @@
 ---
 name: crypto-ctf
-description: "Lab/CTF: crypto challenges; ciphertexts, keys, signatures, oracles, transcripts, PRNG, RSA/ECC/lattice/math protocol code."
+description: "Crypto challenges; ciphertexts, keys, signatures, oracles, transcripts, PRNG, RSA/ECC/lattice/math protocol code."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

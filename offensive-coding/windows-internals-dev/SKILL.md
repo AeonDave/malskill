@@ -1,6 +1,6 @@
 ---
 name: windows-internals-dev
-description: "Auth/lab dev: Windows internals; PE loading and CRT startup, PEB/TEB, PE/COFF, syscalls, unwinding, memory/heap, tokens, kernel objects, ETW/AMSI telemetry."
+description: "Windows internals; PE loading and CRT startup, PEB/TEB, PE/COFF, syscalls, unwinding, memory/heap, tokens, kernel objects, ETW/AMSI telemetry."
 license: MIT
 compatibility: "Windows 10/11 internals. Private structures require evidence for the exact architecture, image, and build. Included survey observations cover x64 only; they do not establish ARM64 or cross-build compatibility."
 metadata:
