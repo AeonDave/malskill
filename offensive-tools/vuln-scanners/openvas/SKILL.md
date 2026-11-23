@@ -25,18 +25,19 @@ Components: `gvmd` (manager daemon), `ospd-openvas` (OSP wrapper), `openvas` (sc
 ## Deploy (Docker — Greenbone Community Edition)
 
 ```bash
-# Download compose file
-curl -f -O https://greenbone.github.io/docs/latest/_static/docker-compose-22.4.yml
+# Download compose file (instructions: greenbone.github.io/docs/latest/22.4/container/index.html)
+curl -f -O -L https://greenbone.github.io/docs/latest/_static/compose.yaml
 
 # Start all services
-docker compose -f docker-compose-22.4.yml -p greenbone-community-edition pull
-docker compose -f docker-compose-22.4.yml -p greenbone-community-edition up -d
+docker compose -f compose.yaml -p greenbone-community-edition pull
+docker compose -f compose.yaml -p greenbone-community-edition up -d
 
 # Wait for feed sync (can take 30-60 min first time)
-docker compose -f docker-compose-22.4.yml -p greenbone-community-edition \
+docker compose -f compose.yaml -p greenbone-community-edition \
     logs -f vulnerability-tests
 
-# Default credentials: admin / admin
+# Default credentials: admin / admin; set a new password:
+#   docker compose -f compose.yaml -p greenbone-community-edition exec -u gvmd gvmd --user=admin --new-password='<password>'
 # Web UI: https://127.0.0.1:9392
 ```
 

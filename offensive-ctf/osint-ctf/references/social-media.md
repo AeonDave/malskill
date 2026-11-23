@@ -80,7 +80,7 @@ has:images           # Posts with images
 ## Username OSINT
 
 - [namechk.com](https://namechk.com) - Check username across platforms
-- [whatsmyname.app](https://whatsmyname.app) - Username enumeration (741+ sites)
+- [WhatsMyName](https://github.com/WebBreacher/WhatsMyName) - Username enumeration; project closed November 2026 and whatsmyname.app no longer serves. The final `wmn-data.json` (691 sites) stays downloadable but unmaintained, so detections decay: treat hits as leads to verify.
 - [Osint Industries](https://osint.industries) - Cross-platform people search
 - Search `"username"` in quotes on major platforms
 

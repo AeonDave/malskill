@@ -51,7 +51,7 @@ Usernames are shared across platforms. A single username can reveal profiles acr
 
 - **Sherlock** (CLI): Search a username across 300+ platforms. Returns which platforms have that username registered.
 - **Maigret** (CLI): Similar scope but collects additional metadata (profile URLs, names, locations).
-- **What's My Name** (whatsmyname.app): Web interface; visual + copyable results.
+- **What's My Name**: project closed November 2026; whatsmyname.app no longer serves and the final `wmn-data.json` (691 sites, WebBreacher/WhatsMyName) is frozen, so detections decay — treat hits as leads to verify.
 - **OSINT Framework / IntelTechniques Tools**: Bookmarked lists of social sites + search shortcuts.
 
 ### Workflow

@@ -92,16 +92,16 @@ Plugins → xAnalyzer → Analyze All       # Analyze entire binary
 
 ### SwissArmyKnife
 
-Quick access to assembler, label creation, data operations.
+Symbols and signatures: linker map files, IDA patches and signatures, PEiD databases, code-signature generation (Nukem9/SwissArmyKnife, last release 2020-09; also listed in the x64dbg plugin manager).
 
 ```
-# Download: https://github.com/horsicq/x64dbg-Plugin-SwissArmyKnife
+# Download: https://github.com/Nukem9/SwissArmyKnife/releases
 # Install: copy to plugins/
 
 # Features:
-# - Quick assemble/disassemble
-# - String search with regex
-# - Breakpoint management shortcuts
+# - Load linker map files (*.map) to restore function names
+# - Import IDA binary patches (*.dif) and signature files (*.sig, up to IDA 6.1)
+# - Load PEiD signature databases; generate code, IDA and PEiD-style signatures from selected bytes
 ```
 
 ### LordPE / PE Editor

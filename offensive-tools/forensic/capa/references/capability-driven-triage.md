@@ -171,7 +171,7 @@ strings malware.exe | grep -i "upx\|aspack\|themida\|vmprotect"
 upx -d malware_packed.exe -o malware_unpacked.exe
 
 # Generic: use x64dbg/OllyDbg or automated unpacker
-# https://github.com/malwarelab-eu/unipacker
+# https://github.com/unipacker/unipacker
 pip install unipacker
 unipacker malware.exe
 
