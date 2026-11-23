@@ -53,7 +53,7 @@ CTF/lab artifacts are usually already decrypted (`cryptid 0`) — check before a
 `objection` runs Frida and needs no jailbreak if the IPA is patched (`objection patchipa`):
 ```
 frida-ps -Uai                          # list installed apps + bundle IDs
-objection -g <bundle-id> explore
+objection -n <bundle-id> start
   ios plist cat Info.plist             # inspect plists in-app
   ios keychain dump                    # app keychain items + accessibility attrs
   ios nsuserdefaults get               # NSUserDefaults

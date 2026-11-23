@@ -280,8 +280,8 @@ adb shell dumpsys package dexopt | grep com.target.app  # verify compilation sta
 adb backup -apk -shared -all -f full.ab              # full backup (requires user confirmation on device)
 adb restore full.ab
 adb backup com.target.app -f target.ab                # single package
-# Note: many apps set allowBackup="false" and get an empty archive.
-# See mobile-technique for post-Android-12 alternatives.
+# Apps targeting API 31+ are excluded unless android:debuggable="true"; older targets honour allowBackup and dataExtractionRules.
+# Expect an empty archive in those cases. See mobile-technique for the Android 12 rule.
 ```
 
 ## Multi-device / shell selectors

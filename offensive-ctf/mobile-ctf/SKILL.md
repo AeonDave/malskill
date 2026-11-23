@@ -261,7 +261,7 @@ frida -U -f <package_name> -l hook_crypto.js
 # See mobile-technique for full Frida script patterns
 
 # Objection — rapid assessment
-objection -g <package_name> explore
+objection -n <package_name> start            # -g and explore are deprecated aliases
 # android sslpinning disable
 # android hooking watch class com.example.CryptoClass
 ```

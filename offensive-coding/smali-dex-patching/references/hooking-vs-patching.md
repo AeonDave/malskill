@@ -130,7 +130,7 @@ If the target's tamper-detection is native:
 **Option B — Frida hook the native symbol**
 
 ```javascript
-Interceptor.attach(Module.findExportByName("libtarget.so", "check_integrity"), {
+Interceptor.attach(Process.getModuleByName("libtarget.so").getExportByName("check_integrity"), {   // Frida 17+
     onLeave: function (retval) {
         retval.replace(1);   // force success
     }

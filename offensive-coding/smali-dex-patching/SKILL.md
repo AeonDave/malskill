@@ -388,7 +388,7 @@ Options:
 2. **Change the package name** (extreme; breaks intents/uris — only works for standalone reversing).
 3. **Rotate the original signature** with a lineage file (requires the original private key — you don't have it).
 
-Realistic answer: uninstall and reinstall. For persistent data testing, use `adb backup` before uninstall (if the app allows), or run against an emulator with snapshot support.
+Realistic answer: uninstall and reinstall. For persistent data testing, `adb backup` before uninstall works only when the app allows: apps targeting API 31+ are excluded unless `android:debuggable="true"`; older targets honour `allowBackup`. See [Android 12 restrictions](https://developer.android.com/about/versions/12/behavior-changes-12#adb-backup-restrictions). Otherwise run against an emulator with snapshot support.
 
 ---
 
@@ -450,6 +450,6 @@ Load on demand:
 - [references/common-patch-patterns.md](references/common-patch-patterns.md) — root detection (RootBeer, custom checks), emulator/VM detection, Frida/Magisk/Xposed detection, SSL pinning (OkHttp, TrustKit, custom TrustManagers), debug/tamper checks, license verification, Play Integrity client-side hints; load when you know the target class and need the right patch shape
 - [references/apktool-rebuild-and-signing.md](references/apktool-rebuild-and-signing.md) — apktool options, `apktool.yml`, aapt/aapt2 selection, zipalign parameters, apksigner v1/v2/v3/v4 flow, uber-apk-signer, debug keystore, split-APK bundling with apk.sh; load when the rebuild/sign step misbehaves
 - [references/dex-format-and-multidex.md](references/dex-format-and-multidex.md) — DEX file structure, string/type/proto/method/field tables, CDEX quick note, multi-DEX layout, MethodID limit (64k) workarounds, DEX injection, custom class loading; load when the target has DEX limits or you need to add substantial new code
-- [references/dynamic-dex-and-native-loaders.md](references/dynamic-dex-and-native-loaders.md) — hybrid Java/Kotlin + native `.so` + runtime DEX loader patterns (`DexClassLoader`, `InMemoryDexClassLoader`, `JNI_OnLoad`, `RegisterNatives`), Frida boundary hooks, payload recovery flow; load when the target logic is staged or hidden behind loader stubs
+- [references/dynamic-dex-and-native-loaders.md](references/dynamic-dex-and-native-loaders.md) — hybrid Java/Kotlin + native `.so` + runtime DEX loader patterns, artifact recovery, modern runtime restrictions and DEX-module host design; load when logic is staged, hidden behind loader stubs, fails after an OS/target-SDK change, or a host that loads modules must be built or reviewed
 - [references/detection-evasion.md](references/detection-evasion.md) — anti-tamper checks embedded in target (CRC of APK, signature verification, hash of `classes.dex`), how to identify and neutralize; hidden API restrictions (LSPosed HiddenApiBypass), integrity attestation client-side handling; load when a patched APK crashes or bricks itself post-install
 - [references/hooking-vs-patching.md](references/hooking-vs-patching.md) — decision matrix: static patch (this skill) vs runtime hook (Frida/LSPosed) vs manifest-only edits; when to combine; workflows for handoff between hooks and patches; load when planning the intervention strategy
