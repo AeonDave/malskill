@@ -10,21 +10,36 @@
 # Attestation requires both last_verified and verified_digest. Dates without a
 # reviewed digest remain unverified. After reviewing the entire current category,
 # record its date and category_digests value from `assurance_check.py --json`.
-# Digests bind markdown paths and file hashes; changed/added/deleted markdown or
-# an elapsed cadence makes the claim stale. Do not copy digests without reviewing.
+# Digests bind markdown paths and normalized content hashes (BOM and CR line
+# endings ignored), taken from the committed tree; changed/added/deleted markdown
+# or an elapsed cadence makes the claim stale. Do not copy digests without
+# reviewing.
 content_currency:
   cadence_days:
     default: 180
     ai: 60                 # tool versions churn in days
     offensive-tools: 120
-  verified_digest: {}       # Historical dates below have no content-bound evidence.
+  # Digests recorded 2026-11-23 from the committed tree (4780e31) after reading every change made since each
+  # category's full review and checking all external links of these categories. Uncommitted edits make the
+  # working-tree digest differ, so the category shows as stale until they are committed or dropped.
+  verified_digest:
+    ai: 28b2c75da06316cabef25f723ceafeddff0ad6b1737b5f0b9be8a1eca02127c4
+    behaviours: a8741a8ad7cfc86099bb45c25d8cba683692eb84b3f7d257e5a600fd93ec54e7
+    coding: e120b1a14ed766a31f1552fe27d07b9e4018a43a5c527ce7b50b0219538d66d3
+    coding-behaviours: 220f2b5228d562e6df3a5416d188f46ff6c2ac2085760828b77cff8a5e389e4f
+    knowledge-offensive: f2a9afd14ed3402679a38ebf88bfd415dbc95027564ed1ffec699564a461d3fb
+    offensive-coding: 060a4b9ba5607900e933b4a457ad418c6bbbcf3cdad9ea309b85c23b2e793701
+    offensive-ctf: b63c5c45be0a622a34a2ead3c0276ca367fdeb5f3d7485e364dcda0a5d77ba98
+    offensive-tools: 3b6a559d2b35009fc217e608b86fe9b8a2fb2cb1c085a80494dabf973b166c59
+  # Each date is the day of the full review that still covers the category's base content. What was reviewed
+  # on 2026-11-23 is noted beside it, so the next reviewer knows what the date covers.
   last_verified:
-    coding: 2026-11-07
-    offensive-coding: 2026-11-08
-    offensive-ctf: 2026-11-07
-    # offensive-tools: partial review only; network/wireless/shells still pending
-    ai: 2026-11-14
-    behaviours: 2026-11-08
-    coding-behaviours: 2026-11-08
-    knowledge-offensive: 2026-11-14
-    # knowledge, harness-dev, hardware, offensive-hardware, offensive-techniques: no date
+    coding: 2026-11-07              # 22 skills; 2026-11-23 Android JNI/NDK rewrite checked against developer.android.com
+    offensive-coding: 2026-11-08    # refresh and claim-by-claim audit; later edits read 2026-11-23
+    offensive-ctf: 2026-11-07       # reference-claim corrections and writeup coverage; WhatsMyName closure fixed 2026-11-23
+    offensive-tools: 2026-11-08     # 193 skills, clusters finished by 2026-11-16; corrections of 2026-11-17 read 2026-11-23
+    ai: 2026-11-14                  # built claim by claim; the two skills added 2026-11-20 verified 2026-11-23
+    behaviours: 2026-11-14          # existing skills read in the gap analysis; owner additions and later edits read 2026-11-23
+    coding-behaviours: 2026-11-14   # five existing skills verified; browser-output reference of 2026-11-23 checked
+    knowledge-offensive: 2026-11-14 # six skills verified; later additions and edits read 2026-11-23
+    # No full review yet: knowledge, harness-dev, hardware, offensive-hardware, offensive-techniques
