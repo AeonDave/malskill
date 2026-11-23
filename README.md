@@ -119,7 +119,7 @@ python scripts/summarize_windows_survey.py /path/to/results > survey.csv
 python scripts/package_skill.py offensive-tools/windows/mimikatz
 ```
 
-Content-currency attestations in `.assurance/claims.yaml` require a review date and a `verified_digest` binding the reviewed category markdown. After a full category review, record its `category_digests` value from `python scripts/assurance_check.py --json --no-write`; dates alone remain unverified, changed content remains stale, and `--strict` fails on either status.
+Content-currency attestations in `.assurance/claims.yaml` require a review date and a `verified_digest` binding the reviewed category markdown. After a full category review, record its `category_digests` value from `python scripts/assurance_check.py --json --no-write`; dates alone remain unverified, changed content remains stale, and `--strict` fails on either status. Record digests from the committed tree: uncommitted edits are included in the working-tree digest, and the digest is computed over line-ending-normalized markdown so it is the same on any checkout.
 
 Validate each changed skill, sweep the affected category when several change, and finish with the changed-file check. Structural checks do not prove workflow quality - review the instructions for substantive behaviour changes. Keep the categories and commands in this README and [CATALOG.md](CATALOG.md) synchronized with the tree.
 

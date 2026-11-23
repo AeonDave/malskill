@@ -25,7 +25,9 @@ The evidence package (.assurance/evidence-package.json) records the sha256 of
 audited markdown and root Python scripts/tests. Scoped markdown and validator
 dependencies generate renewal triggers; other tooling hashes record provenance
 only. Content attestations require a date and reviewed
-category digest in the catalog. Missing digests remain unverified; mismatches
+category digest in the catalog. Category digests hash line-ending-normalized
+markdown (BOM, CRLF and CR removed), so an attestation holds across checkouts
+with different core.autocrlf settings. Missing digests remain unverified; mismatches
 remain stale until a real review updates the attestation.
 
 Usage:
@@ -117,6 +119,25 @@ def _iter_category_dirs(root: pathlib.Path) -> list[str]:
             if any(p.is_file() and not _skip_path(root, p) for p in d.rglob("SKILL.md")):
                 cats.append(d.name)
     return cats
+
+
+def _normalized_text_hash(path: pathlib.Path) -> str:
+    """sha256 of the text with checkout-dependent bytes removed (BOM, CRLF/CR line endings)."""
+    data = path.read_bytes()
+    if data.startswith(b"\xef\xbb\xbf"):
+        data = data[3:]
+    text = data.decode("utf-8", errors="surrogateescape").replace("\r\n", "\n").replace("\r", "\n")
+    return _sha256(text.encode("utf-8", errors="surrogateescape"))
+
+
+def _category_content_hashes(root: pathlib.Path) -> dict[str, str]:
+    """Normalized hashes of category markdown: the basis for content-attestation digests."""
+    hashes = {}
+    for cat in _iter_category_dirs(root):
+        for f in sorted((root / cat).rglob("*.md")):
+            if f.is_file() and not _skip_path(root, f):
+                hashes[_rel(root, f)] = _normalized_text_hash(f)
+    return hashes
 
 
 def _load_claims_catalog(path: pathlib.Path | None) -> dict:
@@ -292,8 +313,13 @@ def check_catalog_alignment(root: pathlib.Path) -> dict:
 
 
 
-def check_content_currency(root: pathlib.Path, catalog: dict, files: dict | None = None) -> dict:
-    """attested — per-category attestation dates vs renewal cadence (evidence, decays)."""
+def check_content_currency(root: pathlib.Path, catalog: dict) -> dict:
+    """attested — per-category attestation dates vs renewal cadence (evidence, decays).
+
+    Digests hash normalized markdown content, not working-tree bytes: with core.autocrlf the same
+    commit checks out with different line endings, and a raw-byte digest would go stale on the next
+    checkout.
+    """
     cc = (catalog or {}).get("content_currency", {})
     cadence = {"default": DEFAULT_CADENCE_DAYS}
     cadence.update(cc.get("cadence_days", {}) or {})
@@ -306,10 +332,10 @@ def check_content_currency(root: pathlib.Path, catalog: dict, files: dict | None
     unverified_categories = []
     category_digests = {}
     changed_categories = []
-    files = _collect_files(root) if files is None else files
+    content = _category_content_hashes(root)
 
     for cat in _iter_category_dirs(root):
-        digest = _sha256(json.dumps({p: h for p, h in files.items()
+        digest = _sha256(json.dumps({p: h for p, h in content.items()
                                     if p.startswith(cat + "/")}, sort_keys=True).encode())
         category_digests[cat] = digest
         if cat not in last_verified or cat not in verified_digests:
@@ -391,7 +417,7 @@ def build_package(root: pathlib.Path, claims_catalog_path: pathlib.Path | None,
         check_catalog_alignment(root),
     ]
     files = _collect_files(root)
-    currency = check_content_currency(root, catalog, files)
+    currency = check_content_currency(root, catalog)
     claims.append({k: v for k, v in currency.items()
                    if k not in ("unverified_categories", "category_digests", "changed_categories")})
 

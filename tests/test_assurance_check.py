@@ -226,6 +226,23 @@ class AssuranceCheckTests(unittest.TestCase):
             self.assertEqual(result["status"], "stale")
             self.assertIn("cadence 180d", result["exceptions"][0])
 
+    def test_digest_binds_content_not_checkout_line_endings(self):
+        with tempfile.TemporaryDirectory() as lf_tmp, tempfile.TemporaryDirectory() as crlf_tmp:
+            lf_root, crlf_root = Path(lf_tmp), Path(crlf_tmp)
+            for root in (lf_root, crlf_root):
+                _make_skill(root, "cat", "alpha", body="See [notes](references/notes.md).\n")
+                (root / "cat" / "alpha" / "references").mkdir()
+            body = "Notes.\nLine two.\n"
+            (lf_root / "cat" / "alpha" / "references" / "notes.md").write_text(body, encoding="utf-8")
+            crlf_notes = crlf_root / "cat" / "alpha" / "references" / "notes.md"
+            crlf_notes.write_bytes(b"\xef\xbb\xbf" + body.replace("\n", "\r\n").encode("utf-8"))
+            catalog = _make_catalog(lf_root)
+            # an attestation recorded on an LF checkout holds on a CRLF+BOM checkout of the same text
+            self.assertEqual(_currency(build_package(crlf_root, catalog, None))["status"], "attested")
+            edited = body.replace("Line two", "Edited line").replace("\n", "\r\n").encode("utf-8")
+            crlf_notes.write_bytes(b"\xef\xbb\xbf" + edited)
+            self.assertEqual(_currency(build_package(crlf_root, catalog, None))["status"], "stale")
+
     def test_missing_catalog_never_fabricates_attestation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
