@@ -1,11 +1,11 @@
 ---
 name: fuzzing-technique
-description: "Fuzzing methodology; target model, oracle, harness quality, corpus, campaign triage for parsers, binaries, protocols, APIs."
+description: "Fuzzing methodology; target model, oracle, harness quality, corpus, campaign triage for parsers, binaries, protocols, APIs, and Android native/JNI/Binder targets."
 license: MIT
 compatibility: "Linux/Windows/macOS; source-available and binary-only targets; local and remote environments."
 metadata:
   author: AeonDave
-  version: "1.2"
+  version: "1.3"
   language: multi
 ---
 
@@ -190,6 +190,7 @@ When using this skill, the agent should output:
 
 ## References
 
+- [references/android-fuzzing.md](references/android-fuzzing.md) — Load for Android native, JNI, managed-parser, or Binder campaigns: select the execution boundary, validate coverage, and replay with device-specific evidence.
 - [references/harness-writing.md](references/harness-writing.md) — Load when building or repairing deterministic harnesses or request models before scaling a campaign.
 - [references/binary-fuzzing.md](references/binary-fuzzing.md) — Load for binary-only targets, instrumentation choices, and persistent/coverage workflows without source.
 - [references/file-format-fuzzing.md](references/file-format-fuzzing.md) — Load for parser/container targets, structural seeds, dictionaries, and parser-depth tactics.

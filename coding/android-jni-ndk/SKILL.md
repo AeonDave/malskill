@@ -14,6 +14,8 @@ Everything that leaves the pure Kotlin/Java world: native shared libraries (`.so
 
 Pair with `kotlin-performance` for measuring native-call overhead, `smali-dex-patching` for offensive patching of the managed side, and `mobile-technique` for auditing shipped native code.
 
+Load [Android fuzzing](../../offensive-techniques/fuzzing-technique/references/android-fuzzing.md) when choosing a native/JNI/Binder harness and confirming device-side coverage or crash reachability.
+
 ## When to activate
 
 - Embedding a C/C++/Rust library in a Kotlin/Java app

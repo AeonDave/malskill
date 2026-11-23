@@ -4,12 +4,33 @@ Load when the app or sample uses `DexClassLoader`, `InMemoryDexClassLoader`, `JN
 
 ## Table of contents
 
-1. [What to look for](#what-to-look-for)
-2. [Why the hybrid pattern matters](#why-the-hybrid-pattern-matters)
-3. [Practical endpoint triage](#practical-endpoint-triage)
-4. [Recovery pattern after loader capture](#recovery-pattern-after-loader-capture)
-5. [Reverse-engineering notes](#reverse-engineering-notes)
-6. [Related skills](#related-skills)
+1. [Modern runtime diagnosis](#modern-runtime-diagnosis)
+2. [What to look for](#what-to-look-for)
+3. [Why the hybrid pattern matters](#why-the-hybrid-pattern-matters)
+4. [Practical endpoint triage](#practical-endpoint-triage)
+5. [Recovery pattern after loader capture](#recovery-pattern-after-loader-capture)
+6. [In-the-wild examples](#in-the-wild-examples-20252026)
+7. [Review a DEX-module host](#review-a-dex-module-host)
+8. [Build a DEX-module host](#build-a-dex-module-host)
+9. [Rust `.so` on Android](#rust-so-on-android)
+10. [Anti-analysis patterns in native `.so`](#anti-analysis-patterns-in-native-so)
+11. [Reverse-engineering notes](#reverse-engineering-notes)
+12. [Related skills](#related-skills)
+
+## Modern runtime diagnosis
+
+Record runtime API/build, target SDK, ABI, library build IDs, class loader and the exact exception or crash. Distinguish a rejected load, a successful load and execution of a concrete method; none implies the others.
+
+| Condition | Expected constraint | What to verify |
+|---|---|---|
+| Android 14+, target 34+, file-backed DEX/JAR/APK loading | Dynamically loaded files must be read-only | File state and the actual loader exception; do not apply a file rule to an in-memory buffer |
+| Android 17+, target 37+, native files loaded with `System.load()` | Read-only required; otherwise `UnsatisfiedLinkError` | Actual path and permissions; distinguish this cause from ABI/dependency/linker errors |
+| Android 17+, target 37+, mutation of a `static final` field | Reflection raises `IllegalAccessException`; JNI field mutation crashes | Call site and field modifiers before diagnosing memory corruption or an app anti-analysis check |
+| Native code on a 16 KB device | Packaging, ELF alignment and runtime page assumptions matter independently | Use [16 KB checks](../../../coding/android-jni-ndk/references/16kb-page-size.md); record compatibility mode |
+
+See [Android 14 target changes](https://developer.android.com/about/versions/14/behavior-changes-14#safer-dynamic-code-loading) and [Android 17 target changes](https://developer.android.com/about/versions/17/behavior-changes-17). Reproduce compatibility failures in a minimal test build using the same API/target/ABI; do not classify a platform rejection as a vulnerability or bypass it to claim production reachability.
+
+For recovered modules, preserve container/DEX/native hashes, source path or buffer slice, parent class loader and observed invocation. An absent module or untriggered path is missing coverage, not proof of benign behavior. A staged loader also appears in legitimate modular software; classify behavior from the operations it performs.
 
 ## What to look for
 
@@ -38,6 +59,7 @@ Also search for:
 - `Method.invoke(...)`
 - reflection-based `Base64`, `AES`, `XOR`, or blob decoding
 - asset or file reads followed immediately by a classloader call
+- `createPackageContext` with `CONTEXT_INCLUDE_CODE` or `CONTEXT_IGNORE_SECURITY`: another package's code loaded into the caller. A package-name prefix or a matching class name is not a signer check; see [Context](https://developer.android.com/reference/android/content/Context#createPackageContext(java.lang.String,%20int))
 
 ### Native loader signs
 
@@ -107,7 +129,8 @@ Java.perform(() => {
 ```
 
 ```javascript
-const addr = Module.getExportByName('libloader.so', 'JNI_OnLoad');
+const loader = Process.findModuleByName('libloader.so');
+const addr = loader === null ? null : loader.findExportByName('JNI_OnLoad');
 if (addr) {
     Interceptor.attach(addr, {
         onEnter(args) {
@@ -116,6 +139,8 @@ if (addr) {
     });
 }
 ```
+
+This lookup requires the observed library to be mapped and the export to exist. If initialization already ran, attaching now does not recover that event. Follow the [Frida session/timing checks](../../../offensive-tools/rev/frida/references/android-ios.md#android-session-and-hook-qualification) and confirm a hook hit before claiming loader coverage.
 
 ## Recovery pattern after loader capture
 
@@ -187,34 +212,39 @@ APK
 
 Key patterns: native `.so` for anti-analysis + crypto, managed layer for Android framework abuse (Accessibility, overlays, SMS).
 
-## Designing a DEX-module host (builder perspective)
+### Anatsa (ThreatFabric, 2024–2025)
 
-Reported APK-agent design; no revision-bound test record is linked here. These claims are not runtime qualification for another host:
-
-- **Always `InMemoryDexClassLoader` with the host classloader as parent** — parent-first delegation means remote DEX resolves host classes; a `DexClassLoader` with a file path both touches disk and loads a second class-space.
-- **Keep the R8/ProGuard keep surface that remote DEX links against**: the host API package the modules import (`-keep class <module-api>.*`) and the native bridge class (`-keep` on native methods + `clinit`). Missing keeps = runtime `NoClassDefFoundError` only after delivery.
-- **Gate modules before staging**: signed envelope (e.g., Ed25519 over `header || dex`, public key compiled into the `.so` via build script), strict size cap, opcode-capability allowlist. Envelope signing range must exclude the signature field itself.
-- **Store encrypted at rest** (`EncryptedFile` AES256-GCM under a Keystore master key) with stage→commit (`Files.move(ATOMIC_MOVE)`) and quarantine of invalid payloads; path-traversal-guard any module-supplied ID.
-- **Module lifecycle leases**: in-flight execution lease and host lease for view modules with exactly-once teardown — the classic execute/unload race is the top crash source of dynamic DEX hosts.
-- Known hardening limit: JVM-side envelope verification is itself hookable; the strong boundary is the native-compiled key material and the AEAD transport.
-
-### Anatsa / TeaBot (2025 resurgence)
-
-Distributed via trojanized Play Store apps (document readers, cleaners). Malicious code appears only in a delayed update weeks after install.
+Droppers on Google Play run as legitimate apps and turn malicious in an update weeks after release, once they have a user base. The update either installs Anatsa as a separate app or loads a stage in memory:
 
 ```
-Legitimate app (initial install)
-└── update mechanism
-    └── downloads + decrypts payload DEX
-        └── InMemoryDexClassLoader or DexClassLoader
-            └── Banking trojan with overlay injection
+Play Store app (legitimate at install)
+└── update, weeks later
+    ├── downloads and installs the Anatsa APK          (2025 campaign)
+    └── InMemoryDexClassLoader for the stage DEX       (2024 droppers)
+        └── banker with overlay injection, target list refreshed from C2
 ```
 
-Key insight: no native `.so` in many variants — the loader is pure Java reflection + encrypted assets. ~90K users reached on Play Store (2025).
+Lesson: a store build reviewed at release says nothing about the next update. See [ThreatFabric 2024](https://www.threatfabric.com/blogs/anatsa-trojan-returns-targeting-europe-and-expanding-its-reach) and [ThreatFabric 2025](https://www.threatfabric.com/blogs/anatsa-targets-north-america-uses-proven-mobile-campaign-process).
 
-### Mamont (Kaspersky, 2025 top banker)
+### Mamont (Kaspersky, 2025)
 
-Android banking trojan family discussed in the [Securelist mobile report](https://securelist.com/mobile-threat-report-2025/119076). Multiple variants (`da`, `db`, `bc`, `ev`, `ek`, `cb`, `hi`).
+The most prevalent banking trojan of 2025 in Kaspersky telemetry, with verdicts such as `Trojan-Banker.AndroidOS.Mamont.da` and `.db` among the year's most widespread. See [the mobile threat landscape in 2025](https://securelist.com/mobile-threat-report-2025/119076/).
+
+## Review a DEX-module host
+
+Trace the actual class-loader delegation and artifact provenance; neither file-backed nor in-memory loading creates a security sandbox. Inspect integrity/authenticity verification before execution, the trusted source of verification material, and the capabilities granted to loaded code. A public key embedded in native code is not a secret or an isolation boundary; moving a check from Java to native code does not establish resistance to a compromised process.
+
+For failed module calls, distinguish missing/renamed host APIs, class identity mismatches, JNI linkage and lifecycle races from malformed DEX. Reproduce with the relevant build configuration before attributing a failure to obfuscation or a security control. See [Android dynamic code-loading risks](https://developer.android.com/privacy-and-security/risks/dynamic-code-loading) and the [ClassLoader contract](https://developer.android.com/reference/java/lang/ClassLoader).
+
+## Build a DEX-module host
+
+Design rules for an app that loads signed modules at runtime:
+
+- **Delegation**: give the module loader the host class loader as parent, so host API classes resolve to the host's types. Same-named classes loaded by a separate loader are distinct types; pass objects only through the module API.
+- **Keep surface**: keep what compiled modules link against (`-keep` on the module API package and on native bridge methods with their `<clinit>`). R8 renaming or inlining otherwise breaks modules with `NoClassDefFoundError` or `NoSuchMethodError` at runtime, not at build.
+- **Verify before staging**: a signature over `header || module`, with the signature field excluded from the signed range, checked with a public key compiled into the host; then size cap and quarantine of rejected payloads. This protects against tampered delivery only: the public key is not a secret and verification inside the host process is hookable.
+- **At rest and in flight**: keep modules encrypted with a Keystore key until use, stage to a temporary file and move it into place with `ATOMIC_MOVE`; contain module-supplied IDs against path traversal. File-backed loaders need read-only files on Android 14+ (target 34+); `InMemoryDexClassLoader` avoids the file.
+- **Lifecycle**: hold an execution lease per module and release views, callbacks and threads before unloading; an unload that races a call into module code crashes the process.
 
 ## Rust `.so` on Android
 
