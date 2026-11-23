@@ -98,7 +98,7 @@ Prefer [HWASan](https://developer.android.com/ndk/guides/hwasan) for supported n
 
 - Android 14+ supports a debuggable app with a packaged `arm64-v8a` `wrap.sh` using `LD_HWASAN=1 exec "$@"`. Follow the [wrap-script packaging requirements](https://developer.android.com/ndk/guides/wrap-script), including `useLegacyPackaging = true` for that test variant. This route is incompatible with `android:useAppZygote`; use the documented alternative system-image setup when that feature must remain enabled.
 - Android 13 and earlier require a compatible HWASan Android system image, not merely the compiler flag.
-- Use shared libc++ when needed, not `c++_static`. With NDK r27+, `-DANDROID_SANITIZE=hwaddress` is supported by the standard CMake toolchain; it does not work with `ANDROID_USE_LEGACY_TOOLCHAIN_FILE=false`.
+- Use shared libc++ when needed, not `c++_static`. `-DANDROID_SANITIZE=hwaddress` does not work with `ANDROID_USE_LEGACY_TOOLCHAIN_FILE=false`; otherwise set it from `build.gradle` or use the per-target flags below.
 - Standalone HWASan executables on Android 14+ need NDK r26b or newer. Deploy their runtime dependencies as well as the executable.
 
 For per-target CMake instrumentation, apply both compile and link options in the test variant:
