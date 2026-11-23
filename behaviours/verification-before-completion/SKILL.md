@@ -2,7 +2,7 @@
 name: verification-before-completion
 description: "Check evidence before reporting work complete, fixed, passing, or ready. Use at a completion boundary or when later changes may have invalidated an earlier result."
 license: MIT
-compatibility: "AgentSkills-compatible verification workflow for coding, skill curation, research, and authorized security work."
+compatibility: "AgentSkills-compatible verification workflow for coding, skill curation, research, and security work."
 metadata:
   author: AeonDave
   version: "1.2"
@@ -35,4 +35,4 @@ A recorded result may be reused when its command, relevant inputs and checked st
 
 Use diff inspection and required structural checks for low-impact editorial work; do not invent runtime tests that merely mirror text. Distinguish checks not run from checks that failed.
 
-Load [references/completion-evidence.md](references/completion-evidence.md) when choosing regression evidence, comparing implementation with an agreed design, or diagnosing an overstated completion claim.
+Load [references/completion-evidence.md](references/completion-evidence.md) when choosing regression evidence, verifying partial commits, comparing implementation with an agreed design, or diagnosing an overstated completion claim.

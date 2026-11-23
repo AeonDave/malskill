@@ -56,3 +56,5 @@ Keep expensive model/GPU checks and repairs separate from ordinary diagnosis. Pr
 - Local services bind loopback by default, isolate runs, serve intended files only, and stop only processes they own. Escape untrusted content; do not execute artifact-provided HTML or commands.
 - Verify semantic state through the status interface and inspect displayed output. A healthy HTTP response is insufficient. Export offline artifacts when required; disclose network-dependent pieces.
 - Define shutdown order for the actual lifecycle. Preserve final exports and release workers/handles; browser closure must not erase results or change verification.
+
+For browser interaction, compatibility, or rendering performance, load [browser-viewers.md](browser-viewers.md). For hostile content, browser messages, or outbound resource loading, load [browser-output.md](../../../coding-behaviours/secure-tooling-implementation/references/browser-output.md).

@@ -1,6 +1,6 @@
 # Security Review
 
-Use this reference when auditing Rust source for security bugs: reviewing a crate you don't own,
+Use this reference when auditing Rust source for security bugs: reviewing a third-party crate,
 hardening code against untrusted input, or checking a dependency tree. For writing/reviewing the
 `unsafe` internals themselves, see `unsafe-and-ffi.md`. For fuzzing and sanitizers, see the
 `rust-testing` skill's `fuzzing-and-sanitizers.md`.

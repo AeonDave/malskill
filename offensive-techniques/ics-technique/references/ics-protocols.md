@@ -104,7 +104,7 @@ outputs = c.read_area(snap7.type.Areas.PA, 0, 0, 1)
 # Data block read/write
 db1 = c.db_read(db_number=1, start=0, size=100)
 
-# CPU stop/start (lab only — halts all PLC outputs)
+# CPU stop/start (isolated controller): actual output states depend on module parameters.
 c.plc_stop()
 c.plc_hot_start()
 

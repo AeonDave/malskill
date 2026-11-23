@@ -4,10 +4,10 @@ Load when triaging a native crash (tombstone), setting up sanitizers, uploading 
 
 ## Tombstone anatomy
 
-Tombstones are the kernel-level crash records for native process crashes. Stored on device:
+Tombstones are native process crash reports produced by Android's userspace crash machinery. Preserve the full report and nearby logcat before records rotate.
 
-- `/data/tombstones/tombstone_00` .. `tombstone_09` (root only)
-- Newer Android (11+): `/data/tombstones/tombstone_00.pb` (protobuf format; `tombstonecat` to read)
+- Direct access to `/data/tombstones/` requires appropriate device privileges; do not assume an app or ordinary shell can read it.
+- On API 31+, an app can obtain its own native-crash protobuf through `ApplicationExitInfo.getTraceInputStream()` for `REASON_CRASH_NATIVE`. It can return null when the circular trace buffer has overwritten the record. See the [API contract](https://developer.android.com/reference/android/app/ApplicationExitInfo#getTraceInputStream()).
 
 Play Console → Vitals → Android Vitals → Crashes surfaces them for shipped apps.
 
@@ -43,7 +43,7 @@ Signals worth memorizing:
 
 ## Symbolication
 
-The tombstone shows offsets (`+0x14`) not symbols. Symbolication requires debug builds of the `.so` retained locally.
+Match the crashed ABI and native build ID to retained unstripped libraries or debug symbols. A tombstone can already contain function names; file/line recovery still needs matching symbols. Use the module-relative `pc` column, not the function displacement (`+0x14`) or a raw ASLR address, with `addr2line`.
 
 ### `ndk-stack` (easiest)
 
@@ -53,7 +53,7 @@ Pipe the raw tombstone through `ndk-stack` with the symbols directory:
 $NDK/ndk-stack -sym app/build/intermediates/cxx/RelWithDebInfo/*/obj/arm64-v8a < tombstone.txt
 ```
 
-Output includes source file + line for each frame.
+Output can include source file and line when the matching debug information exists. Preserve the initial asterisk line in copied logcat traces; [ndk-stack](https://developer.android.com/ndk/guides/ndk-stack) uses it to recognize the dump.
 
 ### `llvm-addr2line` (single address)
 
@@ -92,78 +92,44 @@ Play Console → App bundle explorer → Debug symbols to upload; Play Store the
 
 ## Sanitizers
 
-### AddressSanitizer (ASan)
+### HWASan for Android native tests
 
-Detects heap/stack/global buffer overflows, use-after-free, use-after-return. API 21+.
+Prefer [HWASan](https://developer.android.com/ndk/guides/hwasan) for supported native test builds. It supports 64-bit Arm from NDK r21 / Android 10 (API 29); it does **not** require MTE hardware.
 
-```kotlin
-android {
-    defaultConfig {
-        ndk { abiFilters += listOf("arm64-v8a") }    // ASan only supported on 64-bit for release
-    }
-    buildTypes {
-        debug {
-            packagingOptions.jniLibs.useLegacyPackaging = true
-            ndk { debugSymbolLevel = "FULL" }
-        }
-    }
-    externalNativeBuild {
-        cmake {
-            arguments += "-DANDROID_SANITIZE=address"
-        }
-    }
-}
-```
+- Android 14+ supports a debuggable app with a packaged `arm64-v8a` `wrap.sh` using `LD_HWASAN=1 exec "$@"`. Follow the [wrap-script packaging requirements](https://developer.android.com/ndk/guides/wrap-script), including `useLegacyPackaging = true` for that test variant. This route is incompatible with `android:useAppZygote`; use the documented alternative system-image setup when that feature must remain enabled.
+- Android 13 and earlier require a compatible HWASan Android system image, not merely the compiler flag.
+- Use shared libc++ when needed, not `c++_static`. With NDK r27+, `-DANDROID_SANITIZE=hwaddress` is supported by the standard CMake toolchain; it does not work with `ANDROID_USE_LEGACY_TOOLCHAIN_FILE=false`.
+- Standalone HWASan executables on Android 14+ need NDK r26b or newer. Deploy their runtime dependencies as well as the executable.
 
-`CMakeLists.txt`:
+For per-target CMake instrumentation, apply both compile and link options in the test variant:
 
 ```cmake
-if (ANDROID_SANITIZE STREQUAL "address")
-    target_compile_options(mylib PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(mylib PRIVATE -fsanitize=address)
-endif()
+target_compile_options(mylib PRIVATE -fsanitize=hwaddress -fno-omit-frame-pointer)
+target_link_options(mylib PRIVATE -fsanitize=hwaddress)
 ```
 
-Add wrap script (`app/src/main/resources/lib/<abi>/wrap.sh` for AGP 8+ or `wrap.sh` in the APK):
+Keep an explicit test-only known-fault check to confirm the runtime is active before interpreting a clean campaign. Missing instrumentation in dependencies limits what a clean run establishes.
 
-```bash
-#!/system/bin/sh
-HERE="$(cd "$(dirname "$0")" && pwd)"
-export ASAN_OPTIONS=log_to_syslog=false,allow_user_segv_handler=1
-LD_PRELOAD="$HERE/libclang_rt.asan-aarch64-android.so" "$@"
-```
+### ASan, MTE, and sampled detectors
 
-Bundle `libclang_rt.asan-aarch64-android.so` from `$NDK/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/`.
+The [NDK ASan app workflow](https://developer.android.com/ndk/guides/asan) starts at API 27 and has been unsupported since 2023. Use it only as a documented fallback when HWASan cannot serve the target, and verify its runtime; host ASan and AOSP platform build recipes have different conditions.
 
-Runtime: ASan reports fire to logcat with tag `ASAN:DEADLYSIGNAL`. Symbolicated frames included if the debug `.so` is loaded.
-
-### HWASan (Hardware-Assisted ASan)
-
-Faster, lower memory overhead than ASan. Requires ARM64 with MTE (memory tagging extension) — Android 14+ on Pixel 8+. Not portable but worth using in CI for high-fidelity bug detection.
-
-```
--DANDROID_SANITIZE=hwaddress
-```
+[MTE and GWP-ASan](https://developer.android.com/ndk/guides/memory-debug) are distinct from HWASan. MTE needs supporting hardware/software; GWP-ASan samples allocations. Record which detector actually fired. Absence of a sampled report is not evidence that every access was checked.
 
 ### UndefinedBehaviorSanitizer (UBSan)
 
-Detects integer overflow, null deref, misaligned access, unreachable code.
+Choose the required checks and instrument the code that contains them; `undefined` includes signed integer overflow, not every possible integer error.
 
 ```cmake
 target_compile_options(mylib PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+target_link_options(mylib PRIVATE -fsanitize=undefined)
 ```
 
-Zero runtime overhead when disabled; small overhead when enabled. Ship-safe for debug/beta builds.
+Keep the sanitizer policy and abort/recovery behavior explicit in the test configuration.
 
 ### LeakSanitizer
 
-Detects native heap leaks at process exit. Combine with ASan:
-
-```cmake
-target_compile_options(mylib PRIVATE -fsanitize=address)
-```
-
-ASan runtime includes LSan; on Android LSan reports at exit.
+For native leak detection, load [native-memory-and-crashes.md](native-memory-and-crashes.md). Do not infer that an Android runtime runs leak checks merely because the build uses an address sanitizer.
 
 ## On-device debugging with LLDB
 
@@ -222,23 +188,20 @@ Standard C bug. Usually a missing `nullptr` check on a return from Java, e.g. `e
 JNI DETECTED ERROR IN APPLICATION: use of invalid jobject 0x71ac000000
 Aborted
 ```
-Local ref used after JNI return, or a deleted global. Enable `-Xcheck:jni` in the emulator:
+Local ref used after JNI return, or a deleted global. CheckJNI is normally enabled on the emulator. For subsequently launched apps on a regular test device:
 ```bash
-adb shell setprop dalvik.vm.checkjni true
-adb shell stop && adb shell start    # requires reboot
+adb shell setprop debug.checkjni 1
 ```
+Restart the test app and verify `Late-enabling CheckJNI` in logcat; restore the property afterward. A debuggable app also enables CheckJNI. See [JNI diagnostics](https://developer.android.com/ndk/guides/jni-tips#extended-checking).
 
 ### Stack overflow
 ```
 signal 11 (SIGSEGV), code 2 (SEGV_ACCERR), fault addr 0x7ff...
 ```
-Usually deep recursion. Android threads have small stacks (~1 MB main, ~64 KB others).
+Inspect recursion depth, guard-page faults, and the actual thread stack configuration; do not infer the stack size from the thread being managed or native.
 
 ### Use-after-free
-Only visible with ASan. Regular tombstone often shows a garbage pointer offset:
-```
-pc 000000000badbeef ??? (null)
-```
+A plain tombstone may show only a later invalid access. HWASan or another applicable memory detector can provide the access and allocation/free history. Confirm object lifetime from that evidence; an unusual pointer value alone does not establish use-after-free.
 
 ### `abort()` from `__android_log_assert`
 ```
@@ -249,8 +212,10 @@ Explicit check triggered. Message is verbatim.
 ## Anti-patterns
 
 - Not preserving symbols → tombstones are unactionable.
-- Enabling ASan in a release build → 2× memory overhead, unshippable.
+- Treating a test sanitizer runtime as a production deployment default.
 - Using `printf` for debug → often flushes late, missing right before crash. Use `__android_log_print(ANDROID_LOG_ERROR, tag, fmt, ...)`.
 - Debugging with `gdb` remote → deprecated on Android; LLDB has better ART integration.
-- Ignoring Play Console pre-symbolicated crashes and manually symbolicating instead → wastes time; the auto-symbolicated view is more accurate.
+- Trusting symbolized output without checking the crashed build identity; hosted and local symbolication both depend on the correct artifacts.
 - Not enabling `strictly-typed` JNI checks in dev: `-Xcheck:jni` in the ART command line catches many issues cheaply.
+
+For signal interpretation and examples, use [AOSP native crash diagnosis](https://source.android.com/docs/core/tests/debug/native-crash).

@@ -5,15 +5,17 @@
 Before starting, read `knowledge/skill-creator/SKILL.md` — it defines skill structure, frontmatter rules, and validation flow that every change below depends on.
 
 1. Hold the mantra: **brief, clear, specific, useful**. Every skill must help an agent act on its task. Every addition or edit must add concrete value — otherwise drop it. No justification, storytelling, statistics, or filler.
-2. **Correctness over completeness.** Ground technical claims (SID-filter rules, CVE behavior, flag/tool semantics) in a real run or primary source. A subtly-wrong rule is worse than an omission because agents act on it — when unsure, state the precise condition, not lore.
-3. Clarify the exact gap first, then pick the smallest change. **Default to enriching:**
+2. **Context and method, not basics.** Assume competence: leave out what the reader already knows (definitions, tutorials, generic background). Keep what changes the outcome — non-obvious mechanics, tradecraft, decision criteria, failure modes, and working flows that reach the goal.
+3. **Correctness over completeness.** Ground technical claims (SID-filter rules, CVE behavior, flag/tool semantics) in a real run or primary source. A subtly-wrong rule is worse than an omission because agents act on it — when unsure, state the precise condition, not lore.
+4. **Knowledge, not boilerplate.** Omit generic disclaimers and approval stops invented by the skill. Preserve the user's scope, the system's permission boundaries, and prerequisites such as physical isolation or evidence retention. State the condition at the decision it changes, the consequence if it is absent, and a lower-impact alternative when available.
+5. Clarify the exact gap first, then pick the smallest change. **Default to enriching:**
    - **new skill** — only when no existing skill's `description` would ever route a user here
    - **enrich an existing skill** — parent `SKILL.md` is the right place
    - **new reference** — only when the subtask loads independently of the parent's other references
    - **enrich an existing reference** — deep-dive exists but has a real gap
    - **one canonical home per fact** — a technique that spans layers (tool/technique/ctf) is documented once where it is most actionable and cross-referenced from the others, never copied
    - **wire new depth into routing** — a new reference or major section is dead weight unless the parent `SKILL.md` points to it with an explicit "load when…" trigger
-4. After the edit, validate the changed skill dir with the repository's `scripts/quick_validate.py` (frontmatter only), `scripts/sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `scripts/check_changed_files.py` — before finishing. Keep README categories and documented commands aligned with the actual tree.
+6. After the edit, validate the changed skill dir with the repository's `scripts/quick_validate.py` (frontmatter only), `scripts/sweep_skills.py <dir>` (broken links, placeholder markers, leaked workstation paths), and `scripts/check_changed_files.py` — before finishing. Keep README categories and documented commands aligned with the actual tree.
 
 ## Tooling & Commands
 

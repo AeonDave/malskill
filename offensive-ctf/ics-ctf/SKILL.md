@@ -55,6 +55,8 @@ Use tool families based on the evidence, not habit:
 
 ## Safety and scope gates
 
+A CTF objective or maintenance window is not evidence of physical isolation. If a command could reach an actuator and the connection is unknown, use a saved trace or an offline simulator. Restoring a value does not reverse physical movement.
+
 - Treat real-world ICS/OT writes as unsafe by default. In lab tasks, document why the environment is isolated before any write.
 - Never reset, stop, upload firmware, or mass-write registers unless the prompt explicitly defines an isolated target and the objective requires that exact action.
 - Keep a pivot ledger: protocol hypothesis, field evidence, decoded meaning, validation signal, and next safest step.

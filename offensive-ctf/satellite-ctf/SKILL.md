@@ -64,7 +64,7 @@ Load these as decision engines when their domain appears:
 
 ## Safety and scope gates
 
-- CTF targets are isolated lab services — interact freely, but never transmit on real RF or licensed/amateur bands, and never command a real spacecraft.
+- Verify the service is a simulator with no live RF or spacecraft command path before sending frames. If that connection is unknown, use the supplied capture offline.
 - Prefer offline decode of a supplied capture over live interaction when the artifact already contains the answer.
 - Keep a field ledger: layer hypothesis → evidence (server error / decoded bytes) → fix → next field. The layered errors are the map; do not brute blindly.
 - State which fields are inferred vs. spec-stated; a wrong SCID/APID/VCID is silently dropped by a real validator, so confirm them against the brief first.

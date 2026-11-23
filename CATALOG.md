@@ -93,7 +93,7 @@ Cross-cutting software-engineering stances that shape *how* code work is done, i
 | [`testing-reliability`](coding-behaviours/testing-reliability/SKILL.md) | Trustworthy assertions, doubles, fixtures, and mutation-result triage |
 | [`systematic-debugging`](coding-behaviours/systematic-debugging/SKILL.md) | Root-cause failure diagnosis |
 | [`dependency-discipline`](coding-behaviours/dependency-discipline/SKILL.md) | Evaluate, pin, hash-verify, and audit dependencies at adoption/upgrade time; incident response |
-| [`secure-tooling-implementation`](coding-behaviours/secure-tooling-implementation/SKILL.md) | Write offensive tooling that is not itself the vulnerability: trust boundaries, subprocess/path/TLS/secrets discipline |
+| [`secure-tooling-implementation`](coding-behaviours/secure-tooling-implementation/SKILL.md) | Write offensive tooling that is not itself the vulnerability: trust boundaries, subprocess/path/TLS/secrets discipline, safe browser output and messages |
 
 ## `knowledge/` - Research and meta-skills
 
@@ -102,7 +102,7 @@ Skills that support the workflow itself: skill authoring, research helpers, agen
 | Skill | Role |
 |-------|------|
 | `skill-creator` | Create, validate, and package new skills |
-| `skill-app-creator` | Build skills with executable workflows, consistent deliverables, diagnostics, and optional resumable sessions or UI |
+| `skill-app-creator` | Build skills with executable workflows, consistent deliverables, diagnostics, optional resumable sessions, and accessible browser evidence viewers |
 | [`orchestration`](knowledge/orchestration/SKILL.md) | General delegation: choose workers, models and effort, schedule dependencies, and integrate results; optional Claude Code reference |
 | `agent-md-creator` | Maintain durable agent instructions, project constraints, and task-specific documentation routes |
 | `readme-md-creator` | Create clear, destination-aware READMEs for repositories, packages, and document folders |
@@ -113,7 +113,7 @@ Skills that support the workflow itself: skill authoring, research helpers, agen
 
 ## `knowledge-offensive/` - Assessment research and evidence
 
-Research and development support for authorized security assessments. Use the narrowest skill that answers the current decision, and preserve the distinction between published claims and observations from the assessed environment.
+Research and development support for security assessments. Use the narrowest skill that answers the current decision, and preserve the distinction between published claims and observations from the assessed environment.
 
 | Skill | Role |
 |-------|------|
@@ -142,7 +142,7 @@ Vendor-specific agent and extension authoring. Load the skill matching the host 
 
 ## `behaviours/` - Cognitive discipline skills
 
-Cross-cutting behavioral guardrails that shape *how* an agent works. Load these to change the agent's operating stance, not its domain knowledge.
+Cross-cutting operating disciplines that shape *how* an agent works. Load these to change the agent's operating stance, not its domain knowledge.
 
 | Skill | Role |
 |-------|------|

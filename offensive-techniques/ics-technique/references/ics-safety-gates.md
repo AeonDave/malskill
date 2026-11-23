@@ -8,7 +8,7 @@ Operational constraints for authorized ICS/OT assessments. Safety of the physica
 
 In IT pentesting, a failed exploit causes a process to crash and restart. In ICS:
 - A force-written output coil can open a valve, trip a breaker, or disable an emergency stop.
-- A PLC CPU halt stops all control logic — outputs freeze at last state, sensors stop being read.
+- On [S7-1200](https://docs.tia.siemens.cloud/r/simatic_s7_1200_manual_collection_itit_20/plc-concepts/execution-of-the-user-program/configuring-the-outputs-on-a-run-to-stop-transition), configured substitute values default to OFF for digital outputs and zero for analog outputs; retaining the last value is another setting. On [S7-1500](https://docs.tia.siemens.cloud/r/en-us/v20/functional-description-of-s7-1500-cpus-s7-1500/operating-modes-s7-1500/stop-operating-mode-s7-1500), outputs may be disabled, substitute a value, or retain the last value depending on module parameters. CPU STOP alone does not establish a safe process state.
 - A historian exploit can expose weeks of process data including production quantities, safety setpoints, and personnel shifts.
 - Physical equipment damage from incorrect outputs may take weeks and significant cost to repair.
 
@@ -31,6 +31,8 @@ Before any active ICS testing:
 ---
 
 ## Action risk classification
+
+For safety-linked outputs, verify the physical disconnect with the facility engineer. A change window and an available rollback describe timing and recovery, not isolation.
 
 | Action | Risk | Approval required |
 |--------|------|------------------|

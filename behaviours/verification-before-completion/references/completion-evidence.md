@@ -21,6 +21,12 @@ When practical, demonstrate the original failure, apply the fix, observe the rep
 
 For nondeterministic behavior, record conditions and repeated outcomes; a fixed number of passing runs does not prove absence of a race. If a baseline or broader check is unavailable, name the limitation.
 
+## Partial commits
+
+When splitting a dirty worktree into commits, inspect the proposed staged diff and its dependencies. Directory or hunk boundaries do not establish an independently valid change; include required callers, tests, and configuration in the same commit or an earlier dependency within the task's scope.
+
+Match verification evidence to the proposed commit tree and intended parent. Reuse results when their relevant inputs, environment, and coverage still match. If excluded changes could affect a check or the checked state is uncertain, run that check in an isolated checkout or export of the staged tree; do not copy workspace source files absent from that snapshot. A full-worktree pass can conceal a broken staged subset; a fresh worktree at `HEAD` does not include staged changes automatically. Record the checked snapshot and account for differences from the delivered commit. Preserve the original index and user work during isolation. If required verification is unavailable, report that limitation.
+
 ## Design and implementation consistency
 
 When work has an agreed design or plan, compare its current requirements with the delivered source and relevant diff. Include later authorized decisions. Search for moved or renamed implementations before calling a feature absent; naming differences alone do not establish a behavior mismatch.
@@ -34,3 +40,4 @@ Report what changed, the verified outcome, and remaining uncertainty. The genera
 ## Source anchor
 
 - [EGM design/code drift workflow](https://github.com/google/elephant-goldfish-model/blob/main/skills/egm-drift-report/SKILL.md).
+- [Git: testing partial commits](https://git-scm.com/docs/git-stash#_testing_partial_commits).

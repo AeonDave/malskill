@@ -10,13 +10,13 @@ Load when writing or debugging JNI code: reference lifetimes, exception propagat
 | **Global** | `NewGlobalRef(local)` | Until explicit delete or process exit | `DeleteGlobalRef` |
 | **Weak Global** | `NewWeakGlobalRef(local)` | Until GC decides / explicit delete | `DeleteWeakGlobalRef` |
 
-Local reference table capacity is implementation-defined: **512 entries** historically (larger than the JNI spec's 16-entry minimum); newer ART grows the table, up to ~8192. Overflow aborts with:
+Android versions before 8.0 capped local references at a version-specific limit; Android 8+ removes that fixed cap. Retained locals still consume memory. A historical overflow can look like:
 
 ```
 JNI ERROR (app bug): local reference table overflow (max=512)
 ```
 
-Read the actual `max=` from the abort message — it varies by Android version.
+Read the actual runtime and diagnostic rather than projecting a historical `max=` onto current ART. On a thread attached through JNI, locals are not automatically freed until the thread detaches; explicitly delete them or use local frames in long-running loops. See the [Android JNI guidance](https://developer.android.com/ndk/guides/jni-tips).
 
 Symptoms: a loop that creates many locals without freeing.
 
@@ -186,10 +186,10 @@ Java_com_example_Native_encrypt(JNIEnv* env, jobject, jbyteArray input) {
   - `JNI_COMMIT` — copy back but do not free
   - `JNI_ABORT` — free without copy-back
 - `Get<Type>ArrayRegion` / `Set<Type>ArrayRegion` — copy a subrange in/out; simpler and safe.
-- `GetPrimitiveArrayCritical` — zero-copy pin; **no JNI calls or blocking** during the critical region:
+- `GetPrimitiveArrayCritical` may return a direct pointer or a copy; keep the critical region short, with no unrelated JNI calls or blocking:
   ```cpp
   auto* buf = static_cast<jbyte*>(env->GetPrimitiveArrayCritical(arr, nullptr));
-  if (env->ExceptionCheck()) return;
+  if (buf == nullptr) return;
   // use buf — MUST NOT call any JNI or blocking function
   env->ReleasePrimitiveArrayCritical(arr, buf, 0);
   ```
@@ -215,7 +215,7 @@ Java_com_example_Native_processBuffer(JNIEnv* env, jobject, jobject buffer) {
 
 - Zero-copy for the buffer contents.
 - Kotlin `ByteBuffer.allocateDirect(n)` allocates off-heap; released when the ByteBuffer becomes unreachable.
-- Not suitable if the native side must retain the pointer past the JNI call — the JVM may move or free the buffer.
+- If native code retains the address beyond the call, retain the buffer's managed owner with a strong reference for that duration and define release ownership. A stale pointer without that lifetime guarantee can outlive the allocation.
 
 ## Method / field IDs
 

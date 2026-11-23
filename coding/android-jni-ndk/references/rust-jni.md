@@ -56,17 +56,7 @@ app/src/main/jniLibs/
 
 ## 16 KB page alignment
 
-`.cargo/config.toml`:
-
-```toml
-[target.aarch64-linux-android]
-rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384"]
-
-[target.x86_64-linux-android]
-rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384"]
-```
-
-Verify with `llvm-readelf -lW libmy_native_lib.so`.
+Use the Rust linker settings and ELF/RELRO/ZIP verification in [16kb-page-size.md](16kb-page-size.md). Inspect the final Rust-built `.so` and packaged APK; choosing an NDK version does not by itself verify every Rust or prebuilt dependency.
 
 ## Kotlin declaration
 

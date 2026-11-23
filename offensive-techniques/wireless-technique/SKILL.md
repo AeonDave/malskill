@@ -29,6 +29,8 @@ Goal: identify, capture, and exploit wireless network credentials or gain direct
 
 ## Initial triage
 
+A visible device name does not verify the intended receiver or exclude nearby devices. When the peer or RF containment is uncertain, analyze the supplied capture offline.
+
 Before transmitting, classify the wireless target set and choose the quietest path that can satisfy the assessment objective.
 
 - **Starting state**: are you assessing Wi-Fi access control, handshake capture, WPS exposure, evil-twin resilience, BLE exposure, or analyzing an existing capture?

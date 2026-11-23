@@ -309,6 +309,8 @@ Understanding anti-cheat mechanisms for authorized bypass research or security a
 - All session captures and extracted data handled per engagement confidentiality rules.
 - Anti-cheat research confined to isolated VM — no interaction with live competitive servers.
 
+**Data minimization:** Retain only evidence needed to substantiate findings; redact secrets and personal data from reports. Restrict unaltered originals and preserve them only when necessary for verification or a preservation hold.
+
 ## Anti-patterns
 
 - Testing memory manipulation against a live game with anti-cheat detection — triggers bans, alerts publisher security team, may be illegal without authorization.

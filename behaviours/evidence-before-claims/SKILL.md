@@ -22,6 +22,8 @@ Use this skill when a conclusion could mislead an operator, reviewer, or report 
 
 Choose evidence that can establish the specific claim within authorized scope. Scale verification effort to the consequences and uncertainty; execution is not required for every fact.
 
+An accessible source can still be outside scope. Where a repeat check could cause irreversible effects or disrupt a shared service, report what existing evidence establishes, its date, and what remains unverified.
+
 - **Observed behavior**: a recorded action and result for the relevant environment. Repeat nondeterministic checks according to the uncertainty; a fixed number of passes does not prove reliability.
 - **Established from artifacts**: inspected source, configuration, documents, logs, or other primary material supports the conclusion. Show the derivation and its conditions; distinguish documented or statically established behavior from behavior observed in a running target.
 - **Reported or hypothesized**: attribute unchecked reports and label inferences with unresolved premises. An LLM/subagent summary alone is a lead, not confirmation.

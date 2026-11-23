@@ -130,6 +130,8 @@ Targeting an individual without consent is stalking and is criminalized in most 
 
 ## Evidence to log
 
+Use only the location precision the finding requires in reports; apply the [case retention and redaction rules](operational-security-and-evidence.md#minimization-redaction-and-retention) to higher-precision originals.
+
 - Observer coordinates and times (UTC) for every query.
 - Raw reported distances + app version (rounding behavior changes between releases).
 - LS residuals and σ per session.

@@ -2,10 +2,10 @@
 name: android-jni-ndk
 description: "Kotlin/Java ↔ native (C/C++/Rust) bridging on Android: NDK setup, JNI mechanics, `System.loadLibrary`, `RegisterNatives`, `@FastNative`/`@CriticalNative`, reference hygiene, exception propagation, 16 KB page-size compliance, native crash triage. Use when building or debugging a native module, embedding a `.so` library, decoding a native ANR or SIGSEGV, or reverse-engineering an APK's native code paths."
 license: MIT
-compatibility: "Android SDK 26+ (guidance covers up to SDK 36; Play requires 16 KB page alignment for apps targeting API 35+ since Nov 2025). NDK r28+ compiles 16 KB-aligned by default (AGP 9.0 default: r28c `28.2.13676358`); current LTS is r30 (`30.0.16248370`), r27 the prior LTS. CMake 3.22+ or ndk-build. Optional: Rust with cargo-ndk + jni-rs; async-profiler for native profiling; addr2line + ndk-stack for crash symbolication."
+compatibility: "Android native builds with a pinned SDK/NDK and CMake or ndk-build. Record device API, app targetSdk, ABI, and page size separately. NDK r28+ defaults to 16 KB ELF alignment; sanitizer and packaging conditions are in the references. Rust workflows additionally need cargo-ndk and jni-rs."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Android JNI & NDK
@@ -19,7 +19,7 @@ Pair with `kotlin-performance` for measuring native-call overhead, `smali-dex-pa
 - Embedding a C/C++/Rust library in a Kotlin/Java app
 - Debugging JNI reference leaks, `LocalReferenceTable overflow`, or `ArrayIndexOutOfBoundsException` originating in native code
 - Diagnosing a native crash (`SIGSEGV`, `SIGABRT`) from a tombstone or Play Console ANR
-- Migrating to 16 KB page-size compliance for Google Play (deadline Nov 2025 for apps targeting API 35+)
+- Migrating or testing native libraries for 16 KB page-size support
 - Building AAB / APK with multiple ABIs and understanding split delivery
 - Reverse-engineering a shipped `.so` to understand what native code an app runs
 
@@ -30,7 +30,7 @@ Pair with `kotlin-performance` for measuring native-call overhead, `smali-dex-pa
 - The **JVM (ART)** and **native code** share a process but different memory managers, exception systems, and reference tracking.
 - Every call across the boundary has cost (~25–100 ns even for `@CriticalNative`) — batch and design coarse APIs, not chatty ones.
 - Native code owns **local references** valid within one JNI call and **global references** valid until explicitly deleted. Losing track of either leaks or crashes.
-- The GC cannot pause a thread running native code — long native work blocks the whole runtime's GC cycle.
+- Ordinary native execution and `@FastNative` / `@CriticalNative` have different GC suspension rules; keep annotated methods bounded and non-blocking. See the [JNI guidance](https://developer.android.com/ndk/guides/jni-tips).
 - One process contains one ART instance; multiple `.so` files load into the same address space and can call each other freely.
 
 ---
@@ -103,7 +103,7 @@ On Android 12+ the compiled managed→native call for `@CriticalNative` is nearl
    }
    ```
 5. **Build** with `./gradlew :app:externalNativeBuildDebug` to iterate quickly. `assembleRelease` handles ABI splits.
-6. **Verify 16 KB alignment** (mandatory Nov 2025+ for API 35+ apps on Play):
+6. **Verify native ELF alignment**, then check packaging and runtime behavior using the page-size reference:
    ```bash
    llvm-readelf -lW libnative_crypto.so | awk '/LOAD/ {print $NF}'
    # Every LOAD segment's Align field must be >= 0x4000 (16384) on arm64-v8a and x86_64.
@@ -122,11 +122,11 @@ On Android 12+ the compiled managed→native call for `@CriticalNative` is nearl
 
 App Bundle (AAB) splits per-ABI automatically. `abiFilters` in the module controls what's built and shipped.
 
-## 16 KB page size (Nov 2025 Play deadline)
+## 16 KB page size
 
 - Android 15+ devices can boot with 16 KB kernel pages for improved performance.
 - All `.so` files for `arm64-v8a` and `x86_64` (the 64-bit ABIs) must have LOAD segments aligned to 16 KB.
-- AGP 8.5.1+ with NDK r28+ handles ELF and zip alignment automatically (AGP 9.0 defaults to NDK r28c, `28.2.13676358`). Older combos (AGP 8.3–8.5, NDK r26–r27) compile aligned `.so` but may misalign the APK zip entries — see `references/16kb-page-size.md` for the version matrix. NDK r26 and older need manual linker flags:
+- AGP 8.5.1+ provides suitable ZIP alignment for uncompressed libraries; NDK r28+ defaults to 16 KB ELF alignment. Older NDKs need explicit alignment settings. Neither tool rebuilds a third-party prebuilt for you. For r27 and lower, use the documented flags:
   ```cmake
   # CMakeLists.txt for older toolchains
   target_link_options(mylib PRIVATE
@@ -142,7 +142,7 @@ App Bundle (AAB) splits per-ABI automatically. `abiFilters` in the module contro
 - Third-party AARs must also comply — check every `.so` in `build/intermediates/merged_native_libs/`.
 - Code must not assume `PAGE_SIZE = 4096`. Query at runtime via `sysconf(_SC_PAGESIZE)` or `getpagesize()`.
 
-Full workflow with automation tools: `references/16kb-page-size.md`.
+Load [16 KB page sizes](references/16kb-page-size.md) for ELF/RELRO/ZIP checks, backcompat-aware device tests, and current Play requirements.
 
 ---
 
@@ -158,11 +158,11 @@ Full workflow with automation tools: `references/16kb-page-size.md`.
 
 ## JNI reference hygiene (top failure source)
 
-- **Local refs** — automatically freed at JNI method return. Table starts at 512 entries (newer ART grows it, up to 8192); when full the JVM aborts with `LocalReferenceTable overflow` — the abort message prints the actual `max=`.
+- **Local refs** — normally freed when the native method returns; attached native threads need explicit cleanup. Android 8+ removes the historical fixed local-reference cap, but retained objects still consume memory.
   - Explicitly `env->DeleteLocalRef(obj)` inside long loops.
   - Use `PushLocalFrame(capacity)` / `PopLocalFrame(nullptr)` for scoped batches.
 - **Global refs** — survive across JNI calls. Free with `env->DeleteGlobalRef(g)`. **Every** global ref must be paired with a delete or it leaks until process exit.
-- **Weak global refs** — GC can collect the referent; check with `IsSameObject(weakRef, nullptr)` before use.
+- **Weak global refs** — acquire a strong local reference with `NewLocalRef`, check for null/failure, use it, then delete it. A separate liveness check does not protect a later use from collection.
 - Never store a `JNIEnv*` — it's per-thread. Store `JavaVM*` and call `AttachCurrentThread` from other threads.
 - Threads created in native code (`pthread_create`) that call back into Java **must** attach: `vm->AttachCurrentThread(&env, nullptr)`; detach in a cleanup handler via `DetachCurrentThread`.
 
@@ -181,7 +181,7 @@ Full patterns: `references/jni-refs-and-exceptions.md`.
 
 ## Native crash triage
 
-Tombstones live at `/data/tombstones/` (root only) or Play Console → Vitals → Crashes. Format:
+Collect the tombstone or logcat crash report and the matching native build IDs. Direct tombstone-directory access is privileged; API 31+ also exposes an app's own native crash trace through `ApplicationExitInfo`. Format:
 
 ```
 signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0
@@ -198,19 +198,14 @@ $NDK/ndk-stack -sym app/build/intermediates/cxx/RelWithDebInfo/*/obj/arm64-v8a <
 Or manually:
 
 ```bash
-$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-addr2line -Cfe libnative_crypto.so 0x14
+"$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-addr2line" -Cfe libnative_crypto.so "$MODULE_RELATIVE_PC"  # pc column from the matching tombstone frame
 ```
 
 Rules:
 
 - Ship `libmylib.so.debug` (via AGP `packaging { jniLibs { keepDebugSymbols += "**/lib*.so" } }` for local, or upload debug symbols to Play Console for production).
 - Set CMake to `Release` with debug info: `-DCMAKE_BUILD_TYPE=RelWithDebInfo`. Strip separately for shipping.
-- Enable Address Sanitizer on debug builds:
-  ```cmake
-  target_compile_options(mylib PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-  target_link_options(mylib PRIVATE -fsanitize=address)
-  ```
-  Add wrap script per NDK docs. Available for API 21+.
+- Select and verify a supported memory detector for the test device; prefer HWASan where its Android/ABI conditions are met. Do not confuse HWASan with hardware MTE or assume host ASan setup applies to an APK.
 
 Full triage flow: `references/native-crashes-and-debugging.md`.
 
@@ -225,7 +220,7 @@ Full triage flow: `references/native-crashes-and-debugging.md`.
   ```
 - `jni-rs` provides safe wrappers around `JNIEnv`, refs, and exceptions.
 - Rust `panic` across JNI = process abort. Wrap in `catch_unwind` + convert to `ThrowNew`.
-- 16 KB alignment: `rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384"]` in `.cargo/config.toml`.
+- Verify the Rust-produced `.so` using the same [ELF and packaging checks](references/16kb-page-size.md) as other native libraries.
 - Chrome, Firefox, and increasing parts of AOSP use Rust for security-critical native code. Prefer Rust over C++ for new modules where practical.
 
 Details: `references/rust-jni.md`.
@@ -237,7 +232,7 @@ Details: `references/rust-jni.md`.
 - Include callers of native methods in the Baseline Profile (see `kotlin-performance/references/baseline-and-startup-profiles.md`) — ART pre-compiles the caller side, reducing transition overhead.
 - Explicit `RegisterNatives` at `JNI_OnLoad` avoids name-based lookup at first call (faster) and hides method names from `strings` output.
 - For hot paths that would otherwise pay the JNI transition per element, batch: pass a whole array + length once, not one element at a time.
-- Prefer `GetPrimitiveArrayCritical` / `ReleasePrimitiveArrayCritical` for zero-copy access to primitive arrays — but **cannot** call JNI or block during the critical region.
+- `GetPrimitiveArrayCritical` may pin the array or return a copy. Check for a null pointer, keep the critical region short, and release the pointer before unrelated JNI calls or blocking work.
 - CPU affinity: `sched_setaffinity` is available on Android for pinning to big cores. Rarely worth it, but valid for realtime audio/video threads.
 
 ---
@@ -286,7 +281,7 @@ Load on demand:
 
 - [references/jni-refs-and-exceptions.md](references/jni-refs-and-exceptions.md) — local vs global refs, `PushLocalFrame`, `ExceptionCheck` after every fallible call, `JavaVM*` thread attach, common `LocalReferenceTable overflow` diagnosis; load when writing or debugging JNI implementation code
 - [references/fast-critical-native.md](references/fast-critical-native.md) — `@FastNative` / `@CriticalNative` optimization, restrictions, DIY annotation classes (missing from public SDK), `RegisterNatives` binding, when the win is real; load when a native call is on a hot path measured at > 1 M ops/sec
-- [references/16kb-page-size.md](references/16kb-page-size.md) — compliance workflow, CMake/ndk-build flags, verification tools (`android-16kb-validator`, `llvm-readelf`), third-party AAR audit, Play deadline; load when the app has any native code and targets API 35+
-- [references/native-crashes-and-debugging.md](references/native-crashes-and-debugging.md) — tombstone anatomy, `ndk-stack`, `addr2line`, LLDB attach for on-device debugging, ASan/UBSan setup, Play Console symbol upload; load when triaging a native crash or setting up sanitizers
+- [references/16kb-page-size.md](references/16kb-page-size.md) — ELF/RELRO/ZIP alignment, third-party libraries, runtime assumptions and backcompat; load when building or testing native code for 16 KB devices
+- [references/native-crashes-and-debugging.md](references/native-crashes-and-debugging.md) — tombstone access, matching symbols, HWASan conditions and other detectors; load when triaging a native crash or setting up sanitizers
 - [references/rust-jni.md](references/rust-jni.md) — `cargo-ndk` + `jni-rs` workflow, safe wrapper patterns, `catch_unwind` for panic containment, cross-build for all ABIs, 16 KB alignment; load when embedding a Rust library or evaluating Rust for a new native module
-- [references/native-memory-and-crashes.md](references/native-memory-and-crashes.md) — native heap allocation tracking (`libc.debug.malloc`), LeakSanitizer setup, JNI ref leaks (not visible in Java heap dump), `dumpsys meminfo` native section triage; load when investigating native memory growth or OOM in a native module
+- [references/native-memory-and-crashes.md](references/native-memory-and-crashes.md) — sampled allocation profiling, leak-detector qualification, JNI ownership and retained buffers; load when investigating native memory growth or OOM in a native module

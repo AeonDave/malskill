@@ -12,6 +12,8 @@ MQTT 3.1.1 and 5.0 are the de-facto messaging fabric for IIoT, smart-building, a
 - **Smart-building / HA stacks** (Home Assistant, openHAB, Node-RED, Tasmota, Shelly, Sonoff) bridging consumer IoT into the same VLAN as building-management PLCs.
 - **Telemetry brokers** (Mosquitto, HiveMQ, EMQX, VerneMQ, NanoMQ, AWS IoT, Azure IoT Hub) on 1883/8883/9001 (WebSocket) often left wide open.
 
+Deleting a retained message cannot recall it from a subscribed actuator. When downstream connections are unknown, inspect a capture or exported broker configuration offline.
+
 A read on `#` plus `$SYS/#` is usually enough to map the whole plant; a single write to the right command topic can drive a real actuator. Treat command topics the same way as a Modbus FC 6 — never write unless the lab is explicitly isolated and the objective demands it.
 
 ## 2. Broker triage workflow

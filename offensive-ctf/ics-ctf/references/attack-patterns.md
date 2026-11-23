@@ -158,6 +158,8 @@ Try MSSQL with default sa/SCADA/winccsa/operator credentials before attacking th
 
 If hosts are tagged as Triconex, ProSafe-RS, HIMA, AC800M HI, or similar, treat them as **out of scope** by default. SIS exists to bring the process to a safe state when the basic control system fails; interfering with it is a real-world safety hazard and almost never within a lab's intended scope. Document the host, do not interact, and call this out in the report.
 
+An SIS controller may be reachable even when the basic process is offline. Use project exports or recorded telemetry unless the facility has verified isolation of the safety outputs.
+
 ## Operational-impact reasoning
 
 A write is only meaningful if it changes something an operator/oracle observes. Before claiming success, map:

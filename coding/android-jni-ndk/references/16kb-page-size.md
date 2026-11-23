@@ -1,17 +1,16 @@
 # 16 KB Page Size Compliance
 
-Load when the app has any native code (own `.so` or vendored dependency) and targets Android 15+ (API 35+). Mandatory for Play submissions from **November 1, 2025**.
+Load when building, testing, or triaging native code on a 16 KB device, including vendored libraries and fuzz targets. Runtime page size matters independently of the app's target SDK.
 
 ## What changed
 
 - Android 15+ devices may boot with **16 KB kernel page size** (up from the historical 4 KB) for I/O and memory-allocation performance wins.
 - `.so` files must have LOAD segments aligned to at least 16 KB for `arm64-v8a` and `x86_64` ABIs — 32-bit ABIs (`armeabi-v7a`, `x86`) stay 4 KB.
-- Apps that ship 4 KB-aligned `.so` files **cannot run** on 16 KB-page-size devices.
+- Some 4 KB-aligned apps run through Android's 16 KB backcompat mode. Record that mode during testing; a successful launch under it is not proof of native 16 KB compatibility.
 
 ## Play Store deadline
 
-- **New apps + updates** targeting API 35+: must be 16 KB-compliant from **November 1, 2025** (Play submission gate).
-- **All app updates** targeting API 35+: hard block from **February 1, 2027** — Play refuses updates that ship 4 KB-aligned `.so` files. Confirmed on the official [Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes) page.
+- The current [Android compatibility guide](https://developer.android.com/guide/practices/page-sizes) requires support for apps targeting API 35+ on 64-bit devices and states that unsupported updates cannot be released from **February 1, 2027**. Recheck the current Play requirement when making a release decision; do not use a store deadline to decide whether a runtime defect matters.
 
 ## Verifying alignment
 
@@ -26,43 +25,30 @@ $NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -lW libmylib.so | gr
 #                                                                            ^^^^^^ 0x4000 = 16384 bytes = 16 KB ✓
 ```
 
-Any LOAD segment with `Align < 0x4000` = non-compliant.
+Inspect every LOAD segment of each shipped 64-bit `.so`, not just the first or the app-owned library. An alignment below `0x4000` fails the ELF alignment check.
+
+Also inspect `GNU_RELRO`: when writable data follows it in the same LOAD segment, its end address (`VirtAddr + MemSiz`) must be 16 KB aligned. Otherwise page protection can make neighboring writable data read-only and cause a runtime crash. Do not remove RELRO to make the check pass; fix the layout with a current toolchain or the documented linker flags.
 
 ## Automated verification
 
-Google ships the reference script in AOSP: [`check_elf_alignment.sh`](https://cs.android.com/android/platform/superproject/main/+/main:system/extras/tools/check_elf_alignment.sh). It walks every `.so` in an APK/AAB and prints `ALIGNED` / `UNALIGNED` per library.
+Use APK Analyzer or the checking script linked from the official compatibility guide. Inspect its accepted artifact format before use. For an AAB, verify generated installable APKs and their native libraries rather than treating the bundle itself as an APK.
 
-```bash
-curl -o check_elf_alignment.sh https://cs.android.com/android/platform/superproject/main/+/main:system/extras/tools/check_elf_alignment.sh?format=TEXT | base64 -d > check_elf_alignment.sh
-chmod +x check_elf_alignment.sh
-./check_elf_alignment.sh app-release.apk
-```
-
-Per-`.so` cross-check with `zipalign` (needs Android SDK build-tools 35.0.0+ for `-P 16`):
+Separately check ZIP entry alignment with `zipalign` (SDK Build-Tools 35.0.0+):
 
 ```bash
 $ANDROID_HOME/build-tools/35.0.0/zipalign -v -c -P 16 4 app-release.apk
 # Last line: "Verification successful" when every uncompressed .so is 16 KB-aligned.
 ```
 
-Manual sweep when neither tool is available:
-
-```bash
-unzip -j app.aab 'base/lib/*.so' -d libs/
-find libs/ -name '*.so' | while read f; do
-    align=$(llvm-readelf -lW "$f" | awk '/LOAD/ { print $NF; exit }')
-    echo "$f align=$align"
-done
-```
+Keep ABI and module directories when extracting libraries; flattening identically named files can silently discard evidence. `zipalign` checks APK layout, not ELF program headers or runtime page-size assumptions.
 
 ## AGP + NDK version matrix
 
 | AGP | NDK | Behavior |
 |-----|-----|----------|
-| 8.5.1+ | r28+ | 16 KB compilation + zip alignment fully automatic; recommended baseline. |
-| 8.5.1+ | r27 | 16 KB compilation on by default; may need manual flags for prebuilts and `libc++_shared.so`. |
-| 8.3–8.5 | r26–r27 | Compiles 16 KB-aligned `.so`, but `bundletool` does **not** zipalign APKs from bundles by default — apps may run locally yet fail install from Play. Upgrade AGP. |
-| < 8.3 | r26 or older | Manual linker flags (below) required; `libc++_shared.so` may be misaligned until you upgrade NDK. |
+| 8.5.1+ | r28+ | New builds default to 16 KB ELF alignment; AGP aligns uncompressed libraries in the APK. Check third-party prebuilts separately. |
+| 8.5.1+ | r27 or lower | Configure ELF alignment explicitly. Packaging alignment cannot repair a misaligned ELF segment. |
+| < 8.5.1 | any | Prefer upgrading AGP. For uncompressed libraries, do not infer bundle-generated APK alignment from a local APK. The documented compressed-library fallback changes packaging only. |
 
 **Recommended baseline: AGP 8.5.1 + NDK r28** (matches the official Android guide).
 
@@ -86,7 +72,7 @@ android {
     defaultConfig {
         externalNativeBuild {
             cmake {
-                arguments += "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                arguments += "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
             }
         }
     }
@@ -107,10 +93,10 @@ LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
 
 ```toml
 [target.aarch64-linux-android]
-rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384"]
+rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384", "-Clink-arg=-Wl,-z,common-page-size=16384"]
 
 [target.x86_64-linux-android]
-rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384"]
+rustflags = ["-Clink-arg=-Wl,-z,max-page-size=16384", "-Clink-arg=-Wl,-z,common-page-size=16384"]
 ```
 
 ## Third-party AARs and vendored `.so` files
@@ -132,17 +118,7 @@ If a dependency is non-compliant:
 
 ## Runtime `PAGE_SIZE` assumptions
 
-Code must not assume `PAGE_SIZE == 4096`. On NDK r27+, `PAGE_SIZE` is **not defined** by default for `arm64-v8a` / `x86_64`. Restore it (not recommended) with:
-
-```
-# ndk-build:
-APP_SUPPORT_FLEXIBLE_PAGE_SIZES := false
-
-# CMake:
--DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=false
-```
-
-Better: query at runtime.
+Code must not assume `PAGE_SIZE == 4096`. With flexible page sizes enabled on NDK r27+, `PAGE_SIZE` is undefined. Query the runtime rather than restoring a compile-time constant.
 
 ```c
 long page_size = sysconf(_SC_PAGESIZE);   // returns 4096 or 16384
@@ -153,12 +129,12 @@ Common bugs:
 - `mmap()` with `length = 4096` — wastes space on 16 KB, but usually still works (kernel rounds up).
 - `mmap()` with `offset` not aligned to page size — `EINVAL` on 16 KB systems if hard-coded to 4 KB.
 - Buffer allocators using compile-time `#define PAGE_SIZE 4096` — fragmented allocation, wasted memory.
-- `posix_memalign(&ptr, 4096, size)` — should be `posix_memalign(&ptr, page_size, size)` where `page_size` is dynamic.
+- Fixed alignment passed to `posix_memalign` is a problem when the consumer requires page alignment; use the runtime page size for that requirement, not for every ordinary allocation.
 
 ## Testing on a 16 KB device
 
-- **Cuttlefish** (AOSP virtual device): boots with 16 KB pages when compiled with `PRODUCT_16K_DEVELOPER_OPTION=true`. Best for CI.
-- **Pixel Tablet + Pixel 8+** on Android 15: developer option "Boot with 16 KB pages" (Settings → System → Developer options → 16 KB page size). Requires factory reset when toggled.
+- **Cuttlefish**: use the documented 16 KB build/image configuration for the pinned AOSP branch.
+- **Supported Pixel devices**: the developer option depends on the model and OS/QPR version. Check the device list in the official guide before changing the boot configuration; do not infer support from the model generation alone.
 - **Android Studio emulator**: system images labeled "16 KB" available for API 35+.
 
 Verify:
@@ -171,7 +147,7 @@ For 4 KB physical devices, use the Android Studio 16 KB emulator image or a Pixe
 
 ## Zipalign
 
-`zipalign -P 16` (page-alignment specifier introduced with the 16 KB migration) — aligns uncompressed native libraries to 16 KB within the APK/AAB so they can be mmap'd directly:
+`zipalign -P 16` aligns uncompressed native libraries within an APK so they can be mmap'd directly. Align before APK signing:
 
 ```bash
 zipalign -P 16 -f -v 4 unsigned.apk aligned.apk
@@ -183,39 +159,12 @@ This is separate from ELF LOAD alignment — you need both:
 
 ## CI gate
 
-Add a Gradle task to fail the build on non-compliant `.so`:
-
-```kotlin
-tasks.register("verify16KBAlignment") {
-    dependsOn("mergeReleaseNativeLibs")
-    doLast {
-        val nativeDir = layout.buildDirectory.dir("intermediates/merged_native_libs/release").get().asFile
-        val abis = listOf("arm64-v8a", "x86_64")
-        val bad = mutableListOf<String>()
-        abis.forEach { abi ->
-            file(nativeDir.resolve("out/lib/$abi")).walk()
-                .filter { it.extension == "so" }
-                .forEach { so ->
-                    val out = ProcessBuilder("llvm-readelf", "-lW", so.absolutePath)
-                        .redirectErrorStream(true).start().inputStream.bufferedReader().readText()
-                    val bad16k = out.lines().filter { "LOAD" in it }.any { line ->
-                        val align = line.trim().split(Regex("\\s+")).last()
-                        val alignInt = if (align.startsWith("0x")) align.substring(2).toLong(16) else align.toLong()
-                        alignInt < 16384
-                    }
-                    if (bad16k) bad += "${so.name} ($abi)"
-                }
-        }
-        if (bad.isNotEmpty()) error("Non-16KB-aligned .so files: $bad")
-    }
-}
-tasks.named("assembleRelease") { finalizedBy("verify16KBAlignment") }
-```
+Gate the final installable artifacts, including feature modules and third-party libraries. Fail on missing expected artifacts, tool errors, unparseable headers, or failed ELF/ZIP/RELRO checks; an empty scan must not pass as native compatibility evidence. Keep a device/emulator runtime check for hard-coded page assumptions: a static alignment check alone cannot establish them.
 
 ## Anti-patterns
 
 - Assuming AGP handles third-party AAR compliance automatically (it doesn't).
-- Ignoring `armeabi-v7a` — stays 4 KB. Do not add 16 KB flags for 32-bit ABIs; can break loading.
+- Treating a check of one ABI or one app-owned library as verification of every delivered native dependency.
 - Setting `APP_SUPPORT_FLEXIBLE_PAGE_SIZES=false` to make old code compile — masks the underlying bug and blocks future device compatibility.
-- Zipalign `-P 4` — legacy alignment; explicitly need `-P 16` for compressed `.so` scenarios.
+- Using ZIP alignment to claim ELF alignment, or testing only with backcompat enabled.
 - Skipping the runtime `sysconf(_SC_PAGESIZE)` audit — code that compiles clean can still crash on a 16 KB device.

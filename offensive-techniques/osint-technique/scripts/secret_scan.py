@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Stdlib-only secret scanner. Mirrors the 48-pattern catalog from
-the `offensive-osint` skill (§17).
+"""Stdlib-only secret scanner. Mirrors 47 of the 48 patterns in
+`references/secret-patterns-and-validators.md` (#35, Cloudflare Token, is not implemented).
 
 Usage:
   echo "AKIAIOSFODNN7EXAMPLE" | python3 secret_scan.py

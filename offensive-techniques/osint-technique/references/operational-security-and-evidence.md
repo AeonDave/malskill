@@ -125,12 +125,17 @@ Identity separation matters more than a magic proxy. One reused account, browser
 - **Where**: storage location or archive URL.
 - **Why**: investigation objective and pivot rationale.
 
+### Minimization, redaction, and retention
+
+- Keep only data needed to substantiate the finding; prefer a source reference or concise excerpt over a full dump. A provider's employee label or aggregate count is not evidence of device ownership or current credential validity.
+- Preserve an unaltered original only when needed for verification or a preservation hold; restrict access and record integrity. Use a separately redacted copy for routine analysis and reporting.
+- Set a case-specific retention deadline and final disposition. A legal or preservation hold suspends routine deletion for covered evidence until formally released; then securely dispose of material no longer required.
+
 ### Legal Considerations
 
 **GDPR (EU)**: 
 - Process personal data only with legal basis (contract, consent, legitimate interest).
-- Data minimization: Collect only necessary data.
-- Retention: Delete after investigation purpose met.
+- Apply the case retention schedule above, including any preservation hold.
 
 **CFAA (US)**:
 - Do not access honeypots, protected systems, or honeypots masquerading as public.

@@ -12,7 +12,7 @@ nmap --script smb2-security-mode -p 445 <subnet>/24 | grep -B5 "signing: disable
 # 2. Confirm NTLM is accepted (not blocked by EPA/channel binding)
 # Windows Server 2019+: some configs require extended protection → test first
 
-# 3. LDAP signing: required on DCs by default on 2022+
+# 3. LDAP signing: record the effective DC policy, not just the OS version. New Server 2025 deployments require signing by default; upgrades preserve existing policy.
 # Test: impacket-ntlmrelayx -t ldap://<dc_ip> --no-smb-server ...
 ```
 

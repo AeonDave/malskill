@@ -263,6 +263,8 @@ Pivot paths:
 - Network management path attempted before physical access.
 - All extracted credentials and keys handled per engagement rules of engagement.
 
+**Data minimization:** Record presence and impact rather than secret values; store an exact credential or key only when indispensable, with restricted access and a redacted report copy.
+
 ## Anti-patterns
 
 - Connecting probes without verifying voltage domain — destroys hardware.

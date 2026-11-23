@@ -15,6 +15,8 @@ Resolve the assessment decision with evidence tied to the actual environment. Se
 
 State the question, known assets/artifacts and versions, existing engagement constraints, and what evidence would change the answer. Use the available authorization; do not insert another approval stop for work already requested. Public-source research does not by itself authorize contact with an assessment target.
 
+Label public-source evidence separately from observations of the assessed environment. A published claim about a product does not establish the state of a specific installation.
+
 Use [cve-search](../cve-search/SKILL.md) for vulnerability inventory, record semantics and asset matching; [poc-artifact-review](../poc-artifact-review/SKILL.md) for an existing artifact's code/dependency review. For one missing idea that could unblock local work, use [known-problem-hint-research](../../knowledge/known-problem-hint-research/SKILL.md).
 
 Load [vuln-research](../vuln-research/SKILL.md) when the work turns to discovering or testing a vulnerability in the target itself, including bug-bounty hypotheses and patch/variant investigations.

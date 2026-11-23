@@ -205,6 +205,8 @@ Document: register ranges in use, coil states mapped to physical outputs, config
 
 ## Phase 4 — Attack path identification and active exploitation
 
+A maintenance window is not physical isolation. If an output can still reach live equipment or its wiring is unknown, use existing telemetry or offline simulation. A rollback cannot undo an actuator movement.
+
 Classify write-capable paths by process risk before proceeding.
 
 | Target | Action | Risk | Proceed when |
@@ -235,7 +237,7 @@ c.write_coil(0, current.bits[0], slave=slave)
 echo -n '<hex_payload>' | xxd -r -p | nc <target> 502
 ```
 
-### S7 CPU stop (lab only — causes PLC to halt all outputs)
+### S7 CPU stop (isolated controller): verify the configured output reaction
 
 ```python
 c.plc_stop()   # halts execution; only in isolated lab

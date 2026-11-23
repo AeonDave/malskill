@@ -23,6 +23,10 @@ Use natural requests. Do not disclose the expected answer in a multiple-choice p
 
 Snapshot the pre-edit skill or use no skill as the baseline. Run baseline and candidate in separate clean contexts with the same prompt, inputs, model, tools, permissions, and configuration. Keep output directories isolated; do not show either run the other's result.
 
+For historical incidents, define the simulated investigation time and preserve the permitted code and telemetry. Record expired evidence; exclude later fixes, postmortems, recovery data, saved notes, and previous-run results that reveal answers unavailable at that time. Inspect transcripts for leakage. Grade onset, affected scope, cause, and uncertainty separately; correct timing does not establish causality. Test handoff usefulness against a fixed evidence snapshot and the recipient's next decision, separately from diagnosis accuracy. See [OpenAI's incident evaluations](https://openai.com/index/how-openai-performance-factory-keeps-chatgpt-fast/).
+
+Keep all valid trials, including task failures and regressions, in the outcome denominator. Define exclusions for invalid measurements before comparing results and report excluded trials with reasons. Report cost among successful runs as conditional, alongside the success rate; dropping failures or runs where the candidate loses does not establish a general improvement.
+
 Inspect both artifacts and execution traces. Use mechanical checks for objective contracts and qualitative review for judgment. Record:
 
 - task success and correctness;
@@ -31,6 +35,8 @@ Inspect both artifacts and execution traces. Use mechanical checks for objective
 - configuration and targets actually exercised.
 
 Do not grade exact prose, headings, or implementation choices unless the output contract requires them. If both versions succeed, report preserved behavior; fewer words alone do not prove faster or better execution. Repeat variable cases before attributing an improvement to one edit.
+
+For reviews or scans, use [evidence-before-claims](../../../behaviours/evidence-before-claims/SKILL.md) to distinguish refuted findings from unresolved ones. Track known-issue coverage and missed cases alongside false positives; fewer reported findings can reduce both errors and valid detections. State each metric's denominator and reference scope: incomplete labels support recall only for that labeled subset. Separate harness/grader failures from agent errors and resolve material grading defects before comparing quality.
 
 If a skill is shared across models or hosts, test the relevant targets or explicitly limit the conclusion. A thought experiment or reviewer reading the text is design review, not an execution test.
 

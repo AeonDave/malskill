@@ -123,7 +123,8 @@ When in doubt, anchor on these.
 - Heartbleed (CVE-2014-0160) — memory disclosure inc. session tokens + keys
 - Live npm/PyPI/Docker Hub/GHCR token w/ publish scope — supply-chain compromise
 - Live Anthropic/OpenAI key w/ broad scope — quota + PII in past responses
-- Decommissioned legacy mail (NXDOMAIN) + breach corpus has historical employee URLs against it + SSO migration confirmed via autodiscover IPs — passwords almost certainly survived migration via reuse; SSO_EXPOSURE escalates regardless of dead legacy host
+
+**Not a severity anchor:** A historical mail URL, a mail migration and negative DNS do not establish current credential validity, password reuse or present impact. Record the observation without assigning a current incident severity from those signals alone.
 
 ### HIGH
 - Listable S3 bucket with logs only — internal hostnames + paths; pivot data

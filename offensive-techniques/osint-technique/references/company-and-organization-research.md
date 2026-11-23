@@ -26,7 +26,7 @@ Most countries maintain public registries of registered companies.
 ### US
 
 - **SEC EDGAR** (sec.gov/edgar): US public company filings (10-K, 10-Q, 8-K, proxy statements). Rich financial + governance data.
-- **OpenOwnership Register** (register.openownership.org): Beneficial ownership datasets (who really owns the company).
+- The Open Ownership Register search UI [closed on 29 November 2024](https://www.openownership.org/en/news/evolving-from-the-open-ownership-register-to-increase-our-impact/). Its published bulk datasets remain available; record the dataset date and jurisdiction before citing an ownership claim.
 
 ### EU
 

@@ -1,8 +1,8 @@
 ---
 name: forensics-ctf
-description: "Lab/CTF: forensics/stego challenges; disk, memory, PCAP, EVTX/logs, archives, media, firmware-like blobs, evidence recovery."
+description: "Forensics/stego challenges; disk, memory, PCAP, EVTX/logs, archives, media, firmware-like blobs, evidence recovery."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

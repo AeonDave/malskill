@@ -4,7 +4,7 @@ description: "Create or evolve skill-apps: Agent Skills with executable workflow
 license: MIT
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Skill App Creator
@@ -40,6 +40,8 @@ Proceed with reasonable defaults from the request. Ask only for missing facts th
 | A host integration provides essential interaction | Its adapter and a fallback or explicit requirement. |
 
 Load [references/runtime.md](references/runtime.md) when implementing helpers, doctor checks, sessions, integrations, or a UI. Use only sections for selected components. A CLI, document, spreadsheet, or directory of artifacts can be the complete interface.
+
+Load [references/browser-viewers.md](references/browser-viewers.md) when the selected interface is a browser-based evidence viewer or dashboard: native controls, browser support, accessible interaction, and measured responsiveness.
 
 ## Build one complete path first
 

@@ -120,7 +120,7 @@ masscan -p21,22,23,25,53,80,110,143,443,445,1433,1521,3306,3389,5432,6379,8080,8
   -iL ips.txt --rate 10000 -oG masscan_grepable.txt
 ```
 
-Rate guidance:
+Rate guidance: use a measured, owner-agreed limit for this network; the figures below are not evidence of available capacity. Without a limit, use existing inventory.
 - Internal authorized scope: 10,000–50,000 pps (confirm with scope owner)
 - External engagement: 1,000–5,000 pps typical — check for rate-limiting / IPS
 

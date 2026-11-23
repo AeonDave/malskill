@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Agent workflow guidance; language-agnostic with cross-references to the language pattern skills."
 metadata:
   author: AeonDave
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Secure Tooling Implementation
@@ -22,6 +22,8 @@ Every response, parsed file, model output, and target-supplied string is **attac
 - LLM/model output (route through `untrusted-input-hygiene` when it can reach instructions)
 
 Rule: validate/normalize **at the boundary**, then pass typed, structured data inward. A tool that f-strings raw target strings into a command is an RCE the target can fire back.
+
+Load [references/browser-output.md](references/browser-output.md) when rendering target artifacts in HTML reports/viewers, handling browser messages, or loading external resources. It covers DOM sinks, sanitizer fallbacks, origin checks, and unintended network activity.
 
 ## Recurring implementation mistakes (by class)
 
