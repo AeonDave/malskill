@@ -47,7 +47,7 @@ sudo apt-get install -y upx-ucl
 # Download from https://github.com/horsicq/DIE-engine/releases
 ```
 
-### Tier 4 — Dynamic (lab only)
+### Tier 4 — Dynamic
 ```bash
 sudo apt-get install -y strace ltrace tshark
 pip install volatility3 scapy fakenet-ng
@@ -78,13 +78,13 @@ py -m pip install --user pefile lief yara-python capstone oletools pycryptodome
 py -m pip install --user flare-floss flare-capa
 winget install --id Microsoft.DotNet.SDK.8 --accept-source-agreements --accept-package-agreements
 dotnet tool install --global ilspycmd
-# Ghidra — download from ghidra-sre.org, add support\ to PATH
+# Ghidra — download from https://github.com/NationalSecurityAgency/ghidra/releases, add support\ to PATH
 # jadx — download from https://github.com/skylot/jadx/releases
 # x64dbg — download from https://x64dbg.com (Windows only)
 # UPX — download from https://github.com/upx/upx/releases
 ```
 
-### Tier 4 — Dynamic (lab only)
+### Tier 4 — Dynamic
 ```powershell
 # Procmon — part of Sysinternals (already installed above)
 # Wireshark

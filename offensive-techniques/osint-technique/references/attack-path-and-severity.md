@@ -2,7 +2,7 @@
 
 Load when converting raw OSINT findings into severity and next-pivot hints.
 
-> **Scope note:** this file scores OSINT findings and describes *target-state hints* used to assess severity (e.g. "why is an exposed Redis CRITICAL"). Any examples that look like exploitation (PUT, `CONFIG SET`, kubelet exec, RCE PoCs) are **severity-assessment heuristics only** — actual exploitation belongs to [vuln-exploit-technique](../../vuln-exploit-technique/) and [web-exploit-technique](../../web-exploit-technique/). OSINT operators stop at evidence of exposure; they do not execute write-side or post-auth actions.
+> **Scope note:** this file scores OSINT findings and describes *target-state hints* used to assess severity (e.g. "why is an exposed Redis CRITICAL"). Any examples that look like exploitation (PUT, `CONFIG SET`, kubelet exec, RCE PoCs) are **severity-assessment heuristics only** — actual exploitation belongs to [vuln-exploit-technique](../../vuln-exploit-technique/) and [web-exploit-technique](../../web-exploit-technique/). OSINT stops at evidence of exposure; write-side and post-auth actions belong to those two skills.
 
 ---
 
@@ -114,8 +114,8 @@ When in doubt, anchor on these.
 - Open kubelet on 10250 — pod exec without K8s API auth
 - Open etcd on 2379 — cluster state + secrets
 - Citrix NetScaler KEV CVE — actively exploited; patch immediately
-- Pulse Secure CVE-2024-21887 — KEV; chained command injection
-- FortiGate CVE-2024-21762 — KEV; auth bypass + RCE
+- Ivanti Connect Secure / Policy Secure CVE-2024-21887 — KEV; authenticated-admin command injection
+- FortiOS CVE-2024-21762 — KEV; out-of-bounds write
 - PaloAlto GlobalProtect CVE-2024-3400 — KEV; pre-auth RCE
 - vCenter CVE-2021-21972 — KEV; pre-auth RCE
 - MS Exchange ProxyShell/Logon/NotShell unpatched — KEV chain; RCE + mailbox dump
@@ -196,4 +196,4 @@ When in doubt, anchor on these.
 - Domain in breach with 0 named accounts — contextual
 - Private bucket exists (HEAD 403) — asset only
 - `vpn.<domain>` resolves but vendor/version unknown (passive only) — attack-surface flag; escalate HIGH-CRIT after active fingerprint matches KEV
-- DMARC RUA → third-party reporting vendor (kdmarc/dmarcian/Valimail/Agari/EasyDMARC) — tenant signal only; vendor compromise = DMARC bypass for all their customers
+- DMARC RUA → third-party reporting vendor (kdmarc/dmarcian/Valimail/Agari/EasyDMARC) — tenant signal only; vendor compromise exposes every customer's RUA report data (visibility, not a bypass of enforcement)

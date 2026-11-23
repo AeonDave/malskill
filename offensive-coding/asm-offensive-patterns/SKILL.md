@@ -1,6 +1,6 @@
 ---
 name: asm-offensive-patterns
-description: "Auth/lab ASM patterns; x86-64/ARM64, syscalls, SSN resolution, stack traces, PEB/IAT-free lookup, PIC data access, ETW/AMSI telemetry, BOF/loader review."
+description: "ASM patterns; x86-64/ARM64, syscalls, SSN resolution, stack traces, PEB/IAT-free lookup, PIC data access, ETW/AMSI telemetry, BOF/loader review."
 license: MIT
 compatibility: "NASM >= 2.15, GAS, Go Plan9 ASM; x86-64 Windows/Linux/macOS, ARM64 macOS/Linux, x86 WoW64."
 metadata:
@@ -13,8 +13,6 @@ metadata:
 Full spectrum of low-level assembly techniques for offensive security:
 shellcode, loaders, BOFs, evasion primitives, and stealth infrastructure.
 Apply to all `.asm`, `.s`, `.S` files that touch evasion, injection, hooking, or stealth execution.
-
-> **Scope**: Authorized red team / research use only.
 
 ---
 

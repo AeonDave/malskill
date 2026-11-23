@@ -1,8 +1,8 @@
 ---
 name: hardware-ctf
-description: "Lab/CTF: hardware/embedded/RF challenges; Saleae/sigrok traces, UART/I2C/SPI/CAN/JTAG/SWD/USB/BLE/RF, firmware, side-channel data."
+description: "Hardware/embedded/RF challenges; Saleae/sigrok traces, UART/I2C/SPI/CAN/JTAG/SWD/USB/BLE/RF, firmware, side-channel data."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
+compatibility: "AgentSkills-compatible agents; local artifacts."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -49,13 +49,13 @@ Load these as needed:
 - Side-channel: numpy, scipy, pandas, matplotlib, correlation/DPA scripts, FFT/spectrogram tooling, and clustering/classification only after the signal is understood.
 - CAD/G-code: slicer-aware parsers, zlib/heatshrink/QOI decoders, mesh viewers, coordinate projection, and metadata extraction.
 
-## Safety and scope gates
+## Safety controls
 
 - Do not recommend wiring, flashing, or probing real hardware until voltage, ground, pin role, and target ownership are explicit.
 - Prefer offline decoding over physical interaction when artifacts are sufficient.
 - Avoid write operations through JTAG/SWD/SPI/flashrom unless an isolated lab target and recovery path are clear.
 - Treat unknown pins as unsafe; identify power, ground, reset, boot, UART, and debug pins before connecting tools.
-- For RF, follow local legal and lab constraints; passive analysis and replay in shielded or simulated environments are safer defaults.
+- For RF, passive analysis and replay in shielded or simulated environments are safer defaults.
 
 ## Quick pivots
 

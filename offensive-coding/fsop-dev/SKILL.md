@@ -1,6 +1,6 @@
 ---
 name: fsop-dev
-description: "Auth/lab dev: glibc FILE/FSOP exploitability research; libio structures, vtables, wide data, trigger paths, mitigation-aware modeling."
+description: "glibc FILE/FSOP exploitability research; libio structures, vtables, wide data, trigger paths, mitigation-aware modeling."
 license: MIT
 compatibility: "glibc/libio-focused Linux user-mode exploitability research; Primarily relevant to glibc 2.23 through current post-hook builds."
 metadata:

@@ -59,7 +59,7 @@ For adaptive multi-turn, swap in a multi-turn attack class (`RedTeamingAttack`, 
 - Use the **Crescendo attack** when direct asks fail: it escalates gradually from benign to harmful, the most effective published multi-turn pattern.
 - The attacker/scorer LLM is a cost center — budget `max_turns` and prefer cheap models for scoring.
 - Converters compose: `[Base64Converter(), ROT13Converter()]` applies in order — build the transform pipeline the target's filters expect.
-- Authorized targets only; PyRIT deliberately generates harmful content toward the objective — keep it in the lab.
+- PyRIT deliberately generates harmful content toward the configured objective.
 
 ## Gotchas
 

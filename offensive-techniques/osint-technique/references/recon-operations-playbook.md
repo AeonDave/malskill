@@ -37,9 +37,8 @@ Back-off ladder when detection signs appear (`429`, captcha, sudden `403`, WAF p
 
 1. Reduce concurrency, add jitter.
 2. Stop noisy path, pivot to passive sources.
-3. Rotate egress/identity only if authorized.
-4. Pause and resume in approved window.
-5. Escalate to engagement lead if block persists.
+3. Record the response and observation time. A block is not evidence that the underlying resource is absent.
+4. For `429`, honor `Retry-After` when supplied. A change of IP, identity, or time window does not grant access; if access remains denied, report the coverage gap.
 
 ---
 

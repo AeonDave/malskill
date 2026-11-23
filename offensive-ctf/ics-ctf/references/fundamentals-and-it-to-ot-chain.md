@@ -31,7 +31,7 @@ A finding that improves confidentiality at the cost of process safety or availab
 | **Historian** | Long-term timeseries of every tag for trending/compliance. | OSIsoft PI Server, FactoryTalk Historian, WinCC, Wonderware Historian, Grafana+Telegraf, GE Proficy. |
 | **Engineering workstation** | Programs/debugs PLCs; holds project files with logic + tag DB. | Windows + Studio 5000, TIA Portal, RSLogix, PLCnext Engineer, Codesys, CX-One. |
 | **DCS** (Distributed Control System) | Plant-wide closed-loop control, often vendor monoculture. | Emerson DeltaV, Honeywell Experion, ABB 800xA, Siemens PCS 7, Yokogawa CENTUM. |
-| **SIS** (Safety Instrumented System) | Independent shutdown path; rated SIL 2/3. | Triconex, HIMA, Allen-Bradley GuardLogix. **Out of scope** for offensive testing — failure = casualties. |
+| **SIS** (Safety Instrumented System) | Independent shutdown path; rated SIL 2/3. | Triconex, HIMA, Allen-Bradley GuardLogix. Not a write target; a failure removes a protection layer, and the outcome depends on whether a demand occurs while it is down. |
 | **RTU** (Remote Terminal Unit) | Field unit, often DNP3/IEC-101/104 to control center. | Vendor firmware, sometimes Linux. |
 | **IED** (Intelligent Electronic Device) | Substation relays/meters, IEC-61850 GOOSE/SV. | Vendor firmware. |
 
@@ -64,7 +64,7 @@ Typical primitives:
 - SMB relay (ntlmrelayx) of the captured authentication to a non-signed target (file server, MSSQL, ADCS HTTP).
 - Password spray against external services (OWA, RDGW, VPN) using `name@domain` from harvested email patterns.
 
-Detection blind spot: alerts hide in user-logon noise. Wazuh-class HIDS produces >90 % false positives in this phase, so signal-to-noise is on the attacker's side.
+Detection blind spot: alerts hide in user-logon noise, so signal-to-noise is on the attacker's side.
 
 ### Stage 2 — AD enumeration and credential expansion (L4)
 
@@ -86,7 +86,7 @@ The OT-DMZ usually has a jump server, an engineering-workstation replica, a hist
 - A misconfigured backup script that runs as local admin and leaves credentials in plaintext.
 - A KeePass database whose master password can be recovered from a memory dump using CVE-2023-32784 (or modern variants); KeePass is the most common secrets store on engineering workstations.
 - Reused local-admin password (Mimikatz `sekurlsa::logonpasswords` or `lsadump::sam`).
-- AD trust abuse / SID-history (`mitresidhistory`) when IT and OT domains have a one-way trust.
+- AD trust abuse / SID-history (Impacket `raiseChild.py` for child-to-parent escalation, `goldenPac.py` for the extra-sids shell) when IT and OT domains have a one-way trust.
 
 ### Stage 5 — Engineering workstation (L3)
 
@@ -107,7 +107,7 @@ Three escalating outcomes, in order of safety risk:
 2. **Setpoint manipulation**: modify a threshold in `%M` / DB / holding-register space so the existing ladder produces an out-of-spec output (tank level threshold = 0 → pump never stops → overfill). The PLC executes its own logic against the corrupted setpoint, so to the operator nothing looks "hacked".
 3. **Logic replacement**: upload a modified project that removes alarms, bypasses interlocks, or drives an actuator directly. High-impact, high-detection (logic-download events are visible in PCAP via S7 0x1A/0x1B/0x1F or CIP forward-open + write-tag traffic).
 
-**Hard rule**: never touch SIS (Triconex/HIMA/GuardLogix) or anything reachable from the safety bus. The 2017 Triton incident is the boundary case — do not cross it.
+**Risk class**: SIS (Triconex/HIMA/GuardLogix) and anything reachable from the safety bus are a separate risk class, because interaction there defeats physical protection. Read them from project exports and recorded telemetry; write only with the SIS engineer present and the safety outputs isolated. Reference case: the 2017 Triton incident.
 
 ## 3. Detection vs evasion model
 

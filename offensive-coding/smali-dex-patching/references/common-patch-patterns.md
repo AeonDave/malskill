@@ -192,7 +192,7 @@ Client-side license checks:
 .end method
 ```
 
-Do not attack server-verified subscriptions (they'll fail at API level). Client-side gated features flip trivially.
+Server-verified subscriptions fail at API level. Client-side gated features flip trivially.
 
 ## Play Integrity API (partial)
 

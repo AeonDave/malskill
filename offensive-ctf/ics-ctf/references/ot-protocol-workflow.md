@@ -130,7 +130,7 @@ Prefer reconstructing the write from evidence before replaying it. If replay is 
 1. Passive decode from captured artifacts.
 2. Read-only query against isolated lab service.
 3. Single idempotent read/write simulation locally.
-4. Minimal target write only when explicit lab scope and objective require it.
+4. Minimal target write only when the target is verified isolated and the objective requires it.
 5. Stop after validation; do not continue enumerating once the proof is recovered.
 
 ## Validation signals

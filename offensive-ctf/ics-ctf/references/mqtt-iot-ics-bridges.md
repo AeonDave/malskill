@@ -1,6 +1,6 @@
 # MQTT, Mosquitto, IoT, and PLC bridges in ICS/OT CTFs
 
-Reference pack covering MQTT specifically as an ICS/IoT pivot surface. Use after the SKILL.md quick pivot for MQTT once a broker, Sparkplug payload, IoT gateway, or MQTT-to-PLC bridge appears. Authorized labs only.
+Reference pack covering MQTT specifically as an ICS/IoT pivot surface. Use after the SKILL.md quick pivot for MQTT once a broker, Sparkplug payload, IoT gateway, or MQTT-to-PLC bridge appears.
 
 ## 1. Why MQTT shows up in OT scope
 
@@ -14,7 +14,7 @@ MQTT 3.1.1 and 5.0 are the de-facto messaging fabric for IIoT, smart-building, a
 
 Deleting a retained message cannot recall it from a subscribed actuator. When downstream connections are unknown, inspect a capture or exported broker configuration offline.
 
-A read on `#` plus `$SYS/#` is usually enough to map the whole plant; a single write to the right command topic can drive a real actuator. Treat command topics the same way as a Modbus FC 6 — never write unless the lab is explicitly isolated and the objective demands it.
+A read on `#` plus `$SYS/#` is usually enough to map the whole plant; a single write to the right command topic can drive a real actuator. Treat command topics the same way as a Modbus FC 6 — write only against a broker verified as isolated, and only when the objective demands it.
 
 ## 2. Broker triage workflow
 
@@ -26,7 +26,7 @@ Order of operations on any newly discovered broker:
 4. **Retained snapshot**: `mosquitto_sub -h <ip> -t '#' -v -W 2 -R` (skip retained) vs without `-R` — the diff is the persistent state (last known sensor reading, last command, device birth certificates).
 5. **Will / LWT inspection**: subscribe before disconnecting a publisher; the broker pushes the Last Will payload — often a useful failure-state oracle (`offline`, `error`, JSON with PLC tag dump).
 6. **ACL probe**: try publishing a benign retained message to `_probe/<rand>` and subscribing back; if accepted, ACL is open or default. Always clear with empty retained payload (`-r -m ''`).
-7. **Auth probe**: `mosquitto_sub -h <ip> -t '#' -u admin -P admin -v -W 2`; iterate small vendor-default list (`admin/admin`, `mqtt/mqtt`, `homeassistant/homeassistant`, `ignition/password`). Escalate to `mqtt-pwn bruteforce` with controlled wordlist if scope allows.
+7. **Auth probe**: `mosquitto_sub -h <ip> -t '#' -u admin -P admin -v -W 2`; iterate small vendor-default list (`admin/admin`, `mqtt/mqtt`, `homeassistant/homeassistant`, `ignition/password`). Escalate to `mqtt-pwn bruteforce` with a small wordlist if the vendor defaults fail.
 8. **Persist + analyze offline**: convert `-v` dump to JSONL and grep for credentials, tag names, setpoints, alarm strings, and JWT/Base64 blobs.
 
 `$SYS/#` keys worth grabbing first:
@@ -142,9 +142,9 @@ Vendor advisories, research reports, and spec docs to pull technique from. Platf
 - **Sparkplug deep-dive**: HiveMQ "MQTT Sparkplug Essentials" series — <https://www.hivemq.com/blog/mqtt-sparkplug-essentials-part-1-introduction/>.
 - **Claroty Team82 MQTT broker research** (Mosquitto, EMQX): vendor advisories indexed at <https://claroty.com/team82/research>.
 - **CISA ICS Advisories** with MQTT in title: <https://www.cisa.gov/news-events/cybersecurity-advisories?f%5B0%5D=advisory_type%3A95&search_api_fulltext=mqtt>.
-- **Shodan dorks for context** (read-only): `port:1883 product:"mosquitto"`, `port:1883 "$SYS/broker"`, `"Sparkplug" port:1883`. Use only within engagement scope.
+- **Shodan dorks for context** (read-only): `port:1883 product:"mosquitto"`, `port:1883 "$SYS/broker"`, `"Sparkplug" port:1883`.
 
-Default order when an IoT broker appears in scope: anonymous `#` + `$SYS/#` read → broker/version fingerprint → Sparkplug topic detection → bridge / dashboard pivot → command-topic write only after safety gate.
+Default order when an IoT broker appears in scope: anonymous `#` + `$SYS/#` read → broker/version fingerprint → Sparkplug topic detection → bridge / dashboard pivot → command-topic write as the last step.
 
 ## 9. Reporting checklist for MQTT findings
 

@@ -1,8 +1,8 @@
 ---
 name: technique-ctf
-description: "Lab/CTF: general challenge-solving methodology across every category; artifact triage, spec/protocol identification, oracle-driven iteration from target error messages, minimal-matrix brute forcing, harness building with pwntools, parallelizing independent challenges/variants with subagents, and safe flag extraction, verification, and submission. Use to plan or drive any flag-style challenge, to route to the right domain *-ctf skill, or whenever a remote service replies with parseable errors that can steer the next input."
+description: "General challenge-solving methodology across every category; artifact triage, spec/protocol identification, oracle-driven iteration from target error messages, minimal-matrix brute forcing, harness building with pwntools, parallelizing independent challenges/variants with subagents, and safe flag extraction, verification, and submission. Use to plan or drive any flag-style challenge, to route to the right domain *-ctf skill, or whenever a remote service replies with parseable errors that can steer the next input."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
+compatibility: "AgentSkills-compatible agents; local artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

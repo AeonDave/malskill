@@ -49,7 +49,7 @@ flashrom -p ch341a_spi -r firmware1.bin
 flashrom -p ch341a_spi -r firmware2.bin
 md5sum firmware1.bin firmware2.bin   # must match — if not, check clip connection
 
-# Write modified firmware (lab only, authorized)
+# Write modified firmware — the verified dump above is the rollback
 flashrom -p ch341a_spi -w modified.bin --verify
 ```
 
@@ -64,7 +64,8 @@ NAND is more complex than SPI: requires ECC (error correction), bad block mappin
 # Extract raw NAND image including OOB
 # Then use nanddump or ubi-utils to reconstruct filesystem:
 nanddump --oob --bb=skipbad /dev/mtd0 -f nand_raw.bin
-ubiformat /dev/mtd0; ubimkvol /dev/ubi0 -N rootfs -m
+ubiattach -m 0                      # attach the existing UBI image (no erase)
+mount -t ubifs -o ro ubi0_0 /mnt/rootfs
 ```
 
 ---

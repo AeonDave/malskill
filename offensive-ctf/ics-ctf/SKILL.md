@@ -1,8 +1,8 @@
 ---
 name: ics-ctf
-description: "Lab/CTF: ICS/OT protocol challenges; Modbus, DNP3, BACnet, S7, OPC UA, MQTT, PLC/HMI data, registers/coils, safe read-only reasoning."
+description: "ICS/OT protocol challenges; Modbus, DNP3, BACnet, S7, OPC UA, MQTT, PLC/HMI data, registers/coils, safe read-only reasoning."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
+compatibility: "AgentSkills-compatible agents; local artifacts."
 metadata:
   author: AeonDave
   version: "1.8"
@@ -24,7 +24,7 @@ Solve industrial-control and OT protocol lab tasks by treating traffic and proce
 2. Separate roles before payloads: identify HMI, PLC, RTU, historian, engineering workstation, gateway, broker, and attacker-like clients.
 3. Baseline normal behavior: polling interval, read/write ratio, function codes, register ranges, topics, tags, and repeated process cycles.
 4. Decode semantics: map coils/registers/tags to values, infer endian/scaling, correlate writes with observed physical or process changes.
-5. Prefer read-only validation. Only write or send commands when the target is clearly an isolated lab and the success oracle requires it.
+5. Prefer read-only validation. Write or send commands only against a target verified as isolated, and only when the success oracle requires it.
 6. Prove the result with a minimal, replayable signal: decoded secret, anomalous write, state transition, topic payload, register value, or process timeline.
 
 ## Technique integration
@@ -48,17 +48,17 @@ Use tool families based on the evidence, not habit:
 - `mosquitto_pub`/`mosquitto_sub`, [`mqtt-pwn`](../../offensive-tools/network/mqtt-pwn/SKILL.md), [`mosquitto-clients`](../../offensive-tools/network/mosquitto-clients/SKILL.md), `MQTT Explorer`/`MQTTX`, Scapy MQTT layer, MQTTSA, and the Wireshark `mqtt` + `sparkplug` dissectors for topic enumeration (`#`, `$SYS/#`), retained-message inspection, Sparkplug B (Eclipse Tahu / `pysparkplug`) decoding, broker fingerprinting (Mosquitto/EMQX/HiveMQ/VerneMQ/NanoMQ) and auth probing. Always pair with the adjacent dashboard port (EMQX 18083, HiveMQ 8080, Node-RED 1880, OpenPLC 8080, Home Assistant 8123) — it is usually the real entry point.
 - `can-utils` (`candump`, `cansniffer`, `cansend`, `cangen`) for CAN bus capture, periodic-frame analysis, and replay against virtual `vcan` interfaces.
 - CyberChef, `jq`, `pandas`, and Python scripts for endian, scaling, timestamp, register-table transformations, and CSV-from-pcap decoding pipelines.
-- `nmap` OT NSE scripts (`modbus-discover`, `s7-info`, `enip-info`, `bacnet-info`, `mqtt-subscribe`, `opcua-info`) only against authorized isolated labs; passive PCAP analysis is preferred when artifacts are enough.
+- `nmap` OT NSE scripts (`modbus-discover`, `s7-info`, `enip-info`, `bacnet-info`, `mqtt-subscribe`, `opcua-info`) against isolated lab targets; passive PCAP analysis is preferred when artifacts are enough.
 - `binwalk`, `ghidra`, `radare2`, and `strings` when the task includes PLC firmware, engineering-project exports, or custom protocol binaries.
 - `saleae-logic-2` when a capture includes serial, CAN, or fieldbus waveforms rather than decoded network traffic.
 - Known lab engineering-software (OpenPLC runtime/editor, Codesys, ScadaBR, Node-RED, ConPot honeypot, MiniCPS, ICSsim) often expose web panels and scripting hooks that pair with protocol access; treat them as separate pivot targets when ports such as 1880, 8080, 8443, 11502, or vendor-specific HTTP appear.
 
-## Safety and scope gates
+## Safety controls
 
 A CTF objective or maintenance window is not evidence of physical isolation. If a command could reach an actuator and the connection is unknown, use a saved trace or an offline simulator. Restoring a value does not reverse physical movement.
 
 - Treat real-world ICS/OT writes as unsafe by default. In lab tasks, document why the environment is isolated before any write.
-- Never reset, stop, upload firmware, or mass-write registers unless the prompt explicitly defines an isolated target and the objective requires that exact action.
+- Never reset, stop, upload firmware, or mass-write registers unless the target is verified isolated and the objective requires that exact action.
 - Keep a pivot ledger: protocol hypothesis, field evidence, decoded meaning, validation signal, and next safest step.
 - If traffic looks malformed, first test endian, scaling, segmentation, custom function codes, or encapsulation before assuming exploitation.
 - Report uncertainty: process semantics are inferred unless confirmed by labels, HMI screens, historian tags, or repeated cause-effect evidence.
@@ -71,7 +71,7 @@ A CTF objective or maintenance window is not evidence of physical isolation. If 
 - S7comm: identify rack/slot, SZL reads, data block accesses, and program/block transfer indicators. Filter: `s7comm` plus `s7comm.param.func`. Pair with `plcscan`/`s7scan` for lab enumeration and `python-snap7` for DB reads.
 - EtherNet/IP/CIP: decode sessions, class/instance/attribute paths, tag names, and explicit messaging. Filter: `enip` and `cip`.
 - OPC UA: walk endpoint discovery, security policies (note `None` policy = anonymous), node IDs, and Browse/Read/Write services. Filter: `opcua`.
-- MQTT: reconstruct topics/nodes, retained messages, client IDs, will payloads, and process-state deltas. Filter: `mqtt`. Try wildcard subscriptions `#` and `$SYS/#` when broker access is authorized; grab `$SYS/broker/version` + `clients/total` + `retained messages/count` first.
+- MQTT: reconstruct topics/nodes, retained messages, client IDs, will payloads, and process-state deltas. Filter: `mqtt`. Try wildcard subscriptions `#` and `$SYS/#` once broker access works; grab `$SYS/broker/version` + `clients/total` + `retained messages/count` first.
 - Sparkplug B / MQTT-bridge pivot: topic prefix `spBv1.0/<group>/<NBIRTH|NDATA|NCMD|DBIRTH|DDATA|DCMD>/<edge>[/<device>]` with Protobuf payload signals an Ignition / Cirrus Link / EMQX Neuron / Node-RED bridge. Capture an NBIRTH/DBIRTH first to resolve alias→tag, then treat DCMD writes as actuator writes (Modbus FC 5/6 equivalent). Bridges (Cirrus Link, EMQX Neuron, Node-RED, OpenPLC MQTT, Advantech/Moxa/HMS gateways) round-trip MQTT writes into Modbus/S7/OPC-UA — confirm with state-topic lag (~1 s) before assuming raw broker access reaches the PLC.
 - Mosquitto pivot: pull `mosquitto.conf` and `passwd_file` if a host is in scope (`auth_plugin`, `bridge_*`, `acl_file`, `allow_anonymous`); hashes crack with `hashcat` (PBKDF2-SHA512 mode for 2.x, legacy SHA512+salt for 1.x). Pin findings to `$SYS/broker/version` and check vendor advisories (Mosquitto CVE-2017-7650 ACL pattern bypass, CVE-2024-3935 TLS DoS; EMQX/HiveMQ/VerneMQ banners similarly).
 - CAN/CANopen: infer arbitration IDs, periodic frames, PDO/SDO patterns, endian, counters, and checksum bytes; use `candump`/`cansniffer` for live data.
@@ -97,7 +97,7 @@ A CTF objective or maintenance window is not evidence of physical isolation. If 
 ## Resources
 
 - [references/ot-protocol-workflow.md](references/ot-protocol-workflow.md) — protocol triage, field extraction, anomaly workflow, and validation cues.
-- [references/plc-interaction-recipes.md](references/plc-interaction-recipes.md) — read-only-first interaction recipes for Modbus, S7, OPC UA, MQTT, and CAN against authorized lab targets, plus engineering-software pivot patterns.
+- [references/plc-interaction-recipes.md](references/plc-interaction-recipes.md) — read-only-first interaction recipes for Modbus, S7, OPC UA, MQTT, and CAN against lab targets, plus engineering-software pivot patterns.
 - [references/attack-patterns.md](references/attack-patterns.md) — Purdue-model mapping, engineering-workstation pivots, project-file formats, race-condition / FDI writes, L2 MITM in flat OT segments, HMI/historian pivots, and operational-impact reasoning.
 - [references/signal-decoding-and-testing.md](references/signal-decoding-and-testing.md) — PLC scan cycle and memory areas, Modbus/CIP/S7/DNP3/BACnet decoding cues, integer/float/BCD/string/time encodings, byte-and-word order resolution, CAN signal decoding, the baseline → write → verify → restore test cycle, and a final validation checklist.
 - [references/fundamentals-and-it-to-ot-chain.md](references/fundamentals-and-it-to-ot-chain.md) — OT priority model, asset taxonomy, Purdue recap, and a realistic IT→OT pivot chain for scoping and target selection.

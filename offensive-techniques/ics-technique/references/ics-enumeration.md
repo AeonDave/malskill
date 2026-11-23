@@ -1,6 +1,6 @@
 # ICS Active Enumeration Reference
 
-Commands and workflows for fingerprinting and interrogating ICS/OT devices in authorized assessments. All operations here are read-only unless explicitly noted.
+Commands and workflows for fingerprinting and interrogating ICS/OT devices. All operations here are read-only unless explicitly noted.
 
 ---
 
@@ -139,10 +139,10 @@ nmap --script dnp3-info -p 20000 <target>
 nmap --script bacnet-info -p U:47808 <target>
 
 # bacnet-stack WhoIs — discover all BACnet devices on broadcast domain
-sudo apt install bacnet-stack-utils
+# bacnet-stack tools are not packaged in Debian/Kali: build github.com/bacnet-stack/bacnet-stack (make clean all && sudo make install)
 bacwi -1                       # WhoIs broadcast
-bacrp <instance_id> DEV 0 OBJECT-NAME    # read device name
-bacrp <instance_id> AI 1 PRESENT-VALUE   # read analog input 1
+bacrp <instance_id> device 0 object-name    # read device name
+bacrp <instance_id> analog-input 1 present-value   # read analog input 1
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: indirect-syscall-dev
-description: "Auth/lab dev: Windows syscall-dispatch research; SSN resolution, indirect gates, ntdll stubs, gadget scanning, stack-spoof integration."
+description: "Windows syscall-dispatch research; SSN resolution, indirect gates, ntdll stubs, gadget scanning, stack-spoof integration."
 license: MIT
 compatibility: "Windows x64. Layout and runtime compatibility require evidence for the exact image and OS build; syscall-number tables alone do not establish either."
 metadata:

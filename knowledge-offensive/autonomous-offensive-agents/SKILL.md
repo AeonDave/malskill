@@ -1,6 +1,6 @@
 ---
 name: autonomous-offensive-agents
-description: "Evaluate and configure autonomous security-assessment frameworks: execution boundaries, workload fit, evidence quality and observed telemetry. Use when selecting or validating an agent harness for an authorized assessment; use offensive-orchestration to coordinate your own investigation workers."
+description: "Evaluate and configure autonomous security-assessment frameworks: execution boundaries, workload fit, evidence quality and observed telemetry. Use when selecting or validating an agent harness for an assessment; use offensive-orchestration to coordinate your own investigation workers."
 license: MIT
 metadata:
   author: AeonDave

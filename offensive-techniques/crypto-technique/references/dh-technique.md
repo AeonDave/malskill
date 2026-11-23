@@ -16,7 +16,7 @@ Diagnose exploitable weaknesses in finite-field Diffie-Hellman deployments, capt
 2. Does `p-1` factor smoothly? Use Pohlig-Hellman.
 3. Is `g` a generator of a small subgroup? Test subgroup confinement.
 4. Is a static public value reused across sessions? Consider precomputation and passive decryption if the exponent is recovered.
-5. Are peer public values validated? Try invalid or small-subgroup public keys only in authorized test environments.
+5. Are peer public values validated? Try invalid or small-subgroup public keys against a test peer.
 6. Are common primes reused at scale? Check for Logjam-style precomputation risk.
 
 ## Parameter checks

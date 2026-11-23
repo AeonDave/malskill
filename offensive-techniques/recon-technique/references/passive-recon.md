@@ -223,7 +223,7 @@ Useful when recon includes credential stuffing scope or phishing simulation:
 - LinkedIn: employee titles, technology vocabulary in profiles, org structure
 - Hunter.io / Clearbit: email pattern discovery (`firstname.lastname@target.com`)
 
-Email format discovery → credential stuffing list construction. Out of scope unless explicitly authorized.
+Email format discovery → credential stuffing list construction; using the list is active testing, not passive recon.
 
 ---
 

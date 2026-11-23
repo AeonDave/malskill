@@ -36,7 +36,7 @@ di    = c.read_discrete_inputs(0, 64, slave=slave)
 hr    = c.read_holding_registers(0, 32, slave=slave)
 ir    = c.read_input_registers(0, 32, slave=slave)
 
-# Write (lab / approved only)
+# Write (lab PLC: see ics-safety-gates.md)
 current = c.read_coils(0, 1, slave=slave).bits[0]
 c.write_coil(0, True, slave=slave)   # force ON
 c.write_coil(0, current, slave=slave)  # restore
@@ -53,7 +53,7 @@ git clone https://github.com/TacticalGator/modbuster && cd modbuster
 # Read holding registers
 python3 modbuster.py -t <target> -p 502 -f 3 -a 0 -c 32 -u 1
 
-# Write coil (lab only)
+# Write coil (lab PLC: see ics-safety-gates.md)
 python3 modbuster.py -t <target> -p 502 -f 5 -a 0 -v 1 -u 1
 ```
 
@@ -61,9 +61,9 @@ python3 modbuster.py -t <target> -p 502 -f 5 -a 0 -v 1 -u 1
 
 ```bash
 # Capabilities: read, coil/register write, overflow, DoS, replay from PCAP, response spoof
-# https://github.com/yadox666/MATRIX_Modbus_Attack_Tool
-python3 matrix.py --target <target> --attack read_coils
-python3 matrix.py --target <target> --attack replay --pcap capture.pcap
+# https://github.com/karlvbiron/MATRIX
+python3 matrix.py -H <target> -p 502 -a read
+python3 matrix.py -H <target> -p 502 -a replay -f capture.pcap
 ```
 
 ### Metasploit Modbus modules
@@ -185,10 +185,10 @@ Building automation (HVAC, lighting, access control). No authentication in base 
 ```bash
 nmap --script bacnet-info -p U:47808 <target>
 
-# bacnet-stack tools (Linux package: bacnet-stack-utils)
+# bacnet-stack tools (build from source: github.com/bacnet-stack/bacnet-stack; not packaged in Debian/Kali)
 bacwi -1               # WhoIs — discover all BACnet devices on segment
-bacrp <device_id> AV 0 PRESENT-VALUE   # read Analog Value object 0
-bacwp <device_id> AV 0 PRESENT-VALUE 75.0   # write value (lab only)
+bacrp <device_id> analog-value 0 present-value   # read Analog Value object 0 (enum ints also work: 2 0 85; AV/AI/DEV are rejected)
+bacwp <device_id> analog-value 0 PRESENT-VALUE 16 -1 4 75.0   # write REAL 75.0 at priority 16 (isolated lab device)
 ```
 
 ---
@@ -226,7 +226,7 @@ EOF
 | S7comm | 102 | nmap s7-info, snap7 | snap7, Metasploit s7_enumerate, s7_300_400_passwords |
 | EtherNet/IP | 44818 | nmap enip-info, cpppo | cpppo, Metasploit ethernet_ip_reveal |
 | DNP3 | 20000 | nmap dnp3-info | Metasploit dnp3_device_info, scapy-ics |
-| BACnet | 47808/UDP | nmap bacnet-info, bacwi | bacnet-stack-utils, bacwp |
+| BACnet | 47808/UDP | nmap bacnet-info, bacwi | bacwp |
 | OPC-UA | 4840 | python-opcua | Metasploit opcua_* modules |
 | Profinet DCP | L2 EtherType 0x8892 | nmap multicast-profinet-discovery, Wireshark pn_dcp | — |
 | Profinet PN-CM | 34964/UDP | nmap profinet-cm-lookup | — |

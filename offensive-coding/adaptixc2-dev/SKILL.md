@@ -1,6 +1,6 @@
 ---
 name: adaptixc2-dev
-description: "Build, review, debug, package, and activate AdaptixC2 v2 extenders and AxScript UI: agent payload builders, listeners, services, plugin calls, lifecycle, axtool specs, source-contract checks, and verification. Use for authorized extension development, not live C2 operation."
+description: "Build, review, debug, package, and activate AdaptixC2 v2 extenders and AxScript UI: agent payload builders, listeners, services, plugin calls, lifecycle, axtool specs, source-contract checks, and verification. Use for extension development, not live C2 operation."
 license: MIT
 metadata:
   author: AeonDave

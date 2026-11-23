@@ -156,7 +156,7 @@ Try MSSQL with default sa/SCADA/winccsa/operator credentials before attacking th
 
 ## Safety-instrumented systems (SIS)
 
-If hosts are tagged as Triconex, ProSafe-RS, HIMA, AC800M HI, or similar, treat them as **out of scope** by default. SIS exists to bring the process to a safe state when the basic control system fails; interfering with it is a real-world safety hazard and almost never within a lab's intended scope. Document the host, do not interact, and call this out in the report.
+If hosts are tagged as Triconex, ProSafe-RS, HIMA, AC800M HI, or similar, they are SIS. SIS exists to bring the process to a safe state when the basic process fails; interfering with it is a real-world safety hazard. Document the host and call this out in the report.
 
 An SIS controller may be reachable even when the basic process is offline. Use project exports or recorded telemetry unless the facility has verified isolation of the safety outputs.
 

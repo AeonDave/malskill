@@ -2,7 +2,7 @@
 name: cloud-security-technique
 description: "Auth assessment: cloud security methodology; AWS/Azure/GCP IAM, storage, metadata, containers, serverless, workload identity, evidence routing."
 license: MIT
-compatibility: "AWS, Azure, GCP cloud environments; authorized engagements only; Requires provider CLI tools (aws-cli, az, gcloud) or in-workload shell access."
+compatibility: "AWS, Azure, GCP cloud environments. Requires provider CLI tools (aws-cli, az, gcloud) or in-workload shell access."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -11,7 +11,7 @@ metadata:
 
 # Cloud Security Technique
 
-Goal: from **cloud credential, account ID, or workload shell** to **maximum demonstrated impact** within the authorized cloud scope.
+Goal: from **cloud credential, account ID, or workload shell** to **maximum demonstrated impact** within the cloud scope.
 
 ## When this technique applies
 
@@ -219,7 +219,7 @@ gcloud iam service-accounts get-iam-policy <sa>@<project>.iam.gserviceaccount.co
 
 **GCP Organization Policy weaknesses:**
 - `orgpolicy.policy.set` at folder/project level bypasses org-wide `iam.disableServiceAccountKeyCreation`, `iam.allowedPolicyMemberDomains`, and `compute.vmExternalIpAccess` constraints — check per-project overrides: `gcloud org-policies list --project=<id>` and `gcloud org-policies describe <constraint> --project=<id>`.
-- Constraints inherited from ancestors can be relaxed with `--effective` false; a legacy `restore_default` policy re-enables key export.
+- Constraints inherited from ancestors can be relaxed by setting the policy on the project itself (boolean rules: a policy on the resource supersedes the parent's); a legacy `restore_default` policy re-enables key export.
 
 **Key tools:** `gcp_scanner` (Google), `GCPBucketBrute` (Rhino), `ScoutSuite` for GCP.
 
@@ -271,7 +271,7 @@ gcloud secrets versions access latest --secret=<name>
 
 ### AWS service-specific data checks
 
-Use these after IAM enumeration shows corresponding read permissions. Keep reads bounded: sample enough to prove access, then stop unless broader collection is explicitly authorized.
+Use these after IAM enumeration shows corresponding read permissions. Keep reads bounded: sample enough to prove access, then stop.
 
 #### Cognito Identity Pools
 
@@ -314,7 +314,7 @@ aws sqs receive-message --queue-url <url> --max-number-of-messages 10 --visibili
 
 #### ECS
 
-**Risk:** Task definitions expose environment variables, secret references, container images, and IAM role assignments. `RunTask` or task-definition mutation is an escalation step and needs explicit authorization.
+**Risk:** Task definitions expose environment variables, secret references, container images, and IAM role assignments. `RunTask` or task-definition mutation is an escalation step: `RunTask` starts new tasks on the cluster and a task-definition revision persists.
 
 ```bash
 aws ecs list-clusters
@@ -540,10 +540,10 @@ gcpbucketbrute -k <keyword>
 ## Anti-patterns
 
 - Running `enumerate-iam` against production without rate limiting → API throttling / CloudTrail flood.
-- Exfiltrating IMDS credentials and using them from your attacker host → GuardDuty `InstanceCredentialExfiltration` alert fires immediately.
+- Exfiltrating IMDS credentials and using them from your attacker host → GuardDuty `UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS` finding (High; CloudTrail management events or S3 data events). Generated for new behavior from a remote host; once continued activity from that host is learned as expected, it stops, and is re-evaluated when the behavior changes.
 - Assuming every S3 bucket is public → verify ACL and bucket policy first; list before reading.
 - Treating IMDSv2 as "secure" without checking hop limit — a misconfigured hop limit of `>1` allows forwarding through SSRF.
-- Deploying privileged DaemonSets or new workloads in shared clusters without explicit authorization.
+- Deploying privileged DaemonSets or new workloads in shared clusters — a privileged DaemonSet runs on every node in the cluster.
 - Using root account credentials when IAM user/role credentials are sufficient.
 - Dumping entire Secrets Manager or Parameter Store when read access on a specific path proves the finding.
 - Invoking destructive Lambda functions or running CloudFormation stack updates without read-only PoC option.

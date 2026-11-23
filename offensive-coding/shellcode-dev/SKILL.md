@@ -1,6 +1,6 @@
 ---
 name: shellcode-dev
-description: "Auth/lab dev: shellcode-format engineering; PIC, ABI, syscalls, encoders, memory permissions, reflective-loader labs, emulator validation."
+description: "Shellcode-format engineering; PIC, ABI, syscalls, encoders, memory permissions, reflective-loader labs, emulator validation."
 license: MIT
 compatibility: "Windows 11 x64 (Windows 10 EOS Oct 2025), Linux x64/aarch64, macOS arm64 (x64 = sunset target, Tahoe 26 last Intel release); Architecture-specific syscall and ABI differences are mandatory."
 metadata:

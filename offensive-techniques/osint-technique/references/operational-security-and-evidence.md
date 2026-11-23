@@ -16,7 +16,7 @@ Run this before any sensitive collection burst:
 - [ ] API keys belong to the case/persona, not personal accounts.
 - [ ] Query rate matches normal user/API behavior; no burst that burns the persona or alerts the target.
 - [ ] Evidence logging is ready before collection starts.
-- [ ] Honeypot/canary risk considered: do not authenticate, click tracked links, or access suspicious portals unless explicitly in scope.
+- [ ] Honeypot/canary risk considered: authenticating, clicking tracked links, or accessing suspicious portals on a honeypot/canary burns the persona.
 
 Identity separation matters more than a magic proxy. One reused account, browser extension, recovery email, payment trail, or DNS leak can join personas.
 
@@ -54,7 +54,7 @@ Identity separation matters more than a magic proxy. One reused account, browser
 
 ### Rate-Limiting & Stealth
 
-- **API rate limits**: Respect API limits; aggressive querying triggers IP bans or legal action.
+- **API rate limits**: Respect API limits; aggressive querying triggers IP bans.
 - **Spread queries**: Stagger OSINT queries over time (not all at once).
 - **User-agents**: Rotate user-agents to appear like different browsers/devices.
 - **DNS leaks**: Use VPN's DNS, not ISP DNS (DNS queries leak identity even over VPN).
@@ -130,21 +130,6 @@ Identity separation matters more than a magic proxy. One reused account, browser
 - Keep only data needed to substantiate the finding; prefer a source reference or concise excerpt over a full dump. A provider's employee label or aggregate count is not evidence of device ownership or current credential validity.
 - Preserve an unaltered original only when needed for verification or a preservation hold; restrict access and record integrity. Use a separately redacted copy for routine analysis and reporting.
 - Set a case-specific retention deadline and final disposition. A legal or preservation hold suspends routine deletion for covered evidence until formally released; then securely dispose of material no longer required.
-
-### Legal Considerations
-
-**GDPR (EU)**: 
-- Process personal data only with legal basis (contract, consent, legitimate interest).
-- Apply the case retention schedule above, including any preservation hold.
-
-**CFAA (US)**:
-- Do not access honeypots, protected systems, or honeypots masquerading as public.
-- Scraping may violate ToS; legal status unclear (active litigation).
-
-**Consent & Authorization**:
-- Ensure you have authority to investigate before beginning.
-- Incident response: Usually authorized by employer/incident response retainer.
-- Public OSINT: Usually permitted; verify local law.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: garak
-description: "garak — NVIDIA LLM vulnerability scanner: runs the widest catalog of known LLM attacks (prompt injection, jailbreak, data leak, hallucination, toxicity, encoding bypasses) against any model via HF/OpenAI-compatible/REST generators and produces scored HTML reports. Use for authorized LLM red-team scans."
+description: "garak — NVIDIA LLM vulnerability scanner: runs the widest catalog of known LLM attacks (prompt injection, jailbreak, data leak, hallucination, toxicity, encoding bypasses) against any model via HF/OpenAI-compatible/REST generators and produces scored HTML reports. Use for LLM red-team scans."
 license: MIT
 compatibility: "Python 3.11+; Linux/macOS (Windows via WSL). v0.17.x current. API-based generators need keys; HuggingFace generators need GPU or patience."
 metadata:
@@ -14,7 +14,7 @@ LLM vulnerability scanner modeled after vulnerability scanners like Metasploit/N
 
 ## When to use
 
-- Authorized red-team scan of an LLM endpoint or local model
+- Red-team scan of an LLM endpoint or local model
 - Baseline the attack surface of a model before/after guardrail changes
 - Systematic coverage: garak's probe catalog is the widest public one — use it where manual testing would miss families
 
@@ -60,7 +60,7 @@ List live probes: `garak --list_probes`. Config via YAML (v0.14+ also JSON) — 
 - Set `--generations N` (generations per prompt, default 5) consciously — quality of findings vs token cost.
 - Analyze the HTML report's **_defect rate_ per probe**; follow up misses manually (garak finds the entry point, the follow-up is your tradecraft).
 - Pair with `PyRIT` for multi-turn orchestrated attacks (garak probes are mostly single-shot); pair with `promptfoo` for CI-regression of fixes.
-- Authorized targets only: garak burns tokens and sends hostile payloads — pointing it at a third-party API you don't own is abuse.
+- Every scan sends hostile payloads to the target endpoint and consumes its token budget.
 
 ## Gotchas
 

@@ -1,6 +1,6 @@
 ---
 name: reversing-technique
-description: "Auth/lab: reverse engineering methodology; malware triage, patch diffing, firmware/protocol RE, OS/runtime behavior verification, protections, exploitability handoff evidence."
+description: "Reverse engineering methodology; malware triage, patch diffing, firmware/protocol RE, OS/runtime behavior verification, protections, exploitability handoff evidence."
 license: MIT
 compatibility: "Cross-platform binaries (PE/ELF/Mach-O), firmware images,.NET assemblies, network captures; User-mode focus; kernel RE referenced but not detailed."
 metadata:
@@ -17,7 +17,7 @@ metadata:
 ## When to activate
 
 - **Malware analysis**: Understand behavior, C2, persistence, evasion.
-- **Software protection analysis**: Identify license/protection logic, emulate validation checks, reconstruct key material where authorized.
+- **Software protection analysis**: Identify license/protection logic, emulate validation checks, reconstruct key material.
 - **Patch diffing**: Find security fixes, understand vendor patches.
 - **OS/runtime behavior verification**: Recover a version-bound rule from matching sources, symbols, disassembly, and a controlled execution trace.
 - **Firmware reversing**: Extract filesystems, analyze embedded code.
@@ -150,7 +150,7 @@ Formal tool skills: `offensive-tools/rev/radare2/`, `offensive-tools/rev/gdb/`, 
 
 ### 2. Software protection bypass and licensing emulation
 
-**Goal**: Understand license/protection checks, emulate validation, and produce authorized proof of bypass or key-generation logic.
+**Goal**: Understand license/protection checks, emulate validation, and produce proof of bypass or key-generation logic.
 
 **Operator flow:**
 ```

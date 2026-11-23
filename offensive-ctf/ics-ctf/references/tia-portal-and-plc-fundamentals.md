@@ -116,7 +116,7 @@ CTF/audit hooks:
 3. **Map the surface**: dump PLC tag table and HMI tag table to CSV; cross-reference to find
    operator-reachable writable tags.
 4. **Reverse OB1 networks**: read in order; capture mode-selection logic and any safety
-   interlocks (E-stop, safety-bus inputs — never bypass).
+   interlocks (E-stop, safety-bus inputs; bypassing one removes the protection it provides).
 5. **Simulate offline**: load into PLCSim Advanced; drive inputs from a simulation table;
    observe DB and M evolution; build an oracle for live testing.
 6. **Plan minimal write**: pick a single DB field or M bit; predict observable effect on HMI

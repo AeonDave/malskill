@@ -2,20 +2,20 @@
 
 ## Purpose
 
-Build a complete API inventory before vulnerability probing so testing is targeted, low-noise, and authorization-aware.
+Build a complete API inventory before vulnerability probing so testing is targeted and low-noise.
 
 ## Inputs
 
 - Base URLs and known API prefixes.
 - OpenAPI/Swagger specs, Postman collections, GraphQL schemas, or captured traffic.
 - Auth contexts: anonymous, normal user, privileged user, service account, tenant A/B.
-- Scope limits, rate limits, and forbidden actions.
+- Scope limits, rate limits, and excluded actions.
 
 ## Discovery sources
 
 Prioritize sources in this order:
 
-1. Official specs: `/openapi.json`, `/swagger.json`, `/api-docs`, GraphQL introspection when authorized.
+1. Official specs: `/openapi.json`, `/swagger.json`, `/api-docs`, GraphQL introspection.
 2. Front-end bundles: routes, API clients, hardcoded feature flags, GraphQL operation names.
 3. Browser/proxy traffic from normal user journeys.
 4. Historical URLs from archives and URLScan.
@@ -59,7 +59,7 @@ Record response fingerprints: status code, error shape, redirect behavior, and r
 
 Error envelopes and cookies are weak framework clues only: corroborate with independent evidence (e.g., headers, docs, bundles, or behavior); formats overlap and do not establish a vulnerability class.
 
-For each discovered API version, compare auth, rate-limit, and input-validation behavior using equivalent, authorized requests (OWASP API9). Probe a nonexistent route beside a known route: SPA catch-all responses can be false 200s; compare content type, body, and redirects, not status alone. Record differences as leads until verified.
+For each discovered API version, compare auth, rate-limit, and input-validation behavior using equivalent requests (OWASP API9). Probe a nonexistent route beside a known route: SPA catch-all responses can be false 200s; compare content type, body, and redirects, not status alone. Record differences as leads until verified.
 
 ## Parameter risk profiling
 

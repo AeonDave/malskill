@@ -6,12 +6,12 @@
 
 WPA3-SAE (Simultaneous Authentication of Equals) replaces PSK handshake with Dragonfly key exchange:
 - Forward secrecy per session.
-- Offline dictionary attacks against captured handshake not feasible (no PMKID equivalent in pure WPA3).
+- A PMKID still exists under SAE: hostapd includes an SAE-derived PMKID in EAPOL-Key message 1/4.
 - Each authentication attempt requires real-time interaction.
 
 **Attack surface (2024+):**
 1. Transition mode (WPA2/WPA3 mixed) — most common in practice.
-2. Dragonblood side-channel (CVE-2019-9494 / CVE-2019-9496) — patched in most firmware.
+2. Dragonblood side-channel (CVE-2019-9494) and SAE confirm DoS (CVE-2019-9496) — fixed in hostapd/wpa_supplicant 2.8.
 3. Beacon protection / MFP downgrade and SAE downgrade in transition mode.
 4. SSID Confusion (CVE-2023-52424, WiSec 2024): a client authenticates to the
    correct RSN but ends up bound to a different SSID because the SSID is not
@@ -48,21 +48,13 @@ hashcat -m 22000 hash.txt rockyou.txt
 
 ---
 
-## Dragonblood (CVE-2019-9494 / CVE-2019-9496)
+## Dragonblood (CVE-2019-9494) and SAE confirm DoS (CVE-2019-9496)
 
-Cache/timing side-channel against SAE handshake commit frame. Allows offline dictionary attack against WPA3-SAE on unpatched firmware (pre-2019 mostly).
+Password-dependent branches in SAE's PWE derivation leak through cache access patterns and execution time; enough handshakes plus a weak password feed an offline dictionary attack. Both fixed in hostapd/wpa_supplicant 2.8.
 
-```bash
-# Dragonslayer tool (research tool, not widely maintained)
-# Check if AP is vulnerable: firmware date before April 2019
-
-# Practical status: most consumer routers patched. Enterprise APs: check vendor advisory.
-# Primary value: identify unpatched older APs, document vulnerability class.
-
-# Test: hostapd 2.8 and earlier, wpa_supplicant 2.7 and earlier
-# CVE-2019-9494: timing leak in P-521 curve selection
-# CVE-2019-9496: cache-based information leak
-```
+- **Cache attack**: ECC groups (group 19 is the mandatory default), but needs unprivileged code running on the victim device (an app, or JavaScript in a browser page), so the target is a client, not an AP in radio range.
+- **Timing attack**: MODP groups 22/23/24 only, disabled by default in every hostapd/wpa_supplicant version unless `sae_groups` enables them; attacker in radio range of the AP or the station.
+- **CVE-2019-9496**: hostapd/AP does not validate the state on an out-of-sequence SAE Confirm message → NULL dereference, the hostapd process terminates. DoS from radio range against hostapd < 2.8 with SAE enabled.
 
 ---
 
@@ -119,7 +111,7 @@ sudo btmon
 
 # hcitool (DEPRECATED, still present on Kali)
 sudo hciconfig hci0 up
-sudo hcitool lescan            # BLE passive scan
+sudo hcitool lescan --passive   # BLE passive scan (active by default)
 sudo hcitool scan              # Classic Bluetooth scan
 sudo hcitool lecc <MAC>        # Connect to BLE device
 

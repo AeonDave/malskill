@@ -40,18 +40,18 @@ For observer points $(x_i, y_i)$ with measured distances $d_i$, minimize:
 
 $$\sum_i w_i \left( \sqrt{(x - x_i)^2 + (y - y_i)^2} - d_i \right)^2$$
 
-Weight $w_i = 1 / \sigma_i^2$. Use `scipy.optimize.least_squares` with Levenberg-Marquardt; seed initial guess as the centroid of observer points or the intersection of two best-conditioned circles.
+Weight each observation by its own $\sigma_i$ (pass the residual divided by $\sigma_i$). Use `scipy.optimize.least_squares` with `method='lm'` (Levenberg-Marquardt); seed initial guess as the centroid of observer points or the intersection of two best-conditioned circles.
 
 Minimal Python:
 ```python
 import numpy as np
 from scipy.optimize import least_squares
 
-def residuals(p, obs, dists, w):
-    return w * (np.linalg.norm(obs - p, axis=1) - dists)
+def residuals(p, obs, dists, sigma):
+    return (np.linalg.norm(obs - p, axis=1) - dists) / sigma
 
 x0 = obs.mean(axis=0)
-sol = least_squares(residuals, x0, args=(obs, dists, weights))
+sol = least_squares(residuals, x0, args=(obs, dists, sigma), method='lm')
 estimated_xy = sol.x
 ```
 
@@ -118,15 +118,15 @@ Sun orientation deserves emphasis: a photo at known local time + visible sun pos
 
 Most platforms ship one defense layer; the technique stack defeats each in isolation.
 
-## Operational and ethical scope
+## Operational scope
 
-This methodology is **only legitimate** for:
-- Authorized red team / social engineering with written scope and consent for the target organization's personnel.
+This methodology applies to:
+- Red team / social engineering for the target organization's personnel.
 - Defensive research disclosing a platform vulnerability with vendor coordination.
-- Investigative journalism with editorial and legal review.
+- Investigative journalism with editorial review.
 - Self-test on accounts you own.
 
-Targeting an individual without consent is stalking and is criminalized in most jurisdictions regardless of whether the technique used "public" data. Document scope before collection. Evidence retention follows operational-security-and-evidence.md.
+Document scope before collection. Evidence retention follows operational-security-and-evidence.md.
 
 ## Evidence to log
 

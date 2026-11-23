@@ -1,8 +1,8 @@
 ---
 name: cloud-ctf
-description: "Lab/CTF: cloud security challenges; AWS/GCP/Azure creds, buckets, IAM, metadata, KMS/secrets, snapshots, object versions, identity chains."
+description: "Cloud security challenges; AWS/GCP/Azure creds, buckets, IAM, metadata, KMS/secrets, snapshots, object versions, identity chains."
 license: MIT
-compatibility: "AgentSkills-compatible agents; authorized training and lab environments; aws-cli, gcloud, gsutil required."
+compatibility: "AgentSkills-compatible agents; aws-cli, gcloud, gsutil required."
 metadata:
   author: AeonDave
   version: "1.2"
@@ -304,7 +304,7 @@ echo "<base64_plaintext>" | base64 -d > decrypted.ps1
 ### AWS EC2 snapshot forensics
 
 ```bash
-# Only list snapshots you own
+# List snapshots owned by this account
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 aws ec2 describe-snapshots --filters Name=owner-id,Values=$ACCOUNT_ID
 

@@ -129,7 +129,7 @@ Registered to non-target → MEDIUM `TYPOSQUAT_CANDIDATE` (supply-chain risk; ad
 ```
 
 ## 4. Hard rules
-- Only read public artifacts. Do not authenticate against private packages.
-- Never validate `package:publish`-scoped tokens — that scope writes by definition.
+- Only read public artifacts.
+- Do not exercise `package:publish`-scoped tokens: that scope writes by definition.
 - Truncate every secret in evidence (last 4 chars).
 - Older non-current versions = highest hit rate; always walk history.

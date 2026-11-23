@@ -1,7 +1,7 @@
 # Active Recon — Deep Dive
 
 Active recon makes direct contact with target infrastructure. Target-side logs will record probes.
-Always confirm authorization scope and rate limits before starting.
+Always confirm the target scope and rate limits before starting.
 
 ---
 
@@ -121,7 +121,7 @@ masscan -p21,22,23,25,53,80,110,143,443,445,1433,1521,3306,3389,5432,6379,8080,8
 ```
 
 Rate guidance: use a measured, owner-agreed limit for this network; the figures below are not evidence of available capacity. Without a limit, use existing inventory.
-- Internal authorized scope: 10,000–50,000 pps (confirm with scope owner)
+- Internal scope: 10,000–50,000 pps
 - External engagement: 1,000–5,000 pps typical — check for rate-limiting / IPS
 
 ### rustscan + nmap handoff

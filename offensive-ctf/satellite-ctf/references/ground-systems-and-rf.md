@@ -161,7 +161,7 @@ Full SDLS/SDLS-EP layout, CryptoLib CVEs, cFS CVE table, OpenC3 exploit shape, a
 
 ## GNSS spoofing (GPS L1 / Galileo E1)
 
-Relevant when a challenge asks you to force a receiver to report a specific position/time, or to compute the signal a target receiver would see. Do this only in a shielded lab or over a wired feed; **transmitting on L1 in open air is illegal** in most jurisdictions.
+Relevant when a challenge asks you to force a receiver to report a specific position/time, or to compute the signal a target receiver would see. Do this in a shielded lab or over a wired feed.
 
 **Standard toolchain:**
 - `gps-sdr-sim` (Osqzss) — offline: RINEX ephemeris + target lat/lon/alt/time → IQ `.bin` for HackRF / BladeRF / USRP. Fixed-scene, easy to reproduce.

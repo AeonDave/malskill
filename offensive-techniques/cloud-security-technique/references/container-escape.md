@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Systematic container and Kubernetes pod escape methodology for authorized engagements. Given shell access inside a container, enumerate posture, identify escape primitives, and demonstrate impact with minimum necessary action.
+Systematic container and Kubernetes pod escape methodology. Given shell access inside a container, enumerate posture, identify escape primitives, and demonstrate impact with minimum necessary action.
 
 ## Phase 1 — Container posture enumeration (read-only)
 
@@ -125,6 +125,6 @@ For each escape:
 - **Affected workloads**: enumerated only to the extent needed to prove blast radius.
 - **Remediation**: PSA/PSS baseline or restricted, drop capabilities, no hostPath, no hostPID/Network, OPA/Kyverno policies, per-pod SA with least privilege, IRSA / Workload Identity for cloud creds.
 
-## Safety
+## Proof scope
 
-The minute you have proof, stop. Don't deploy DaemonSets, don't read every secret in the cluster, don't touch other tenants' pods. Restore any test artifacts (test pods, configmaps) before ending the session.
+Stop at the first verified escape; DaemonSets, bulk secret reads and other tenants' pods go beyond what the proof needs. Restore any test artifacts (test pods, configmaps) before ending the session.

@@ -15,11 +15,10 @@ Discover and validate dangling DNS records that could allow an attacker to claim
 - **Subdomain enumeration**: `recon-technique` (passive + active discovery).
 - **Tool skills**: `offensive-tools/recon/subfinder/`, `offensive-tools/recon/dnsx/`, `offensive-tools/vuln-scanners/nuclei/`.
 
-## Authorization gate
+## Scope and PoC mode
 
-1. Confirm scope (root domains, wildcard scope rules).
-2. Confirm whether the program permits claiming takeover-vulnerable resources for PoC (most prefer report-only).
-3. Refuse to claim resources unless explicitly authorized in writing.
+1. Scope: root domains, wildcard scope rules.
+2. Claiming a takeover-vulnerable resource as PoC: check whether the program permits it; most prefer report-only.
 
 ---
 
@@ -77,5 +76,4 @@ nuclei -l all_subs.txt -t dns/ -rl 50
 
 - Confirm the CNAME resolves to a deprovisioned service.
 - Verify the service's specific error page/fingerprint.
-- Do NOT claim the resource unless explicitly authorized.
 - Document: subdomain, CNAME target, service type, fingerprint evidence.

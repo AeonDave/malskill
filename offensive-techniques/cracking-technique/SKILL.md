@@ -1,6 +1,6 @@
 ---
 name: cracking-technique
-description: "Auth/lab: password/hash recovery methodology; hash triage, candidate design, rules/masks, campaign evidence, audit-safe reporting."
+description: "Password/hash recovery methodology; hash triage, candidate design, rules/masks, campaign evidence, audit-safe reporting."
 license: MIT
 compatibility: "Linux/Windows/macOS; local CPU/GPU cracking environments."
 metadata:
@@ -87,7 +87,7 @@ Use context-first strategy.
 
 1. **Triage**
    - Validate hash type(s), salts/format, and ingestion integrity.
-   - Confirm legal scope and success criteria.
+   - Confirm success criteria.
 
 2. **Target modeling**
    - Infer likely password construction patterns (language, policy, reuse behaviors, suffix habits).

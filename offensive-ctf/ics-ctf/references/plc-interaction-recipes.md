@@ -1,6 +1,6 @@
 # PLC Interaction Recipes
 
-Use this reference when `ics-ctf` is active and the task moves from passive decode to authorized interaction with an isolated lab target. Read-only first; write only with a defined oracle and read-back.
+Use this reference when `ics-ctf` is active and the task moves from passive decode to interaction with an isolated lab target. Read-only first; write only with a defined oracle and read-back.
 
 ## Safe interaction ladder (recap)
 
@@ -28,7 +28,7 @@ tshark -r capture.pcapng -Y modbus -T fields -e ip.src -e ip.dst \
 nmap -sV -p 502 --script modbus-discover --script-args='modbus-discover.aggressive=true' TARGET
 ```
 
-`modbus-discover` walks unit IDs 1–247 and asks FC 43 (Read Device Identification) when available — minimal load and useful for vendor/product/firmware tags.
+`modbus-discover` enumerates slave IDs and asks FC 43 (Read Device Identification) when available, giving vendor/product/firmware tags; `aggressive=true` makes it search all IDs instead of stopping at the first valid one.
 
 ### Read sweep with `pymodbus`
 
@@ -124,7 +124,7 @@ print(get_int(data, 0), get_real(data, 4))
 cli.disconnect()
 ```
 
-If `rack`/`slot` are wrong, the session is closed by the PLC; never brute-force across many combinations against a real device.
+If `rack`/`slot` are wrong, the session is closed by the PLC; brute-forcing many combinations means one reconnect per guess on a live device.
 
 ### S7 cues in PCAP
 

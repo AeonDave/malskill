@@ -54,8 +54,8 @@ Raw LDAP validation fields:
 
 Preferred proof path:
 
-1. Confirm the user is in scope and not a protected production identity unless explicitly approved.
-2. Use password reset only with a controlled test account or approved target account.
+1. Confirm the user is in scope and not a protected production identity; a password reset there locks out its real user and dependent services.
+2. Use password reset only with a controlled test account or designated target account.
 3. If password reset is too intrusive, prefer shadow credentials where certificate abuse is allowed.
 4. Validate authentication with a minimal action.
 
@@ -64,9 +64,9 @@ Impact: account takeover, then ticket/hash use through the normal credential han
 ### `GenericAll` or `AddMember` on group
 
 1. Confirm group membership leads to real privilege with BloodHound path expansion.
-2. Add an approved controlled principal to the group.
+2. Add a controlled principal to the group.
 3. Validate access to the next object.
-4. Remove the membership during cleanup if rules of engagement require restoration.
+4. Remove the membership during cleanup when restoration is needed.
 
 Impact: role escalation through group membership.
 
@@ -96,7 +96,7 @@ Common paths:
 - User object: configure shadow credentials (`msDS-KeyCredentialLink`) when AD CS and PKINIT are usable.
 - Computer object: configure resource-based constrained delegation when machine-account quota and delegation settings allow it.
 - Computer object: modify `servicePrincipalName` for SPN Jacking (see below).
-- GPO object: modify linked policy only in explicitly authorized scope.
+- GPO object: modify the linked policy only where every host it is linked to is in the target set; the edit applies to each of them.
 
 ```powershell
 # Targeted Kerberoasting: set fake SPN on target user, then roast it
@@ -120,7 +120,7 @@ GenericWrite on a gMSA is **equivalent to holding its password** — you can gra
 
 **Mechanism**: `msDS-GroupMSAMembership` is a security descriptor (binary SD) that defines which principals can read the managed password blob (`msDS-ManagedPassword`). Overwriting it grants password read access.
 
-**Approach**: read-modify-write when possible to avoid breaking existing readers. If blind-write is acceptable (lab/CTF), a minimal SD granting your principal full access works.
+**Approach**: read-modify-write when possible to avoid breaking existing readers. If blind-write is acceptable, a minimal SD granting your principal full access works.
 
 ```python
 # Grant attacker read access to gMSA password (Python + ldap3)
@@ -244,9 +244,9 @@ Prefer paths in this order:
 1. Read-only proof that demonstrates exploitable rights.
 2. Controlled test-principal modification.
 3. Reversible membership or attribute change.
-4. Password reset or broad DACL change only when approved.
+4. Password reset or broad DACL change — least reversible.
 
-Avoid changing tier-0 identities unless the engagement explicitly allows it.
+Avoid changing tier-0 identities; changes there affect the whole domain.
 
 ## Evidence requirements
 

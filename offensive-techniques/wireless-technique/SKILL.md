@@ -2,7 +2,7 @@
 name: wireless-technique
 description: "Auth assessment: wireless methodology; Wi-Fi/BLE survey, WPA/WPA3 handshake/PMKID labs, WPS, rogue-AP simulation, auth-material handoff."
 license: MIT
-compatibility: "Linux; compatible wireless adapter for monitor-mode lab work."
+compatibility: "Linux; compatible wireless adapter for monitor-mode capture."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -16,9 +16,9 @@ Goal: identify, capture, and exploit wireless network credentials or gain direct
 ## When this technique applies
 
 - Physical proximity to target wireless infrastructure (within RF range).
-- Authorized wireless assessment of 802.11 or Bluetooth/BLE networks.
+- Wireless assessment of 802.11 or Bluetooth/BLE networks.
 - Initial access objective requiring network entry via Wi-Fi.
-- Authorized analysis of wireless packet captures containing WPA handshakes, PMKID material, or RF evidence.
+- Analysis of wireless packet captures containing WPA handshakes, PMKID material, or RF evidence.
 
 ## Boundary with other skills
 
@@ -34,7 +34,7 @@ A visible device name does not verify the intended receiver or exclude nearby de
 Before transmitting, classify the wireless target set and choose the quietest path that can satisfy the assessment objective.
 
 - **Starting state**: are you assessing Wi-Fi access control, handshake capture, WPS exposure, evil-twin resilience, BLE exposure, or analyzing an existing capture?
-- **First questions**: what RF scope is authorized, what SSIDs/BSSIDs and encryption modes are present, are clients active, and is the likely first path passive capture, PMKID, targeted handshake, WPS, or BLE enumeration?
+- **First questions**: what RF scope applies, what SSIDs/BSSIDs and encryption modes are present, are clients active, and is the likely first path passive capture, PMKID, targeted handshake, WPS, or BLE enumeration?
 - **Immediate actions**: complete passive survey, rank targets by value and feasibility, then choose one attack lane per target.
 - **Tool-family direction**: use passive survey skills first (`kismet`, `aircrack-ng` capture flow, `lswifi`, `bluez`, `sparrow-wifi`), then move to active capture or impersonation tooling (`aircrack-ng`, `wifite`, `bettercap`) only when the classification justifies it.
 - **Escalation rule**: prefer passive and targeted capture over noisy broadcast actions; only deauth or impersonate when passive routes are insufficient.
@@ -55,10 +55,10 @@ Loop:
   4. Capture or exploit.
   5. Crack offline or pivot to network.
 
-Stop when: valid PSK recovered, network access achieved, or scope exhausted.
+Stop when: valid PSK recovered, network access achieved, or the target set is exhausted.
 ```
 
-Never transmit before completing passive survey. Always operate within authorized scope and RF boundaries.
+Never transmit before completing passive survey. Keep inside the RF perimeter agreed for the assessment.
 
 ---
 
@@ -105,7 +105,7 @@ Better for long-term logging, multiple adapters, and BLE/802.15.4.
 
 ```bash
 sudo kismet -c wlan0mon
-# Web UI: http://localhost:2501 (default: admin/kismet or set at first run)
+# Web UI: http://localhost:2501 (no default login: create user/password at first run)
 
 # CLI summary
 kismetdb_to_wireshark --in kismet_log.kismet --out kismet.pcap
@@ -166,7 +166,7 @@ Faster than handshake — requests PMKID directly from AP without waiting for cl
 sudo hcxdumptool -i wlan0mon -w pmkid.pcapng --rds=1
 
 # Filter for specific BSSID via Berkeley Packet Filter
-sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon --dump-bpf \
+sudo tcpdump -y IEEE802_11_RADIO -i wlan0mon -ddd \
   "wlan addr3 aa:bb:cc:dd:ee:ff" > bssid.bpf
 sudo hcxdumptool -i wlan0mon -w pmkid.pcapng --bpf=bssid.bpf --rds=1
 
@@ -230,7 +230,7 @@ Decision flow:
 1. Check WPS presence and lock state with `wash`.
 2. If WPS disabled or locked → skip WPS; move to PMKID/handshake/evil twin.
 3. If WPS enabled and unlocked → try Pixie Dust first (`reaver -K 1`) because vulnerable chipsets can reveal the PIN offline from one exchange.
-4. If Pixie Dust fails → online PIN brute-force only when explicitly allowed, rate-limited, and lock behavior is understood.
+4. If Pixie Dust fails → online PIN brute-force only when rate-limited and lock behavior is understood.
 5. If lock appears → stop; repeated attempts are noisy and can trigger WIDS or disable WPS.
 
 ```bash
@@ -310,12 +310,12 @@ sudo airodump-ng wlan0mon | grep -i "WPA3\|SAE"
 
 ## Phase 7 — Bluetooth / BLE enumeration
 
-Passive BLE device survey — identify exposed GATT services, advertised data, signal proximity.
+BLE device discovery and GATT enumeration — identify advertised data, exposed GATT services, signal proximity.
 
 ```bash
 # bluetoothctl — interactive BLE scan
 sudo bluetoothctl
-[bluetooth]# scan on      # passive scan
+[bluetooth]# scan on      # discovery (inquiry + active LE scan), not passive
 [bluetooth]# devices      # list discovered
 [bluetooth]# info <MAC>   # device details
 
@@ -352,7 +352,7 @@ See `offensive-tools/wireless/bluez/`, `offensive-tools/wireless/sparrow-wifi/`,
 - Deauth attacks targeted (specific client MAC) not broadcast unless necessary.
 - Handshake/PMKID capture verified before handing off to cracking.
 - WPS attacks stopped at first lock indicator.
-- Evil twin deployed only within authorized RF perimeter.
+- Evil twin deployed only within the RF perimeter.
 - BLE writes/MITM attempted only after passive discovery and scoped device identity are confirmed.
 
 ## Anti-patterns

@@ -22,11 +22,12 @@ Most countries maintain public registries of registered companies.
 - **OpenCorporates** (opencorporates.com): World's largest open company database; 175M+ companies searchable. Input company name → returns registered details (address, officers, registration date, status).
 - **Wikipedia**: Often has company founding details, history, leadership.
 - **Crunchbase** (web, limited free): Startup/tech company profiles, funding rounds, people, locations.
+- **Open Ownership datasets** (bods-data.openownership.org): downloadable public beneficial-ownership datasets in BODS format; the Register search UI closed on 2024-11-29. Record the dataset date and jurisdiction before citing an ownership claim.
 
 ### US
 
 - **SEC EDGAR** (sec.gov/edgar): US public company filings (10-K, 10-Q, 8-K, proxy statements). Rich financial + governance data.
-- The Open Ownership Register search UI [closed on 29 November 2024](https://www.openownership.org/en/news/evolving-from-the-open-ownership-register-to-increase-our-impact/). Its published bulk datasets remain available; record the dataset date and jurisdiction before citing an ownership claim.
+- Beneficial ownership: no public register (FinCEN BOI is not released). Use state filings, OpenCorporates officers, and the beneficial-ownership tables of public companies' proxy statements (DEF 14A).
 
 ### EU
 
@@ -124,7 +125,7 @@ Companies suffer data breaches, insider leaks, email compromises.
 ### Domain Registration
 
 - **WHOIS lookup**: Registrant info (often redacted), registrar, creation date, nameservers.
-- **WHOIS history**: Domains4.com, WHOIS.ai, SecurityTrails → historical ownership.
+- **WHOIS history**: SecurityTrails → historical ownership.
 - **Nameserver analysis**: Who hosts the company's DNS? Shared servers might reveal other domains under same operator.
 
 ### Acquisition & Portfolio Mapping
@@ -167,7 +168,7 @@ Companies suffer data breaches, insider leaks, email compromises.
 
 - **BuiltWith**: Analytics tags, CMS, hosting provider, payment processors → business model clues.
 - **Wappalyzer** (browser extension): Similar tech detection.
-- **HTTPStatus codes & redirects**: Man-in-the-middle via network capture (legitimate after scoping approval).
+- **HTTPStatus codes & redirects**: Man-in-the-middle via network capture.
 
 ### IP & Hosting
 
@@ -245,7 +246,7 @@ English-language registries miss most CN/RU corporate intel. Use native portals 
 - **Qichacha** (https://www.qcc.com) — peer alternative; sometimes has fields Tianyancha redacts.
 - **GSXT (National Enterprise Credit Info Publicity System):** https://www.gsxt.gov.cn — authoritative gov registry; basic registration data.
 - **ICP Beian** (https://beian.miit.gov.cn) — every CN-hosted website must register ICP license; lookup ties domain ↔ legal-entity name ↔ admin contact.
-- **SAIC filings** (provincial) — annual reports, asset disclosures.
+- **GSXT annual reports (企业年报)**: yearly per-company filings in GSXT — shareholders and capital contributions, foreign investments, equity changes, headcount.
 
 **Workflow:** company name → Tianyancha (USCC + officers) → GSXT (validate) → ICP Beian (all owned domains) → enumerate adjacent subsidiaries → pivot officers to LinkedIn for cross-border identity.
 
@@ -261,6 +262,6 @@ English-language registries miss most CN/RU corporate intel. Use native portals 
 
 ### OpenCorporates power-use
 
-- API: https://api.opencorporates.com/v0.4/companies/search — JSON, free-tier rate-limited.
+- API: https://api.opencorporates.com/v0.4/companies/search — JSON; needs an API token (anonymous calls return 401).
 - `?q={name}&jurisdiction_code=us_de` — Delaware shell-company lookup.
 - Cross-jurisdiction officer search: https://opencorporates.com/officers — same person across multiple jurisdictions exposes corporate networks.

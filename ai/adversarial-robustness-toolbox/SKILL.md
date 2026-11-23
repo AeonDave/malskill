@@ -10,7 +10,7 @@ metadata:
 
 # Adversarial Robustness Toolbox
 
-Use ART to implement a bounded experiment against an explicitly authorized model and dataset; ART is an API, not evidence that a model is robust or vulnerable. Pin the installed ART version and check the matching source before relying on API behavior. This guide is grounded in ART 1.20.1, tag commit `cbc47a890a191809baa292992761030e7f46ab18`.
+Use ART to implement a bounded experiment on a model and dataset; ART is an API, not evidence that a model is robust or vulnerable. Pin the installed ART version and check the matching source before relying on API behavior. This guide is grounded in ART 1.20.1, tag commit `cbc47a890a191809baa292992761030e7f46ab18`.
 
 ## Workflow and evidence contract
 
@@ -25,7 +25,7 @@ For each report, include: (a) `art.__version__` and relevant framework versions;
 
 - Adapter selection, preprocessing, loss gradients, output scores/logits, clipping, or an ART version change: [references/estimator-contract.md](references/estimator-contract.md).
 - White-box evasion with FGM/PGD or a defensible perturbation/query-budget metric: [references/evasion-evaluation.md](references/evasion-evaluation.md).
-- Authorized poisoning, membership-inference/privacy, or model-extraction workflow: [references/privacy-poisoning-extraction.md](references/privacy-poisoning-extraction.md).
+- Poisoning, membership-inference/privacy, or model-extraction workflow: [references/privacy-poisoning-extraction.md](references/privacy-poisoning-extraction.md).
 - Reproducible CPU FGM/PGD API and invariant smoke test, without downloads or external models: [assets/cpu_evasion_smoke.py](assets/cpu_evasion_smoke.py).
 
 For challenge artifacts and challenge-specific success oracles, load [AI/ML CTF](../../offensive-ctf/ai-ml-ctf/SKILL.md) instead of copying its broader playbooks here; load this skill only for ART-specific adapter or API work.

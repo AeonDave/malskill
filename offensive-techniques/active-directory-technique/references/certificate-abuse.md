@@ -66,7 +66,7 @@ publication. Confirm that the created template grants the requester enrollment a
 issuance requirement blocks the request. Treat this as an AD CS misconfiguration chain,
 not a security-boundary bypass. Preserve the original CA/template ACL evidence, clone only
 schema-required attributes from a known template, validate the resulting ESC class, and
-remove the test object after the authorized proof.
+remove the test object after the proof.
 
 ---
 

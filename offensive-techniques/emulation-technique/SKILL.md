@@ -1,8 +1,8 @@
 ---
 name: emulation-technique
-description: "Auth/lab: generic emulation methodology for binaries, firmware, kernels, and MCU/board targets; static-to-dynamic routing, tool choice, validation signals."
+description: "Generic emulation methodology for binaries, firmware, kernels, and MCU/board targets; static-to-dynamic routing, tool choice, validation signals."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated labs; QEMU, Qiling, Unicorn, Renode, GDB, Frida, and firmware extraction tools optional."
+compatibility: "AgentSkills-compatible agents; local artifacts; QEMU, Qiling, Unicorn, Renode, GDB, Frida, and firmware extraction tools optional."
 metadata:
   version: "1.0"
 ---
@@ -19,9 +19,9 @@ When evaluating a suspected vulnerability, pair with [vuln-research](../../knowl
 - Static analysis found architecture, format, APIs, strings, init scripts, vector tables, MMIO, network services, unpacking, decryption, or anti-analysis behavior, but runtime evidence is needed.
 - You need to decide between native execution, user-mode emulation, OS-layer emulation, full-system emulation, board simulation, CPU-only emulation, or hardware.
 
-## Safety and scope gates
+## Safety controls
 
-- Treat every dynamic run as untrusted execution. Use an isolated VM/container, snapshots, no shared secrets, controlled networking, and localhost-only forwards unless scope explicitly permits more.
+- Treat every dynamic run as untrusted execution. Use an isolated VM/container, snapshots, no shared secrets, controlled networking, and localhost-only forwards.
 - Do not run unknown malware or firmware on the analyst host natively.
 - Preserve the original artifact. Work from copies and record hashes of every input and modified output.
 - Prefer read-only mounts and explicit scratch directories until the workflow requires mutation.

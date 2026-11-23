@@ -1,8 +1,8 @@
 ---
 name: satellite-ctf
-description: "Lab/CTF: satellite and space-system challenges; CCSDS Space Packets, TC/TM/AOS/USLP Space Data Link transfer frames, CLTU/BCH/Reed-Solomon coding, COP-1/FARM sequence control, ECSS PUS services, SDLS/SDLS-EP link-layer crypto and CryptoLib CVEs, CubeSat Space Protocol (CSP), TLE/SGP4 orbits, GPS L1 GNSS spoofing with gps-sdr-sim/HackRF, and ground-segment targets (Yamcs, OpenC3 COSMOS, NASA cFS, NOS3, Kubos) including known 2025–2026 RCE/path-traversal/DoS CVEs. Use when a task mentions spacecraft ID, APID, virtual channel, telecommand/telemetry, transfer frame, ground station, modem, ASM 1ACFFC1D, SPI/OTAR/ARSN, or a downlink/uplink byte stream to build or decode."
+description: "Satellite and space-system challenges; CCSDS Space Packets, TC/TM/AOS/USLP Space Data Link transfer frames, CLTU/BCH/Reed-Solomon coding, COP-1/FARM sequence control, ECSS PUS services, SDLS/SDLS-EP link-layer crypto and CryptoLib CVEs, CubeSat Space Protocol (CSP), TLE/SGP4 orbits, GPS L1 GNSS spoofing with gps-sdr-sim/HackRF, and ground-segment targets (Yamcs, OpenC3 COSMOS, NASA cFS, NOS3, Kubos) including known 2025–2026 RCE/path-traversal/DoS CVEs. Use when a task mentions spacecraft ID, APID, virtual channel, telecommand/telemetry, transfer frame, ground station, modem, ASM 1ACFFC1D, SPI/OTAR/ARSN, or a downlink/uplink byte stream to build or decode."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab environments."
+compatibility: "AgentSkills-compatible agents; local artifacts."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -62,7 +62,7 @@ Load these as decision engines when their domain appears:
 - **Ground systems:** Yamcs, OpenC3 COSMOS, NASA cFS, NOS3, Kubos — for command/telemetry DB inspection, replay, and finding weak auth / plugin RCE in the ground segment itself.
 - **Inspect:** Wireshark CCSDS/space dissectors, `xxd`/CyberChef for hand-decoding a hex frame, `libcsp` utils for CSP.
 
-## Safety and scope gates
+## Safety controls
 
 - Verify the service is a simulator with no live RF or spacecraft command path before sending frames. If that connection is unknown, use the supplied capture offline.
 - Prefer offline decode of a supplied capture over live interaction when the artifact already contains the answer.

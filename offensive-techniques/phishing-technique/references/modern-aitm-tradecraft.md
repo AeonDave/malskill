@@ -1,10 +1,10 @@
 # Modern AitM and Non-Email Phishing Tradecraft (2024+)
 
-Load when authorization explicitly covers MFA/session interception, OAuth device code abuse, in-page auth spoofing, chat-platform pivoting, QR delivery, or paste-and-run lures. Every vector below assumes the authorization gate in `SKILL.md` has been cleared.
+Load when scope covers MFA/session interception, OAuth device code abuse, in-page auth spoofing, chat-platform pivoting, QR delivery, or paste-and-run lures.
 
 ## 1. AitM PhaaS kit landscape — threat model only
 
-Real-world reverse-proxy AitM kits set the baseline defenders test against. Do **not** deploy them on engagements; understand behavior to justify equivalent authorized infrastructure (Evilginx 3.x / Muraena / Modlishka) and to write realistic detections.
+Real-world reverse-proxy AitM kits set the baseline defenders test against. Understand behavior to justify equivalent infrastructure (Evilginx 3.x / Muraena / Modlishka) and to write realistic detections.
 
 | Kit | Prime target | Distinguishing traits |
 |-----|--------------|-----------------------|
@@ -14,7 +14,7 @@ Real-world reverse-proxy AitM kits set the baseline defenders test against. Do *
 | EvilProxy | O365/Google/Okta/GitHub | Historic PhaaS marketplace; templated multi-target reverse proxy |
 | Rockstar 2FA / ONNX Store | O365 | Cheap subscription kits; Telegram-based operator dashboards |
 
-Authorized substitution: Evilginx 3.x with a target-specific phishlet, or Muraena for automated rewrite of arbitrary targets.
+Substitution: Evilginx 3.x with a target-specific phishlet, or Muraena for automated rewrite of arbitrary targets.
 
 ## 2. Evilginx 3.x + GoPhish integration
 
@@ -45,7 +45,7 @@ Detection-relevant traits:
 - `user_code` lifetime is short (15 min typical); pretext must drive immediate action.
 - Refresh token grants long-lived access to any resource the requested scope covers (Graph, EWS, Teams).
 
-Simulation notes for authorized engagements:
+Simulation notes:
 - Use a first-party client_id that is allowed by the target tenant; verify Conditional Access does not block device code flow for that client.
 - Document token scope, `oid`, `tid`, `appid` in evidence; revoke the refresh token at end of test.
 - Register the pretext delivery channel with blue team if announced.
@@ -58,7 +58,7 @@ Fake OAuth/SSO popup window rendered as HTML/CSS **inside** the phishing page, m
 - Address bar is faked in DOM — real browsers do not repaint it; screenshots look identical, click-behavior differs (cannot drag the fake window off the tab, address bar not editable).
 - Pairs well with reverse-proxy AitM: BitB overlay captures perceived-legit consent, backend proxy relays for MFA.
 
-Authorized delivery: host the HTML lure on the operator domain; do not mimic a domain outside RoE scope even inside the fake chrome.
+Delivery: host the HTML lure on the operator domain; mimic only brands in scope, even inside the fake chrome.
 
 ## 5. Teams and Slack lateral phishing
 
@@ -95,7 +95,7 @@ Flow:
 
 Related variants: FileFix (drop file with hidden extension), fake reCAPTCHA, fake browser update.
 
-For authorized simulation: measure paste-execution rate as a distinct metric from click-through; blue-team detections should look for `clipboardData.setData` + rapid `Win+R`/`powershell` execution in EDR telemetry.
+For simulation: measure paste-execution rate as a distinct metric from click-through; blue-team detections should look for `clipboardData.setData` + rapid `Win+R`/`powershell` execution in EDR telemetry.
 
 ## 8. Evidence and cleanup checklist
 

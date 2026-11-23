@@ -17,7 +17,7 @@ Goal: map the attack surface with minimal noise, identify high-value entry point
 
 - External perimeter scoping before a pentest or red team engagement.
 - Bug bounty scope expansion: discover assets before prioritizing targets.
-- Controlled lab or internal host/service mapping before authorized exploitation testing.
+- Controlled lab or internal host/service mapping before exploitation testing.
 - Pre-exploitation scoping: "where do I spend time?" before vuln scanning.
 - API attack-surface mapping before authz, injection, or workflow testing.
 
@@ -67,7 +67,6 @@ Zero direct contact with target infrastructure. All data from public or archived
 - Define target: root domain(s), IP ranges, organization name, known product brands.
 - Note explicit out-of-scope assets.
 - Treat the in-scope set as an explicit allowlist and match each target against it before any active request — not once per engagement. Enforce deny-wins: out-of-scope beats in-scope on overlap (a carve-out like `admin.acme.com` stays off even under an in-scope `*.acme.com`), and an empty or unparseable scope denies everything. A deterministic scope check is cheaper than an out-of-scope finding.
-- Confirm rules of engagement and legal authorization before any action.
 
 ### 1.2 Domain and subdomain discovery
 
@@ -123,7 +122,7 @@ Produce before moving to active:
 
 ## Phase 2 — Active recon
 
-Controlled direct contact with target infrastructure. Generates logs on target side — scope and pace within authorization limits.
+Controlled direct contact with target infrastructure. Generates logs on target side — control scope and pace.
 
 **Goal**: resolve the passive asset map into a concrete service inventory — open ports, service versions, web endpoints, and ranked attack surface.
 
@@ -221,7 +220,7 @@ Move when:
 
 Stay in passive when:
 - New subdomains still appear rapidly (scope not bounded).
-- Active authorization is not yet confirmed.
+-- Active contact is not yet in the target set.
 
 ### Active recon → Vulnerability scanning
 
@@ -267,7 +266,7 @@ Use [handoff-to-vuln-research.md](references/handoff-to-vuln-research.md) when h
 
 - Passive phase complete before active probing starts.
 - DNS resolution validated — no stale or dead hosts in active target list.
-- Port sweep rate and scope confirmed within authorization limits.
+- Port sweep rate and scope confirmed.
 - HTTP fingerprinting done on all live web hosts before content discovery.
 - Attack plan specifies exact targets with rationale, not vague categories.
 
@@ -276,7 +275,7 @@ Use [handoff-to-vuln-research.md](references/handoff-to-vuln-research.md) when h
 - Scanning an unidentified surface or treating an uncertain fingerprint as established fact.
 - Running content discovery on the entire IP range (pick targets from fingerprinting first).
 - Treating Shodan results as ground truth without active confirmation.
-- Expanding scope during active phase without re-checking authorization.
+- Expanding the target set during active phase without re-checking it against the allowlist.
 - Reporting every subdomain found instead of ranking by attack surface value.
 - Confusing recon with OSINT — person/identity research is a different phase.
 

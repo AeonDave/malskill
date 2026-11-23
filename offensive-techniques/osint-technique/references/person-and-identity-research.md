@@ -31,7 +31,7 @@ Use **Holehe** (CLI/API) or **Epieos** (web) to check which platforms are regist
 - **Dehashed** (dehashed.com): Credential search; shows leaked username + password pairs.
 - **LeakCheck** (leakcheck.io): Aggregated breach index; freemium access.
 - **IntelX** (intelx.io): Dark web index; email/username/hash search across leaks, pastes, breaches.
-- **Breached Data Alerts**: Sites like xkcd's excellent list maintain curated breach databases.
+- **Breached Data Alerts**: community-maintained curated lists of breach databases.
 
 **Actionable**: If you find a password hash, feed it to VirusTotal or local cracking tools. If plaintext password, check against known compromises.
 
@@ -69,7 +69,7 @@ Each platform has different visibility and archival challenges.
 
 ### X (Twitter)
 
-- **snscrape** (CLI): broken for X since Twitter's mid-2023 login-wall (snscrape issue #996; author will not add auth). Usable only against Wayback-archived pages for pre-2023 data. Live scraping requires paid X API (Basic tier $200/mo min) or logged-in third-party scrapers (ToS risk).
+- **snscrape** (CLI): broken for X since Twitter's mid-2023 login-wall (snscrape issue #996; author will not add auth). Usable only against Wayback-archived pages for pre-2023 data. Live scraping requires paid X API (pay-per-use credits) or logged-in third-party scrapers.
 - **Advanced search**: `from:@username since:2024-01-01 until:2024-12-31` scopes by time — while logged in.
 - **Wayback Machine**: Archive.org snapshots of profiles; the only free path for historical tweets.
 - **Retweets, Likes, Mentions**: Follow the graph; find communities.
@@ -101,7 +101,7 @@ Each platform has different visibility and archival challenges.
 ### Mastodon & Fediverse
 
 - **FediSearch**: Cross-instance search for public posts.
-- **Fedifinder**: original at `fedifinder.glitch.me` discontinued 2023-12 (no X API access); Glitch shut down free hosting Aug 2025. Successor by same author at `fedifinder.party`.
+- **Fedifinder**: original at `fedifinder.glitch.me` discontinued 2023-12 (no X API access); Glitch ended app hosting on 2025-07-08. Successor by same author at `fedifinder.party`.
 - **Instance exploration**: Understand which instance the user is on (affects privacy policies, logging practices).
 
 ### Bluesky (AT Protocol)
@@ -109,7 +109,7 @@ Each platform has different visibility and archival challenges.
 - **Handle resolver**: `https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=<handle>` returns DID (unique ID).
 - **Identity document**: `https://plc.directory/<did>` shows handle history, PDS endpoint.
 - **Firesky**: Real-time keyword/hashtag monitoring across entire network.
-- **SkyView**: Follower graphs, post engagement, network analysis.
+- **Atlas** (bsky.jazco.dev; previously SkyView): engagement-based social graph for Bluesky.
 
 ---
 
@@ -238,4 +238,4 @@ wc -l all_emails.txt
 - `^([a-z]+)\.([a-z]+)@` ≥60% → `{first}.{last}@`
 - `^([a-z]+)([a-z])@` ≥60% → `{first}{last-initial}@`
 
-Feed pattern + LinkedIn employee names to derive missing emails. For passive deliverability scoring use Hunter Email Verifier, MailTester, or M365 GetCredentialType (passive endpoint check) from [identity-fabric-enumeration.md](identity-fabric-enumeration.md). Active SMTP probing (`VRFY`, `RCPT TO`, callback verification) is out of OSINT scope — escalate to [recon-technique](../../recon-technique/) under explicit RoE.
+Feed pattern + LinkedIn employee names to derive missing emails. For passive deliverability scoring use Hunter Email Verifier, MailTester, or M365 GetCredentialType (unauthenticated pre-login call; throttled under volume) from [identity-fabric-enumeration.md](identity-fabric-enumeration.md). Active SMTP probing (`VRFY`, `RCPT TO`, callback verification) is out of OSINT scope — escalate to [recon-technique](../../recon-technique/).

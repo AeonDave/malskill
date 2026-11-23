@@ -93,7 +93,6 @@ Use `references/encrypted-traffic-and-c2-profiling.md` for TLS/JA3/JA4, beacon j
 
 Use proxy/MITM workflow.
 
-- Establish legal/scope approval first.
 - Use interception to validate request/response behavior and trust boundaries.
 
 Tool families:

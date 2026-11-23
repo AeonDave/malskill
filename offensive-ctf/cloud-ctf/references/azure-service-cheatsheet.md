@@ -81,7 +81,7 @@ curl -H Metadata:true \
   'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/'
 ```
 
-Use the token only inside authorized lab scope. Decode token claims to identify principal, tenant, audience, and expiry before making API calls.
+Decode token claims to identify principal, tenant, audience, and expiry before making API calls.
 
 ## Validation signals
 

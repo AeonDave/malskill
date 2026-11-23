@@ -102,7 +102,7 @@ See [NewAE's voltage-glitching lab](https://github.com/newaetech/chipwhisperer-t
 - Assuming UART text is non-inverted or standard baud.
 - Ignoring chip-select in SPI captures.
 - Treating firmware compression as encryption without entropy and magic-byte evidence.
-- Using RF replay before understanding framing and legal/lab boundaries.
+- Using RF replay before understanding framing and the RF containment of the test setup.
 - Reusing an earlier instance's exact packet bytes because the UI or service name looks the same.
 - Judging packet validity only by HTTP status or a static page diff instead of the resulting device or session state.
 - Forgetting that side-channel datasets may have axes in positions, guesses, traces, samples rather than traces, samples.

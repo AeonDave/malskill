@@ -26,7 +26,7 @@ Before collecting sources, classify the target and the question so the research 
 
 OSINT campaigns follow a iterative research lifecycle:
 
-1. **Define Scope**: Target type (person, company, domain, IP, event), research objectives (profile, risk assessment, attribution, incident response), constraints (OpSec, legal/compliance, timeline).
+1. **Define Scope**: Target type (person, company, domain, IP, event), research objectives (profile, risk assessment, attribution, incident response), constraints (OpSec, timeline).
 2. **Prioritize Sources**: Which online sources are most likely to yield evidence? (e.g., certificate transparency for domain history; LinkedIn/breaches for employee intel; blockchain explorers for crypto flows).
 3. **Collect & Correlate**: Systematic querying across online tools and APIs; cross-reference findings to validate and pivot.
 4. **Synthesis & Reporting**: Map relationships (person ↔ domain ↔ infrastructure ↔ breach), document confidence levels, distinguish correlation from control.
@@ -123,7 +123,7 @@ Before concluding an OSINT investigation:
 3. **Source Independence**: Cross-check with alternative tools/sources. Avoid single-source attribution.
 4. **Confidence Labeling**: Mark each finding low/medium/high; document reasoning.
 5. **Archive Everything**: Timestamp, URL, screenshot/WARC archive, SHA-256 hash of downloads. Enable reproducibility.
-6. **Legal/OpSec Check**: Ensure queries comply with terms of service and local law. Use separate identities (sock puppets) where appropriate. Do not access honeypots or unauthorized systems.
+6. **OpSec Check**: Use separate identities (sock puppets) where appropriate.
 
 ---
 
@@ -181,7 +181,7 @@ Reference tool `SKILL.md` files for flags and workflows; use this technique for 
 - [recon-operations-playbook.md](references/recon-operations-playbook.md) — Operational framework for confidence upgrades (tentative/firm/confirmed), detectability tags + back-off ladder, time-budget profiles (1h/4h/1d/1w), and minimal asset-graph discipline.
 - [identity-fabric-enumeration.md](references/identity-fabric-enumeration.md) — Microsoft Entra/Okta/ADFS/Google Workspace/generic OIDC tenant discovery, IP-based Microsoft IDP correlation, GetCredentialType deep-mode, M365 federation (Teams, SharePoint, OneDrive personal-site, OAuth client_id, device-code phishing, Power Platform), GraphQL field-suggestion enum and bypasses.
 - [secret-patterns-and-validators.md](references/secret-patterns-and-validators.md) — 48-pattern secret regex catalog (AWS, GCP, GitHub, AI APIs, package registries, observability, SaaS) with severity + false-positive notes, read-only validators for 9 providers (Postman/AWS/GitHub/Slack/Anthropic/OpenAI/npm/Atlassian/DataDog), post-validation enumeration (IAM simulate, GitHub scopes, Slack workspace, JWT triage). Helper: `scripts/secret_scan.py`.
-- [attack-path-and-severity.md](references/attack-path-and-severity.md) — Endpoint interest scoring (0-100, 9 signals), mobile-app ownership confidence, attack-path hint templates for 40+ trigger classes, severity decision matrix with worked examples per tier (CRITICAL → INFO).
+- [attack-path-and-severity.md](references/attack-path-and-severity.md) — Endpoint interest scoring (0-100, 9 signals), mobile-app ownership confidence, attack-path hint templates for 32 trigger classes, severity decision matrix with worked examples per tier (CRITICAL → INFO).
 - [code-and-package-leaks.md](references/code-and-package-leaks.md) — 13 GitHub code-search dorks, package registry sweep workflow (npm/PyPI/RubyGems/Cargo/Packagist/NuGet/Maven/Docker Hub), version-history walk, typosquat candidate generation.
 - [threat-intel-and-vuln-prio.md](references/threat-intel-and-vuln-prio.md) — load for CTI/PIR assessment, TI feeds (CISA/MISP/Malpedia/ThreatFox/abuse.ch), sandbox + sample triage, bulk CVE prioritization with EPSS + CISA KEV + ExploitDB + Trickest, daily-cache workflow, or HackerOne disclosed-report mining via `scripts/h1_reference.py`.
 - [linkedin-and-tech-stack-osint.md](references/linkedin-and-tech-stack-osint.md) — LinkedIn employee enumeration (search techniques, Google dorks, free vs Sales Navigator), P0–P5 role tier rubric, sock-puppet hygiene, job-posting tech-stack extraction across 10 ATS platforms.

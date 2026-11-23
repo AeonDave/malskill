@@ -1,6 +1,6 @@
 ---
 name: sleep-masking-dev
-description: "Auth/lab dev: sleep-state research; timers/APC/waitable timers, memory-at-rest, permission transitions, key lifecycle, reliability checks."
+description: "Sleep-state research; timers/APC/waitable timers, memory-at-rest, permission transitions, key lifecycle, reliability checks."
 license: MIT
 compatibility: "Windows x64 user-mode; Linux/macOS and kernel-mode sleep masking are out of scope."
 metadata:

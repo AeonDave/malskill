@@ -1,6 +1,6 @@
 ---
 name: edr-evasion-dev
-description: "Auth/lab dev: Windows + Linux detection-resilience research; syscall dispatch, stack/call-chain spoofing, sleep-state, memory permissions, ETW/AMSI + eBPF/io_uring/LD_PRELOAD telemetry tradeoffs, kernel-visible signals, and cross-platform loader OPSEC with signal-cost budgeting."
+description: "Windows + Linux detection-resilience research; syscall dispatch, stack/call-chain spoofing, sleep-state, memory permissions, ETW/AMSI + eBPF/io_uring/LD_PRELOAD telemetry tradeoffs, kernel-visible signals, and cross-platform loader OPSEC with signal-cost budgeting."
 license: MIT
 metadata:
   author: kRustyLoader

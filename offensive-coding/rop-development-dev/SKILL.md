@@ -1,6 +1,6 @@
 ---
 name: rop-development-dev
-description: "Auth/lab dev: ROP chain research; gadget quality, calling conventions, pivots, leak-first ASLR labs, NX/DEP modeling, reliability."
+description: "ROP chain research; gadget quality, calling conventions, pivots, leak-first ASLR labs, NX/DEP modeling, reliability."
 license: MIT
 compatibility: "x86-64 Linux (glibc) and x86-64 Windows user-mode; ARM64, kernel ROP, and browser JIT-ROP are out of scope."
 metadata:

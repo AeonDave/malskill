@@ -42,7 +42,7 @@ POST https://login.microsoftonline.com/common/GetCredentialType
 Content-Type: application/json
 Body: {"username":"<email>","isOtherIdpSupported":true,"checkPhones":false,"isRemoteNGCSupported":true,"isCookieBannerShown":false,"isFidoSupported":true,"originalRequest":"","country":"US","forceotclogin":false,"isExternalFederationDisallowed":false,"isRemoteConnectSupported":false,"federationFlags":0}
 ```
-`IfExistsResult`: `0`=exists, `1`=missing, `5`=exists-federated. Logged in tenant audit. Cap 20.
+`IfExistsResult`: `0`=exists, `1`=missing, `5`=exists, federated IdP. Pre-login call, no credentials submitted; AADInternals documents only a real login attempt as reaching the sign-ins log, and Microsoft throttles this method under volume. Cap 20.
 
 ---
 
@@ -63,7 +63,7 @@ Body: {"username":"<email>","password":"invalid_for_enum"}
 - Do not infer user existence from `400` or `401 E0000004`: Okta documents `401 E0000004` for invalid credentials, locked-out accounts, **or** sign-on policy denial; a `400` is not documented as a user-not-found signal.
 - `MFA_REQUIRED` indicates a transaction reached an MFA challenge; `LOCKED_OUT` disclosure depends on the password policy. Interpret transaction states under that policy, not as a universal username/password oracle. (Okta [Authentication API](https://developer.okta.com/docs/reference/api/authn/))
 
-Audit-logged per attempt. Cap 20, or the lower authorized/lockout-safe limit.
+Audit-logged per attempt. Cap 20, or the lower lockout-safe limit.
 
 ---
 
@@ -147,7 +147,7 @@ Capture group = 12-digit account ID.
 ### Teams federation probe
 ```bash
 curl -sk -m 10 "https://login.microsoftonline.com/${D}/.well-known/openid-configuration" | jq -r '.issuer'
-curl -sk -m 10 "https://teams.microsoft.com/api/mt/emea/beta/users/<email>/externalsearchv3"
+curl -sk -m 10 -H "Authorization: Bearer $TEAMS_TOKEN" "https://teams.microsoft.com/api/mt/emea/beta/users/<email>/externalsearchv3"
 ```
 
 ### SharePoint subdomain probe

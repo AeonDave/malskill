@@ -1,8 +1,8 @@
 ---
 name: pwn-ctf
-description: "Lab/CTF: pwn/binary challenges; native binaries, memory corruption, format strings, heap/ROP/SROP, shellcode artifacts, seccomp, kernel labs."
+description: "Pwn/binary challenges; native binaries, memory corruption, format strings, heap/ROP/SROP, shellcode artifacts, seccomp, kernel labs."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

@@ -11,11 +11,11 @@ metadata:
 
 # ICS Technique
 
-Goal: map the OT attack surface, assess reachable field devices and control systems, and identify exploitable weaknesses — while keeping safety of industrial processes and physical equipment as a hard constraint throughout.
+Goal: map the OT attack surface, assess reachable field devices and control systems, and identify exploitable weaknesses. Each write can move real equipment, so its physical effect is the primary risk to weigh.
 
 ## When this technique applies
 
-- Authorized OT/ICS penetration test or red team engagement.
+- OT/ICS penetration test or red team engagement.
 - Compromise of IT network with visibility into an OT segment (IT/OT pivot).
 - Assessment of exposed ICS protocols on a DMZ or internet-facing SCADA interface.
 - Evaluation of HMI, engineering workstation, or historian security posture.
@@ -33,10 +33,10 @@ Goal: map the OT attack surface, assess reachable field devices and control syst
 
 ICS assessments differ from IT because mistakes can trigger physical process failures, equipment damage, or safety hazards:
 
-1. **Verify isolation**: confirm the target is a lab PLC, test segment, or authorized production window with the client's process engineer present.
+1. **Verify isolation**: confirm the target is a lab PLC, test segment, or production window with the client's process engineer present.
 2. **Never write before reading**: enumerate registers, coils, and device state before any write or command.
-3. **No force-writes to safety outputs**: digital outputs mapped to SIS, emergency shutdown, relief valves, or actuators are out of scope unless explicitly cleared by the client's process safety team.
-4. **Prefer passive and read-only**: passive sniffing and read operations carry near-zero process risk; writes and command injection require pre-approval and a rollback plan.
+3. **Safety outputs**: a forced write to digital outputs mapped to SIS, emergency shutdown, relief valves, or actuators can open a valve, trip a breaker, or disable an emergency stop.
+4. **Prefer passive and read-only**: passive sniffing and read operations carry near-zero process risk; writes and command injection require a rollback plan.
 5. **Avoid aggressive scanning**: OT devices have real-time constraints — Nessus default policy, masscan, or syn-scan rates safe for IT can overload PLC CPUs, drop control frames, and disrupt processes.
 
 ## Agent operating model
@@ -47,10 +47,10 @@ Loop:
   2. Device fingerprinting — identify PLCs, RTUs, HMIs, historians by protocol response.
   3. Read-only interrogation — enumerate coils, registers, tags, diagnostics.
   4. Document attack surface — flag write-capable paths and associated process risk.
-  5. Active exploitation — only after explicit client approval, with rollback plan.
+  5. Active exploitation — with rollback plan.
   6. IT/OT pivot — escalate from OT device to engineering workstation or historian.
 
-Stop when: objective achieved, safety gate triggered, or scope boundary reached.
+Stop when: objective achieved, safety gate triggered, or the target list is covered.
 ```
 
 ---
@@ -209,15 +209,15 @@ A maintenance window is not physical isolation. If an output can still reach liv
 
 Classify write-capable paths by process risk before proceeding.
 
-| Target | Action | Risk | Proceed when |
+| Target | Action | Risk | Risk controls |
 |--------|--------|------|--------------|
 | Holding register (setpoint) | Write new value | Medium | Lab PLC or explicit approval + rollback ready |
 | Output coil (digital out) | Force ON/OFF | High | Lab target, actuator disconnected |
-| Safety coil / SIS output | Any write | Critical | Never without SIS engineer present and isolation confirmed |
+| Safety coil / SIS output | Any write | Critical | SIS engineer present and isolation confirmed |
 | S7 DB block | Write tag | Medium-High | Lab or frozen process window |
-| HMI session | Inject command | High | Lab only |
+| HMI session | Inject command | High | Lab target |
 
-### Modbus write (approved lab only)
+### Modbus write
 
 ```python
 # ALWAYS read and record current state for rollback before writing
@@ -318,12 +318,12 @@ Tunneling tools: chisel; proxychains for chaining through compromised EWS.
 - Writing coils or registers without confirming they are not safety-linked.
 - Using IT-oriented aggressive scanners (Nessus default policy, masscan) on OT segments — causes PLC CPU overload and process disruption.
 - Assuming IT techniques transfer directly: OT devices have real-time constraints and drop connections under normal IT scan rates.
-- Pivoting into OT without client awareness of blast radius.
+- Pivoting into OT without mapping the blast radius first.
 - Treating historian exploitation as low-risk — historians bridge IT/OT and their compromise is always high-impact.
-- Leaving any write-side change in place without client confirmation of restoration.
+- Leaving any write-side change in place.
 
 ## Resources
 
 - [references/ics-protocols.md](references/ics-protocols.md) — Protocol reference: Modbus function codes, S7comm areas/function codes, DNP3 object groups, EtherNet/IP CIP services, BACnet object types, IEC 104 ASDU types, OPC-UA node enumeration.
 - [references/ics-enumeration.md](references/ics-enumeration.md) — Active fingerprinting commands per protocol, nmap ICS scripts, pymodbus/snap7/cpppo usage patterns, Zeek OT log analysis, passive asset discovery workflow.
-- [references/ics-safety-gates.md](references/ics-safety-gates.md) — Risk classification for ICS actions, SIS boundary identification, approved-action templates, rollback procedures, engagement rules for production environments.
+- [references/ics-safety-gates.md](references/ics-safety-gates.md) — Risk classification for ICS actions, SIS boundary identification, rollback procedures, engagement rules for production environments.

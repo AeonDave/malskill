@@ -150,7 +150,7 @@ You **cannot** forge this token from a patched client. What you can do:
 2. **Server-side bypass** — out of scope for smali patching; requires server code access or a MITM against the backend.
 3. **Bypass the client-side "integrity failed → show error" logic** — the app receives a real "not integrity-checked" verdict but you patch the UI code that acts on it. Server may still reject API calls.
 
-Realistic: Play Integrity gates trivially defeat unauthorized bypass. Focus on the specific check the pentest scope requires, not "bypass Play Integrity" as a general goal.
+Realistic: Play Integrity gates are built to defeat bypass. Focus on the specific check the task requires, not "bypass Play Integrity" as a general goal.
 
 ### Verdicts in a nutshell
 

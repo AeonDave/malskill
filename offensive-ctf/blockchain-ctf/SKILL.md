@@ -1,8 +1,8 @@
 ---
 name: blockchain-ctf
-description: "Lab/CTF: blockchain/Web3 challenges; Solidity/Vyper/EVM, ABI, storage, calldata, proxies, delegatecall, tx traces, Foundry/Hardhat."
+description: "Blockchain/Web3 challenges; Solidity/Vyper/EVM, ABI, storage, calldata, proxies, delegatecall, tx traces, Foundry/Hardhat."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local artifacts; authorized isolated lab and testnet environments."
+compatibility: "AgentSkills-compatible agents; local artifacts."
 metadata:
   author: AeonDave
   version: "1.1"
@@ -10,7 +10,7 @@ metadata:
 
 # Blockchain CTF
 
-Solve blockchain and Web3 lab tasks by treating source, bytecode, storage, transactions, and contract state as one evidence graph, then proving the shortest exploit sequence on a local fork or authorized testnet.
+Solve blockchain and Web3 lab tasks by treating source, bytecode, storage, transactions, and contract state as one evidence graph, then proving the shortest exploit sequence on a local fork or testnet.
 
 ## When this skill applies
 
@@ -27,7 +27,7 @@ Solve blockchain and Web3 lab tasks by treating source, bytecode, storage, trans
 4. For transaction-forensics tasks, reconstruct value flow before exploit logic: inputs, outputs, internal transfers, timing, amount correlation, change outputs, and likely peel-chain hops.
 5. Run static and symbolic checks only after compiler version and source/bytecode match are known.
 6. Build a local proof first when possible: anvil fork, Foundry test, Hardhat script, deterministic web3.py/ethers.js sequence, or read-only explorer trace.
-7. Execute the minimal authorized transaction sequence and validate by event logs, storage diff, balance changes, returned flag, transaction graph endpoint, or `isSolved`-style oracle.
+7. Execute the minimal transaction sequence and validate by event logs, storage diff, balance changes, returned flag, transaction graph endpoint, or `isSolved`-style oracle.
 
 ## Technique integration
 
@@ -64,9 +64,9 @@ Load these when the adjacent domain appears:
 - Compiler/bytecode: metadata stripping, optimizer/via-IR bugs, version-specific behavior; EIP-1153 transient storage (`tstore`/`tload`) is per-transaction — fine as a reentrancy lock, unsafe as cross-tx or cross-fork state.
 - ZK/governance: trusted setup equality mistakes, public input mismatch, replayed proofs, missing nullifier tracking.
 
-## Safety and scope gates
+## Safety controls
 
-- Treat mainnet-like or third-party contracts as read-only unless the user explicitly provides authorized lab/testnet scope.
+- Treat mainnet-like or third-party contracts as read-only; prove exploits on a local fork or testnet.
 - Never send value-bearing transactions without confirming target, chain ID, sender, value, and expected state diff.
 - Prefer local fork reproduction before any broadcast.
 - Stop after the success oracle is proven; do not drain extra funds or continue state manipulation.

@@ -29,7 +29,7 @@ Encode this as a hard check in your workflow and in report generation, not as a 
 
 ## The verification loop
 
-For each candidate finding, run these gates in order. Fail any gate → stay `candidate`.
+Apply the loop only to checks that can be repeated without irreversible changes or disruption. Otherwise preserve the original observation, its time and configuration; report `candidate — not replayed` and the reason. Do not repeat an effect solely to satisfy N/N or supply a replay command for it.
 
 ### 1. Name the oracle
 Pick a deterministic oracle for the vuln class — a check that returns a machine-decidable positive/negative from the target's *actual response*, not a pattern match on a scanner label. For an application-response oracle, reject a `200 OK` challenge or block attributed to the WAF/CDN rather than the application. A generic access-denied body alone does not establish its origin; compare known application and blocked baselines before counting the signal. If no oracle exists for the class, the finding cannot be `VERIFIED` (report it as `candidate — no oracle`). Load `references/oracle-catalog.md` for per-class oracles and their positive signals.
@@ -46,11 +46,10 @@ A bare signal (an out-of-band callback, a reflected marker) proves *reachability
 ### 5. Package the proof capsule
 Emit a portable, replayable capsule (see `references/proof-capsule.md`): oracle name, exact recipe (request/command + payload), positive signal, the N/N run log, the failing control, and a one-command replay. The client/dev replays it against the live target **without trusting your tool**. Multi-step chains bundle every proven hop into one capsule.
 
-## Scope safety during verification
+## Safety during verification
 
 - Host-lock active oracles (sqlmap, dalfox, raw HTTP) to the declared engagement target. Never feed third-party URLs scraped from page content into an attack oracle.
-- Re-running exploits is active testing — respect engagement posture (pentest vs red-team vs lab). Confirm before any oracle that is destructive or irreversible.
-- If an aggressive discovery sweep knocked the target over, **wait for it to answer again** before running oracles, or every gate fails and you falsely report zero.
+- An unavailable service produces an inconclusive result, not a negative control. A response after an outage does not establish that normal capacity has returned.
 
 ## Output contract
 

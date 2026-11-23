@@ -1,6 +1,6 @@
 # Bluetooth and BLE attack methodology
 
-Use this for authorized Bluetooth Classic and BLE assessments. Keep testing scoped by physical location, adapter address, device identity, and permitted interaction level.
+Use this for Bluetooth Classic and BLE assessments. Keep testing scoped by physical location, adapter address, device identity, and the interaction level in use (passive, active, MITM).
 
 ## 1) Assessment sequence
 
@@ -13,7 +13,7 @@ Follow a BSAM-style control flow:
 5. **Encryption**: verify sensitive GATT reads/writes require encrypted link after bonding.
 6. **Services/Application**: enumerate GATT/SDP, test access control, replay, OTA/DFU, command characteristics.
 
-Stop if interaction would affect out-of-scope nearby devices.
+Check first that the interaction cannot affect nearby devices outside the target set.
 
 ## 2) Discovery and identity checks
 
@@ -75,7 +75,7 @@ Interesting bug classes:
 
 ## 6) MITM and downgrade paths
 
-Try MITM only after passive + authorization gates:
+Try MITM only after passive enumeration:
 
 - Just Works devices are the easiest MITM candidates because there is no authenticated user verification.
 - Legacy pairing may allow downgrade or weaker key handling.

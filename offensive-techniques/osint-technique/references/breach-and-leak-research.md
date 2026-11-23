@@ -22,7 +22,7 @@ Breach and credential research reveals what data has been compromised and expose
 - **Input**: Email address or phone.
 - **Output**: Which breaches exposed that email (Equifax, Ashley Madison, LinkedIn, Target, etc.). Often shows what data was exposed (passwords, credit cards, SSNs, etc.).
 - **Pwned Passwords API**: k-anonymous search for plaintext passwords (check if a password has appeared in breaches).
-- **Free**: Web interface and API.
+- **Cost**: web search and the unauthenticated breach-catalogue endpoints are free; email and domain search APIs need a paid key.
 
 ### Dehashed
 
@@ -189,25 +189,11 @@ Threat actors publish breach data on "leak sites" to pressure victims into payin
 
 ---
 
-## Privacy & Legal Considerations
-
-### Responsible Disclosure
-
-- **If you discover** a company's exposed data, consider responsible disclosure (notify them confidentially before public disclosure).
-- **Ransomware leak data**: Do not download/retain without legal authority; accessing and storing may violate CFAA (US) or equivalent laws.
-
-### Personal Data Protection
-
-- **GDPR**: Carelessly handling leaked EU citizen data violates GDPR; document legal basis for processing.
-- **Consent**: Research ethics approval needed for large-scale data analysis.
-
----
-
 ## Anti-Patterns
 
 - **Assuming all breached data is accurate**: Infostealer logs may contain stale, incorrect, or honeypot credentials.
 - **Correlating two breaches = ownership**: Email in Breach A + Breach B does not prove same person; could be data aggregation error or coincidence.
-- **Ignoring dark web**: Public databases capture 10-20% of total breach data; critical intelligence often exists only on darknet.
+- **Ignoring dark web**: public breach databases are not exhaustive; critical intelligence often exists only on darknet.
 - **Over-reliance on HIBP**: Large, recent breaches (2024) may not yet be in HIBP; check Dehashed + IntelX.
 - **Not archiving links**: Breach databases and pastes disappear; screenshot and archive everything.
 
@@ -215,25 +201,26 @@ Threat actors publish breach data on "leak sites" to pressure victims into payin
 
 ## Hudson Rock Cavalier — free API recipe
 
-Free tier (no auth) returns sanitized counts + partial domains for stealer-log corroboration. Critical for confirming infostealer exposure without paid Dehashed/IntelX.
+No-auth endpoints return per-domain counts and per-machine records for stealer-log corroboration.
 
 ```bash
 DOMAIN=target.tld
 curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-domain?domain=${DOMAIN}"
 curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-email?email=user@${DOMAIN}"
-curl -s "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-url?url=https://app.${DOMAIN}/login"
 ```
 
-Response top-level fields: `total_corporate_services`, `total_user_services`, `total_stealers`, `employees_urls[]`, `clients_urls[]`. Subdomains in free tier are asterisk-redacted (`*.app.target.tld`). Rate-limit ~1 req/s.
+Response schema (observed 2026-11):
+- `search-by-domain`: `employees`, `users`, `third_parties` (infected-machine counts), `stealerFamilies{<family>: count}`, `last_employee_compromised` / `last_user_compromised`, `data.employees_urls[]` / `data.clients_urls[]` / `data.all_urls[]` (entries `{url, type, occurrence}`), `userPasswords` / `employeePasswords` strength histogram. Very large domains can exceed 90 s.
+- `search-by-email`: `total_corporate_services`, `total_user_services`, `stealers[]` per infected machine (`date_compromised`, `computer_name`, `operating_system`, masked `ip`, masked `top_logins` / `top_passwords`).
 
 **Pivot logic:**
-- `total_stealers > 0` → query Dehashed/IntelX for exact corpus.
-- `employees_urls[]` contains internal SSO/VPN URLs → mark as INTERNAL_LEAK; correlate with [identity-fabric-enumeration.md](identity-fabric-enumeration.md) for SSO targets.
-- `clients_urls[]` reveals customer-facing apps not in CT logs → feed to recon.
+- `employees > 0` → machines that Cavalier labels as corporate (employee) for the domain; the label is the provider's classification, not proof of who owns the device. Query Dehashed/IntelX for the full records.
+- `data.employees_urls[]` contains internal SSO/VPN URLs → mark as INTERNAL_LEAK; correlate with [identity-fabric-enumeration.md](identity-fabric-enumeration.md) for SSO targets.
+- `data.clients_urls[]` reveals customer-facing apps not in CT logs → feed to recon.
 
 ## SSO_EXPOSURE — legacy-mail-decommissioned pattern
 
-CRITICAL severity scenario: organization migrated mail to M365/Workspace but legacy SSO/IdP entries for old mail platform are still active and route to a system that was decommissioned (or worse, repurposed by another tenant).
+Scenario: organization migrated mail to M365/Workspace but legacy SSO/IdP entries for the old mail platform are still active and route to a system that was decommissioned (or worse, repurposed by another tenant).
 
 **Triggers (all 3 must hit):**
 1. `dig +short MX target.tld` → returns M365 (`*.mail.protection.outlook.com`) or Workspace (`*.google.com`) — proves current MX migrated.
@@ -243,7 +230,7 @@ CRITICAL severity scenario: organization migrated mail to M365/Workspace but leg
 **Impact:** stealer-captured creds for `<legacy-host>` may still authenticate to a now-third-party endpoint; or attacker registers the lapsed DNS to harvest stale auth attempts.
 
 **Severity tiering** (do not auto-assign CRITICAL):
-- **HIGH** — default when triggers 1+2+3 hold (legacy SSO surface + stealer evidence + dead DNS). Indicates abandoned auth surface worth investigating; hijackability not yet proven.
+- **Observation, no incident severity** — when only triggers 1+2+3 hold (legacy SSO surface + stealer evidence + dead DNS): they show an abandoned authentication surface worth investigating; current credential validity, password reuse and hijackability are not established.
 - **CRITICAL** — escalate only if a 4th confirmation holds: dangling CNAME points to a cloud service whose target name is currently registrable (e.g. S3 bucket NoSuchBucket, Heroku app `no such app`, Azure cloudapp NXDOMAIN), or an IP in an unallocated cloud pool. Document the takeover precondition explicitly.
 
 Report as `SSO_EXPOSURE: legacy-mail-decommissioned` per [attack-path-and-severity.md](attack-path-and-severity.md).

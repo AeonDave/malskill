@@ -8,7 +8,7 @@ Match the conclusion to what was established:
 
 - A reproduction against the scoped service supports the observed mechanism and impact under the recorded conditions.
 - A verified source/sink path with reachable input and relevant configuration can establish a code defect; deployed exploitability also depends on the target's actual build, configuration, and controls.
-- Scanner agreement alone does not confirm a vulnerability. Inspect the underlying evidence and verify the mechanism and preconditions for the claim through applicable source review or authorized testing.
+- Scanner agreement alone does not confirm a vulnerability. Inspect the underlying evidence and verify the mechanism and preconditions for the claim through applicable source review or direct testing.
 
 Downgrade when:
 

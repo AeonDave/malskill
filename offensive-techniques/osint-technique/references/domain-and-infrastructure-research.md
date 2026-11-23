@@ -23,7 +23,7 @@ CT logs are public append-only databases of all SSL/TLS certificates issued by t
 
 - **crt.sh** (crt.sh): Primary CT log search. Input domain → returns all certs issued for that domain + subdomains.
 - **Censys Certificates** (search.censys.io/certificates): Similar; allows advanced filtering.
-- **Rapid7 Open Data**: Regular snapshots of CT logs available for bulk analysis.
+- **Rapid7 Open Data (Sonar)**: bulk internet-wide scan data (FDNS, RDNS, TCP/UDP scans, HTTP(S) responses, X.509 metadata); no CT-log dataset.
 
 ### Research Workflow
 
@@ -240,5 +240,5 @@ Passive DNS aggregates historical DNS query logs. Query: domain name → returns
 
 - **Assuming single IP = single operator**: Shared hosting hosts 1000s of domains on one IP. Require additional pivots.
 - **Ignoring CNAME aliases**: Reverse DNS may show CDN or provider, not the actual target.
-- **Over-relying on reverse DNS**: Can be spoofed; validate with active checks (if in-scope).
+- **Over-relying on reverse DNS**: Can be spoofed; confirm with active checks only when direct contact is part of the engagement.
 - **Missing historical data**: Last week's IP matters; check PDNS history before concluding.

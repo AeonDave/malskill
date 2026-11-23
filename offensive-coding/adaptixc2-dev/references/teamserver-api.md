@@ -232,6 +232,6 @@ The interface also exposes payload-store, transfers, tunnels, terminals, pivots,
 - pair every tunnel/terminal pipe with close/error handling;
 - use frame methods as a coordinated state machine, not independent byte helpers;
 - preserve transfer accounting and close reason on every path;
-- treat credential/target writes as sensitive, explicitly authorized operations.
+- treat credential/target writes as sensitive operations.
 
 Do not copy a complete interface snapshot into an extender: it becomes stale and obscures the few capabilities the component should own.

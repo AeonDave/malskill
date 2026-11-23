@@ -10,7 +10,7 @@ metadata:
 
 # Hardware Technique
 
-Goal: gain privileged access to an embedded or peripheral device, extract and analyze its firmware, and identify actionable vulnerabilities — within authorized scope and with minimum physical damage risk.
+Goal: gain privileged access to an embedded or peripheral device, extract and analyze its firmware, and identify actionable vulnerabilities — with minimum physical damage risk.
 
 ## When this technique applies
 
@@ -18,7 +18,7 @@ Goal: gain privileged access to an embedded or peripheral device, extract and an
 - Physical access to a printer, kiosk, ATM, or network appliance for red team validation.
 - Post-procurement firmware analysis of a device before deployment.
 - Red team scenario requiring extraction of credentials, keys, or configuration from a physical device.
-- Authorized printer/peripheral exploitation via network-exposed management protocols.
+- Printer/peripheral exploitation via network-exposed management protocols.
 
 ## Boundary with other skills
 
@@ -47,7 +47,7 @@ Loop:
   4. Analyze: extract filesystem, find credentials/keys, identify vulnerabilities.
   5. Escalate or pivot as scoped.
 
-Stop when: objective achieved, all paths exhausted, or scope boundary reached.
+Stop when: objective achieved, all paths exhausted, or the target list is covered.
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: crypto-technique
-description: "Auth/lab: cryptanalysis methodology; RSA/ECC, PRNG, padding/oracle, symmetric issues, key/ciphertext/signature triage, proof workflow."
+description: "Cryptanalysis methodology; RSA/ECC, PRNG, padding/oracle, symmetric issues, key/ciphertext/signature triage, proof workflow."
 license: MIT
 compatibility: "Linux/macOS/WSL recommended; Python 3.9+; SageMath for advanced techniques."
 metadata:

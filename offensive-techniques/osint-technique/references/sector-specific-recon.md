@@ -25,7 +25,7 @@ Most recon generalizes; some sectors expose unique protocols/vendors worth flagg
 
 ## ICS / SCADA / OT
 
-> **Caution:** ICS/SCADA assets often run on legacy systems where even passive probing can disrupt operations. **Do NOT actively probe without explicit RoE coverage and OT-team coordination.**
+> A banner in a public index is evidence of what the index observed at its collection time, not of current device state. Direct queries generate traffic on the OT network; coordination alone does not establish that a controller can tolerate it. If current state is unknown, report it as unknown.
 
 | Protocol | Port | Notes |
 |---|---|---|
@@ -40,7 +40,7 @@ Most recon generalizes; some sectors expose unique protocols/vendors worth flagg
 - **Common findings:** unauth BACnet point list, Modbus register read, default HMI creds, public-facing engineering workstations.
 - **Sources:** Shodan (`port:502`, `tag:ics`), Censys, Onyphe.
 - **Detectability:** medium-to-high; ICS networks have low background traffic + heavy monitoring.
-- **OSINT scope:** stop at passive discovery (Shodan/Censys/Onyphe banner queries, public vendor portals, procurement records). Active protocol probing is OT/red-team scope, not OSINT.
+- **OSINT scope:** passive discovery (Shodan/Censys/Onyphe banner queries, public vendor portals, procurement records). Active protocol probing is OT/red-team scope, not OSINT.
 
 ## IoT / Consumer / SOHO
 
@@ -53,7 +53,6 @@ Most recon generalizes; some sectors expose unique protocols/vendors worth flagg
 
 ## Government
 
-- **`.gov` / `.mil`** require special scope discipline.
 - **FedRAMP / FISMA / DoD CMMC** — defensive posture above commercial baseline.
 - **Sources:** USAspending.gov, SAM.gov (System for Award Management), procurement records.
 - **Findings:** vendor of record disclosed in public contracts → adjacent-vendor pivot.

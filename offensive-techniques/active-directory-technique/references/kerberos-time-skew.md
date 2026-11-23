@@ -11,9 +11,9 @@ If you have `sudo` privileges and the network allows NTP traffic to the DC:
 
 ```bash
 # Sync local time directly to the Domain Controller
-sudo ntpdate -u <DC_IP_or_HOSTNAME>
+sudo chronyd -q 'server <DC_IP_or_HOSTNAME> iburst'
 
-# In case ntpdate is not installed, use systemd-timesyncd or simply date
+# chronyd -q sets the clock once and exits (ntpdate is no longer packaged on Kali); fallback: set the date by hand
 # Format: MMDDhhmmYYYY.ss (e.g. Nov 14 15:30 2024 -> 111415302024.00)
 sudo date -s "2024-11-14 15:30:00"
 ```

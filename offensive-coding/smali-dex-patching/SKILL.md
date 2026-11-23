@@ -1,18 +1,16 @@
 ---
 name: smali-dex-patching
-description: "Auth/lab dev: patch shipped Android APKs at the DEX/smali level — bypass root/emulator checks, disable SSL pinning, strip license verification, inject logging, or alter arbitrary managed-code logic. Covers apktool decompile/rebuild, smali syntax, common patch patterns (return-void, const/4 v0 + return, method-body neutralization), multi-DEX and split-APK handling, zipalign, and v1–v4 APK signing with apksigner and uber-apk-signer. Use for authorized RE, mobile pentest, and CTF work; not for tampering with software you don't own or aren't authorized to test."
+description: "Patch shipped Android APKs at the DEX/smali level — bypass root/emulator checks, disable SSL pinning, strip license verification, inject logging, or alter arbitrary managed-code logic. Covers apktool decompile/rebuild, smali syntax, common patch patterns (return-void, const/4 v0 + return, method-body neutralization), multi-DEX and split-APK handling, zipalign, and v1–v4 APK signing with apksigner and uber-apk-signer. Use for reverse engineering, mobile pentest, and CTF work."
 license: MIT
 compatibility: "apktool 2.11+ (smali/baksmali 3.0+), Android build-tools 34.0.0+ (apksigner, zipalign), Java 17+. Optional: uber-apk-signer (multi-scheme signing), jadx-cli / jadx-gui (Java view of DEX), apk-mitm (fast pinning bypass), apksigner v4 for idsig files, apk.sh for split-APK bundling."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Smali / DEX Patching
 
 Patch the managed-code side of an Android APK: locate the check, edit the smali, rebuild, re-sign, install. Pair with `mobile-technique` for triage and target identification, `offensive-tools/rev/jadx` for the readable Java view, `android-jni-ndk` when the check lives in a native `.so`, and `reversing-technique` for deep obfuscated / packed samples.
-
-Use only against APKs you are authorized to test.
 
 ---
 
@@ -24,7 +22,7 @@ Use only against APKs you are authorized to test.
 - CTF challenge distributes a single `.apk` file with the flag or a check to defeat.
 - Confirming a vulnerability class ("this crypto key is embedded") by editing the check-in-place.
 
-Not for: dynamic-only findings, native-code-only checks (use JNI/NDK skill + Frida + Ghidra), or app resigning without authorization on Play-distributed software.
+Not for: dynamic-only findings, native-code-only checks (use JNI/NDK skill + Frida + Ghidra), or re-signing third-party Play-distributed apps.
 
 ---
 

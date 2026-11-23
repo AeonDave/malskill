@@ -2,7 +2,7 @@
 name: game-technique
 description: "Auth assessment: game security methodology; client integrity, anti-cheat, protocol replay, save formats, DRM/license checks, memory analysis."
 license: MIT
-compatibility: "Linux/Windows; Cheat Engine (Windows), scanmem (Linux), Python 3, Ghidra/radare2, Wireshark; authorized isolated game environments required."
+compatibility: "Linux/Windows; Cheat Engine (Windows), scanmem (Linux), Python 3, Ghidra/radare2, Wireshark."
 metadata:
   author: AeonDave
   version: "1.0"
@@ -10,14 +10,14 @@ metadata:
 
 # Game Technique
 
-Goal: systematically assess game client security in an authorized context — identifying exploitable weaknesses in memory protection, network validation, license enforcement, or save file integrity — and produce findings that map to concrete client-side or server-side remediations.
+Goal: systematically assess game client security — identifying exploitable weaknesses in memory protection, network validation, license enforcement, or save file integrity — and produce findings that map to concrete client-side or server-side remediations.
 
 ## When this technique applies
 
-- Authorized game client security assessment or bug bounty engagement targeting a specific game title.
+- Game client security assessment or bug bounty engagement targeting a specific game title.
 - Red team scenario requiring demonstration that game anti-cheat can be bypassed.
 - Assessment of game server economic integrity (can scores, currency, or items be spoofed?).
-- License or DRM security review (authorized by the publisher for internal audit).
+- License or DRM security review.
 - Game mod/plugin security assessment (does the game safely load third-party content?).
 
 ## Boundary with other skills
@@ -27,13 +27,11 @@ Goal: systematically assess game client security in an authorized context — id
 - **Game backend/API**: REST API score submission, OAuth, economy endpoints → `web-exploit-technique`.
 - **Mobile game apps**: Android APK, iOS IPA game apps → `mobile-technique`.
 
-## Safety and authorization
+## Operational scope
 
-Game security testing without explicit written authorization violates terms of service and may violate computer fraud laws in many jurisdictions:
-- Only test on accounts you own or on isolated test environments provided by the publisher.
-- Never deploy cheats against live competitive multiplayer unless authorized to do so in a controlled research environment.
-- Network-side testing (packet manipulation, score spoofing) against production game servers requires explicit written authorization from the publisher/operator.
-- Anti-cheat bypass research has dual-use implications — findings should be disclosed to the publisher, not weaponized or distributed.
+- Test targets: your own accounts, or isolated test environments provided by the publisher.
+- Cheats in live competitive multiplayer change other players' sessions and trigger anti-cheat enforcement; keep them on the isolated targets above.
+- Network-side testing (packet manipulation, score spoofing) against production game servers hits live shared infrastructure: accepted packets change production state.
 
 ## Initial triage
 
@@ -113,7 +111,7 @@ sudo scanmem --pid=$(pgrep game_binary)
 # > set 1=999999 → set match-id 1 to 999999 (or: write i32 0x7fff1234 999999)
 
 # Python: direct /proc/<pid>/mem manipulation
-python3 - <<'EOF'
+python3 - <pid> <hex_addr> <<'EOF'
 import struct, sys
 
 pid = int(sys.argv[1])
@@ -149,7 +147,7 @@ r2 -A game_binary
 # 4. Dongle/HWID check → patch HWID comparison to always match
 ```
 
-**Patch JNE to JMP (x86/x64) — universal bypass:**
+**Patch JNE to JMP (x86/x64) — bypasses the located short (rel8) conditional branch:**
 ```python
 # After finding the failing comparison+jump at offset 0x1234
 data = bytearray(open('game.exe','rb').read())
@@ -270,9 +268,9 @@ open('save_fixed.dat','wb').write(data)
 
 ---
 
-## Phase 6 — Anti-cheat analysis (authorized research)
+## Phase 6 — Anti-cheat analysis
 
-Understanding anti-cheat mechanisms for authorized bypass research or security audits.
+Understanding anti-cheat mechanisms for bypass research or security audits.
 
 ```bash
 # Process-level anti-cheat (userspace)
@@ -283,17 +281,16 @@ Understanding anti-cheat mechanisms for authorized bypass research or security a
 
 # Kernel-level anti-cheat (EasyAntiCheat, BattlEye, Vanguard)
 # - Loads a kernel driver → full system visibility
-# - Cannot be bypassed from userspace without kernel access
-# Authorized research approach:
+# Research approach:
 #   - Analyze driver in isolated VM with kernel debugger attached
 #   - Map IoControl codes and communication protocol with userspace agent
 
-# Common evasion primitives (for authorized research context):
+# Common evasion primitives:
 # DLL injection → hijack loaded DLL via DLL sideloading or search-order hijack
 # Manual mapping → load DLL without going through LoadLibrary (bypasses DLL list scanning)
 # Hypervisor-level → run game in hypervisor, hide cheat in lower ring
 
-# For authorized assessment, focus on:
+# Focus on:
 # - Which game state is validated server-side vs client-side?
 # - Can the anti-cheat be detected without triggering it?
 # - Does the anti-cheat protect integrity of game binaries (code signing check)?
@@ -304,7 +301,7 @@ Understanding anti-cheat mechanisms for authorized bypass research or security a
 ## Quality gates
 
 - Game binary analysis performed on isolated copy, original preserved.
-- Network testing performed against authorized test server or owned account only.
+- Network testing performed against test server or owned account only.
 - Patch applied to copy, original binary unchanged.
 - All session captures and extracted data handled per engagement confidentiality rules.
 - Anti-cheat research confined to isolated VM — no interaction with live competitive servers.
@@ -313,7 +310,7 @@ Understanding anti-cheat mechanisms for authorized bypass research or security a
 
 ## Anti-patterns
 
-- Testing memory manipulation against a live game with anti-cheat detection — triggers bans, alerts publisher security team, may be illegal without authorization.
+- Testing memory manipulation against a live game with anti-cheat detection — triggers bans, alerts publisher security team.
 - Distributing working cheats, bypass scripts, or cracked binaries outside the engagement scope.
 - Sharing session captures or anti-cheat analysis with third parties.
 - Assuming a client-side score is also accepted server-side without testing the actual server validation.

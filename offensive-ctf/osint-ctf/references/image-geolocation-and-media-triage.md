@@ -124,7 +124,7 @@ Confidence labels:
 
 | Scenario | Tool / approach |
 |---|---|
-| Face/person identification | PimEyes, FaceCheck.id (authorized use only) |
+| Face/person identification | PimEyes, FaceCheck.id |
 | Aircraft in image | FlightAware, ADS-B Exchange (cross-reference tail number) |
 | Ship/vessel | MarineTraffic (cross-reference flag, hull color, markings) |
 | Broadcast/stream geolocation | Examine on-screen clocks, channel logos, language |

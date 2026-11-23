@@ -1,6 +1,6 @@
 # Poisoning, membership inference, and extraction workflows
 
-Load only for one of these authorized model/data workflows. This is not a catalogue of ART attacks. API and requirements below are source-checked against [ART 1.20.1, commit `cbc47a890a191809baa292992761030e7f46ab18`](https://github.com/Trusted-AI/adversarial-robustness-toolbox/tree/cbc47a890a191809baa292992761030e7f46ab18); re-check them against the installed release.
+Load only for one of these workflows. This is not a catalogue of ART attacks. API and requirements below are source-checked against [ART 1.20.1, commit `cbc47a890a191809baa292992761030e7f46ab18`](https://github.com/Trusted-AI/adversarial-robustness-toolbox/tree/cbc47a890a191809baa292992761030e7f46ab18); re-check them against the installed release.
 
 ## Poisoning: construct, train, then evaluate separately
 
@@ -20,7 +20,7 @@ In 1.20.1, the default `attack_model_type="nn"` path imports PyTorch during `fit
 
 `KnockoffNets(classifier=victim, nb_stolen=..., sampling_strategy=..., ...)` requires a `BaseEstimator` and `ClassifierMixin`; `extract(x, thieved_classifier=...)` also requires a supplied ART classifier for the stolen model. ART's random selection chooses up to `min(nb_stolen, len(x))` candidate rows without replacement; adaptive mode requires `y`, while random mode warns that supplied `y` is unused. `nb_stolen` is a declared target-query budget, not a measurement of all external transport, retries, or provider billing. Count and enforce the real victim calls at the API boundary.
 
-Before running, verify the candidate pool is permitted, query authorization and cap are explicit, and the stolen estimator accepts the fit contract this implementation uses: its `fit` calls pass `batch_size`, `nb_epochs`, and `verbose`. Do not assume an arbitrary sklearn estimator accepts these extra arguments. In 1.20.1 the victim prediction is reduced with `argmax` unless `use_probability=True`; with that option the raw `predict` output is passed onward. The source docstring describes logit outputs, so check this output/label contract for the actual victim and stolen estimator rather than inferring it from `use_probability`'s name. Evaluate agreement on an independent held-out set and report the actual victim query count and output type.
+Before running, verify the candidate pool, query budget and cap are explicit, and the stolen estimator accepts the fit contract this implementation uses: its `fit` calls pass `batch_size`, `nb_epochs`, and `verbose`. Do not assume an arbitrary sklearn estimator accepts these extra arguments. In 1.20.1 the victim prediction is reduced with `argmax` unless `use_probability=True`; with that option the raw `predict` output is passed onward. The source docstring describes logit outputs, so check this output/label contract for the actual victim and stolen estimator rather than inferring it from `use_probability`'s name. Evaluate agreement on an independent held-out set and report the actual victim query count and output type.
 
 Source: [`knockoff_nets.py`](https://github.com/Trusted-AI/adversarial-robustness-toolbox/blob/cbc47a890a191809baa292992761030e7f46ab18/art/attacks/extraction/knockoff_nets.py).
 

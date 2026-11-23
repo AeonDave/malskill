@@ -57,7 +57,7 @@ import torch
 torch.save({"model_state_dict": P()}, "malicious.ckpt")
 ```
 
-`weights_only=True` is the modern guard (default in PyTorch ≥2.6) but is not absolute: CVE-2025-32434 bypassed it, and CVE-2026-24747 corrupts memory through `SETITEM`/`SETITEMS` opcodes on non-dict types even under the safe unpickler. If the challenge pins an old/vulnerable PyTorch, the safe flag is still in scope.
+`weights_only=True` is the modern guard (default in PyTorch ≥2.6) but is not absolute: CVE-2025-32434 bypassed it, and CVE-2026-24747 corrupts memory through `SETITEM`/`SETITEMS` opcodes on non-dict types even under the safe unpickler (fixed in PyTorch 2.10.0). If the challenge pins an old/vulnerable PyTorch, the safe flag is still in scope.
 
 ## Other format-specific sinks
 

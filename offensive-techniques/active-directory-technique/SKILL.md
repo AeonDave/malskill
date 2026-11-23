@@ -36,7 +36,7 @@ Before taking action, classify the starting point and choose the shortest low-no
 - **Starting state**: do you have a shell on a domain host, a low-priv domain credential, relayed auth, or only network reachability?
 - **First questions**: what domain are you in, what are the lockout rules, is SMB signing enforced, is AD CS present, and what high-value principals or paths already exist?
 - **Immediate actions**: confirm domain context, collect the minimum graph/evidence needed to rank attack paths, then choose one path at a time.
-- **Tool-family direction**: start with AD graph/enumeration skills (`bloodhound`, `sharphound`, `powerview`, `enum4linux-ng`); use lateral-movement tools such as NetExec and Impacket only for scoped, authorized checks.
+- **Tool-family direction**: start with AD graph/enumeration skills (`bloodhound`, `sharphound`, `powerview`, `enum4linux-ng`); use lateral-movement tools such as NetExec and Impacket for targeted checks.
 - **Escalation rule**: prefer the shortest confirmed privilege path over broad spraying or host-by-host movement.
 
 ## Agent operating model

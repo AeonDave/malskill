@@ -1,6 +1,6 @@
 ---
 name: stack-spoofing-dev
-description: "Auth/lab dev: Windows call-stack research; unwind metadata, synthetic frames, NtContinue, thread-pool traces, gadget constraints."
+description: "Windows call-stack research; unwind metadata, synthetic frames, NtContinue, thread-pool traces, gadget constraints."
 license: MIT
 compatibility: "x86-64 Windows 10 1809 through Windows 11 24H2 / Server 2022+; Classical thresholds assume Win10; Win11 22H2+ requires empirical re-tuning (see frame-math reference)."
 metadata:

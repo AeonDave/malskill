@@ -87,9 +87,9 @@ Code-block extraction:
 5. Hostnames from code → upsert as `subdomain` assets.
 
 ### Quota
-- 30 req/day no key
+- 300 req/day without a key (`quota_max` returned by the live API; the docs' default is 10,000)
 - 10,000 req/day with free API key
-- Throttle: 2s minimum between calls
+- Throttle: 30 req/s per IP; honor the `backoff` field returned in responses
 
 ---
 
@@ -132,17 +132,17 @@ Severity mapping in `references/attack-path-and-severity.md` §4 (MED-HIGH).
   ```
   GitHub: `"join.slack.com/t/<target-stem>" filename:README`
   X/Reddit search for shared invite links.
-- Workspace existence (passive probe, no auth): `https://<slug>.slack.com/api/auth.test` returns `{"ok":false,"error":"invalid_auth"}` for live workspaces vs `team_not_found` / 404 otherwise. Does **not** require joining.
-- **Finding (passive):** open invite link that bypasses normal member-approval is itself the OSINT finding → MED severity (workspace boundary control failure). **Do not join the workspace** — document the URL and access-control gap; live participation is out of scope for OSINT and requires explicit RoE.
+- Workspace existence (passive probe, no auth): `https://<slug>.slack.com/api/auth.test` without a token returns `not_authed` for live and non-existent subdomains alike, so the response does not distinguish them.
+- **Finding (passive):** open invite link that bypasses normal member-approval is itself the OSINT finding → MED severity (workspace boundary control failure). Joining the workspace is live participation, out of scope for OSINT — document the URL and access-control gap.
 
 ### 4.2 Discord
 - No central public directory.
 - DiscordServers.com, Discord.me, Top.gg — third-party directories.
 - Dorks: `site:discord.gg "{target}"`, `site:discord.com "{target}"`.
 - Resolve invite: `GET https://discord.com/api/v9/invites/<token>?with_counts=true` → server name/ID/member count/channel info.
-- Bot enum: if a bot token (catalog §17 #47) is found, `getMe` returns bot identity + servers (read-only).
+- Bot enum: with a bot token (#47 in the secret catalog), `GET /users/@me` returns the bot's own User object; it lists no servers.
 
-### 4.3 Telegram (already in §38)
+### 4.3 Telegram
 - TGStat (channel analytics + search)
 - Telemetr (channel growth + overlaps)
 - Combot (group analytics)
@@ -152,7 +152,7 @@ Severity mapping in `references/attack-path-and-severity.md` §4 (MED-HIGH).
 ### 4.4 Microsoft Teams (federation)
 - Federation check via Microsoft Graph (auth required).
 - Open-federation default = anyone can chat target's users via `<email>@<target>` lookup.
-- Detail: `osint-technique/SKILL.md` §11.10 + `references/identity-fabric-enumeration.md` §7.
+- Detail: `osint-technique/SKILL.md` + `references/identity-fabric-enumeration.md` §7.
 
 ### 4.5 Mattermost / Rocket.Chat / self-hosted
 - Patterns: `https://mattermost.<target>.com`, `chat.<target>`.
@@ -162,6 +162,6 @@ Severity mapping in `references/attack-path-and-severity.md` §4 (MED-HIGH).
 ---
 
 ## 5. Hard rules
-- Postman + Stack Exchange searches are read-only public APIs — never authenticate against target workspace.
-- Don't join Slack/Discord workspaces during recon; document the open-invite finding instead.
-- Bot token enumeration: stop at identity check, do not call any send/post method.
+- Postman + Stack Exchange searches are read-only public APIs.
+- The open-invite link is the Slack/Discord finding; joining the workspace is live participation.
+- Bot token enumeration: identity check is read-only; send/post methods have side effects on the workspace.

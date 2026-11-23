@@ -85,7 +85,7 @@ trainer = DPOTrainer(
 trainer.train()
 ```
 
-Offensive note: a harmful preference dataset (e.g. toxic-DPO) is a **training-based uncensoring** route — the alternative to training-free [`abliteration`](../abliteration/SKILL.md). The same authorization and poisoning caveats apply.
+Offensive note: a harmful preference dataset (e.g. toxic-DPO) is a **training-based uncensoring** route — the alternative to training-free [`abliteration`](../abliteration/SKILL.md). The same poisoning caveats apply.
 
 ## Unlearning (post-training removal)
 

@@ -10,7 +10,7 @@ metadata:
 
 # abliteration
 
-Refusal (and other aligned behaviors) in transformer LLMs is mediated by low-dimensional directions in the residual stream (Arditi et al. 2024, across 13 chat models up to 72B). Editing those directions changes behavior **without training** — no dataset, no gradient steps, cheap compute, and permanent weights. This is the training-free counterpart to [`model-finetuning`](../model-finetuning/SKILL.md). Authorized/lab use only: it deliberately strips safety alignment from a model.
+Refusal (and other aligned behaviors) in transformer LLMs is mediated by low-dimensional directions in the residual stream (Arditi et al. 2024, across 13 chat models up to 72B). Editing those directions changes behavior **without training** — no dataset, no gradient steps, cheap compute, and permanent weights. This is the training-free counterpart to [`model-finetuning`](../model-finetuning/SKILL.md). It strips safety alignment from a model.
 
 ## The core technique
 

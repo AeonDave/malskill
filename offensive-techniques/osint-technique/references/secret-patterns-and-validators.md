@@ -63,7 +63,7 @@ Run **most-specific first** so typed patterns don't get pre-empted by generic on
 
 ### False-positive notes
 - 22/23/29 fire on examples + docs constantly — always inspect surrounding context (`README.md` example vs `.env`).
-- 16, 11 are noisy by design (low severity reflects it).
+- 16 and 11 are noisy by design; 11 is rated LOW for that reason, 16 (Mailgun loose) still rates HIGH by pattern.
 - 24 catches monitoring URLs + CI debug.
 - 7 length is GitHub-spec — be skeptical of off-length matches.
 - 35, 43, 45 require contextual sibling; do not fire standalone.
@@ -72,7 +72,7 @@ Run **most-specific first** so typed patterns don't get pre-empted by generic on
 
 ## 2. Validators (read-only)
 
-All endpoints below are **GET/POST without side effects**. Never use a validated cred to create/modify/delete/send.
+All endpoints below are **GET/POST without side effects**. Keep it that way: `create`/`modify`/`delete`/`send` calls with a validated cred change the owner's account.
 
 ### 2.1 Postman PMAK
 ```
@@ -109,7 +109,7 @@ GET https://api.anthropic.com/v1/models
 x-api-key: sk-ant-api03-...
 anthropic-version: 2023-06-01
 ```
-200 → live. 403 `org_disabled` → key valid, org disabled. Detect: low.
+200 → live. 403 `permission_error` → key authenticated but not permitted for this endpoint. Detect: low.
 
 ### 2.6 OpenAI
 ```
@@ -154,10 +154,9 @@ Regions: `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, etc. Detect: low 
 
 ### 2.11 Hard rules
 - Read-only endpoint only.
-- Never create/modify/delete/send.
 - Tag detectability + `checked_at` UTC.
 - RoE forbids → `validation_skipped_by_policy`, stop, document.
-- Root AWS keys, infra-write GitHub PATs, admin Slack tokens → flag operator, do not validate.
+- Root AWS keys, infra-write GitHub PATs, admin Slack tokens → flag the operator, do not validate: root-key API calls are logged as root usage (CloudTrail, GuardDuty `Policy:IAMUser/RootCredentialUsage`), and a mistyped call with the other two changes the owner's account.
 
 ---
 
@@ -211,12 +210,12 @@ curl -sk -m 10 -H "$H" "https://api.github.com/repos/$REPO/actions/secrets"
 
 ### 3.3 Slack — workspace enum
 ```bash
-H="Authorization: Bearer xoxb-..."
+H="Authorization: Bearer xoxp-..."   # users.identity requires a user token
 curl -sk -m 10 -H "$H" -X POST https://slack.com/api/users.identity | jq .
 curl -sk -m 10 -H "$H" -X POST "https://slack.com/api/conversations.list?types=public_channel,private_channel,mpim,im&limit=200" | jq '.channels[] | {id, name, is_private}'
 curl -sk -m 10 -H "$H" -X POST https://slack.com/api/team.info | jq .
 curl -sk -m 10 -H "$H" -X POST "https://slack.com/api/users.list?limit=100" | jq '.members[] | {name, real_name, is_admin}'
-# DO NOT: chat.postMessage, files.upload, conversations.invite
+# DO NOT (write-side, side effects on the workspace): chat.postMessage, files.upload, conversations.invite
 ```
 
 ### 3.4 JWT triage
@@ -255,7 +254,7 @@ H="x-api-key: $KEY"; A="anthropic-version: 2023-06-01"
 curl -sk -m 10 -H "$H" -H "$A" https://api.anthropic.com/v1/models | jq '.data[].id'
 # admin-scoped only:
 curl -sk -m 10 -H "$H" -H "$A" https://api.anthropic.com/v1/organizations/usage_report | jq .
-# DO NOT: send completion requests against org budget
+# DO NOT: completion requests draw on the org budget
 ```
 
 ### 3.7 OpenAI — usage enum

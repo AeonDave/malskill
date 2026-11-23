@@ -1,6 +1,6 @@
 ---
 name: fuzzing-technique
-description: "Auth/lab: fuzzing methodology; target model, oracle, harness quality, corpus, campaign triage for parsers, binaries, protocols, APIs."
+description: "Fuzzing methodology; target model, oracle, harness quality, corpus, campaign triage for parsers, binaries, protocols, APIs."
 license: MIT
 compatibility: "Linux/Windows/macOS; source-available and binary-only targets; local and remote environments."
 metadata:

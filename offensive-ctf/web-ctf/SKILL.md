@@ -1,8 +1,8 @@
 ---
 name: web-ctf
-description: "Lab/CTF: web challenges; HTTP apps, APIs, browser clients, auth, uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, smuggling."
+description: "Web challenges; HTTP apps, APIs, browser clients, auth, uploads, SSRF, XSS, SQLi, SSTI, XXE, deserialization, smuggling."
 license: MIT
-compatibility: "AgentSkills-compatible agents; local challenge artifacts; authorized training and lab environments."
+compatibility: "AgentSkills-compatible agents; local challenge artifacts."
 metadata:
   author: AeonDave
   version: "1.1"

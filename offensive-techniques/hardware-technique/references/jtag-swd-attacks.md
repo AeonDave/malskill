@@ -83,8 +83,8 @@ For SPI flash on board (separate from MCU): desolder or in-circuit clip → `fla
 
 | MCU family | Protection | Bypass notes |
 |------------|------------|--------------|
-| STM32 RDP Level 1 | Debug disabled, mass erase allowed | RDP1→RDP0 via voltage glitch on `bootrom` RDP check (ChipWhisperer/PicoGlitcher, well-documented) |
-| STM32 RDP Level 2 | Nominally permanent | RDP2→RDP1 downgrade reproduced via voltage glitching (SEC-Consult SECGlitcher 2020; voidstarsec CSW-2024 low-cost EMFI; SySS STM32L05 2023). Then read as RDP1. Not effective on newest STM32 with dual-glitch mitigations. |
+| STM32 RDP Level 1 | Debug disabled, mass erase allowed | RDP1→RDP0 via voltage glitch on the bootrom RDP check (ChipWhisperer/PicoGlitcher, well-documented). SySS (2025, STM32L05): a glitch during the downgrade skips the mass erase; a mistimed attempt erases the flash. |
+| STM32 RDP Level 2 | Nominally permanent | RDP2→RDP1 by faulting the boot-time RDP check in the bootrom, then read as RDP1 with a second fault on the System Memory bootloader read command. Demonstrated: VoidStar EMFI on STM32F4 (CSW 2024); SEC Consult SECGlitcher (2024) describes the RDP2 path and demos the same check at RDP1. Not effective on newest STM32 with dual-glitch mitigations. |
 | Nordic nRF52 APPROTECT | SWD blocked | Classic bypass: single voltage glitch on APPROTECT read (LimitedResults 2020). Improved APPROTECT in nRF52840 rev3 (Fx0), nRF52832 rev3 (Gx0), nRF52833 rev2 (Bx0) etc. hardens the single-glitch path; still bypassable per 2023–2024 research (Matias Soler nRF52832 bypass; O'Reilly *Microcontroller Exploits* ch.16, 2024). Confirm build code before campaign. |
 | ESP32 eFuse Secure Boot | Encrypted flash | Side-channel on early revisions; current revisions hardened |
 | NXP LPC CRP1/CRP2/CRP3 | Tiered | CRP1 keeps ISP; can sometimes read via ISP commands |

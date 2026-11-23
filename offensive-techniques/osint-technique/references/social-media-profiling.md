@@ -6,7 +6,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### X (Twitter)
 
-- **snscrape** (CLI): broken for X since mid-2023 (login-wall; author will not add auth). Only viable against Wayback-archived pages; live public-tweet scraping requires paid X API (Basic $200/mo min) or logged-in tooling.
+- **snscrape** (CLI): broken for X since mid-2023 (login-wall; author will not add auth). Only viable against Wayback-archived pages; live public-tweet scraping requires paid X API (pay-per-use credits) or logged-in tooling.
 - **Advanced Search**: `from:@username since:2024-01-01 until:2024-12-31` for time scoping.
 - **Wayback Machine**: Archive.org snapshots; useful for deleted tweets.
 - **Follower analysis**: Mutual followers, friends of friends → social graph.
@@ -41,7 +41,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 ### Mastodon & Fediverse
 
 - **FediSearch** (fedisearch.skorpil.cz): Cross-instance public post search.
-- **Fedifinder**: original (`fedifinder.glitch.me`) discontinued 2023-12 (X API loss); Glitch dropped free hosting Aug 2025. Successor at `fedifinder.party`.
+- **Fedifinder**: original (`fedifinder.glitch.me`) discontinued 2023-12 (X API loss); Glitch ended app hosting on 2025-07-08. Successor at `fedifinder.party`.
 - **Instance enumeration**: [Fediverse Observer](https://fediverse.observer/) lists instances + moderation policies.
 - **WebFinger**: `https://<instance>/.well-known/webfinger?resource=acct:<user>@<instance>` returns ActivityPub actor URL.
 
@@ -50,7 +50,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 - **Handle resolver**: `https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=<handle>` → DID.
 - **Identity document**: `https://plc.directory/<did>` shows handle history, PDS endpoint.
 - **Firesky** (firesky.tv): Real-time keyword/hashtag monitoring.
-- **SkyView** (bsky.jazco.dev): Follower graphs, engagement analysis.
+- **Atlas** (bsky.jazco.dev; previously SkyView): engagement-based social graph for Bluesky.
 
 ### Discord
 
@@ -60,14 +60,12 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### TikTok
 
-- **Tokboard** (tokboard.com): Trend + profile analytics.
 - **Profile geolocation**: Location tags in videos.
 - **Trending sounds**: May identify creator location by sound origin.
 
 ### Reddit
 
-- **Reveddit**: main website broken by Reddit's removal-API changes; only the `reveddit real-time` browser extension still tracks removals, and only for accounts you subscribe to (no arbitrary lookup).
-- **RedTrack.social** (redtrack.social): User history, post analytics.
+- **Reveddit** (reveddit.com): client-side app, maintained as of 2026-11. Add `ve` to a reddit URL (`reveddit.com/user/<name>`, `/r/<sub>`, `/domain/<d1,d2>`) to see removed content; user pages are compared against the same content shown elsewhere on reddit, subreddit pages against archived Pushshift data. Reads run from your browser against reddit.com or oauth.reddit.com with your own API key. The **Reveddit Real-Time** extension notifies on removals/locks for your logged-in account and items you subscribe to, and scans an open thread or profile for mod removals while signed in.
 - **Subreddit analysis**: Communities reveal interests, beliefs, affiliations.
 
 ---
@@ -102,7 +100,7 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 - Platforms delete content (tweets, stories, posts).
 - Users delete/deactivate accounts.
-- Screenshots can be edited; archives are tamper-evident.
+- Screenshots can be edited; archive captures (WARC, SingleFile) are ordinary files and can be edited too — hash the capture and record its retrieval time.
 - Reproducibility: timestamp + URL + hash.
 
 ---
@@ -117,9 +115,9 @@ Social media platforms host billions of public profiles, posts, comments, and me
 
 ### API Changes & Access Restrictions
 
-- **X (Twitter)**: API paywalled (Basic $200/mo min); snscrape broken since mid-2023. Public-data collection now requires paid API, logged-in scrapers (ToS/legal risk), or Wayback for historical.
-- **Instagram, TikTok**: No official API for scraping; rely on web scraping (against ToS) or Picuki-like alternatives.
-- **LinkedIn**: Officially discourages scraping; limited API.
+- **X (Twitter)**: API paywalled (pay-per-use credits); snscrape broken since mid-2023. Public-data collection now requires paid API, logged-in scrapers, or Wayback for historical.
+- **Instagram, TikTok**: No official API for scraping; rely on web scraping or Picuki-like alternatives.
+- **LinkedIn**: no people-search API (OpenID Connect and the Marketing APIs cover the signed-in member and pages they administer). Logged-out requests get public profile pages (`/in/<slug>`) and company pages; people search and feeds redirect to the authwall.
 
 ### Geoblocking & Language
 
