@@ -5,12 +5,14 @@ license: MIT
 compatibility: "Python/JS; Windows/Linux/macOS/Android/iOS."
 metadata:
   author: AeonDave
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Frida
 
 > **Frida 17+ API**: Resolve exports via module instances (`Process.getModuleByName(name).getExportByName(sym)`) or `Module.getGlobalExportByName(sym)`; use NativePointer methods (`ptr.readByteArray()`, `ptr.writeByteArray()`).
+
+For Frida 17+, custom agents loaded through bindings or Gadget script mode must bundle the language bridge they use (for example `frida-java-bridge`). The `frida` REPL and `frida-trace` supplied by frida-tools include bridges; their success does not prove a raw `session.create_script()` has `Java`. See [Frida 17 runtime changes](https://frida.re/news/2025/05/17/frida-17-0-0-released/).
 
 Dynamic instrumentation — inject JavaScript into running processes to hook, trace, and modify behavior at runtime.
 
@@ -157,28 +159,22 @@ Interceptor.attach(Process.getModuleByName('bcrypt.dll').getExportByName('BCrypt
 });
 ```
 
-### Android — bypass SSL pinning
+### Android — instrument TLS trust
 
 ```javascript
+// Default Conscrypt trust: hook every overload; NSC <pin-set> checks run afterwards on the returned chain
 Java.perform(() => {
-    const TrustManager = Java.registerClass({
-        name: 'com.frida.TrustManager',
-        implements: [Java.use('javax.net.ssl.X509TrustManager')],
-        methods: {
-            checkClientTrusted(chain, authType) {},
-            checkServerTrusted(chain, authType) {},
-            getAcceptedIssuers() { return []; }
-        }
+    const TMI = Java.use('com.android.org.conscrypt.TrustManagerImpl');
+    TMI.checkTrustedRecursive.overloads.forEach(ov => {
+        ov.implementation = function () {
+            console.log(`[tls] checkTrustedRecursive host=${arguments[3]}`);
+            return ov.apply(this, arguments);     // to accept the chain: return an empty ArrayList
+        };
     });
-    const SSLContext = Java.use('javax.net.ssl.SSLContext');
-    const ctx = SSLContext.getInstance('TLS');
-    ctx.init(null, [TrustManager.$new()], null);
-    SSLContext.getInstance.overload('java.lang.String').implementation = function(protocol) {
-        return ctx;
-    };
-    console.log('[bypass] SSL pinning disabled');
 });
 ```
+
+This covers default `TrustManagerFactory` managers only. For app-supplied managers, OkHttp, NSC pins, native stacks and WebView, load [Android/iOS instrumentation](references/android-ios.md) and pick the hook point for the stack found. A log line proves the script ran; require a correlated request/response before reporting success.
 
 ### Android — hook Java methods
 
