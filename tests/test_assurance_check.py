@@ -216,6 +216,39 @@ class AssuranceCheckTests(unittest.TestCase):
             (skill / "new.md").write_text("Unreviewed", encoding="utf-8")
             self.assertEqual(_currency(build_package(root, catalog, None))["status"], "stale")
 
+    def test_last_skill_renamed_keeps_catalog_entry_stale_until_restored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = _make_skill(root, "cat", "alpha") / "SKILL.md"
+            catalog = _make_catalog(root)
+            notes = marker.rename(marker.with_name("notes.md"))
+            missing = build_package(root, catalog, None)
+            self.assertEqual(_currency(missing)["status"], "stale")
+            self.assertNotIn("cat", missing["category_digests"])
+            self.assertTrue(any("cat:" in msg for msg in _currency(missing)["exceptions"]))
+            repeated = build_package(root, catalog, missing)
+            self.assertEqual(_currency(repeated)["status"], "stale")
+            self.assertIn("content_currency", {t["claim_id"] for t in repeated["renewal_triggers_active"]})
+            notes.rename(marker)
+            self.assertEqual(_currency(build_package(root, catalog, repeated))["status"], "attested")
+
+    def test_category_rename_requires_review_even_with_same_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_skill(root, "cat", "alpha")
+            catalog = _make_catalog(root)
+            (root / "cat").rename(root / "renamed")
+            result = build_package(root, catalog, None)
+            self.assertEqual(_currency(result)["status"], "stale")
+            self.assertEqual([u["scope"] for u in result["unverified"]], ["renamed"])
+            self.assertEqual(set(result["category_digests"]), {"renamed"})
+
+    def test_empty_inventory_is_not_attestation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            claim = _currency(build_package(Path(tmp), None, None))
+            self.assertEqual(claim["status"], "unverified")
+            self.assertEqual(claim["evidence"], [])
+
     def test_matching_digest_does_not_override_expired_cadence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -233,7 +266,7 @@ class AssuranceCheckTests(unittest.TestCase):
                 _make_skill(root, "cat", "alpha", body="See [notes](references/notes.md).\n")
                 (root / "cat" / "alpha" / "references").mkdir()
             body = "Notes.\nLine two.\n"
-            (lf_root / "cat" / "alpha" / "references" / "notes.md").write_text(body, encoding="utf-8")
+            (lf_root / "cat" / "alpha" / "references" / "notes.md").write_bytes(body.encode("utf-8"))
             crlf_notes = crlf_root / "cat" / "alpha" / "references" / "notes.md"
             crlf_notes.write_bytes(b"\xef\xbb\xbf" + body.replace("\n", "\r\n").encode("utf-8"))
             catalog = _make_catalog(lf_root)

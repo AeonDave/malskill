@@ -23,8 +23,8 @@ content_currency:
   # category's full review and checking all external links of these categories. The digests of coding,
   # offensive-coding, offensive-ctf and offensive-tools were re-taken the same day from the committed tree
   # after the Android enrichment (6edc21a): every changed line and every new link was checked the same way.
-  # Uncommitted edits make the working-tree digest differ, so the category shows as stale until they are
-  # committed or dropped.
+  # Committing changed content does not renew its digest: review it and update the attestation, or
+  # restore the reviewed content. Retire the date and digest together if a category is intentionally removed.
   verified_digest:
     ai: 28b2c75da06316cabef25f723ceafeddff0ad6b1737b5f0b9be8a1eca02127c4
     behaviours: a8741a8ad7cfc86099bb45c25d8cba683692eb84b3f7d257e5a600fd93ec54e7

@@ -130,10 +130,10 @@ def _normalized_text_hash(path: pathlib.Path) -> str:
     return _sha256(text.encode("utf-8", errors="surrogateescape"))
 
 
-def _category_content_hashes(root: pathlib.Path) -> dict[str, str]:
+def _category_content_hashes(root: pathlib.Path, categories: list[str]) -> dict[str, str]:
     """Normalized hashes of category markdown: the basis for content-attestation digests."""
     hashes = {}
-    for cat in _iter_category_dirs(root):
+    for cat in categories:
         for f in sorted((root / cat).rglob("*.md")):
             if f.is_file() and not _skip_path(root, f):
                 hashes[_rel(root, f)] = _normalized_text_hash(f)
@@ -328,13 +328,17 @@ def check_content_currency(root: pathlib.Path, catalog: dict) -> dict:
 
     today = datetime.date.today()
     evidence, exceptions = [], []
-    any_stale = False
+    categories = _iter_category_dirs(root)
+    missing = sorted((last_verified.keys() | verified_digests.keys()) - set(categories))
+    for cat in missing:
+        exceptions.append(f"{cat}: catalog entry has no discovered skill category — restore it or retire the entry")
+    any_stale = bool(missing)
     unverified_categories = []
     category_digests = {}
-    changed_categories = []
-    content = _category_content_hashes(root)
+    changed_categories = list(missing)
+    content = _category_content_hashes(root, categories)
 
-    for cat in _iter_category_dirs(root):
+    for cat in categories:
         digest = _sha256(json.dumps({p: h for p, h in content.items()
                                     if p.startswith(cat + "/")}, sort_keys=True).encode())
         category_digests[cat] = digest
@@ -357,7 +361,9 @@ def check_content_currency(root: pathlib.Path, catalog: dict) -> dict:
 
     if unverified_categories:
         exceptions.append("unverified categories (missing date or reviewed digest): " + ", ".join(unverified_categories))
-    status = "stale" if any_stale else "unverified" if unverified_categories else "attested"
+    if not categories and not missing:
+        exceptions.append("no skill categories discovered to attest")
+    status = "stale" if any_stale else "unverified" if unverified_categories or not categories else "attested"
     return {"claim_id": "content_currency", "method": "evidence", "status": status,
             "evidence": evidence, "exceptions": exceptions,
             "unverified_categories": unverified_categories,
