@@ -24,6 +24,15 @@ Most countries maintain public registries of registered companies.
 - **Crunchbase** (web, limited free): Startup/tech company profiles, funding rounds, people, locations.
 - **Open Ownership datasets** (bods-data.openownership.org): downloadable public beneficial-ownership datasets in BODS format; the Register search UI closed on 2024-11-29. Record the dataset date and jurisdiction before citing an ownership claim.
 
+### Legal entity and ownership: GLEIF and Wikidata
+
+Fix the legal entity before mapping its domains or infrastructure. Never merge two entities on name alone: require the same country plus a website or an identifier (LEI, company number, Wikidata item).
+
+- **GLEIF** (no key): `https://api.gleif.org/api/v1/lei-records?filter[entity.legalName]=<exact legal name>`, or `filter[fulltext]=<words>` for a fuzzy search. Read `attributes.entity`: `legalName.name`, `legalAddress.country`, `jurisdiction`, `registeredAs` (company number in the register named by `registeredAt`), `status`, `successorEntity`.
+- Relationships are sub-paths of `/lei-records/<LEI>`: `/direct-parent`, `/ultimate-parent`, `/direct-children`, `/ultimate-children`. An entity with no parent record exposes only a `*-reporting-exception` link: that means "no parent reported", not "no parent". Entities report their own relationships, so records go stale.
+- Group size: one industrial group returned 463 direct children (checked 2026-11-27), mostly single-purpose vehicles. Page, cap, and state what was left out.
+- **Wikidata** (`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=<name>&language=en&format=json`): website `P856`, LEI `P1278`, country `P17`, parent organization `P749`, child organization `P355`, owned by `P127`, owner of `P1830`. It is community-edited: treat ownership claims from it and from GLEIF as candidates until a register or filing states them.
+
 ### US
 
 - **SEC EDGAR** (sec.gov/edgar): US public company filings (10-K, 10-Q, 8-K, proxy statements). Rich financial + governance data.
