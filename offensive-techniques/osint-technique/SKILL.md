@@ -170,6 +170,7 @@ Reference tool `SKILL.md` files for flags and workflows; use this technique for 
 - [person-and-identity-research.md](references/person-and-identity-research.md) — Email pivots, social media profiling, people-search APIs, facial search, username enumeration.
 - [company-and-organization-research.md](references/company-and-organization-research.md) — Registries, employee records, financial filings, leaked documents, compliance checks.
 - [domain-and-infrastructure-research.md](references/domain-and-infrastructure-research.md) — Certificate Transparency, passive DNS, host enumeration, BGP/ASN, service discovery.
+- [dns-vendor-fingerprints.md](references/dns-vendor-fingerprints.md) — load to name the mail, DNS, CDN, cloud, identity and SaaS vendors behind a domain from MX/NS/SPF/CNAME/TXT/ASN, and to handle edge-fronted hosts.
 - [breach-and-leak-research.md](references/breach-and-leak-research.md) — Breach aggregators, credential search, infostealer databases, dark web indices.
 - [image-and-geospatial-osint.md](references/image-and-geospatial-osint.md) — Reverse image search, geolocation techniques, EXIF analysis, satellite imagery, chronolocation.
 - [proximity-and-trilateration-osint.md](references/proximity-and-trilateration-osint.md) — Location inference from distance-only apps (dating, social discovery, fitness, BLE proximity): weighted LS trilateration, GDOP, quantization noise, RANSAC behavioral clustering, sun-orientation closure.

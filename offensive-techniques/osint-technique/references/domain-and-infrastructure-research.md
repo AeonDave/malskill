@@ -183,6 +183,7 @@ Passive DNS aggregates historical DNS query logs. Query: domain name → returns
 - **MX records**: Mail server addresses (reveals email infrastructure).
 - **SPF records**: Authorized mail senders (can reveal infrastructure provider names).
 - **TXT records**: May contain DKIM keys, domain verification, third-party service indicators (e.g., Stripe, Slack).
+- Match the records to vendors with [dns-vendor-fingerprints.md](dns-vendor-fingerprints.md).
 
 ---
 
@@ -199,6 +200,7 @@ Passive DNS aggregates historical DNS query logs. Query: domain name → returns
 - **CNAME records**: May point to CDN (e.g., `*.cloudflare.net`, `*.akamai.net`).
 - **TTLs**: Very short TTLs suggest dynamic infrastructure or load balancing.
 - **Certificate issuer**: Rapid re-issuance suggests automated certificates (DDoS protection, WAF).
+- Edge-fronted hosts and passive origin candidates: [dns-vendor-fingerprints.md](dns-vendor-fingerprints.md#edge-fronted-hosts).
 
 ---
 
