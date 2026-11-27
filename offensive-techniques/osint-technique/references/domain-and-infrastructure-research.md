@@ -162,6 +162,7 @@ Passive DNS aggregates historical DNS query logs. Query: domain name → returns
 
 - **Fingerprint (SHA-1/SHA-256)**: Identical fingerprints across multiple hosts → same infrastructure.
 - **Subject DN**: Names in the cert reveal infrastructure operators.
+- **Subject `O` is a claim, not a register.** The requester or the device vendor wrote it. Skip placeholders (`Internet Widgits Pty Ltd` is OpenSSL's default; also `Default Company Ltd`, `Unspecified`, `Acme`, `localhost`, `test`) and the self-signed certificates that devices and panels generate for themselves (Ubiquiti, Synology, MikroTik, Fortinet, Hikvision, QNAP, Plesk, cPanel, VMware, Proxmox): the host is that vendor's product, not an organization that runs it. A self-signed certificate (issuer equals subject) is weaker still. Whatever passes is a lead to check in a register.
 
 ---
 
@@ -199,6 +200,25 @@ Passive DNS aggregates historical DNS query logs. Query: domain name → returns
 - **CNAME records**: May point to CDN (e.g., `*.cloudflare.net`, `*.akamai.net`).
 - **TTLs**: Very short TTLs suggest dynamic infrastructure or load balancing.
 - **Certificate issuer**: Rapid re-issuance suggests automated certificates (DDoS protection, WAF).
+
+---
+
+## Asset-to-Organization Attribution
+
+Decide whether a domain or host belongs to a target organization before it joins the map. Each kind of evidence counts once; ten hits of one kind are one voice.
+
+| Evidence | Strength |
+|---|---|
+| SPF record includes a host in the organization's own domain | High |
+| `www` or another name is a CNAME to the organization's domain | High |
+| One certificate names both domains (few names, one operator) | High |
+| Name servers or mail exchangers in the organization's own zone | Medium |
+| Both resolve into a network that is not a shared hosting or CDN network | Medium |
+| The name contains the brand | Low; never enough alone |
+
+- Do not count name servers, mail exchangers or SPF includes of large shared mail, DNS, CDN and cloud providers: thousands of unrelated domains share them. A certificate with many unrelated names proves nothing.
+- Confirmed needs at least two kinds, one of them more than the name. A single kind is likely at best. Nothing found is "unclear", never "unrelated".
+- Lookalikes and partners are separate subjects: see [ct-phishing-and-attribution.md](ct-phishing-and-attribution.md).
 
 ---
 
