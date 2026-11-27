@@ -84,7 +84,7 @@ done < cves.txt | sort -t: -k2 -nr
 ```
 
 ### 3.3 Prioritization heuristic
-1. **KEV-flagged** → patch first regardless of score.
+1. **KEV-flagged** → patch first regardless of score. The KEV field `knownRansomwareCampaignUse` (`Known` or `Unknown`) ranks a `Known` entry higher still.
 2. **EPSS ≥ 0.5** → high near-term exploit probability.
 3. **CVSS ≥ 9.0 + public PoC (Trickest/ExploitDB/Metasploit)** → operator-ready exploit, escalate.
 4. **EPSS 0.1–0.5 + targetable from internet** → MEDIUM-HIGH.
@@ -95,6 +95,14 @@ Cache CSV daily for offline ops:
 curl -sk -o /tmp/epss-$(date +%F).csv.gz https://epss.cyentia.com/epss_scores-current.csv.gz
 gunzip -f /tmp/epss-$(date +%F).csv.gz
 ```
+
+### 3.4 End-of-life software
+
+Support status is independent of CVEs: after the end date no fixes arrive. `https://endoflife.date/api/<product>.json` (no key) returns one object per release cycle with `cycle`, `releaseDate`, `eol`, `latest` and `lts`; `support` and `extendedSupport` appear on some products. `eol` is a date string, or `false` while no end date is announced.
+
+- Match the version to its cycle (`3.14` for `3.14.10`).
+- List end-of-life findings beside the CVE ranking, not inside it.
+- A version read from a banner is unconfirmed: vendors backport fixes without changing it.
 
 ---
 
